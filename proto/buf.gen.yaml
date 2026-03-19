@@ -1,0 +1,17 @@
+version: v2
+managed:
+  enabled: true
+  override:
+    - file_option: go_package_prefix
+      value: github.com/synclet-io/synclet/gen/proto/
+plugins:
+  - local: protoc-gen-go
+    out: ../gen/proto
+    opt: paths=source_relative
+  - local: protoc-gen-connect-go
+    out: ../gen/proto
+    opt: paths=source_relative
+  - local: ../front/node_modules/.bin/protoc-gen-es
+    out: ../front/src/gen
+    include_imports: true
+    opt: target=ts

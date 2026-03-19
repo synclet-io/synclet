@@ -1,0 +1,49 @@
+# Environment
+.env
+.env.test
+.env.local
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# OS
+**/.DS_Store
+
+# Build output
+bin/
+/synclet
+
+# Frontend
+front/dist/
+front/node_modules/
+
+# Proto generated
+proto/node_modules/
+
+# Generated files
+*.gen.go
+
+# Logs
+*.log
+
+# Temporary files
+tmp/
+.air.toml
+
+# Synclet local state
+.synclet/
+docs/
+
+# Planning and agent artifacts (not for public repo)
+.planning/
+.claude/plan-config.json
+
+# Release prep artifacts
+HISTORY-REWRITE.md
+
+# Large registry files (fetched at runtime)
+airbyte_oss_registry.json
+airbyte_oss_registry_schema.json

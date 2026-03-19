@@ -1,0 +1,143 @@
+syntax = "proto3";
+
+package synclet.publicapi.auth.v1;
+
+option go_package = "synclet/gen/proto/synclet/publicapi/auth/v1;authv1";
+
+import "google/protobuf/timestamp.proto";
+import "synclet/options/v1/options.proto";
+import "synclet/publicapi/workspace/v1/workspace.proto";
+
+service AuthService {
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+  rpc Login(LoginRequest) returns (LoginResponse);
+  rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse);
+  rpc Logout(LogoutRequest) returns (LogoutResponse);
+  rpc GetCurrentUser(GetCurrentUserRequest) returns (GetCurrentUserResponse);
+  rpc UpdateProfile(UpdateProfileRequest) returns (UpdateProfileResponse);
+  rpc ChangePassword(ChangePasswordRequest) returns (ChangePasswordResponse);
+  rpc CreateAPIKey(CreateAPIKeyRequest) returns (CreateAPIKeyResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
+  }
+  rpc RevokeAPIKey(RevokeAPIKeyRequest) returns (RevokeAPIKeyResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
+  }
+  rpc ListAPIKeys(ListAPIKeysRequest) returns (ListAPIKeysResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
+  }
+  rpc GetOIDCProviders(GetOIDCProvidersRequest) returns (GetOIDCProvidersResponse);
+}
+
+message UserInfo {
+  string id = 1;
+  string email = 2;
+  string name = 3;
+  google.protobuf.Timestamp created_at = 4;
+}
+
+message WorkspaceMembership {
+  string workspace_id = 1;
+  string workspace_name = 2;
+  synclet.publicapi.workspace.v1.MemberRole role = 3;
+}
+
+message RegisterRequest {
+  string email = 1;
+  string password = 2;
+  string name = 3;
+}
+
+message RegisterResponse {
+  google.protobuf.Timestamp expires_at = 1;
+  UserInfo user = 2;
+  google.protobuf.Timestamp refresh_token_expires_at = 3;
+}
+
+message LoginRequest {
+  string email = 1;
+  string password = 2;
+}
+
+message LoginResponse {
+  google.protobuf.Timestamp expires_at = 1;
+  UserInfo user = 2;
+  google.protobuf.Timestamp refresh_token_expires_at = 3;
+}
+
+message RefreshTokenRequest {}
+
+message RefreshTokenResponse {
+  google.protobuf.Timestamp expires_at = 1;
+  google.protobuf.Timestamp refresh_token_expires_at = 2;
+}
+
+message LogoutRequest {}
+
+message LogoutResponse {}
+
+message GetCurrentUserRequest {}
+
+message GetCurrentUserResponse {
+  UserInfo user = 1;
+  repeated WorkspaceMembership workspaces = 2;
+}
+
+message UpdateProfileRequest {
+  string name = 1;
+}
+
+message UpdateProfileResponse {
+  UserInfo user = 1;
+}
+
+message ChangePasswordRequest {
+  string current_password = 1;
+  string new_password = 2;
+}
+
+message ChangePasswordResponse {}
+
+message APIKeyInfo {
+  string id = 1;
+  string workspace_id = 2;
+  string name = 3;
+  google.protobuf.Timestamp created_at = 4;
+  google.protobuf.Timestamp expires_at = 5;
+  google.protobuf.Timestamp last_used_at = 6;
+}
+
+message CreateAPIKeyRequest {
+  string workspace_id = 1;
+  string name = 2;
+  google.protobuf.Timestamp expires_at = 3;
+}
+
+message CreateAPIKeyResponse {
+  string raw_key = 1;
+  APIKeyInfo api_key = 2;
+}
+
+message RevokeAPIKeyRequest {
+  string id = 1;
+}
+
+message RevokeAPIKeyResponse {}
+
+message ListAPIKeysRequest {
+  string workspace_id = 1;
+}
+
+message ListAPIKeysResponse {
+  repeated APIKeyInfo api_keys = 1;
+}
+
+message OIDCProviderInfo {
+  string slug = 1;
+  string display_name = 2;
+}
+
+message GetOIDCProvidersRequest {}
+
+message GetOIDCProvidersResponse {
+  repeated OIDCProviderInfo providers = 1;
+}

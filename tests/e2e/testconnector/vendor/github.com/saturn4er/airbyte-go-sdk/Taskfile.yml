@@ -1,0 +1,97 @@
+version: '3'
+
+vars:
+  EXAMPLE_DIR: examples/httpsource
+  BINARY: ./bin/httpsource
+
+tasks:
+  # Build tasks
+  build:
+    desc: Build the HTTP source example
+    cmds:
+      - mkdir -p bin
+      - go build -o {{.BINARY}} {{.EXAMPLE_DIR}}/main.go
+    sources:
+      - "{{.EXAMPLE_DIR}}/**/*.go"
+      - "*.go"
+    generates:
+      - "{{.BINARY}}"
+
+  # Test tasks
+  test:
+    desc: Run all tests
+    cmds:
+      - go test -v ./...
+
+  test-short:
+    desc: Run tests without verbose output
+    cmds:
+      - go test ./...
+
+  # Example connector tasks
+  spec:
+    desc: Run the spec command (returns connector specification)
+    deps: [build]
+    cmds:
+      - "{{.BINARY}} spec"
+
+  check:
+    desc: Run the check command (validates configuration)
+    deps: [build]
+    cmds:
+      - "{{.BINARY}} check --config {{.EXAMPLE_DIR}}/config.json"
+
+  discover:
+    desc: Run the discover command (returns available streams)
+    deps: [build]
+    cmds:
+      - "{{.BINARY}} discover --config {{.EXAMPLE_DIR}}/config.json"
+
+  read:
+    desc: Run the read command (syncs data)
+    deps: [build]
+    cmds:
+      - "{{.BINARY}} read --config {{.EXAMPLE_DIR}}/config.json --catalog {{.EXAMPLE_DIR}}/catalog.json"
+
+  # Utility tasks
+  clean:
+    desc: Clean build artifacts
+    cmds:
+      - rm -rf bin/
+
+  fmt:
+    desc: Format Go code
+    cmds:
+      - go fmt ./...
+
+  lint:
+    desc: Run golangci-lint (if installed)
+    cmds:
+      - golangci-lint run
+    preconditions:
+      - sh: command -v golangci-lint
+        msg: "golangci-lint not installed. Install with: brew install golangci-lint"
+
+  # Development workflow
+  dev:
+    desc: Format, test, and build
+    cmds:
+      - task: fmt
+      - task: test
+      - task: build
+
+  # Show example usage
+  demo:
+    desc: Run a full demo of the connector (spec, check, discover, read)
+    cmds:
+      - echo "===== SPEC ====="
+      - task: spec
+      - echo ""
+      - echo "===== CHECK ====="
+      - task: check
+      - echo ""
+      - echo "===== DISCOVER ====="
+      - task: discover
+      - echo ""
+      - echo "===== READ ====="
+      - task: read

@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package synclet.options.v1;
+
+option go_package = "synclet/gen/proto/synclet/options/v1;optionsv1";
+
+import "google/protobuf/descriptor.proto";
+
+// RequiredRole defines the minimum workspace role needed to call an RPC.
+// RPCs without this annotation require no role check (public or authenticated-only).
+enum RequiredRole {
+  REQUIRED_ROLE_UNSPECIFIED = 0;
+  REQUIRED_ROLE_VIEWER = 1;
+  REQUIRED_ROLE_EDITOR = 2;
+  REQUIRED_ROLE_ADMIN = 3;
+}
+
+extend google.protobuf.MethodOptions {
+  // required_role specifies the minimum workspace role needed to call this method.
+  // If not set (UNSPECIFIED), no role check is performed by the RoleInterceptor.
+  optional RequiredRole required_role = 50001;
+}

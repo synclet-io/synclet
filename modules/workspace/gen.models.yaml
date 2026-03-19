@@ -1,0 +1,48 @@
+types:
+  enums:
+    - name: MemberRole
+      values: [ Admin, Editor, Viewer ]
+      helpers:
+        is_valid: true
+        stringer: true
+        is: true
+
+    - name: InviteStatus
+      values: [ Pending, Accepted, Declined, Revoked ]
+      helpers:
+        is_valid: true
+        stringer: true
+        is: true
+
+  models:
+    - name: Workspace
+      table_name: workspace.workspaces
+      fields:
+        - { name: ID, type: uuid, filterable: true }
+        - { name: Name, type: string, filterable: true }
+        - { name: Slug, type: string, filterable: true }
+        - { name: CreatedAt, type: timestamp }
+        - { name: UpdatedAt, type: timestamp }
+
+    - name: WorkspaceMember
+      table_name: workspace.workspace_members
+      fields:
+        - { name: ID, type: uuid, filterable: true }
+        - { name: WorkspaceID, type: uuid, filterable: true }
+        - { name: UserID, type: uuid, filterable: true }
+        - { name: Role, type: MemberRole, filterable: true }
+        - { name: JoinedAt, type: timestamp }
+
+    - name: WorkspaceInvite
+      table_name: workspace.workspace_invites
+      fields:
+        - { name: ID, type: uuid, filterable: true }
+        - { name: WorkspaceID, type: uuid, filterable: true }
+        - { name: InviterUserID, type: uuid, filterable: true }
+        - { name: Email, type: string, filterable: true }
+        - { name: Role, type: MemberRole }
+        - { name: Token, type: string, filterable: true }
+        - { name: Status, type: InviteStatus, filterable: true }
+        - { name: ExpiresAt, type: timestamp }
+        - { name: CreatedAt, type: timestamp }
+        - { name: UpdatedAt, type: timestamp }

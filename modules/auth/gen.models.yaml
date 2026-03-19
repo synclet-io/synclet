@@ -1,0 +1,52 @@
+types:
+  models:
+    - name: User
+      table_name: auth.users
+      fields:
+        - { name: ID, type: uuid, filterable: true }
+        - { name: Email, type: string, filterable: true }
+        - { name: PasswordHash, type: string }
+        - { name: Name, type: string }
+        - { name: CreatedAt, type: timestamp }
+
+    - name: RefreshToken
+      table_name: auth.refresh_tokens
+      fields:
+        - { name: ID, type: uuid, filterable: true }
+        - { name: UserID, type: uuid, filterable: true }
+        - { name: TokenHash, type: string, filterable: true }
+        - { name: ExpiresAt, type: timestamp }
+        - { name: CreatedAt, type: timestamp }
+
+    - name: APIKey
+      table_name: auth.api_keys
+      fields:
+        - { name: ID, type: uuid, filterable: true }
+        - { name: WorkspaceID, type: uuid, filterable: true }
+        - { name: UserID, type: uuid, filterable: true }
+        - { name: Name, type: string }
+        - { name: KeyHash, type: string, filterable: true }
+        - { name: LastUsedAt, type: "*timestamp" }
+        - { name: ExpiresAt, type: "*timestamp" }
+        - { name: CreatedAt, type: timestamp }
+
+    - name: OIDCIdentity
+      table_name: auth.oidc_identities
+      fields:
+        - { name: ID, type: uuid, filterable: true }
+        - { name: UserID, type: uuid, filterable: true }
+        - { name: ProviderSlug, type: string, filterable: true }
+        - { name: Subject, type: string, filterable: true }
+        - { name: Email, type: string }
+        - { name: CreatedAt, type: timestamp }
+        - { name: LastLoginAt, type: timestamp }
+
+    - name: OIDCState
+      table_name: auth.oidc_states
+      fields:
+        - { name: ID, type: uuid, filterable: true }
+        - { name: State, type: string, filterable: true }
+        - { name: Verifier, type: string }
+        - { name: ProviderSlug, type: string }
+        - { name: ExpiresAt, type: timestamp }
+        - { name: CreatedAt, type: timestamp }

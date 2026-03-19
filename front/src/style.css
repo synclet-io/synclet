@@ -1,0 +1,181 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Layer 1 & 2: Primitives & Named Color Ramps */
+  :root {
+    --color-blue-50: #eff6ff;
+    --color-blue-100: #dbeafe;
+    --color-blue-200: #bfdbfe;
+    --color-blue-300: #93c5fd;
+    --color-blue-400: #60a5fa;
+    --color-blue-500: #3b82f6;
+    --color-blue-600: #2563eb;
+    --color-blue-700: #1d4ed8;
+    --color-blue-800: #1e40af;
+    --color-blue-900: #1e3a8a;
+    --color-blue-950: #172554;
+
+    --color-slate-50: #f8fafc;
+    --color-slate-100: #f1f5f9;
+    --color-slate-200: #e2e8f0;
+    --color-slate-300: #cbd5e1;
+    --color-slate-400: #94a3b8;
+    --color-slate-500: #64748b;
+    --color-slate-600: #475569;
+    --color-slate-700: #334155;
+    --color-slate-800: #1e293b;
+    --color-slate-900: #0f172a;
+    --color-slate-950: #020617;
+
+    --color-green-50: #f0fdf4;
+    --color-green-100: #dcfce7;
+    --color-green-500: #22c55e;
+    --color-green-600: #16a34a;
+    --color-green-700: #15803d;
+    --color-green-800: #166534;
+    --color-green-900: #14532d;
+
+    --color-red-50: #fef2f2;
+    --color-red-100: #fee2e2;
+    --color-red-500: #ef4444;
+    --color-red-600: #dc2626;
+    --color-red-700: #b91c1c;
+    --color-red-800: #991b1b;
+    --color-red-900: #7f1d1d;
+
+    --color-amber-50: #fffbeb;
+    --color-amber-100: #fef3c7;
+    --color-amber-500: #f59e0b;
+    --color-amber-600: #d97706;
+    --color-amber-700: #b45309;
+    --color-amber-800: #92400e;
+
+    --color-purple-100: #f3e8ff;
+    --color-purple-400: #c084fc;
+    --color-purple-700: #7e22ce;
+    --color-purple-900: #581c87;
+  }
+
+  /* Layer 3: Semantic Tokens — Light Mode */
+  :root {
+    --color-primary: var(--color-blue-600);
+    --color-primary-hover: var(--color-blue-700);
+    --color-primary-light: var(--color-blue-50);
+    --color-primary-muted: var(--color-blue-100);
+
+    --color-bg-page: var(--color-slate-50);
+    --color-bg-surface: #ffffff;
+    --color-bg-surface-raised: var(--color-slate-50);
+    --color-bg-surface-hover: var(--color-slate-100);
+
+    --color-border-default: var(--color-slate-200);
+    --color-border-subtle: var(--color-slate-100);
+
+    --color-text-heading: var(--color-slate-900);
+    --color-text-primary: var(--color-slate-700);
+    --color-text-secondary: var(--color-slate-500);
+    --color-text-muted: var(--color-slate-400);
+    --color-text-on-primary: #ffffff;
+
+    --color-status-success: var(--color-green-600);
+    --color-status-success-bg: var(--color-green-50);
+    --color-status-danger: var(--color-red-600);
+    --color-status-danger-bg: var(--color-red-50);
+    --color-status-warning: var(--color-amber-600);
+    --color-status-warning-bg: var(--color-amber-50);
+    --color-status-info: var(--color-blue-600);
+    --color-status-info-bg: var(--color-blue-50);
+
+    --color-interactive-focus: rgb(59 130 246 / 0.2);
+
+    --color-sidebar-bg: var(--color-slate-900);
+    --color-sidebar-text: var(--color-slate-300);
+    --color-sidebar-text-active: #ffffff;
+    --color-sidebar-hover: rgb(255 255 255 / 0.06);
+    --color-sidebar-active: rgb(255 255 255 / 0.1);
+    --color-sidebar-border: rgb(255 255 255 / 0.08);
+
+    --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.03);
+    --shadow-soft: 0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.03);
+    --shadow-raised: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.03);
+    --shadow-overlay: 0 10px 25px -5px rgb(0 0 0 / 0.08), 0 8px 10px -6px rgb(0 0 0 / 0.04);
+  }
+
+  /* Layer 3: Semantic Tokens — Dark Mode */
+  .dark {
+    --color-primary: var(--color-blue-500);
+    --color-primary-hover: var(--color-blue-400);
+    --color-primary-light: rgb(59 130 246 / 0.1);
+    --color-primary-muted: rgb(59 130 246 / 0.2);
+
+    --color-bg-page: var(--color-slate-950);
+    --color-bg-surface: var(--color-slate-900);
+    --color-bg-surface-raised: var(--color-slate-800);
+    --color-bg-surface-hover: var(--color-slate-800);
+
+    --color-border-default: var(--color-slate-700);
+    --color-border-subtle: var(--color-slate-800);
+
+    --color-text-heading: var(--color-slate-100);
+    --color-text-primary: var(--color-slate-300);
+    --color-text-secondary: var(--color-slate-400);
+    --color-text-muted: var(--color-slate-500);
+    --color-text-on-primary: #ffffff;
+
+    --color-status-success: var(--color-green-500);
+    --color-status-success-bg: rgb(22 163 74 / 0.1);
+    --color-status-danger: var(--color-red-500);
+    --color-status-danger-bg: rgb(220 38 38 / 0.1);
+    --color-status-warning: var(--color-amber-500);
+    --color-status-warning-bg: rgb(217 119 6 / 0.1);
+    --color-status-info: var(--color-blue-400);
+    --color-status-info-bg: rgb(59 130 246 / 0.1);
+
+    --color-interactive-focus: rgb(96 165 250 / 0.25);
+
+    --color-sidebar-bg: var(--color-slate-950);
+    --color-sidebar-text: var(--color-slate-400);
+    --color-sidebar-text-active: var(--color-slate-100);
+    --color-sidebar-hover: rgb(255 255 255 / 0.04);
+    --color-sidebar-active: rgb(255 255 255 / 0.08);
+    --color-sidebar-border: rgb(255 255 255 / 0.06);
+
+    --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.15);
+    --shadow-soft: 0 1px 3px 0 rgb(0 0 0 / 0.2), 0 1px 2px -1px rgb(0 0 0 / 0.15);
+    --shadow-raised: 0 4px 6px -1px rgb(0 0 0 / 0.25), 0 2px 4px -2px rgb(0 0 0 / 0.15);
+    --shadow-overlay: 0 10px 25px -5px rgb(0 0 0 / 0.4), 0 8px 10px -6px rgb(0 0 0 / 0.3);
+  }
+
+  html {
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  body {
+    background-color: var(--color-bg-page);
+    color: var(--color-text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background-color: var(--color-primary-muted);
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-border-default);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-muted);
+  }
+}

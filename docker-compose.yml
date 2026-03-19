@@ -1,0 +1,48 @@
+services:
+  migrate:
+    build: .
+    command: ["migrate", "up"]
+    environment:
+      DSN: postgres://synclet:synclet@postgres:5432/synclet?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  synclet:
+    build: .
+    command: ["server", "--standalone"]
+    ports:
+      - "8080:8080"
+    environment:
+      DSN: postgres://synclet:synclet@postgres:5432/synclet?sslmode=disable
+      HTTP_SERVER_ADDR: 0.0.0.0:8080
+      JWT_SECRET: change-me-in-production
+      ENCRYPTION_KEY: PjsJSmk5MpLbSjsXYdIeflREhQ57B7+Sz0b0/VreDRk=
+      ENVIRONMENT: production
+      LOG_LEVEL: info
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: synclet
+      POSTGRES_PASSWORD: synclet
+      POSTGRES_DB: synclet
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U synclet"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:

@@ -1,0 +1,23 @@
+{{- $fullname := include "synclet.fullname" . -}}
+Synclet has been deployed!
+
+Mode: {{ .Values.mode }}
+{{- if eq .Values.mode "standalone" }}
+  Server is running in standalone mode (API + Jobs + Executor in a single pod).
+{{- else }}
+  Running in distributed mode with separate server, jobs, and executor deployments.
+{{- end }}
+
+To get the application URL:
+{{- if .Values.server.ingress.enabled }}
+  http{{ if .Values.server.ingress.tls }}s{{ end }}://{{ .Values.server.ingress.hostname }}
+{{- else }}
+  kubectl port-forward svc/{{ $fullname }} {{ .Values.server.service.ports.public }}:{{ .Values.server.service.ports.public }}
+  Then visit: http://localhost:{{ .Values.server.service.ports.public }}
+{{- end }}
+
+{{- if .Values.postgresql.enabled }}
+
+WARNING: Built-in PostgreSQL is intended for development/testing only.
+For production, set postgresql.enabled=false and configure externalDatabase.
+{{- end }}

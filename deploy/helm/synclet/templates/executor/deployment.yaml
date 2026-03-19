@@ -1,0 +1,106 @@
+{{- if and (eq .Values.mode "distributed") .Values.executor.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "synclet.fullname" . }}-executor
+  labels:
+    {{- include "synclet.executor.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.executor.replicaCount }}
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
+  {{- with .Values.executor.strategy }}
+  strategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "synclet.executor.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- with .Values.executor.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "synclet.executor.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "synclet.serviceAccountName" . }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      {{- if .Values.executor.priorityClassName }}
+      priorityClassName: {{ .Values.executor.priorityClassName }}
+      {{- end }}
+      {{- if .Values.executor.podSecurityContext.enabled }}
+      securityContext:
+        runAsNonRoot: {{ .Values.executor.podSecurityContext.runAsNonRoot }}
+        runAsUser: {{ .Values.executor.podSecurityContext.runAsUser }}
+        fsGroup: {{ .Values.executor.podSecurityContext.fsGroup }}
+      {{- end }}
+      containers:
+        - name: executor
+          image: {{ include "synclet.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["synclet", "k8s-executor"]
+          envFrom:
+            - configMapRef:
+                name: {{ include "synclet.fullname" . }}
+            {{- with .Values.executor.extraEnvFrom }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          env:
+            {{- include "synclet.secretEnvVars" . | nindent 12 }}
+          {{- if .Values.executor.livenessProbe.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.executor.livenessProbe.path }}
+              port: {{ .Values.executor.livenessProbe.port }}
+            initialDelaySeconds: {{ .Values.executor.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.executor.livenessProbe.periodSeconds }}
+          {{- end }}
+          {{- if .Values.executor.readinessProbe.enabled }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.executor.readinessProbe.path }}
+              port: {{ .Values.executor.readinessProbe.port }}
+            initialDelaySeconds: {{ .Values.executor.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.executor.readinessProbe.periodSeconds }}
+          {{- end }}
+          {{- if .Values.executor.containerSecurityContext.enabled }}
+          securityContext:
+            allowPrivilegeEscalation: {{ .Values.executor.containerSecurityContext.allowPrivilegeEscalation }}
+            readOnlyRootFilesystem: {{ .Values.executor.containerSecurityContext.readOnlyRootFilesystem }}
+            capabilities:
+              drop:
+                {{- toYaml .Values.executor.containerSecurityContext.capabilities.drop | nindent 16 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.executor.resources | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
+      {{- with .Values.executor.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.executor.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.executor.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.executor.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

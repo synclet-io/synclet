@@ -1,0 +1,162 @@
+syntax = "proto3";
+
+package synclet.publicapi.notify.v1;
+
+option go_package = "synclet/gen/proto/synclet/publicapi/notify/v1;notifyv1";
+
+import "google/protobuf/timestamp.proto";
+import "synclet/options/v1/options.proto";
+
+enum NotificationChannelType {
+  NOTIFICATION_CHANNEL_TYPE_UNSPECIFIED = 0;
+  NOTIFICATION_CHANNEL_TYPE_SLACK = 1;
+  NOTIFICATION_CHANNEL_TYPE_EMAIL = 2;
+  NOTIFICATION_CHANNEL_TYPE_TELEGRAM = 3;
+}
+
+enum NotificationCondition {
+  NOTIFICATION_CONDITION_UNSPECIFIED = 0;
+  NOTIFICATION_CONDITION_ON_FAILURE = 1;
+  NOTIFICATION_CONDITION_ON_CONSECUTIVE_FAILURES = 2;
+  NOTIFICATION_CONDITION_ON_ZERO_RECORDS = 3;
+}
+
+// NotificationService manages notification channels and rules.
+service NotificationService {
+  rpc CreateNotificationChannel(CreateNotificationChannelRequest) returns (CreateNotificationChannelResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_ADMIN;
+  }
+  rpc UpdateNotificationChannel(UpdateNotificationChannelRequest) returns (UpdateNotificationChannelResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_ADMIN;
+  }
+  rpc DeleteNotificationChannel(DeleteNotificationChannelRequest) returns (DeleteNotificationChannelResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_ADMIN;
+  }
+  rpc ListNotificationChannels(ListNotificationChannelsRequest) returns (ListNotificationChannelsResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
+  }
+  rpc TestNotificationChannel(TestNotificationChannelRequest) returns (TestNotificationChannelResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_ADMIN;
+  }
+  rpc CreateNotificationRule(CreateNotificationRuleRequest) returns (CreateNotificationRuleResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_EDITOR;
+  }
+  rpc UpdateNotificationRule(UpdateNotificationRuleRequest) returns (UpdateNotificationRuleResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_EDITOR;
+  }
+  rpc DeleteNotificationRule(DeleteNotificationRuleRequest) returns (DeleteNotificationRuleResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_EDITOR;
+  }
+  rpc ListNotificationRules(ListNotificationRulesRequest) returns (ListNotificationRulesResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
+  }
+}
+
+message NotificationChannel {
+  string id = 1;
+  string workspace_id = 2;
+  string name = 3;
+  NotificationChannelType channel_type = 4;
+  string config = 5;        // JSON config
+  bool enabled = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+message NotificationRule {
+  string id = 1;
+  string workspace_id = 2;
+  string channel_id = 3;
+  optional string connection_id = 4;
+  NotificationCondition condition = 5;
+  int32 condition_value = 6;
+  bool enabled = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+}
+
+// Channel CRUD
+
+message CreateNotificationChannelRequest {
+  string name = 1;
+  NotificationChannelType channel_type = 2;
+  string config = 3;  // JSON config
+  bool enabled = 4;
+}
+
+message CreateNotificationChannelResponse {
+  NotificationChannel channel = 1;
+}
+
+message UpdateNotificationChannelRequest {
+  string id = 1;
+  optional string name = 2;
+  optional string config = 3;
+  optional bool enabled = 4;
+}
+
+message UpdateNotificationChannelResponse {
+  NotificationChannel channel = 1;
+}
+
+message DeleteNotificationChannelRequest {
+  string id = 1;
+}
+
+message DeleteNotificationChannelResponse {}
+
+message ListNotificationChannelsRequest {
+  optional NotificationChannelType channel_type = 1;
+}
+
+message ListNotificationChannelsResponse {
+  repeated NotificationChannel channels = 1;
+  int32 total = 2;
+}
+
+message TestNotificationChannelRequest {
+  string id = 1;
+}
+
+message TestNotificationChannelResponse {}
+
+// Rule CRUD
+
+message CreateNotificationRuleRequest {
+  string channel_id = 1;
+  optional string connection_id = 2;
+  NotificationCondition condition = 3;
+  int32 condition_value = 4;
+  bool enabled = 5;
+}
+
+message CreateNotificationRuleResponse {
+  NotificationRule rule = 1;
+}
+
+message UpdateNotificationRuleRequest {
+  string id = 1;
+  optional NotificationCondition condition = 2;
+  optional int32 condition_value = 3;
+  optional bool enabled = 4;
+}
+
+message UpdateNotificationRuleResponse {
+  NotificationRule rule = 1;
+}
+
+message DeleteNotificationRuleRequest {
+  string id = 1;
+}
+
+message DeleteNotificationRuleResponse {}
+
+message ListNotificationRulesRequest {
+  optional string channel_id = 1;
+  optional string connection_id = 2;
+}
+
+message ListNotificationRulesResponse {
+  repeated NotificationRule rules = 1;
+  int32 total = 2;
+}

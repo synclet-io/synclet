@@ -1,0 +1,19 @@
+root_package_name: "github.com/synclet-io/synclet/modules"
+goimports_local: "github.com/synclet-io/synclet"
+
+modules:
+  pipeline:
+    imports:
+      - "./pipeline/gen.models.yaml"
+  workspace:
+    imports:
+      - "./workspace/gen.models.yaml"
+  auth:
+    imports:
+      - "./auth/gen.models.yaml"
+  notify:
+    imports:
+      - "./notify/gen.models.yaml"
+  secret:
+    imports:
+      - "./secret/gen.models.yaml"

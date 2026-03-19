@@ -1,0 +1,756 @@
+syntax = "proto3";
+
+package synclet.publicapi.pipeline.v1;
+
+option go_package = "synclet/gen/proto/synclet/publicapi/pipeline/v1;pipelinev1";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+import "synclet/options/v1/options.proto";
+import "synclet/protocol/v1/protocol.proto";
+
+// ==================== Enums ====================
+
+enum ConnectionStatus {
+  CONNECTION_STATUS_UNSPECIFIED = 0;
+  CONNECTION_STATUS_ACTIVE = 1;
+  CONNECTION_STATUS_INACTIVE = 2;
+  CONNECTION_STATUS_PAUSED = 3;
+}
+
+enum SchemaChangePolicy {
+  SCHEMA_CHANGE_POLICY_UNSPECIFIED = 0;
+  SCHEMA_CHANGE_POLICY_PROPAGATE = 1;
+  SCHEMA_CHANGE_POLICY_IGNORE = 2;
+  SCHEMA_CHANGE_POLICY_PAUSE = 3;
+}
+
+enum JobStatus {
+  JOB_STATUS_UNSPECIFIED = 0;
+  JOB_STATUS_SCHEDULED = 1;
+  JOB_STATUS_RUNNING = 2;
+  JOB_STATUS_COMPLETED = 3;
+  JOB_STATUS_FAILED = 4;
+  JOB_STATUS_CANCELLED = 5;
+  JOB_STATUS_STARTING = 6;
+}
+
+enum JobType {
+  JOB_TYPE_UNSPECIFIED = 0;
+  JOB_TYPE_SYNC = 1;
+  JOB_TYPE_DISCOVER = 2;
+  JOB_TYPE_CHECK = 3;
+}
+
+enum SyncMode {
+  SYNC_MODE_UNSPECIFIED = 0;
+  SYNC_MODE_FULL_REFRESH = 1;
+  SYNC_MODE_INCREMENTAL = 2;
+}
+
+enum DestinationSyncMode {
+  DESTINATION_SYNC_MODE_UNSPECIFIED = 0;
+  DESTINATION_SYNC_MODE_OVERWRITE = 1;
+  DESTINATION_SYNC_MODE_APPEND = 2;
+  DESTINATION_SYNC_MODE_APPEND_DEDUP = 3;
+}
+
+enum NamespaceDefinition {
+  NAMESPACE_DEFINITION_UNSPECIFIED = 0;
+  NAMESPACE_DEFINITION_SOURCE = 1;
+  NAMESPACE_DEFINITION_DESTINATION = 2;
+  NAMESPACE_DEFINITION_CUSTOM = 3;
+}
+
+enum WorkspacesMode {
+  WORKSPACES_MODE_UNSPECIFIED = 0;
+  WORKSPACES_MODE_SINGLE = 1;
+  WORKSPACES_MODE_MULTI = 2;
+}
+
+// ==================== Services ====================
+
+service SourceService {
+  rpc CreateSource(CreateSourceRequest) returns (CreateSourceResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_EDITOR;
+  }
+  rpc UpdateSource(UpdateSourceRequest) returns (UpdateSourceResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_EDITOR;
+  }
+  rpc DeleteSource(DeleteSourceRequest) returns (DeleteSourceResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_EDITOR;
+  }
+  rpc GetSource(GetSourceRequest) returns (GetSourceResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
+  }
+  rpc ListSources(ListSourcesRequest) returns (ListSourcesResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
+  }
+  rpc TestSourceConnection(TestSourceConnectionRequest) returns (TestSourceConnectionResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_EDITOR;
+  }
+  rpc DiscoverSourceSchema(DiscoverSourceSchemaRequest) returns (DiscoverSourceSchemaResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_EDITOR;
+  }
+  rpc GetSourceCatalog(GetSourceCatalogRequest) returns (GetSourceCatalogResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
+  }
+  rpc GetSystemInfo(GetSystemInfoRequest) returns (GetSystemInfoResponse) {}
+}
+
+service DestinationService {
+  rpc CreateDestination(CreateDestinationRequest) returns (CreateDestinationResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_EDITOR;
+  }
+  rpc UpdateDestination(UpdateDestinationRequest) returns (UpdateDestinationResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_EDITOR;
+  }
+  rpc DeleteDestination(DeleteDestinationRequest) returns (DeleteDestinationResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_EDITOR;
+  }
+  rpc GetDestination(GetDestinationRequest) returns (GetDestinationResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
+  }
+  rpc ListDestinations(ListDestinationsRequest) returns (ListDestinationsResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
+  }
+  rpc TestDestinationConnection(TestDestinationConnectionRequest) returns (TestDestinationConnectionResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_EDITOR;
+  }
+}
+
+service ConnectionService {
+  rpc CreateConnection(CreateConnectionRequest) returns (CreateConnectionResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_EDITOR;
+  }
+  rpc UpdateConnection(UpdateConnectionRequest) returns (UpdateConnectionResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_EDITOR;
+  }
+  rpc DeleteConnection(DeleteConnectionRequest) returns (DeleteConnectionResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_EDITOR;
+  }
+  rpc GetConnection(GetConnectionRequest) returns (GetConnectionResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
+  }
+  rpc ListConnections(ListConnectionsRequest) returns (ListConnectionsResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
+  }
+  rpc EnableConnection(EnableConnectionRequest) returns (EnableConnectionResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_EDITOR;
+  }
+  rpc DisableConnection(DisableConnectionRequest) returns (DisableConnectionResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_EDITOR;
+  }
+  rpc DiscoverSchema(DiscoverSchemaRequest) returns (DiscoverSchemaResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_EDITOR;
+  }
+  rpc ConfigureStreams(ConfigureStreamsRequest) returns (ConfigureStreamsResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_EDITOR;
+  }
+  rpc GetDiscoveredCatalog(GetDiscoveredCatalogRequest) returns (GetDiscoveredCatalogResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
+  }
+  rpc GetConfiguredCatalog(GetConfiguredCatalogRequest) returns (GetConfiguredCatalogResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
+  }
+  rpc GetSchemaChanges(GetSchemaChangesRequest) returns (GetSchemaChangesResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
+  }
+  rpc ResetStreamState(ResetStreamStateRequest) returns (ResetStreamStateResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_EDITOR;
+  }
+  rpc ResetConnectionState(ResetConnectionStateRequest) returns (ResetConnectionStateResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_EDITOR;
+  }
+  rpc ListStreamStates(ListStreamStatesRequest) returns (ListStreamStatesResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
+  }
+  rpc UpdateStreamState(UpdateStreamStateRequest) returns (UpdateStreamStateResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_EDITOR;
+  }
+  rpc ExportWorkspaceConfig(ExportWorkspaceConfigRequest) returns (ExportWorkspaceConfigResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_ADMIN;
+  }
+  rpc ImportWorkspaceConfig(ImportWorkspaceConfigRequest) returns (ImportWorkspaceConfigResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_ADMIN;
+  }
+  rpc GetPipelineSettings(GetPipelineSettingsRequest) returns (GetPipelineSettingsResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
+  }
+  rpc UpdatePipelineSettings(UpdatePipelineSettingsRequest) returns (UpdatePipelineSettingsResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_ADMIN;
+  }
+}
+
+service JobService {
+  rpc TriggerSync(TriggerSyncRequest) returns (TriggerSyncResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_EDITOR;
+  }
+  rpc CancelJob(CancelJobRequest) returns (CancelJobResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_EDITOR;
+  }
+  rpc GetJob(GetJobRequest) returns (GetJobResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
+  }
+  rpc ListJobs(ListJobsRequest) returns (ListJobsResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
+  }
+  rpc GetJobLogs(GetJobLogsRequest) returns (GetJobLogsResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
+  }
+}
+
+// ==================== Source Messages ====================
+
+message Source {
+  string id = 1;
+  string workspace_id = 2;
+  string name = 3;
+  string managed_connector_id = 4;
+  reserved 5;
+  google.protobuf.Struct config = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+  optional string runtime_config = 9;
+  string connector_name = 10;
+  string connector_image = 11;
+  string connector_tag = 12;
+}
+
+message CreateSourceRequest {
+  string workspace_id = 1;
+  string name = 2;
+  string managed_connector_id = 3;
+  reserved 4;
+  google.protobuf.Struct config = 5;
+}
+
+message CreateSourceResponse {
+  Source source = 1;
+  optional string discover_task_id = 2;
+}
+
+message UpdateSourceRequest {
+  string id = 1;
+  optional string name = 2;
+  optional google.protobuf.Struct config = 3;
+  optional string runtime_config = 4;
+}
+
+message UpdateSourceResponse {
+  Source source = 1;
+  optional string discover_task_id = 2;
+}
+
+message DeleteSourceRequest {
+  string id = 1;
+}
+
+message DeleteSourceResponse {}
+
+message GetSourceRequest {
+  string id = 1;
+}
+
+message GetSourceResponse {
+  Source source = 1;
+}
+
+message ListSourcesRequest {
+  string workspace_id = 1;
+  int32 page_size = 2;
+  int32 offset = 3;
+}
+
+message ListSourcesResponse {
+  repeated Source sources = 1;
+  int32 total = 2;
+}
+
+message TestSourceConnectionRequest {
+  // Option 1: Test existing source by ID (from list page).
+  string id = 1;
+  // Option 2: Test with raw config (from setup page, no source created yet).
+  string managed_connector_id = 2;
+  google.protobuf.Struct config = 3;
+}
+
+message TestSourceConnectionResponse {
+  string task_id = 1;
+}
+
+message DiscoverSourceSchemaRequest {
+  string source_id = 1;
+}
+
+message DiscoverSourceSchemaResponse {
+  string task_id = 1;
+}
+
+message GetSourceCatalogRequest {
+  string source_id = 1;
+}
+
+message GetSourceCatalogResponse {
+  synclet.protocol.v1.AirbyteCatalog catalog = 1;
+  int32 version = 2;
+  google.protobuf.Timestamp discovered_at = 3;
+}
+
+message GetSystemInfoRequest {}
+
+message GetSystemInfoResponse {
+  reserved 1;
+  bool registration_enabled = 2;
+  WorkspacesMode workspaces_mode = 3;
+}
+
+// ==================== Destination Messages ====================
+
+message Destination {
+  string id = 1;
+  string workspace_id = 2;
+  string name = 3;
+  string managed_connector_id = 4;
+  reserved 5;
+  google.protobuf.Struct config = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+  optional string runtime_config = 9;
+}
+
+message CreateDestinationRequest {
+  string workspace_id = 1;
+  string name = 2;
+  string managed_connector_id = 3;
+  reserved 4;
+  google.protobuf.Struct config = 5;
+}
+
+message CreateDestinationResponse {
+  Destination destination = 1;
+}
+
+message UpdateDestinationRequest {
+  string id = 1;
+  optional string name = 2;
+  optional google.protobuf.Struct config = 3;
+  optional string runtime_config = 4;
+}
+
+message UpdateDestinationResponse {
+  Destination destination = 1;
+}
+
+message DeleteDestinationRequest {
+  string id = 1;
+}
+
+message DeleteDestinationResponse {}
+
+message GetDestinationRequest {
+  string id = 1;
+}
+
+message GetDestinationResponse {
+  Destination destination = 1;
+}
+
+message ListDestinationsRequest {
+  string workspace_id = 1;
+  int32 page_size = 2;
+  int32 offset = 3;
+}
+
+message ListDestinationsResponse {
+  repeated Destination destinations = 1;
+  int32 total = 2;
+}
+
+message TestDestinationConnectionRequest {
+  // Option 1: Test existing destination by ID (from list page).
+  string id = 1;
+  // Option 2: Test with raw config (from setup page, no destination created yet).
+  string managed_connector_id = 2;
+  google.protobuf.Struct config = 3;
+}
+
+message TestDestinationConnectionResponse {
+  string task_id = 1;
+}
+
+// ==================== Connection Messages ====================
+
+message Connection {
+  string id = 1;
+  string workspace_id = 2;
+  string name = 3;
+  ConnectionStatus status = 4;
+  string source_id = 5;
+  string destination_id = 6;
+  string schedule = 7;
+  SchemaChangePolicy schema_change_policy = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+  int32 max_attempts = 11;
+  int32 retry_delay_minutes = 12;
+  NamespaceDefinition namespace_definition = 13;
+  string custom_namespace_format = 14;
+  string stream_prefix = 15;
+  optional google.protobuf.Timestamp next_scheduled_at = 16;
+}
+
+message CreateConnectionRequest {
+  string workspace_id = 1;
+  string name = 2;
+  string source_id = 3;
+  string destination_id = 4;
+  optional string schedule = 5;
+  SchemaChangePolicy schema_change_policy = 6;
+  int32 max_attempts = 7;
+  int32 retry_delay_minutes = 8;
+  NamespaceDefinition namespace_definition = 9;
+  string custom_namespace_format = 10;
+  string stream_prefix = 11;
+}
+
+message CreateConnectionResponse {
+  Connection connection = 1;
+}
+
+message UpdateConnectionRequest {
+  string id = 1;
+  optional string name = 2;
+  optional string schedule = 3;
+  optional SchemaChangePolicy schema_change_policy = 4;
+  optional int32 max_attempts = 5;
+  optional int32 retry_delay_minutes = 6;
+  optional NamespaceDefinition namespace_definition = 7;
+  optional string custom_namespace_format = 8;
+  optional string stream_prefix = 9;
+}
+
+message UpdateConnectionResponse {
+  Connection connection = 1;
+}
+
+message DeleteConnectionRequest {
+  string id = 1;
+}
+
+message DeleteConnectionResponse {}
+
+message GetConnectionRequest {
+  string id = 1;
+}
+
+message GetConnectionResponse {
+  Connection connection = 1;
+}
+
+message ListConnectionsRequest {
+  string workspace_id = 1;
+  int32 page_size = 2;
+  int32 offset = 3;
+}
+
+message ListConnectionsResponse {
+  repeated Connection connections = 1;
+  int32 total = 2;
+}
+
+message EnableConnectionRequest {
+  string id = 1;
+}
+
+message EnableConnectionResponse {
+  Connection connection = 1;
+}
+
+message DisableConnectionRequest {
+  string id = 1;
+}
+
+message DisableConnectionResponse {
+  Connection connection = 1;
+}
+
+message DiscoverSchemaRequest {
+  string connection_id = 1;
+}
+
+message DiscoverSchemaResponse {
+  string task_id = 1;
+}
+
+message ConfigureStreamsRequest {
+  string connection_id = 1;
+  repeated ConfiguredStream streams = 2;
+}
+
+message SelectedField {
+  repeated string field_path = 1;
+}
+
+message CompositeKey {
+  repeated string field_path = 1;
+}
+
+message ConfiguredStream {
+  string stream_name = 1;
+  string namespace = 2;
+  SyncMode sync_mode = 3;
+  DestinationSyncMode destination_sync_mode = 4;
+  repeated string cursor_field = 5;
+  repeated CompositeKey primary_key = 6;
+  repeated SelectedField selected_fields = 7;
+}
+
+message ConfigureStreamsResponse {}
+
+message GetDiscoveredCatalogRequest {
+  string connection_id = 1;
+}
+
+message GetDiscoveredCatalogResponse {
+  synclet.protocol.v1.AirbyteCatalog catalog = 1;
+}
+
+message GetConfiguredCatalogRequest {
+  string connection_id = 1;
+}
+
+message GetConfiguredCatalogResponse {
+  google.protobuf.Struct catalog = 1;
+}
+
+message GetSchemaChangesRequest {
+  string connection_id = 1;
+}
+
+message SchemaChange {
+  string type = 1;
+  string stream_name = 2;
+  string namespace = 3;
+  string column_name = 4;
+  string old_type = 5;
+  string new_type = 6;
+}
+
+message GetSchemaChangesResponse {
+  repeated SchemaChange changes = 1;
+}
+
+message ResetStreamStateRequest {
+  string connection_id = 1;
+  string stream_name = 2;
+  string stream_namespace = 3;
+}
+
+message ResetStreamStateResponse {}
+
+message ResetConnectionStateRequest {
+  string connection_id = 1;
+}
+
+message ResetConnectionStateResponse {}
+
+message StreamState {
+  string stream_name = 1;
+  string stream_namespace = 2;
+  string state_data = 3;
+  google.protobuf.Timestamp updated_at = 4;
+}
+
+message ListStreamStatesRequest {
+  string connection_id = 1;
+}
+
+message ListStreamStatesResponse {
+  repeated StreamState states = 1;
+  string state_type = 2;
+}
+
+message UpdateStreamStateRequest {
+  string connection_id = 1;
+  string stream_name = 2;
+  string stream_namespace = 3;
+  string state_data = 4;
+}
+
+message UpdateStreamStateResponse {}
+
+// ==================== Job Messages ====================
+
+message Job {
+  string id = 1;
+  string connection_id = 2;
+  JobStatus status = 3;
+  JobType job_type = 4;
+  google.protobuf.Timestamp scheduled_at = 5;
+  google.protobuf.Timestamp started_at = 6;
+  google.protobuf.Timestamp completed_at = 7;
+  string error = 8;
+  int32 attempt = 9;
+  int32 max_attempts = 10;
+  google.protobuf.Timestamp created_at = 11;
+  repeated JobAttempt attempts = 12;
+}
+
+message JobAttempt {
+  string id = 1;
+  int32 attempt_number = 2;
+  google.protobuf.Timestamp started_at = 3;
+  google.protobuf.Timestamp completed_at = 4;
+  string error = 5;
+  SyncStats sync_stats = 6;
+}
+
+message SyncStats {
+  int64 records_read = 1;
+  int64 bytes_synced = 3;
+  int64 duration_ms = 4;
+}
+
+message TriggerSyncRequest {
+  string connection_id = 1;
+}
+
+message TriggerSyncResponse {
+  Job job = 1;
+}
+
+message CancelJobRequest {
+  string job_id = 1;
+}
+
+message CancelJobResponse {}
+
+message GetJobRequest {
+  string job_id = 1;
+}
+
+message GetJobResponse {
+  Job job = 1;
+}
+
+message ListJobsRequest {
+  string connection_id = 1;
+  int32 page_size = 2;
+  string page_token = 3;
+  int32 offset = 4;
+}
+
+message ListJobsResponse {
+  repeated Job jobs = 1;
+  string next_page_token = 2;
+  int32 total = 3;
+}
+
+message GetJobLogsRequest {
+  string job_id = 1;
+  int64 after_id = 2;   // cursor: return logs with id > after_id (0 = from start)
+  int32 limit = 3;      // max lines (0 = all)
+}
+
+message GetJobLogsResponse {
+  repeated string lines = 1;
+  int64 last_id = 2;     // cursor for next poll
+  bool has_more = 3;
+}
+
+// ==================== Config Import/Export Messages ====================
+
+message ExportWorkspaceConfigRequest {
+  string workspace_id = 1;
+}
+
+message ExportWorkspaceConfigResponse {
+  bytes config_yaml = 1;
+}
+
+message ImportWorkspaceConfigRequest {
+  string workspace_id = 1;
+  bytes config_yaml = 2;
+}
+
+message ImportWorkspaceConfigResponse {
+  int32 created = 1;
+  int32 updated = 2;
+  repeated string errors = 3;
+}
+
+// ==================== Connector Task Enums ====================
+
+enum ConnectorTaskType {
+    CONNECTOR_TASK_TYPE_UNSPECIFIED = 0;
+    CONNECTOR_TASK_TYPE_CHECK = 1;
+    CONNECTOR_TASK_TYPE_SPEC = 2;
+    CONNECTOR_TASK_TYPE_DISCOVER = 3;
+}
+
+enum ConnectorTaskStatus {
+    CONNECTOR_TASK_STATUS_UNSPECIFIED = 0;
+    CONNECTOR_TASK_STATUS_PENDING = 1;
+    CONNECTOR_TASK_STATUS_RUNNING = 2;
+    CONNECTOR_TASK_STATUS_COMPLETED = 3;
+    CONNECTOR_TASK_STATUS_FAILED = 4;
+}
+
+// ==================== Connector Task Service ====================
+
+service ConnectorTaskService {
+    rpc GetConnectorTaskResult(GetConnectorTaskResultRequest) returns (GetConnectorTaskResultResponse) {
+        option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
+    }
+}
+
+// ==================== Connector Task Messages ====================
+
+message GetConnectorTaskResultRequest {
+    string task_id = 1;
+}
+
+message GetConnectorTaskResultResponse {
+    ConnectorTaskStatus status = 1;
+    ConnectorTaskType task_type = 2;
+    string error_message = 3;
+    oneof result {
+        CheckTaskResult check_result = 10;
+        SpecTaskResult spec_result = 11;
+        DiscoverTaskResult discover_result = 12;
+    }
+}
+
+message CheckTaskResult {
+    bool success = 1;
+    string message = 2;
+}
+
+message SpecTaskResult {
+    synclet.protocol.v1.ConnectorSpecification spec = 1;
+}
+
+message DiscoverTaskResult {
+    synclet.protocol.v1.AirbyteCatalog catalog = 1;
+}
+
+// ==================== Pipeline Settings Messages ====================
+
+message PipelineSettings {
+  int32 max_jobs_per_workspace = 1;
+}
+
+message GetPipelineSettingsRequest {}
+
+message GetPipelineSettingsResponse {
+  PipelineSettings settings = 1;
+}
+
+message UpdatePipelineSettingsRequest {
+  optional int32 max_jobs_per_workspace = 1;
+}
+
+message UpdatePipelineSettingsResponse {
+  PipelineSettings settings = 1;
+}

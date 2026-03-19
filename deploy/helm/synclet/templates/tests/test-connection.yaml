@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "synclet.fullname" . }}-test-connection
+  labels:
+    {{- include "synclet.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+spec:
+  restartPolicy: Never
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+    fsGroup: 65534
+  containers:
+    - name: wget
+      image: busybox:1.36
+      command: ["wget", "--spider", "--timeout=5", "http://{{ include "synclet.fullname" . }}:{{ .Values.server.service.ports.public }}/health"]
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: ["ALL"]

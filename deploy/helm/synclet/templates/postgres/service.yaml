@@ -1,0 +1,43 @@
+{{- if .Values.postgresql.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "synclet.fullname" . }}-postgres
+  labels:
+    {{- include "synclet.postgres.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.postgresql.service.type }}
+  {{- if and (eq .Values.postgresql.service.type "LoadBalancer") .Values.postgresql.service.loadBalancerClass }}
+  loadBalancerClass: {{ .Values.postgresql.service.loadBalancerClass }}
+  {{- end }}
+  ports:
+    - port: {{ .Values.postgresql.service.port | default 5432 }}
+      targetPort: postgres
+      protocol: TCP
+      name: postgres
+      {{- if and (eq .Values.postgresql.service.type "NodePort") .Values.postgresql.service.nodePort }}
+      nodePort: {{ .Values.postgresql.service.nodePort }}
+      {{- end }}
+  selector:
+    {{- include "synclet.postgres.selectorLabels" . | nindent 4 }}
+{{- end }}
+
+---
+{{- if .Values.postgresql.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "synclet.fullname" . }}-postgres-headless
+  labels:
+    {{- include "synclet.postgres.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - port: 5432
+      targetPort: postgres
+      protocol: TCP
+      name: postgres
+  selector:
+    {{- include "synclet.postgres.selectorLabels" . | nindent 4 }}
+{{- end }}

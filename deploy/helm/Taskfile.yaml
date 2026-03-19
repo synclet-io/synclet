@@ -1,0 +1,39 @@
+version: '3'
+
+dotenv: ['.env']
+
+vars:
+  DOMAIN: synclet.k8s.orb.local
+  EMAIL: admin@example.com
+  PASSWORD: 123456789Qwe
+
+tasks:
+  deploy:
+    desc: Deploy to local kubernetes cluster
+    cmds:
+      - helm upgrade --install --namespace synclet --kube-context orbstack -f ./synclet/values-local.yaml --set server.ingress.hostname={{.DOMAIN}} synclet ./synclet
+
+  build:
+    desc: Build synclet docker image
+    dir: ../../
+    cmds:
+      - docker build -t synclet:dev .
+
+  clear:
+    desc: Clean release
+    cmds:
+      - helm uninstall -n synclet --kube-context orbstack synclet --ignore-not-found
+      - kubectl delete pvc -n synclet data-synclet-postgres-0 || true
+
+  create-user:
+    desc: Create user in synclet
+    cmds:
+      - |
+        curl -X POST -H "Content-Type: application/json" -d '{"email": "{{.EMAIL}}", "password": "{{.PASSWORD}}", "name": "test user"}' http://{{.DOMAIN}}/synclet.publicapi.auth.v1.AuthService/Register
+
+  fresh-deploy:
+    desc: Clear and deploy to local kubernetes cluster
+    cmds:
+      - task: build
+      - task: clear
+      - task: deploy

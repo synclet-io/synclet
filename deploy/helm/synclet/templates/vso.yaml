@@ -1,0 +1,62 @@
+{{- if .Values.vso.enabled }}
+{{- if .Values.vso.auth.create }}
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: {{ include "synclet.fullname" . }}
+  labels:
+    {{- include "synclet.labels" . | nindent 4 }}
+spec:
+  {{- if .Values.vso.auth.vaultConnectionRef }}
+  vaultConnectionRef: {{ .Values.vso.auth.vaultConnectionRef }}
+  {{- end }}
+  method: {{ .Values.vso.auth.method }}
+  mount: {{ .Values.vso.auth.mount }}
+  {{- if eq .Values.vso.auth.method "kubernetes" }}
+  kubernetes:
+    role: {{ .Values.vso.auth.role }}
+    serviceAccount: {{ .Values.vso.auth.serviceAccount | default (include "synclet.serviceAccountName" .) }}
+  {{- end }}
+---
+{{- end }}
+{{- $authRef := .Values.vso.vaultAuthRef | default (include "synclet.fullname" .) }}
+{{- if not .Values.vso.appSecrets.path }}
+{{- fail "vso.appSecrets.path is required when vso.enabled=true" }}
+{{- end }}
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: {{ include "synclet.fullname" . }}-app
+  labels:
+    {{- include "synclet.labels" . | nindent 4 }}
+spec:
+  vaultAuthRef: {{ $authRef }}
+  mount: {{ .Values.vso.appSecrets.mount }}
+  path: {{ .Values.vso.appSecrets.path }}
+  type: {{ .Values.vso.appSecrets.type }}
+  refreshAfter: {{ .Values.vso.appSecrets.refreshAfter }}
+  destination:
+    name: {{ include "synclet.vso.appSecretName" . }}
+    create: true
+{{- if .Values.vso.database.enabled }}
+{{- if not .Values.vso.database.path }}
+{{- fail "vso.database.path is required when vso.database.enabled=true" }}
+{{- end }}
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: {{ include "synclet.fullname" . }}-db
+  labels:
+    {{- include "synclet.labels" . | nindent 4 }}
+spec:
+  vaultAuthRef: {{ $authRef }}
+  mount: {{ .Values.vso.database.mount }}
+  path: {{ .Values.vso.database.path }}
+  type: {{ .Values.vso.database.type }}
+  refreshAfter: {{ .Values.vso.database.refreshAfter }}
+  destination:
+    name: {{ include "synclet.vso.dbSecretName" . }}
+    create: true
+{{- end }}
+{{- end }}

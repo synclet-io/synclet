@@ -1,0 +1,8 @@
+.git
+front/node_modules
+bin/
+.planning/
+*.md
+.claude/
+.env
+.env.*

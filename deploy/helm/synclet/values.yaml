@@ -1,0 +1,436 @@
+## @section Global parameters
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+  storageClass: ""
+
+## @section Common parameters
+nameOverride: ""
+fullnameOverride: ""
+mode: standalone  # standalone | distributed
+environment: production
+logLevel: info
+corsAllowAllOrigins: false
+revisionHistoryLimit: 3
+
+## @section Synclet image parameters
+image:
+  registry: ghcr.io
+  repository: synclet-io/synclet
+  tag: ""  # defaults to .Chart.AppVersion
+  pullPolicy: IfNotPresent
+
+## @section Server parameters
+server:
+  replicaCount: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  containerPorts:
+    public: 8080
+    internal: 8081
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "2"
+      memory: 1Gi
+  podSecurityContext:
+    enabled: true
+    runAsNonRoot: true
+    runAsUser: 65534
+    fsGroup: 65534
+  containerSecurityContext:
+    enabled: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop: ["ALL"]
+  startupProbe:
+    enabled: true
+    path: /health
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    failureThreshold: 30
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 10
+    periodSeconds: 15
+    path: /health
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    path: /health
+  service:
+    type: ClusterIP
+    ports:
+      public: 80
+      internal: 8081
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hostname: synclet.local
+    tls: false
+    ## To use cert-manager, add annotation: cert-manager.io/cluster-issuer: your-issuer
+    ## and set tls: true. The chart creates a TLS entry referencing {fullname}-tls Secret.
+    tlsSecretName: ""  # override auto-generated TLS secret name
+    extraTls: []
+    annotations: {}
+  ## Enable PDB when running with replicaCount > 1 for high availability.
+  pdb:
+    enabled: false
+    minAvailable: 1
+    # maxUnavailable: 1  # alternative to minAvailable — uncomment and remove minAvailable
+  serviceMonitor:
+    enabled: false
+    port: internal      # scrape metrics from the internal service (not public)
+    interval: 30s
+    scrapeTimeout: 10s
+    path: /metrics
+    labels: {}          # extra labels on the ServiceMonitor resource
+    annotations: {}
+  extraEnvFrom: []      # additional envFrom entries (configMapRef, secretRef)
+  podAnnotations: {}
+  priorityClassName: ""
+  topologySpreadConstraints: []
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+## @section Jobs parameters (distributed mode only)
+jobs:
+  replicaCount: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  podSecurityContext:
+    enabled: true
+    runAsNonRoot: true
+    runAsUser: 65534
+    fsGroup: 65534
+  containerSecurityContext:
+    enabled: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop: ["ALL"]
+  livenessProbe:
+    enabled: false
+    path: /health
+    port: 8080
+    initialDelaySeconds: 10
+    periodSeconds: 15
+  readinessProbe:
+    enabled: false
+    path: /health
+    port: 8080
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  extraEnvFrom: []      # additional envFrom entries (configMapRef, secretRef)
+  podAnnotations: {}
+  priorityClassName: ""
+  topologySpreadConstraints: []
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+## @section Executor parameters (distributed mode only)
+## Set enabled: false if you run the executor outside the chart (e.g. external deployment).
+executor:
+  enabled: true
+  replicaCount: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+  podSecurityContext:
+    enabled: true
+    runAsNonRoot: true
+    runAsUser: 65534
+    fsGroup: 65534
+  containerSecurityContext:
+    enabled: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop: ["ALL"]
+  livenessProbe:
+    enabled: false
+    path: /health
+    port: 8080
+    initialDelaySeconds: 10
+    periodSeconds: 15
+  readinessProbe:
+    enabled: false
+    path: /health
+    port: 8080
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  extraEnvFrom: []      # additional envFrom entries (configMapRef, secretRef)
+  podAnnotations: {}
+  priorityClassName: ""
+  topologySpreadConstraints: []
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+## @section Kubernetes executor parameters
+## NOTE: The connector namespace (k8s.namespace) must be pre-created by the cluster admin.
+## Consider applying ResourceQuota and LimitRange to restrict connector resource usage.
+k8s:
+  namespace: ""
+  defaultMemory: 2Gi
+  defaultCPU: "1"
+  imagePullSecret: ""
+
+## @section Auth parameters
+auth:
+  ## Secret used to sign JWT access and refresh tokens. Auto-generated if empty.
+  jwtSecret: ""
+  ## Use a pre-created K8s Secret instead of the chart-managed one.
+  existingSecret: ""
+  existingSecretKey: "jwt-secret"
+  ## Allow new users to register via email/password. Disable to restrict access to OIDC or invites only.
+  registrationEnabled: true
+
+## @section OIDC parameters
+## Configure OpenID Connect providers for SSO login.
+## Each provider needs an issuer URL, OAuth client ID, and client secret.
+## Client secrets are stored in the chart-managed Secret (or reference existingSecret).
+oidc:
+  ## Base URL for OIDC callback redirects. Auto-derived from ingress hostname when empty.
+  ## The callback path /auth/oidc/{slug}/callback is appended automatically.
+  callbackBaseURL: ""
+  ## Reference a pre-created K8s Secret containing OIDC client secrets.
+  ## Expected keys: oidc-{slug}-client-secret (e.g. oidc-google-client-secret).
+  existingSecret: ""
+  ## List of OIDC providers. Each entry configures one SSO provider.
+  providers: []
+  # - slug: google                           # unique identifier, used in callback URLs
+  #   issuer: https://accounts.google.com    # OIDC issuer URL (must support .well-known/openid-configuration)
+  #   clientID: ""                           # OAuth 2.0 client ID
+  #   clientSecret: ""                       # OAuth 2.0 client secret (stored in K8s Secret)
+  #   displayName: Google                    # human-readable name shown on login page
+  #   scopes: "openid,profile,email"         # comma-separated OAuth scopes to request
+  #   roleClaim: ""                          # JWT claim name containing the user's role
+  #   roleMapAdmin: ""                       # claim value that maps to admin role
+  #   roleMapEditor: ""                      # claim value that maps to editor role
+  #   roleMapViewer: ""                      # claim value that maps to viewer role
+  #   defaultRole: viewer                    # role assigned when no role claim matches
+  #   autoCreateUser: true                   # create user on first login (false = reject unknown users)
+  #   allowedDomains: ""                     # comma-separated email domains to allow (empty = all)
+
+## @section SMTP parameters
+## Configure SMTP for email delivery (invitations, notifications).
+## Leave host empty to disable email delivery (uses a no-op sender).
+smtp:
+  ## SMTP server hostname (e.g. smtp.gmail.com). Empty disables email.
+  host: ""
+  ## SMTP server port.
+  port: 587
+  ## SMTP authentication username.
+  user: ""
+  ## SMTP authentication password. Stored in the chart-managed Secret.
+  password: ""
+  ## Sender address for outgoing emails.
+  from: "noreply@synclet.io"
+  ## Use a pre-created K8s Secret for the SMTP password instead.
+  existingSecret: ""
+  existingSecretKey: "smtp-password"
+
+## @section Workspace parameters
+workspaces:
+  ## "single" — one shared workspace, all users join automatically.
+  ## "multi" — users create workspaces and invite members.
+  mode: single
+
+## @section Frontend & invite parameters
+frontend:
+  ## Base URL of the frontend app, used in invitation email links.
+  ## When empty, auto-derived from ingress (https if TLS, http otherwise).
+  url: ""
+
+invites:
+  ## How long invitation tokens remain valid before expiring.
+  ttl: "168h"
+
+## @section Pipeline parameters
+## Tune sync scheduling, worker polling, timeouts, and K8s resource defaults.
+pipeline:
+  ## Worker & scheduling intervals
+  ## How often the sync worker polls for new jobs to execute.
+  workerInterval: "1s"
+  ## How often the scheduler checks connections for due syncs and enqueues jobs.
+  schedulerInterval: "30s"
+  ## How often the watchdog checks for stale jobs with expired heartbeats.
+  watchdogInterval: "10s"
+  ## How often orphaned Docker containers (from crashed syncs) are cleaned up.
+  orphanCleanupInterval: "5m"
+
+  ## Sync limits
+  ## Maximum wall-clock time a single sync job is allowed to run before being killed.
+  maxSyncDuration: "24h"
+  ## Maximum number of sync jobs that can run concurrently across all connections.
+  maxConcurrentJobs: 10
+  ## If a sync receives no records for this duration, it's cancelled as idle.
+  idleTimeout: "10m"
+
+  ## Connector tasks
+  ## How long completed connector task results (spec/check/discover) are retained.
+  connectorTaskRetention: "24h"
+  ## How long a pending connector task waits before being marked as timed out.
+  connectorTaskTimeout: "5m"
+
+  ## Default K8s resource requests/limits applied to connector pods when not overridden per-connection.
+  resources:
+    cpuRequest: ""
+    cpuLimit: ""
+    memoryRequest: ""
+    memoryLimit: ""
+    ## K8s service account name for connector pods (e.g. for Workload Identity).
+    serviceAccountName: ""
+
+## @section Secrets
+## Each secret supports 3 modes:
+## 1. Empty value -> auto-generated and persisted via lookup
+## 2. Inline value -> used directly (stored in chart-managed Secret)
+## 3. existingSecret -> reference a pre-created K8s Secret (chart does NOT create one)
+
+encryption:
+  key: ""
+  keyPrevious: ""
+  enableKeyPrevious: false  # set to true when using existingSecret/VSO and the secret contains encryption-key-previous
+  existingSecret: ""
+  existingSecretKeyKey: "encryption-key"
+  existingSecretKeyPreviousKey: "encryption-key-previous"
+
+internalApi:
+  secret: ""
+  existingSecret: ""
+  existingSecretKey: "internal-api-secret"
+
+## @section PostgreSQL parameters
+## WARNING: The built-in PostgreSQL is intended for development and testing only.
+## For production deployments, use an external managed PostgreSQL instance
+## (e.g., AWS RDS, GCP Cloud SQL, Azure Database) and set postgresql.enabled=false.
+postgresql:
+  enabled: true
+  image:
+    registry: docker.io
+    repository: library/postgres
+    tag: "16"
+  service:
+    type: ClusterIP
+    port: 5432
+    # nodePort: ""          # Set when type is NodePort
+    # loadBalancerClass: "" # Set when type is LoadBalancer
+  podSecurityContext:
+    enabled: true
+    runAsUser: 999       # postgres user in official image
+    runAsGroup: 999
+    fsGroup: 999
+  containerSecurityContext:
+    enabled: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop: ["ALL"]
+  auth:
+    username: synclet
+    password: ""
+    database: synclet
+    existingSecret: ""
+    existingSecretKey: "password"
+  primary:
+    persistence:
+      size: 10Gi
+      storageClass: ""
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: "1"
+        memory: 1Gi
+
+## @section External Database parameters
+## When postgresql.enabled=false, configure the external database here.
+## Option A: provide host/port/user/password/database and the chart builds the DSN.
+## Option B: set existingSecret to a K8s Secret that contains the full DSN string.
+externalDatabase:
+  host: ""
+  port: 5432
+  user: ""
+  password: ""
+  database: ""
+  sslmode: disable
+  existingSecret: ""        # Secret containing full DSN (key specified below)
+  existingSecretKey: "db-dsn"
+
+## @section Vault Secrets Operator (VSO)
+## Creates VaultStaticSecret resources that sync Vault secrets into K8s Secrets.
+## When enabled, the chart automatically wires the destination secrets into
+## the appropriate secretKeyRef fields — no need to set existingSecret manually.
+##
+## Prerequisites:
+##   - Vault Secrets Operator installed in the cluster
+##   - VaultAuth CR created in the release namespace
+##
+## Expected Vault keys for appSecrets:
+##   jwt-secret, encryption-key, internal-api-secret
+##   Optional: encryption-key-previous
+##
+## Expected Vault key for database:
+##   db-dsn (full PostgreSQL connection string)
+vso:
+  enabled: false
+  ## Reference an existing VaultAuth CR, OR let the chart create one below.
+  vaultAuthRef: ""          # if set, uses this existing VaultAuth; otherwise chart creates one
+  auth:
+    ## Set to true to have the chart create a VaultAuth resource.
+    create: false
+    vaultConnectionRef: ""  # name of VaultConnection CR (must exist)
+    method: kubernetes      # auth method (kubernetes, jwt, appRole)
+    mount: kubernetes       # Vault auth mount path
+    role: ""                # Vault role name
+    serviceAccount: ""      # K8s SA for auth (defaults to chart SA)
+  appSecrets:
+    mount: secret           # Vault secret engine mount path
+    path: ""                # Vault path, e.g. "synclet/app-secrets"
+    type: kv-v2             # kv-v1 or kv-v2
+    refreshAfter: 60s
+  database:
+    enabled: false          # opt-in separately — DB creds may live at a different path
+    mount: secret
+    path: ""                # Vault path, e.g. "synclet/database"
+    type: kv-v2
+    refreshAfter: 60s
+
+## @section Service Account
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+## @section Misc
+terminationGracePeriodSeconds: 120

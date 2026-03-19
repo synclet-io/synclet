@@ -1,0 +1,101 @@
+version: '3'
+
+dotenv: ['.env']
+
+tasks:
+  dev:
+    desc: Run server with hot reload
+    deps: [db:up]
+    cmds:
+      - air
+
+  build:
+    desc: Build binary
+    cmds:
+      - go build -o ./bin/synclet .
+
+  test:
+    desc: Run all tests
+    cmds:
+      - go test ./...
+
+  lint:
+    desc: Run golangci-lint
+    cmds:
+      - golangci-lint run
+
+  lint:new-from-main:
+    desc: Run golangci-lint with new-from-rev
+    cmds:
+      - golangci-lint run --new-from-rev main
+
+  lint:fix:
+    desc: Run golangci-lint with auto-fix
+    cmds:
+      - golangci-lint run --fix
+
+  boilerplate-go:
+    desc: Generate boilerplate code
+    dir: modules
+    cmds:
+      - boilerplate-go ./gen.yaml
+
+  proto:
+    desc: Generate protobuf code
+    dir: proto
+    cmds:
+      - buf generate
+
+  generate:
+    desc: Run all code generation
+    cmds:
+      - task: proto
+
+  migrate:up:
+    desc: Apply all migrations
+    cmds:
+      - go run main.go --dotenv .env migrate up
+
+  migrate:down:
+    desc: Rollback last migration
+    cmds:
+      - go run main.go --dotenv .env migrate down
+
+  migrate:status:
+    desc: Show migration status
+    cmds:
+      - go run main.go --dotenv .env migrate status
+
+  db:up:
+    desc: Start PostgreSQL
+    cmds:
+      - docker compose -f docker-compose.dev.yml up -d postgres
+
+  db:down:
+    desc: Stop PostgreSQL
+    cmds:
+      - docker compose -f docker-compose.dev.yml down
+
+  e2e:
+    desc: Run e2e tests (requires Docker)
+    cmds:
+      - go test -tags e2e -v -timeout 10m ./tests/e2e/...
+
+  e2e:build:
+    desc: Build test connector Docker images
+    cmds:
+      - docker build -t synclet-test-source -f tests/e2e/testconnector/source/Dockerfile tests/e2e/testconnector/
+      - docker build -t synclet-test-dest -f tests/e2e/testconnector/destination/Dockerfile tests/e2e/testconnector/
+
+  e2e:docker:
+    desc: Run Docker mode e2e tests
+    cmds:
+      - go test -tags e2e -v -timeout 5m -run "TestE2E.*/docker" ./tests/e2e/...
+
+
+  e2e:k8s:
+    desc: Run K8s mode e2e tests
+    cmds:
+      - go test -tags e2e -v -timeout 10m -run "TestE2E.*/k8s" ./tests/e2e/...
+    env:
+      E2E_K8S: "1"

@@ -1,0 +1,61 @@
+version: "2"
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - gocritic
+    - misspell
+    - nilerr
+    - errorlint
+    - bodyclose
+    - noctx
+    - prealloc
+    - unconvert
+    - unparam
+    - whitespace
+
+  settings:
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - style
+      disabled-checks:
+        - ifElseChain
+        - whyNoLint
+
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment
+        - shadow
+
+    errorlint:
+      asserts: false
+
+  exclusions:
+    generated: strict
+    paths:
+      - front
+      - proto
+      - third_party
+      - node_modules
+    rules:
+      - path: "gen\\."
+        linters: [unused, unparam, gocritic, whitespace, staticcheck, govet, unconvert]
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+
+  exclusions:
+    generated: strict
+    paths:
+      - front
+      - proto
+      - third_party
+      - node_modules

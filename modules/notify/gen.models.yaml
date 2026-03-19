@@ -1,0 +1,47 @@
+types:
+  enums:
+    - name: ChannelType
+      values: [ Slack, Email, Telegram ]
+      helpers:
+        is_valid: true
+        stringer: true
+    - name: NotificationCondition
+      values: [ OnFailure, OnConsecutiveFailures, OnZeroRecords ]
+      helpers:
+        is_valid: true
+        stringer: true
+  models:
+    - name: Webhook
+      table_name: notify.webhooks
+      fields:
+        - { name: ID, type: uuid, filterable: true }
+        - { name: WorkspaceID, type: uuid, filterable: true }
+        - { name: URL, type: string }
+        - { name: Events, type: jsonb }
+        - { name: Secret, type: string }
+        - { name: Enabled, type: bool, filterable: true }
+        - { name: CreatedAt, type: timestamp }
+        - { name: UpdatedAt, type: timestamp }
+    - name: NotificationChannel
+      table_name: notify.notification_channels
+      fields:
+        - { name: ID, type: uuid, filterable: true }
+        - { name: WorkspaceID, type: uuid, filterable: true }
+        - { name: Name, type: string }
+        - { name: ChannelType, type: ChannelType, filterable: true }
+        - { name: Config, type: jsonb }
+        - { name: Enabled, type: bool, filterable: true }
+        - { name: CreatedAt, type: timestamp }
+        - { name: UpdatedAt, type: timestamp }
+    - name: NotificationRule
+      table_name: notify.notification_rules
+      fields:
+        - { name: ID, type: uuid, filterable: true }
+        - { name: WorkspaceID, type: uuid, filterable: true }
+        - { name: ChannelID, type: uuid, filterable: true }
+        - { name: ConnectionID, type: uuid, filterable: true }
+        - { name: Condition, type: NotificationCondition }
+        - { name: ConditionValue, type: int }
+        - { name: Enabled, type: bool, filterable: true }
+        - { name: CreatedAt, type: timestamp }
+        - { name: UpdatedAt, type: timestamp }

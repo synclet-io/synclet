@@ -1,0 +1,270 @@
+syntax = "proto3";
+
+package synclet.publicapi.registry.v1;
+
+option go_package = "synclet/gen/proto/synclet/publicapi/registry/v1;registryv1";
+
+import "google/protobuf/struct.proto";
+import "synclet/options/v1/options.proto";
+import "synclet/protocol/v1/protocol.proto";
+
+enum ConnectorType {
+  CONNECTOR_TYPE_UNSPECIFIED = 0;
+  CONNECTOR_TYPE_SOURCE = 1;
+  CONNECTOR_TYPE_DESTINATION = 2;
+}
+
+enum RepositoryStatus {
+  REPOSITORY_STATUS_UNSPECIFIED = 0;
+  REPOSITORY_STATUS_SYNCING = 1;
+  REPOSITORY_STATUS_SYNCED = 2;
+  REPOSITORY_STATUS_FAILED = 3;
+}
+
+enum SupportLevel {
+  SUPPORT_LEVEL_UNSPECIFIED = 0;
+  SUPPORT_LEVEL_COMMUNITY = 1;
+  SUPPORT_LEVEL_CERTIFIED = 2;
+}
+
+enum License {
+  LICENSE_UNSPECIFIED = 0;
+  LICENSE_ELV2 = 1;
+  LICENSE_MIT = 2;
+}
+
+enum SourceType {
+  SOURCE_TYPE_UNSPECIFIED = 0;
+  SOURCE_TYPE_API = 1;
+  SOURCE_TYPE_DATABASE = 2;
+  SOURCE_TYPE_FILE = 3;
+}
+
+enum ReleaseStage {
+  RELEASE_STAGE_UNSPECIFIED = 0;
+  RELEASE_STAGE_GENERALLY_AVAILABLE = 1;
+  RELEASE_STAGE_BETA = 2;
+  RELEASE_STAGE_ALPHA = 3;
+  RELEASE_STAGE_CUSTOM = 4;
+}
+
+service ConnectorRegistryService {
+  rpc ListConnectors(ListConnectorsRequest) returns (ListConnectorsResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
+  }
+  rpc GetConnectorSpec(GetConnectorSpecRequest) returns (GetConnectorSpecResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
+  }
+  rpc AddConnector(AddConnectorRequest) returns (AddConnectorResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_EDITOR;
+  }
+  rpc GetManagedConnector(GetManagedConnectorRequest) returns (ManagedConnectorInfo) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
+  }
+  rpc ListManagedConnectors(ListManagedConnectorsRequest) returns (ListManagedConnectorsResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
+  }
+  rpc DeleteManagedConnector(DeleteManagedConnectorRequest) returns (DeleteManagedConnectorResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_EDITOR;
+  }
+  rpc AddRepository(AddRepositoryRequest) returns (AddRepositoryResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_ADMIN;
+  }
+  rpc ListRepositories(ListRepositoriesRequest) returns (ListRepositoriesResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
+  }
+  rpc DeleteRepository(DeleteRepositoryRequest) returns (DeleteRepositoryResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_ADMIN;
+  }
+  rpc SyncRepository(SyncRepositoryRequest) returns (SyncRepositoryResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_ADMIN;
+  }
+  rpc ListRepositoryConnectors(ListRepositoryConnectorsRequest) returns (ListRepositoryConnectorsResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
+  }
+  rpc GetConnectorVersions(GetConnectorVersionsRequest) returns (GetConnectorVersionsResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
+  }
+  rpc UpdateManagedConnector(UpdateManagedConnectorRequest) returns (UpdateManagedConnectorResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_EDITOR;
+  }
+  rpc BatchUpdateConnectors(BatchUpdateConnectorsRequest) returns (BatchUpdateConnectorsResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_EDITOR;
+  }
+}
+
+message ConnectorInfo {
+  string docker_image = 1;
+  string name = 2;
+  string icon_url = 3;
+  string docs_url = 4;
+  ReleaseStage release_stage = 5;
+  string latest_version = 6;
+  ConnectorType type = 7;
+  SupportLevel support_level = 8;
+  License license = 9;
+  SourceType source_type = 10;
+}
+
+message ListConnectorsRequest {
+  ConnectorType type = 1;
+  string search = 2;
+  ReleaseStage release_stage = 3;
+}
+
+message ListConnectorsResponse {
+  repeated ConnectorInfo connectors = 1;
+}
+
+message GetConnectorSpecRequest {
+  string id = 1;
+}
+
+message GetConnectorSpecResponse {
+  synclet.protocol.v1.ConnectorSpecification spec = 1;
+  repeated ExternalDocumentationUrl external_documentation_urls = 2;
+}
+
+message ExternalDocumentationUrl {
+  string title = 1;
+  string type = 2;
+  string url = 3;
+}
+
+message AddConnectorRequest {
+  string docker_image = 1;
+  string docker_tag = 2;
+  string name = 3;
+  ConnectorType connector_type = 4;
+  string repository_id = 5;
+}
+
+message AddConnectorResponse {
+  string id = 1;
+}
+
+message GetManagedConnectorRequest {
+  string id = 1;
+}
+
+message ListManagedConnectorsRequest {}
+
+message ListManagedConnectorsResponse {
+  repeated ManagedConnectorInfo connectors = 1;
+}
+
+message BreakingChange {
+  string version = 1;
+  string message = 2;
+  string migration_documentation_url = 3;
+  string upgrade_deadline = 4;
+}
+
+message UpdateInfo {
+  string available_version = 1;
+  bool has_update = 2;
+  repeated BreakingChange breaking_changes = 3;
+}
+
+message ManagedConnectorInfo {
+  string id = 1;
+  string docker_image = 2;
+  string docker_tag = 3;
+  string name = 4;
+  ConnectorType connector_type = 5;
+  reserved 6; // was ConnectorStatus status
+  string repository_id = 7;
+  UpdateInfo update_info = 8;
+}
+
+message DeleteManagedConnectorRequest {
+  string id = 1;
+}
+
+message DeleteManagedConnectorResponse {}
+
+message Repository {
+  string id = 1;
+  string name = 2;
+  string url = 3;
+  bool has_auth = 4;
+  RepositoryStatus status = 5;
+  string last_synced_at = 6;
+  int32 connector_count = 7;
+  string last_error = 8;
+}
+
+message AddRepositoryRequest {
+  string name = 1;
+  string url = 2;
+  string auth_header = 3;
+}
+
+message AddRepositoryResponse {
+  Repository repository = 1;
+}
+
+message ListRepositoriesRequest {}
+
+message ListRepositoriesResponse {
+  repeated Repository repositories = 1;
+}
+
+message DeleteRepositoryRequest {
+  string id = 1;
+}
+
+message DeleteRepositoryResponse {
+  int32 affected_connectors = 1;
+}
+
+message SyncRepositoryRequest {
+  string id = 1;
+}
+
+message SyncRepositoryResponse {
+  Repository repository = 1;
+}
+
+message ListRepositoryConnectorsRequest {
+  string repository_id = 1;
+  ConnectorType type = 2;
+  string search = 3;
+  Filter filter = 4;
+
+  message Filter {
+    SupportLevel support_level = 1;
+    License license = 2;
+    SourceType source_type = 3;
+  }
+}
+
+message ListRepositoryConnectorsResponse {
+  repeated ConnectorInfo connectors = 1;
+}
+
+message GetConnectorVersionsRequest {
+  string connector_image = 1;
+}
+
+message GetConnectorVersionsResponse {
+  repeated string versions = 1;
+  string latest_version = 2;
+}
+
+message UpdateManagedConnectorRequest {
+  string id = 1;
+}
+
+message UpdateManagedConnectorResponse {
+  ManagedConnectorInfo connector = 1;
+}
+
+message BatchUpdateConnectorsRequest {
+  repeated string connector_ids = 1;
+}
+
+message BatchUpdateConnectorsResponse {
+  int32 updated_count = 1;
+  repeated ManagedConnectorInfo updated_connectors = 2;
+}

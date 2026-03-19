@@ -1,0 +1,86 @@
+{{- if .Values.postgresql.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "synclet.fullname" . }}-postgres
+  labels:
+    {{- include "synclet.postgres.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "synclet.fullname" . }}-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "synclet.postgres.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "synclet.postgres.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- if .Values.postgresql.podSecurityContext.enabled }}
+      securityContext:
+        runAsUser: {{ .Values.postgresql.podSecurityContext.runAsUser }}
+        runAsGroup: {{ .Values.postgresql.podSecurityContext.runAsGroup }}
+        fsGroup: {{ .Values.postgresql.podSecurityContext.fsGroup }}
+      {{- end }}
+      containers:
+        - name: postgres
+          image: {{ include "synclet.postgresql.image" . }}
+          {{- if .Values.postgresql.containerSecurityContext.enabled }}
+          securityContext:
+            allowPrivilegeEscalation: {{ .Values.postgresql.containerSecurityContext.allowPrivilegeEscalation }}
+            capabilities:
+              drop:
+                {{- toYaml .Values.postgresql.containerSecurityContext.capabilities.drop | nindent 16 }}
+          {{- end }}
+          ports:
+            - containerPort: 5432
+              protocol: TCP
+              name: postgres
+          env:
+            - name: POSTGRES_USER
+              value: {{ .Values.postgresql.auth.username }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  {{- if .Values.postgresql.auth.existingSecret }}
+                  name: {{ .Values.postgresql.auth.existingSecret }}
+                  key: {{ .Values.postgresql.auth.existingSecretKey }}
+                  {{- else }}
+                  name: {{ include "synclet.secretName" . }}
+                  key: postgres-password
+                  {{- end }}
+            - name: POSTGRES_DB
+              value: {{ .Values.postgresql.auth.database }}
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          startupProbe:
+            exec:
+              command: ["pg_isready", "-U", {{ .Values.postgresql.auth.username | quote }}, "-d", {{ .Values.postgresql.auth.database | quote }}]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", {{ .Values.postgresql.auth.username | quote }}, "-d", {{ .Values.postgresql.auth.database | quote }}]
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", {{ .Values.postgresql.auth.username | quote }}, "-d", {{ .Values.postgresql.auth.database | quote }}]
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.postgresql.primary.resources | nindent 12 }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- if or .Values.global.storageClass .Values.postgresql.primary.persistence.storageClass }}
+        storageClassName: {{ .Values.global.storageClass | default .Values.postgresql.primary.persistence.storageClass }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.postgresql.primary.persistence.size }}
+{{- end }}

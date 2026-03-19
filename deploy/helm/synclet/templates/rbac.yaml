@@ -1,0 +1,41 @@
+{{- if and .Values.serviceAccount.create (or .Values.executor.enabled (eq .Values.mode "standalone")) }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "synclet.fullname" . }}-connector-runner
+  namespace: {{ .Values.k8s.namespace }}
+  labels:
+    {{- include "synclet.labels" . | nindent 4 }}
+rules:
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["create", "delete", "get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods", "pods/log"]
+    verbs: ["get", "list", "watch", "delete"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["create", "delete", "get", "list", "update"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["create", "delete", "get", "list"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "synclet.fullname" . }}-connector-runner
+  namespace: {{ .Values.k8s.namespace }}
+  labels:
+    {{- include "synclet.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "synclet.fullname" . }}-connector-runner
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "synclet.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}

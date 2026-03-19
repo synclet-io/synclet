@@ -1,0 +1,170 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "synclet.fullname" . }}-server
+  labels:
+    {{- include "synclet.server.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.server.replicaCount }}
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
+  {{- with .Values.server.strategy }}
+  strategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "synclet.server.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- with .Values.server.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "synclet.server.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "synclet.serviceAccountName" . }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      {{- if .Values.server.priorityClassName }}
+      priorityClassName: {{ .Values.server.priorityClassName }}
+      {{- end }}
+      {{- if .Values.server.podSecurityContext.enabled }}
+      securityContext:
+        runAsNonRoot: {{ .Values.server.podSecurityContext.runAsNonRoot }}
+        runAsUser: {{ .Values.server.podSecurityContext.runAsUser }}
+        fsGroup: {{ .Values.server.podSecurityContext.fsGroup }}
+      {{- end }}
+      initContainers:
+        {{- if .Values.postgresql.enabled }}
+        - name: wait-postgres
+          image: {{ include "synclet.postgresql.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["sh", "-c", "until pg_isready -h {{ include "synclet.fullname" . }}-postgres -p 5432 -U {{ .Values.postgresql.auth.username }}; do echo 'waiting for postgres...'; sleep 2; done"]
+          {{- if .Values.server.containerSecurityContext.enabled }}
+          securityContext:
+            allowPrivilegeEscalation: {{ .Values.server.containerSecurityContext.allowPrivilegeEscalation }}
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                {{- toYaml .Values.server.containerSecurityContext.capabilities.drop | nindent 16 }}
+          {{- end }}
+        {{- end }}
+        - name: migrate
+          image: {{ include "synclet.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["synclet", "migrate", "up"]
+          envFrom:
+            - configMapRef:
+                name: {{ include "synclet.fullname" . }}
+          env:
+            {{- include "synclet.secretEnvVars" . | nindent 12 }}
+          {{- if .Values.server.containerSecurityContext.enabled }}
+          securityContext:
+            allowPrivilegeEscalation: {{ .Values.server.containerSecurityContext.allowPrivilegeEscalation }}
+            readOnlyRootFilesystem: {{ .Values.server.containerSecurityContext.readOnlyRootFilesystem }}
+            capabilities:
+              drop:
+                {{- toYaml .Values.server.containerSecurityContext.capabilities.drop | nindent 16 }}
+          {{- end }}
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      containers:
+        - name: synclet
+          image: {{ include "synclet.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if eq .Values.mode "standalone" }}
+          command: ["synclet", "server", "--standalone"]
+          {{- else }}
+          command: ["synclet", "server"]
+          {{- end }}
+          ports:
+            - name: public
+              containerPort: {{ .Values.server.containerPorts.public }}
+              protocol: TCP
+            - name: internal
+              containerPort: {{ .Values.server.containerPorts.internal }}
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "synclet.fullname" . }}
+            {{- with .Values.server.extraEnvFrom }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          env:
+            {{- include "synclet.secretEnvVars" . | nindent 12 }}
+          {{- if .Values.server.startupProbe.enabled }}
+          startupProbe:
+            httpGet:
+              path: {{ .Values.server.startupProbe.path }}
+              port: public
+            initialDelaySeconds: {{ .Values.server.startupProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.server.startupProbe.periodSeconds }}
+            failureThreshold: {{ .Values.server.startupProbe.failureThreshold }}
+          {{- end }}
+          {{- if .Values.server.readinessProbe.enabled }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.server.readinessProbe.path }}
+              port: public
+            initialDelaySeconds: {{ .Values.server.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.server.readinessProbe.periodSeconds }}
+          {{- end }}
+          {{- if .Values.server.livenessProbe.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.server.livenessProbe.path }}
+              port: public
+            initialDelaySeconds: {{ .Values.server.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.server.livenessProbe.periodSeconds }}
+          {{- end }}
+          {{- if .Values.server.containerSecurityContext.enabled }}
+          securityContext:
+            allowPrivilegeEscalation: {{ .Values.server.containerSecurityContext.allowPrivilegeEscalation }}
+            readOnlyRootFilesystem: {{ .Values.server.containerSecurityContext.readOnlyRootFilesystem }}
+            capabilities:
+              drop:
+                {{- toYaml .Values.server.containerSecurityContext.capabilities.drop | nindent 16 }}
+          {{- end }}
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sh", "-c", "sleep 5"]
+          resources:
+            {{- toYaml .Values.server.resources | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
+      {{- with .Values.server.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.server.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.server.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.server.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

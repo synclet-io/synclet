@@ -1,0 +1,366 @@
+types:
+  enums:
+    - name: SchemaChangePolicy
+      values: [ Propagate, Ignore, Pause ]
+      helpers:
+        is_valid: true
+        stringer: true
+        is: true
+
+    - name: ConnectionStatus
+      values: [ Active, Inactive, Paused ]
+      helpers:
+        is_valid: true
+        stringer: true
+        is: true
+
+    - name: JobStatus
+      values: [ Scheduled, Starting, Running, Completed, Failed, Cancelled ]
+      helpers:
+        is_valid: true
+        stringer: true
+        is: true
+
+    - name: JobType
+      values: [ Sync, Discover, Check ]
+      helpers:
+        is_valid: true
+        stringer: true
+        is: true
+
+    - name: NamespaceDefinition
+      values: [ Source, Destination, Custom ]
+      helpers:
+        is_valid: true
+        stringer: true
+        is: true
+
+    - name: RepositoryStatus
+      values: [ Syncing, Synced, Failed ]
+      helpers:
+        is_valid: true
+        stringer: true
+        is: true
+
+    - name: ConnectorTaskType
+      values: [ Check, Spec, Discover ]
+      helpers:
+        is_valid: true
+        stringer: true
+        is: true
+
+    - name: ConnectorTaskStatus
+      values: [ Pending, Running, Completed, Failed ]
+      helpers:
+        is_valid: true
+        stringer: true
+        is: true
+
+    - name: ConnectorType
+      values: [ Source, Destination ]
+      helpers:
+        is_valid: true
+        stringer: true
+        is: true
+
+    - name: SupportLevel
+      values: [ Community, Certified, Unknown ]
+      helpers:
+        is_valid: true
+        stringer: true
+        is: true
+
+    - name: SourceType
+      values: [ API, Database, File, Unknown ]
+      helpers:
+        is_valid: true
+        stringer: true
+        is: true
+
+    - name: ReleaseStage
+      values: [ GenerallyAvailable, Beta, Alpha, Custom, Unknown ]
+      helpers:
+        is_valid: true
+        stringer: true
+        is: true
+
+    - name: BucketSize
+      values: [ Hourly, Daily ]
+      helpers:
+        is_valid: true
+        stringer: true
+        is: true
+
+    - name: Health
+      values: [ Healthy, Warning, Failing, Disabled ]
+      helpers:
+        is_valid: true
+        stringer: true
+        is: true
+
+    - name: FailureCategory
+      values: [ Timeout, OOM, Connector, Infrastructure, Unknown ]
+      helpers:
+        is_valid: true
+        stringer: true
+        is: true
+
+    - name: SyncStatus
+      values: [ Completed, Failed ]
+      helpers:
+        is_valid: true
+        stringer: true
+        is: true
+
+  one_ofs:
+    - name: ConnectorTaskPayload
+      values:
+        - CheckPayload
+        - SpecPayload
+        - DiscoverPayload
+    - name: ConnectorTaskResult
+      values:
+        - CheckResult
+        - SpecResult
+        - DiscoverResult
+
+  models:
+    - name: ManagedConnector
+      table_name: pipeline.managed_connectors
+      fields:
+        - { name: ID, type: uuid, filterable: true }
+        - { name: WorkspaceID, type: uuid, filterable: true }
+        - { name: DockerImage, type: string, filterable: true }
+        - { name: DockerTag, type: string }
+        - { name: Name, type: string, filterable: true }
+        - { name: ConnectorType, type: ConnectorType, filterable: true }
+        - { name: Spec, type: jsonb }
+        - { name: CreatedAt, type: timestamp }
+        - { name: UpdatedAt, type: timestamp }
+        - { name: RepositoryID, type: "*uuid", filterable: true }
+
+    - name: Repository
+      table_name: pipeline.repositories
+      fields:
+        - { name: ID, type: uuid, filterable: true }
+        - { name: WorkspaceID, type: uuid, filterable: true }
+        - { name: Name, type: string }
+        - { name: URL, type: string }
+        - { name: AuthHeader, type: "*string" }
+        - { name: Status, type: RepositoryStatus, filterable: true }
+        - { name: LastSyncedAt, type: "*timestamp" }
+        - { name: ConnectorCount, type: int }
+        - { name: LastError, type: "*string" }
+        - { name: CreatedAt, type: timestamp }
+        - { name: UpdatedAt, type: timestamp }
+
+    - name: RepositoryConnector
+      table_name: pipeline.repository_connectors
+      fields:
+        - { name: ID, type: uuid, filterable: true }
+        - { name: RepositoryID, type: uuid, filterable: true }
+        - { name: DockerRepository, type: string, filterable: true }
+        - { name: DockerImageTag, type: string }
+        - { name: Name, type: string, filterable: true }
+        - { name: ConnectorType, type: ConnectorType, filterable: true }
+        - { name: DocumentationURL, type: string }
+        - { name: ReleaseStage, type: ReleaseStage }
+        - { name: IconURL, type: string }
+        - { name: Spec, type: jsonb }
+        - { name: SupportLevel, type: SupportLevel, filterable: true }
+        - { name: License, type: string, filterable: true }
+        - { name: SourceType, type: SourceType, filterable: true }
+        - { name: Metadata, type: jsonb }
+
+    - name: Source
+      table_name: pipeline.sources
+      fields:
+        - { name: ID, type: uuid, filterable: true }
+        - { name: WorkspaceID, type: uuid, filterable: true }
+        - { name: Name, type: string, filterable: true }
+        - { name: ManagedConnectorID, type: uuid, filterable: true }
+        - { name: Config, type: jsonb }
+        - { name: CreatedAt, type: timestamp }
+        - { name: UpdatedAt, type: timestamp }
+        - { name: RuntimeConfig, type: "*jsonb" }
+
+    - name: Destination
+      table_name: pipeline.destinations
+      fields:
+        - { name: ID, type: uuid, filterable: true }
+        - { name: WorkspaceID, type: uuid, filterable: true }
+        - { name: Name, type: string, filterable: true }
+        - { name: ManagedConnectorID, type: uuid, filterable: true }
+        - { name: Config, type: jsonb }
+        - { name: CreatedAt, type: timestamp }
+        - { name: UpdatedAt, type: timestamp }
+        - { name: RuntimeConfig, type: "*jsonb" }
+
+    - name: Connection
+      table_name: pipeline.connections
+      has_custom_db_methods: true
+      fields:
+        - { name: ID, type: uuid, filterable: true }
+        - { name: WorkspaceID, type: uuid, filterable: true }
+        - { name: Name, type: string, filterable: true }
+        - { name: Status, type: ConnectionStatus, filterable: true }
+        - { name: SourceID, type: uuid, filterable: true }
+        - { name: DestinationID, type: uuid, filterable: true }
+        - { name: Schedule, type: "*string" }
+        - { name: SchemaChangePolicy, type: SchemaChangePolicy }
+        - { name: MaxAttempts, type: int }
+
+        - { name: NamespaceDefinition, type: NamespaceDefinition }
+        - { name: CustomNamespaceFormat, type: "*string" }
+        - { name: StreamPrefix, type: "*string" }
+        - { name: NextScheduledAt, type: "*timestamp" }
+        - { name: CreatedAt, type: timestamp }
+        - { name: UpdatedAt, type: timestamp }
+
+    - name: Job
+      table_name: pipeline.jobs
+      has_custom_db_methods: true
+      fields:
+        - { name: ID, type: uuid, filterable: true }
+        - { name: ConnectionID, type: uuid, filterable: true }
+        - { name: Status, type: JobStatus, filterable: true }
+        - { name: JobType, type: JobType, filterable: true }
+        - { name: ScheduledAt, type: timestamp }
+        - { name: StartedAt, type: "*timestamp", filterable: true }
+        - { name: CompletedAt, type: "*timestamp" }
+        - { name: Error, type: "*string" }
+        - { name: Attempt, type: int }
+        - { name: MaxAttempts, type: int }
+        - { name: WorkerID, type: "*string" }
+        - { name: HeartbeatAt, type: "*timestamp", filterable: true }
+        - { name: K8sJobName, type: "*string" }
+        - { name: FailureReason, type: "*string" }
+        - { name: CreatedAt, type: timestamp }
+
+    - name: JobAttempt
+      table_name: pipeline.job_attempts
+      fields:
+        - { name: ID, type: uuid, filterable: true }
+        - { name: JobID, type: uuid, filterable: true }
+        - { name: AttemptNumber, type: int }
+        - { name: StartedAt, type: timestamp }
+        - { name: CompletedAt, type: "*timestamp" }
+        - { name: Error, type: "*string" }
+        - { name: SyncStatsJSON, type: jsonb }
+
+    - name: CatalogDiscovery
+      table_name: pipeline.catalog_discoveries
+      fields:
+        - { name: ID, type: uuid, filterable: true }
+        - { name: SourceID, type: uuid, filterable: true }
+        - { name: Version, type: int, filterable: true }
+        - { name: CatalogJSON, type: jsonb }
+        - { name: DiscoveredAt, type: timestamp }
+
+    - name: ConfiguredCatalog
+      table_name: pipeline.configured_catalogs
+      fields:
+        - { name: ID, type: uuid, filterable: true }
+        - { name: ConnectionID, type: uuid, filterable: true }
+        - { name: StreamsJSON, type: jsonb }
+        - { name: CreatedAt, type: timestamp }
+        - { name: UpdatedAt, type: timestamp }
+
+    - name: JobLog
+      table_name: pipeline.job_logs
+      has_custom_db_methods: true
+      fields:
+        - { name: ID, type: int64, primary_key: true }
+        - { name: JobID, type: uuid, filterable: true }
+        - { name: LogLine, type: string }
+        - { name: CreatedAt, type: timestamp }
+
+    - name: ConnectionState
+      table_name: pipeline.connection_state
+      fields:
+        - { name: ConnectionID, type: uuid, filterable: true, primary_key: true }
+        - { name: StateType, type: string }
+        - { name: StateBlob, type: jsonb }
+        - { name: UpdatedAt, type: timestamp }
+
+    - name: CheckPayload
+      id: 1
+      do_not_persists: true
+      fields:
+        - { name: SourceID, type: "*uuid" }
+        - { name: DestinationID, type: "*uuid" }
+        - { name: ManagedConnectorID, type: uuid }
+        - { name: Config, type: "*string" }
+
+    - name: SpecPayload
+      id: 2
+      do_not_persists: true
+      fields:
+        - { name: ManagedConnectorID, type: uuid }
+
+    - name: DiscoverPayload
+      id: 3
+      do_not_persists: true
+      fields:
+        - { name: SourceID, type: uuid }
+        - { name: ManagedConnectorID, type: uuid }
+
+    - name: CheckResult
+      id: 4
+      do_not_persists: true
+      fields:
+        - { name: Success, type: bool }
+        - { name: Message, type: string }
+
+    - name: SpecResult
+      id: 5
+      do_not_persists: true
+      fields:
+        - { name: DocumentationURL, type: string }
+        - { name: ChangelogURL, type: string }
+        - { name: ConnectionSpecification, type: jsonb }
+        - { name: SupportsIncremental, type: bool }
+        - { name: SupportsNormalization, type: bool }
+        - { name: SupportsDBT, type: bool }
+        - { name: SupportedDestinationSyncModes, type: jsonb }
+        - { name: AdvancedAuth, type: jsonb }
+        - { name: ProtocolVersion, type: string }
+
+    - name: DiscoverResult
+      id: 6
+      do_not_persists: true
+      fields:
+        - { name: Catalog, type: string }
+
+    - name: WorkspaceSettings
+      table_name: pipeline.workspace_settings
+      fields:
+        - { name: WorkspaceID, type: uuid, primary_key: true, filterable: true }
+        - { name: MaxJobsPerWorkspace, type: int }
+        - { name: CreatedAt, type: timestamp }
+        - { name: UpdatedAt, type: timestamp }
+
+    - name: ConnectorTask
+      table_name: pipeline.connector_tasks
+      has_custom_db_methods: true
+      fields:
+        - { name: ID, type: uuid, filterable: true }
+        - { name: WorkspaceID, type: uuid, filterable: true }
+        - { name: TaskType, type: ConnectorTaskType, filterable: true }
+        - { name: Status, type: ConnectorTaskStatus, filterable: true }
+        - { name: Payload, type: ConnectorTaskPayload }
+        - { name: Result, type: "*ConnectorTaskResult" }
+        - { name: ErrorMessage, type: "*string" }
+        - { name: WorkerID, type: "*string" }
+        - { name: CreatedAt, type: timestamp, filterable: true }
+        - { name: UpdatedAt, type: timestamp, filterable: true }
+        - { name: CompletedAt, type: "*timestamp", filterable: true }
+
+    - name: StreamGeneration
+      table_name: pipeline.stream_generations
+      fields:
+        - { name: ConnectionID, type: uuid, primary_key: true, filterable: true }
+        - { name: StreamNamespace, type: string, primary_key: true, filterable: true }
+        - { name: StreamName, type: string, primary_key: true, filterable: true }
+        - { name: GenerationID, type: int64 }
+        - { name: UpdatedAt, type: timestamp }

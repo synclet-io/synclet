@@ -1,0 +1,27 @@
+{{- if .Values.server.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "synclet.fullname" . }}
+  labels:
+    {{- include "synclet.server.labels" . | nindent 4 }}
+    {{- with .Values.server.serviceMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.server.serviceMonitor.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+  selector:
+    matchLabels:
+      {{- include "synclet.server.selectorLabels" . | nindent 6 }}
+  endpoints:
+    - port: {{ .Values.server.serviceMonitor.port }}
+      path: {{ .Values.server.serviceMonitor.path }}
+      interval: {{ .Values.server.serviceMonitor.interval }}
+      scrapeTimeout: {{ .Values.server.serviceMonitor.scrapeTimeout }}
+{{- end }}

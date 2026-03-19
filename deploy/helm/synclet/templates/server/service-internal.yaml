@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "synclet.fullname" . }}-internal
+  labels:
+    {{- include "synclet.server.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.server.service.ports.internal }}
+      targetPort: internal
+      protocol: TCP
+      name: internal
+  selector:
+    {{- include "synclet.server.selectorLabels" . | nindent 4 }}

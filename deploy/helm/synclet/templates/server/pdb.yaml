@@ -1,0 +1,17 @@
+{{- if .Values.server.pdb.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "synclet.fullname" . }}-server
+  labels:
+    {{- include "synclet.server.labels" . | nindent 4 }}
+spec:
+  {{- if .Values.server.pdb.maxUnavailable }}
+  maxUnavailable: {{ .Values.server.pdb.maxUnavailable }}
+  {{- else }}
+  minAvailable: {{ .Values.server.pdb.minAvailable }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "synclet.server.selectorLabels" . | nindent 6 }}
+{{- end }}

@@ -1,0 +1,106 @@
+{{- if eq .Values.mode "distributed" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "synclet.fullname" . }}-jobs
+  labels:
+    {{- include "synclet.jobs.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.jobs.replicaCount }}
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
+  {{- with .Values.jobs.strategy }}
+  strategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "synclet.jobs.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- with .Values.jobs.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "synclet.jobs.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "synclet.serviceAccountName" . }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      {{- if .Values.jobs.priorityClassName }}
+      priorityClassName: {{ .Values.jobs.priorityClassName }}
+      {{- end }}
+      {{- if .Values.jobs.podSecurityContext.enabled }}
+      securityContext:
+        runAsNonRoot: {{ .Values.jobs.podSecurityContext.runAsNonRoot }}
+        runAsUser: {{ .Values.jobs.podSecurityContext.runAsUser }}
+        fsGroup: {{ .Values.jobs.podSecurityContext.fsGroup }}
+      {{- end }}
+      containers:
+        - name: jobs
+          image: {{ include "synclet.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["synclet", "jobs"]
+          envFrom:
+            - configMapRef:
+                name: {{ include "synclet.fullname" . }}
+            {{- with .Values.jobs.extraEnvFrom }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          env:
+            {{- include "synclet.secretEnvVars" . | nindent 12 }}
+          {{- if .Values.jobs.livenessProbe.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.jobs.livenessProbe.path }}
+              port: {{ .Values.jobs.livenessProbe.port }}
+            initialDelaySeconds: {{ .Values.jobs.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.jobs.livenessProbe.periodSeconds }}
+          {{- end }}
+          {{- if .Values.jobs.readinessProbe.enabled }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.jobs.readinessProbe.path }}
+              port: {{ .Values.jobs.readinessProbe.port }}
+            initialDelaySeconds: {{ .Values.jobs.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.jobs.readinessProbe.periodSeconds }}
+          {{- end }}
+          {{- if .Values.jobs.containerSecurityContext.enabled }}
+          securityContext:
+            allowPrivilegeEscalation: {{ .Values.jobs.containerSecurityContext.allowPrivilegeEscalation }}
+            readOnlyRootFilesystem: {{ .Values.jobs.containerSecurityContext.readOnlyRootFilesystem }}
+            capabilities:
+              drop:
+                {{- toYaml .Values.jobs.containerSecurityContext.capabilities.drop | nindent 16 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.jobs.resources | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
+      {{- with .Values.jobs.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.jobs.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.jobs.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.jobs.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

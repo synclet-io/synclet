@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+package synclet.protocol.v1;
+
+option go_package = "synclet/gen/proto/synclet/protocol/v1;protocolv1";
+
+import "google/protobuf/struct.proto";
+
+// StringList is a helper for repeated string lists (e.g. composite primary keys).
+message StringList {
+  repeated string values = 1;
+}
+
+// OAuthConfigSpecification describes the OAuth configuration parameters for a connector.
+message OAuthConfigSpecification {
+  google.protobuf.Struct oauth_user_input_from_connector_config_specification = 1;
+  google.protobuf.Struct complete_oauth_output_specification = 2;
+  google.protobuf.Struct complete_oauth_server_input_specification = 3;
+  google.protobuf.Struct complete_oauth_server_output_specification = 4;
+}
+
+// AdvancedAuth describes OAuth and other advanced authentication flows for a connector.
+message AdvancedAuth {
+  string auth_flow_type = 1;
+  repeated string predicate_key = 2;
+  string predicate_value = 3;
+  OAuthConfigSpecification oauth_config_specification = 4;
+}
+
+// ConnectorSpecification describes the configuration schema and capabilities of a connector.
+message ConnectorSpecification {
+  string documentation_url = 1;
+  string changelog_url = 2;
+  google.protobuf.Struct connection_specification = 3;
+  bool supports_incremental = 4;
+  bool supports_normalization = 5;
+  bool supports_dbt = 6;
+  repeated string supported_destination_sync_modes = 7;
+  AdvancedAuth advanced_auth = 8;
+  string protocol_version = 9;
+}
+
+// AirbyteStream describes a single stream in the catalog.
+message AirbyteStream {
+  string name = 1;
+  google.protobuf.Struct json_schema = 2;
+  repeated string supported_sync_modes = 3;
+  bool source_defined_cursor = 4;
+  repeated string default_cursor_field = 5;
+  repeated StringList source_defined_primary_key = 6;
+  string namespace = 7;
+  bool is_resumable = 8;
+  bool is_file_based = 9;
+}
+
+// AirbyteCatalog represents the full catalog of streams available from a source.
+message AirbyteCatalog {
+  repeated AirbyteStream streams = 1;
+}
+
+// StateType describes the type of state checkpoint in an Airbyte state message.
+enum StateType {
+  STATE_TYPE_UNSPECIFIED = 0;
+  STATE_TYPE_STREAM = 1;
+  STATE_TYPE_GLOBAL = 2;
+  STATE_TYPE_LEGACY = 3;
+}

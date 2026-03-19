@@ -1,0 +1,5 @@
+# github.com/saturn4er/airbyte-go-sdk v0.0.0 => /Users/saturn4er/Dev/airbyte-go-sdk
+## explicit; go 1.17
+github.com/saturn4er/airbyte-go-sdk
+github.com/saturn4er/airbyte-go-sdk/schema
+# github.com/saturn4er/airbyte-go-sdk => /Users/saturn4er/Dev/airbyte-go-sdk

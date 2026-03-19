@@ -1,0 +1,200 @@
+syntax = "proto3";
+
+package synclet.publicapi.workspace.v1;
+
+option go_package = "synclet/gen/proto/synclet/publicapi/workspace/v1;workspacev1";
+
+import "google/protobuf/timestamp.proto";
+import "synclet/options/v1/options.proto";
+
+enum MemberRole {
+  MEMBER_ROLE_UNSPECIFIED = 0;
+  MEMBER_ROLE_ADMIN = 1;
+  MEMBER_ROLE_EDITOR = 2;
+  MEMBER_ROLE_VIEWER = 3;
+}
+
+enum InviteStatus {
+  INVITE_STATUS_UNSPECIFIED = 0;
+  INVITE_STATUS_PENDING = 1;
+  INVITE_STATUS_ACCEPTED = 2;
+  INVITE_STATUS_DECLINED = 3;
+  INVITE_STATUS_REVOKED = 4;
+  INVITE_STATUS_EXPIRED = 5;
+}
+
+service WorkspaceService {
+  rpc CreateWorkspace(CreateWorkspaceRequest) returns (CreateWorkspaceResponse);
+  rpc UpdateWorkspace(UpdateWorkspaceRequest) returns (UpdateWorkspaceResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_ADMIN;
+  }
+  rpc DeleteWorkspace(DeleteWorkspaceRequest) returns (DeleteWorkspaceResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_ADMIN;
+  }
+  rpc GetWorkspace(GetWorkspaceRequest) returns (GetWorkspaceResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
+  }
+  rpc ListWorkspaces(ListWorkspacesRequest) returns (ListWorkspacesResponse);
+  rpc RemoveMember(RemoveMemberRequest) returns (RemoveMemberResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_ADMIN;
+  }
+  rpc ListMembers(ListMembersRequest) returns (ListMembersResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
+  }
+
+  // Invite RPCs
+  rpc CreateInvite(CreateInviteRequest) returns (CreateInviteResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_ADMIN;
+  }
+  rpc AcceptInvite(AcceptInviteRequest) returns (AcceptInviteResponse);
+  rpc DeclineInvite(DeclineInviteRequest) returns (DeclineInviteResponse);
+  rpc RevokeInvite(RevokeInviteRequest) returns (RevokeInviteResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_ADMIN;
+  }
+  rpc ResendInvite(ResendInviteRequest) returns (ResendInviteResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_ADMIN;
+  }
+  rpc ListInvites(ListInvitesRequest) returns (ListInvitesResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
+  }
+  rpc GetInviteByToken(GetInviteByTokenRequest) returns (GetInviteByTokenResponse);
+}
+
+message WorkspaceInfo {
+  string id = 1;
+  string name = 2;
+  string slug = 3;
+  google.protobuf.Timestamp created_at = 4;
+  google.protobuf.Timestamp updated_at = 5;
+  reserved 6;
+}
+
+message WorkspaceMemberInfo {
+  string id = 1;
+  string workspace_id = 2;
+  string user_id = 3;
+  MemberRole role = 4;
+  google.protobuf.Timestamp joined_at = 5;
+}
+
+message WorkspaceInviteInfo {
+  string id = 1;
+  string workspace_id = 2;
+  string workspace_name = 3;
+  string inviter_user_id = 4;
+  string inviter_name = 5;
+  string email = 6;
+  MemberRole role = 7;
+  InviteStatus status = 8;
+  google.protobuf.Timestamp expires_at = 9;
+  google.protobuf.Timestamp created_at = 10;
+}
+
+message CreateWorkspaceRequest {
+  string name = 1;
+  string owner_user_id = 2;
+}
+
+message CreateWorkspaceResponse {
+  WorkspaceInfo workspace = 1;
+}
+
+message UpdateWorkspaceRequest {
+  string id = 1;
+  string name = 2;
+  reserved 3;
+}
+
+message UpdateWorkspaceResponse {
+  WorkspaceInfo workspace = 1;
+}
+
+message DeleteWorkspaceRequest {
+  string id = 1;
+}
+
+message DeleteWorkspaceResponse {}
+
+message GetWorkspaceRequest {
+  string id = 1;
+}
+
+message GetWorkspaceResponse {
+  WorkspaceInfo workspace = 1;
+}
+
+message ListWorkspacesRequest {
+  string user_id = 1;
+}
+
+message ListWorkspacesResponse {
+  repeated WorkspaceInfo workspaces = 1;
+}
+
+message RemoveMemberRequest {
+  string workspace_id = 1;
+  string user_id = 2;
+}
+
+message RemoveMemberResponse {}
+
+message ListMembersRequest {
+  string workspace_id = 1;
+}
+
+message ListMembersResponse {
+  repeated WorkspaceMemberInfo members = 1;
+}
+
+// Invite messages
+
+message CreateInviteRequest {
+  string workspace_id = 1;
+  string email = 2;
+  MemberRole role = 3;
+}
+
+message CreateInviteResponse {
+  WorkspaceInviteInfo invite = 1;
+}
+
+message AcceptInviteRequest {
+  string token = 1;
+}
+
+message AcceptInviteResponse {
+  string workspace_id = 1;
+  string workspace_name = 2;
+}
+
+message DeclineInviteRequest {
+  string token = 1;
+}
+
+message DeclineInviteResponse {}
+
+message RevokeInviteRequest {
+  string invite_id = 1;
+}
+
+message RevokeInviteResponse {}
+
+message ResendInviteRequest {
+  string invite_id = 1;
+}
+
+message ResendInviteResponse {}
+
+message ListInvitesRequest {}
+
+message ListInvitesResponse {
+  repeated WorkspaceInviteInfo invites = 1;
+}
+
+message GetInviteByTokenRequest {
+  string token = 1;
+}
+
+message GetInviteByTokenResponse {
+  WorkspaceInviteInfo invite = 1;
+}

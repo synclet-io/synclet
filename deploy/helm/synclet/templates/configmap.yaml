@@ -1,0 +1,106 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "synclet.fullname" . }}
+  labels:
+    {{- include "synclet.labels" . | nindent 4 }}
+data:
+  ENVIRONMENT: {{ .Values.environment | quote }}
+  LOG_LEVEL: {{ .Values.logLevel | quote }}
+  PUBLIC_HTTP_SERVER_ADDR: {{ printf "0.0.0.0:%v" .Values.server.containerPorts.public | quote }}
+  PUBLIC_HTTP_SERVER_CORS_ALLOW_ALL_ORIGINS: {{ .Values.corsAllowAllOrigins | quote }}
+  INTERNAL_HTTP_SERVER_ADDR: {{ printf "0.0.0.0:%v" .Values.server.containerPorts.internal | quote }}
+  ## Auth
+  REGISTRATION_ENABLED: {{ .Values.auth.registrationEnabled | quote }}
+  ## Workspace
+  WORKSPACES_MODE: {{ .Values.workspaces.mode | quote }}
+  ## Frontend & invites
+  FRONTEND_URL: {{ include "synclet.frontendURL" . | quote }}
+  INVITE_TTL: {{ .Values.invites.ttl | quote }}
+  ## SMTP (non-secret)
+  {{- if .Values.smtp.host }}
+  SMTP_HOST: {{ .Values.smtp.host | quote }}
+  SMTP_PORT: {{ .Values.smtp.port | quote }}
+  SMTP_USER: {{ .Values.smtp.user | quote }}
+  SMTP_FROM: {{ .Values.smtp.from | quote }}
+  {{- end }}
+  ## Pipeline: worker & scheduling
+  PIPELINE_WORKER_INTERVAL: {{ .Values.pipeline.workerInterval | quote }}
+  PIPELINE_SCHEDULER_INTERVAL: {{ .Values.pipeline.schedulerInterval | quote }}
+  PIPELINE_WATCHDOG_INTERVAL: {{ .Values.pipeline.watchdogInterval | quote }}
+  PIPELINE_ORPHAN_CLEANUP_INTERVAL: {{ .Values.pipeline.orphanCleanupInterval | quote }}
+  ## Pipeline: sync limits
+  PIPELINE_MAX_SYNC_DURATION: {{ .Values.pipeline.maxSyncDuration | quote }}
+  PIPELINE_MAX_CONCURRENT_JOBS: {{ .Values.pipeline.maxConcurrentJobs | quote }}
+  PIPELINE_IDLE_TIMEOUT: {{ .Values.pipeline.idleTimeout | quote }}
+  ## Pipeline: connector tasks
+  PIPELINE_CONNECTOR_TASK_RETENTION: {{ .Values.pipeline.connectorTaskRetention | quote }}
+  PIPELINE_CONNECTOR_TASK_TIMEOUT: {{ .Values.pipeline.connectorTaskTimeout | quote }}
+  ## Pipeline: default K8s resources for connector pods
+  {{- if .Values.pipeline.resources.cpuRequest }}
+  PIPELINE_DEFAULT_CPU_REQUEST: {{ .Values.pipeline.resources.cpuRequest | quote }}
+  {{- end }}
+  {{- if .Values.pipeline.resources.cpuLimit }}
+  PIPELINE_DEFAULT_CPU_LIMIT: {{ .Values.pipeline.resources.cpuLimit | quote }}
+  {{- end }}
+  {{- if .Values.pipeline.resources.memoryRequest }}
+  PIPELINE_DEFAULT_MEMORY_REQUEST: {{ .Values.pipeline.resources.memoryRequest | quote }}
+  {{- end }}
+  {{- if .Values.pipeline.resources.memoryLimit }}
+  PIPELINE_DEFAULT_MEMORY_LIMIT: {{ .Values.pipeline.resources.memoryLimit | quote }}
+  {{- end }}
+  {{- if .Values.pipeline.resources.serviceAccountName }}
+  PIPELINE_DEFAULT_SERVICE_ACCOUNT_NAME: {{ .Values.pipeline.resources.serviceAccountName | quote }}
+  {{- end }}
+  ## OIDC (non-secret fields)
+  {{- if .Values.oidc.providers }}
+  OIDC_PROVIDERS: {{ include "synclet.oidcProviderSlugs" . | quote }}
+  OIDC_CALLBACK_BASE_URL: {{ (.Values.oidc.callbackBaseURL | default (include "synclet.frontendURL" .)) | quote }}
+  {{- range .Values.oidc.providers }}
+  {{- $slug := upper .slug }}
+  OIDC_{{ $slug }}_ISSUER: {{ .issuer | quote }}
+  OIDC_{{ $slug }}_CLIENT_ID: {{ .clientID | quote }}
+  {{- if .displayName }}
+  OIDC_{{ $slug }}_DISPLAY_NAME: {{ .displayName | quote }}
+  {{- end }}
+  {{- if .scopes }}
+  OIDC_{{ $slug }}_SCOPES: {{ .scopes | quote }}
+  {{- end }}
+  {{- if .roleClaim }}
+  OIDC_{{ $slug }}_ROLE_CLAIM: {{ .roleClaim | quote }}
+  {{- end }}
+  {{- if .roleMapAdmin }}
+  OIDC_{{ $slug }}_ROLE_MAP_ADMIN: {{ .roleMapAdmin | quote }}
+  {{- end }}
+  {{- if .roleMapEditor }}
+  OIDC_{{ $slug }}_ROLE_MAP_EDITOR: {{ .roleMapEditor | quote }}
+  {{- end }}
+  {{- if .roleMapViewer }}
+  OIDC_{{ $slug }}_ROLE_MAP_VIEWER: {{ .roleMapViewer | quote }}
+  {{- end }}
+  {{- if .defaultRole }}
+  OIDC_{{ $slug }}_DEFAULT_ROLE: {{ .defaultRole | quote }}
+  {{- end }}
+  {{- if not (kindIs "invalid" .autoCreateUser) }}
+  OIDC_{{ $slug }}_AUTO_CREATE_USER: {{ .autoCreateUser | quote }}
+  {{- end }}
+  {{- if .allowedDomains }}
+  OIDC_{{ $slug }}_ALLOWED_DOMAINS: {{ .allowedDomains | quote }}
+  {{- end }}
+  {{- end }}
+  {{- end }}
+  ## Executor (distributed mode: jobs need the executor URL)
+  {{- if eq .Values.mode "distributed" }}
+  EXECUTOR_API_URL: {{ include "synclet.internalServerAddr" . | quote }}
+  {{- end }}
+  ## Kubernetes
+  {{- if or .Values.executor.enabled (eq .Values.mode "standalone") }}
+  K8S_NAMESPACE: {{ .Values.k8s.namespace | quote }}
+  K8S_SYNCLET_IMAGE: {{ include "synclet.image" . | quote }}
+  K8S_SERVER_ADDR: {{ include "synclet.internalServerAddr" . | quote }}
+  K8S_DEFAULT_MEMORY: {{ .Values.k8s.defaultMemory | quote }}
+  K8S_DEFAULT_CPU: {{ .Values.k8s.defaultCPU | quote }}
+  {{- if .Values.k8s.imagePullSecret }}
+  K8S_IMAGE_PULL_SECRET: {{ .Values.k8s.imagePullSecret | quote }}
+  {{- end }}
+  {{- end }}

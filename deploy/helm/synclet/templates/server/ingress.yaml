@@ -1,0 +1,38 @@
+{{- if .Values.server.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "synclet.fullname" . }}
+  labels:
+    {{- include "synclet.server.labels" . | nindent 4 }}
+  {{- with .Values.server.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.server.ingress.ingressClassName }}
+  ingressClassName: {{ .Values.server.ingress.ingressClassName }}
+  {{- end }}
+  {{- if or .Values.server.ingress.tls .Values.server.ingress.extraTls }}
+  tls:
+    {{- if .Values.server.ingress.tls }}
+    - hosts:
+        - {{ .Values.server.ingress.hostname }}
+      secretName: {{ .Values.server.ingress.tlsSecretName | default (printf "%s-tls" (include "synclet.fullname" .)) }}
+    {{- end }}
+    {{- with .Values.server.ingress.extraTls }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.server.ingress.hostname }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "synclet.fullname" . }}
+                port:
+                  number: {{ .Values.server.service.ports.public }}
+{{- end }}
