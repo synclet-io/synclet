@@ -25,5 +25,6 @@ func (uc *GetOIDCProviders) Execute() []OIDCProviderInfo {
 			DisplayName: p.Config.DisplayName,
 		})
 	}
+
 	return result
 }

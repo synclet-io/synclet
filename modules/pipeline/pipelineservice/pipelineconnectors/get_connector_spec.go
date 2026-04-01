@@ -34,7 +34,7 @@ type GetConnectorSpecResult struct {
 
 // Execute retrieves the cached spec for a ready connector, scoped to workspace.
 func (uc *GetConnectorSpec) Execute(ctx context.Context, params GetConnectorSpecParams) (*GetConnectorSpecResult, error) {
-	mc, err := uc.storage.ManagedConnectors().First(ctx, &pipelineservice.ManagedConnectorFilter{
+	connector, err := uc.storage.ManagedConnectors().First(ctx, &pipelineservice.ManagedConnectorFilter{
 		ID:          filter.Equals(params.ID),
 		WorkspaceID: filter.Equals(params.WorkspaceID),
 	})
@@ -42,18 +42,18 @@ func (uc *GetConnectorSpec) Execute(ctx context.Context, params GetConnectorSpec
 		return nil, fmt.Errorf("getting managed connector: %w", err)
 	}
 
-	if mc.Spec == "" || mc.Spec == "{}" {
+	if connector.Spec == "" || connector.Spec == "{}" {
 		return nil, fmt.Errorf("connector %s has no cached spec", params.ID)
 	}
 
-	result := &GetConnectorSpecResult{Spec: mc.Spec}
+	result := &GetConnectorSpecResult{Spec: connector.Spec}
 
 	// Look up external documentation URLs from repository connector metadata.
 	// Docs are non-critical, so errors are silently ignored.
-	if mc.RepositoryID != nil {
+	if connector.RepositoryID != nil {
 		rc, err := uc.storage.RepositoryConnectors().First(ctx, &pipelineservice.RepositoryConnectorFilter{
-			RepositoryID:     filter.Equals(*mc.RepositoryID),
-			DockerRepository: filter.Equals(mc.DockerImage),
+			RepositoryID:     filter.Equals(*connector.RepositoryID),
+			DockerRepository: filter.Equals(connector.DockerImage),
 		})
 		if err == nil {
 			meta, mErr := pipelineservice.UnmarshalMetadata(rc.Metadata)

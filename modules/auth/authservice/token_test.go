@@ -70,6 +70,7 @@ func TestJWTValidateRejectsWrongAudience(t *testing.T) {
 // createTestAccessToken creates a token using the same Claims structure as generateTokenPair.
 func createTestAccessToken(t *testing.T) string {
 	t.Helper()
+
 	userID := uuid.New()
 	claims := &Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -82,23 +83,28 @@ func createTestAccessToken(t *testing.T) string {
 		UserID: userID,
 		Email:  "test@example.com",
 	}
+
 	return createTokenWithClaims(t, claims)
 }
 
 func createTokenWithClaims(t *testing.T, claims *Claims) string {
 	t.Helper()
+
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	signed, err := token.SignedString([]byte(testJWTSecret))
 	require.NoError(t, err)
+
 	return signed
 }
 
 func parseTestToken(t *testing.T, tokenString string) *Claims {
 	t.Helper()
+
 	claims := &Claims{}
 	_, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
 		return []byte(testJWTSecret), nil
 	})
 	require.NoError(t, err)
+
 	return claims
 }

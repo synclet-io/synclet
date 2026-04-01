@@ -36,6 +36,7 @@ type DockerConnectorTaskWorkerParams struct {
 // NewDockerConnectorTaskWorker creates a new DockerConnectorTaskWorker with all dependencies.
 func NewDockerConnectorTaskWorker(params DockerConnectorTaskWorkerParams) *DockerConnectorTaskWorker {
 	workerID := getWorkerID()
+
 	concurrency := params.MaxConcurrent
 	if concurrency <= 0 {
 		concurrency = 5
@@ -71,11 +72,13 @@ func (w *DockerConnectorTaskWorker) Execute(ctx context.Context) error {
 	result, err := w.backend.ClaimConnectorTask(ctx, w.workerID)
 	if err != nil {
 		<-w.semaphore
+
 		return err
 	}
 
 	if result == nil {
 		<-w.semaphore
+
 		return nil
 	}
 
@@ -85,6 +88,7 @@ func (w *DockerConnectorTaskWorker) Execute(ctx context.Context) error {
 
 	w.manager.RunJob(func(taskCtx context.Context) {
 		defer func() { <-w.semaphore }()
+
 		w.executeTask(taskCtx, result)
 	})
 
@@ -149,6 +153,7 @@ func (w *DockerConnectorTaskWorker) executeCheck(ctx context.Context, task *Clai
 	}
 
 	*resultBytes = data
+
 	return nil
 }
 
@@ -175,6 +180,7 @@ func (w *DockerConnectorTaskWorker) executeSpec(ctx context.Context, task *Claim
 		if err != nil {
 			return fmt.Errorf("marshaling supported_destination_sync_modes: %w", err)
 		}
+
 		result.SupportedDestinationSyncModes = string(modesJSON)
 	}
 
@@ -184,6 +190,7 @@ func (w *DockerConnectorTaskWorker) executeSpec(ctx context.Context, task *Claim
 		if err != nil {
 			return fmt.Errorf("marshaling advanced_auth: %w", err)
 		}
+
 		result.AdvancedAuth = string(authJSON)
 	}
 
@@ -193,6 +200,7 @@ func (w *DockerConnectorTaskWorker) executeSpec(ctx context.Context, task *Claim
 	}
 
 	*resultBytes = data
+
 	return nil
 }
 
@@ -218,5 +226,6 @@ func (w *DockerConnectorTaskWorker) executeDiscover(ctx context.Context, task *C
 	}
 
 	*resultBytes = data
+
 	return nil
 }

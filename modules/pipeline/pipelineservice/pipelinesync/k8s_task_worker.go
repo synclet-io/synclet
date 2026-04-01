@@ -61,8 +61,10 @@ func (w *K8sConnectorTaskWorker) Execute(ctx context.Context) error {
 		if w.logger != nil {
 			w.logger.WithError(err).Error(ctx, "failed to claim connector task")
 		}
+
 		return fmt.Errorf("claiming connector task: %w", err)
 	}
+
 	if result == nil {
 		return nil
 	}
@@ -90,6 +92,7 @@ func (w *K8sConnectorTaskWorker) Execute(ctx context.Context) error {
 		}
 		// Report failure via backend so the task is not stuck.
 		w.failTask(ctx, result, fmt.Errorf("creating k8s job: %w", err))
+
 		return nil
 	}
 

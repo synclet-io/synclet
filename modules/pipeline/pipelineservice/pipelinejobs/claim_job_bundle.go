@@ -76,6 +76,7 @@ func (uc *ClaimJobBundle) Execute(ctx context.Context, params ClaimJobParams) (*
 	if err != nil {
 		return nil, fmt.Errorf("claiming job: %w", err)
 	}
+
 	if job == nil {
 		return nil, nil
 	}
@@ -150,6 +151,7 @@ func (uc *ClaimJobBundle) Execute(ctx context.Context, params ClaimJobParams) (*
 	if err != nil {
 		return nil, fmt.Errorf("counting jobs for sync_id: %w", err)
 	}
+
 	if err := uc.populateGenerationIDs.Execute(ctx, pipelinecatalog.PopulateGenerationIDsParams{
 		ConnectionID: job.ConnectionID,
 		Catalog:      catalog,
@@ -199,5 +201,6 @@ func derefStringPtr(s *string) string {
 	if s == nil {
 		return ""
 	}
+
 	return *s
 }

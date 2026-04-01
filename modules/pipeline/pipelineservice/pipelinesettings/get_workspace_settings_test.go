@@ -57,6 +57,6 @@ func TestGetWorkspaceSettings_PropagatesStorageError(t *testing.T) {
 	uc := pipelinesettings.NewGetWorkspaceSettings(storage)
 	_, err := uc.Execute(context.Background(), uuid.New())
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "getting workspace settings")
 }

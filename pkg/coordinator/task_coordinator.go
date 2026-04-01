@@ -77,6 +77,7 @@ func RunTask(ctx context.Context, cfg TaskConfig) error {
 		if len(output) > 4096 {
 			output = output[:4096] + "... (truncated)"
 		}
+
 		slog.Debug("task coordinator: connector output", "task_id", cfg.TaskID, "output", output)
 	} else {
 		slog.Warn("task coordinator: could not read connector output", "task_id", cfg.TaskID, "error", readErr)
@@ -86,19 +87,24 @@ func RunTask(ctx context.Context, cfg TaskConfig) error {
 	if err != nil {
 		return reportTaskError(cfg, fmt.Errorf("opening connector stdout: %w", err))
 	}
+
 	defer func() { _ = stdoutFile.Close() }()
 
 	reader := protocol.NewMessageReader(stdoutFile)
 	var messages []*protocol.AirbyteMessage
+
 	for {
 		msg, err := reader.Read()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				break
 			}
+
 			slog.Warn("task coordinator: skipping unparseable message", "error", err)
+
 			continue
 		}
+
 		messages = append(messages, msg)
 	}
 
@@ -115,9 +121,11 @@ func RunTask(ctx context.Context, cfg TaskConfig) error {
 				if msg.Trace.Error.InternalMessage != "" {
 					errMsg = fmt.Sprintf("%s (internal: %s)", errMsg, msg.Trace.Error.InternalMessage)
 				}
+
 				break
 			}
 		}
+
 		return reportTaskResult(cfg, false, errMsg, nil)
 	}
 
@@ -146,9 +154,11 @@ func extractTaskResult(taskType string, messages []*protocol.AirbyteMessage) ([]
 					Success: msg.ConnectionStatus.Status == protocol.ConnectionStatusSucceeded,
 					Message: msg.ConnectionStatus.Message,
 				}
+
 				return json.Marshal(result)
 			}
 		}
+
 		return nil, fmt.Errorf("connector did not produce a CONNECTION_STATUS message")
 
 	case "Spec":
@@ -158,14 +168,17 @@ func extractTaskResult(taskType string, messages []*protocol.AirbyteMessage) ([]
 				if err != nil {
 					return nil, fmt.Errorf("marshaling spec: %w", err)
 				}
+
 				result := struct {
 					Spec string `json:"Spec"`
 				}{
 					Spec: string(specJSON),
 				}
+
 				return json.Marshal(result)
 			}
 		}
+
 		return nil, fmt.Errorf("connector did not produce a SPEC message")
 
 	case "Discover":
@@ -175,14 +188,17 @@ func extractTaskResult(taskType string, messages []*protocol.AirbyteMessage) ([]
 				if err != nil {
 					return nil, fmt.Errorf("marshaling catalog: %w", err)
 				}
+
 				result := struct {
 					Catalog string `json:"Catalog"`
 				}{
 					Catalog: string(catalogJSON),
 				}
+
 				return json.Marshal(result)
 			}
 		}
+
 		return nil, fmt.Errorf("connector did not produce a CATALOG message")
 
 	default:
@@ -209,10 +225,12 @@ func reportTaskResult(cfg TaskConfig, success bool, errMsg string, result []byte
 
 	if _, err := client.ReportConnectorTaskResult(ctx, req); err != nil {
 		slog.Error("task coordinator: failed to report result", "error", err, "task_id", cfg.TaskID)
+
 		return fmt.Errorf("reporting task result: %w", err)
 	}
 
 	slog.Info("task coordinator: result reported", "task_id", cfg.TaskID, "success", success)
+
 	return nil
 }
 
@@ -222,6 +240,7 @@ func reportTaskError(cfg TaskConfig, err error) error {
 	if reportErr != nil {
 		return fmt.Errorf("%w (also failed to report: %w)", err, reportErr)
 	}
+
 	return err
 }
 
@@ -242,6 +261,7 @@ func connectorTaskArgs(taskType, dataDir string) []string {
 // waitForFile polls for a file to exist with a timeout.
 func waitForFile(ctx context.Context, path string, timeout time.Duration) error {
 	deadline := time.After(timeout)
+
 	ticker := time.NewTicker(200 * time.Millisecond)
 	defer ticker.Stop()
 

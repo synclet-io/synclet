@@ -43,6 +43,7 @@ func (uc *SyncRepository) Execute(ctx context.Context, params SyncRepositoryPara
 		ID:          filter.Equals(params.RepositoryID),
 		WorkspaceID: filter.Equals(params.WorkspaceID),
 	}
+
 	repo, err := uc.storage.Repositorys().First(ctx, repoFilter)
 	if err != nil {
 		return nil, fmt.Errorf("loading repository: %w", err)
@@ -50,6 +51,7 @@ func (uc *SyncRepository) Execute(ctx context.Context, params SyncRepositoryPara
 
 	// Set status to Syncing.
 	repo.Status = pipelineservice.RepositoryStatusSyncing
+
 	repo.UpdatedAt = time.Now()
 	if _, err := uc.storage.Repositorys().Update(ctx, repo); err != nil {
 		return nil, fmt.Errorf("updating repository status to syncing: %w", err)
@@ -62,6 +64,7 @@ func (uc *SyncRepository) Execute(ctx context.Context, params SyncRepositoryPara
 		if err != nil {
 			return nil, fmt.Errorf("decrypting auth header: %w", err)
 		}
+
 		authHeader = &plaintext
 	}
 
@@ -74,6 +77,7 @@ func (uc *SyncRepository) Execute(ctx context.Context, params SyncRepositoryPara
 		repo.LastError = &errMsg
 		repo.UpdatedAt = time.Now()
 		_, _ = uc.storage.Repositorys().Update(ctx, repo)
+
 		return nil, fmt.Errorf("fetching registry: %w", err)
 	}
 
@@ -87,33 +91,35 @@ func (uc *SyncRepository) Execute(ctx context.Context, params SyncRepositoryPara
 		}
 
 		// Insert new connectors.
-		for _, c := range connectors {
-			spec := c.Spec
+		for _, connData := range connectors {
+			spec := connData.Spec
 			if spec == "" {
 				spec = "{}"
 			}
-			metadata := c.Metadata
+
+			metadata := connData.Metadata
 			if metadata == "" {
 				metadata = "{}"
 			}
-			rc := &pipelineservice.RepositoryConnector{
+
+			repoConnector := &pipelineservice.RepositoryConnector{
 				ID:               uuid.New(),
 				RepositoryID:     params.RepositoryID,
-				DockerRepository: c.DockerRepository,
-				DockerImageTag:   c.DockerImageTag,
-				Name:             c.Name,
-				ConnectorType:    parseConnectorType(c.ConnectorType),
-				DocumentationURL: c.DocumentationURL,
-				ReleaseStage:     parseReleaseStage(c.ReleaseStage),
-				IconURL:          c.IconURL,
+				DockerRepository: connData.DockerRepository,
+				DockerImageTag:   connData.DockerImageTag,
+				Name:             connData.Name,
+				ConnectorType:    parseConnectorType(connData.ConnectorType),
+				DocumentationURL: connData.DocumentationURL,
+				ReleaseStage:     parseReleaseStage(connData.ReleaseStage),
+				IconURL:          connData.IconURL,
 				Spec:             spec,
-				SupportLevel:     parseSupportLevel(c.SupportLevel),
-				License:          c.License,
-				SourceType:       parseSourceType(c.SourceType),
+				SupportLevel:     parseSupportLevel(connData.SupportLevel),
+				License:          connData.License,
+				SourceType:       parseSourceType(connData.SourceType),
 				Metadata:         metadata,
 			}
-			if _, err := tx.RepositoryConnectors().Create(ctx, rc); err != nil {
-				return fmt.Errorf("creating connector %q: %w", c.Name, err)
+			if _, err := tx.RepositoryConnectors().Create(ctx, repoConnector); err != nil {
+				return fmt.Errorf("creating connector %q: %w", connData.Name, err)
 			}
 		}
 
@@ -123,6 +129,7 @@ func (uc *SyncRepository) Execute(ctx context.Context, params SyncRepositoryPara
 		repo.LastSyncedAt = &now
 		repo.ConnectorCount = len(connectors)
 		repo.LastError = nil
+
 		repo.UpdatedAt = now
 		if _, err := tx.Repositorys().Update(ctx, repo); err != nil {
 			return fmt.Errorf("updating repository: %w", err)
@@ -147,11 +154,11 @@ func (uc *SyncRepository) Execute(ctx context.Context, params SyncRepositoryPara
 // autoCreateManagedConnectors creates managed connectors for all registry connectors
 // that don't already exist in the workspace. Deduplicates by docker_image + workspace_id + repository_id.
 func (uc *SyncRepository) autoCreateManagedConnectors(ctx context.Context, workspaceID, repositoryID uuid.UUID, connectors []ConnectorData) error {
-	for _, c := range connectors {
+	for _, connData := range connectors {
 		// Check if managed connector already exists for this docker image in this workspace+repo (Pitfall 3).
 		_, err := uc.storage.ManagedConnectors().First(ctx, &pipelineservice.ManagedConnectorFilter{
 			WorkspaceID:  filter.Equals(workspaceID),
-			DockerImage:  filter.Equals(c.DockerRepository),
+			DockerImage:  filter.Equals(connData.DockerRepository),
 			RepositoryID: filter.Equals(&repositoryID),
 		})
 		if err == nil {
@@ -162,31 +169,34 @@ func (uc *SyncRepository) autoCreateManagedConnectors(ctx context.Context, works
 		// Only proceed to create if error is not-found. Other errors (DB connectivity) should be returned.
 		var nfe pipelineservice.NotFoundError
 		if !errors.As(err, &nfe) {
-			return fmt.Errorf("checking existing managed connector %q: %w", c.Name, err)
+			return fmt.Errorf("checking existing managed connector %q: %w", connData.Name, err)
 		}
 
 		// Create new managed connector with READY status (D-05: skip PENDING/PULLING).
-		spec := c.Spec
+		spec := connData.Spec
 		if spec == "" {
 			spec = "{}"
 		}
+
 		now := time.Now()
-		mc := &pipelineservice.ManagedConnector{
+
+		connector := &pipelineservice.ManagedConnector{
 			ID:            uuid.New(),
 			WorkspaceID:   workspaceID,
-			DockerImage:   c.DockerRepository,
-			DockerTag:     c.DockerImageTag,
-			Name:          c.Name,
-			ConnectorType: parseConnectorType(c.ConnectorType),
+			DockerImage:   connData.DockerRepository,
+			DockerTag:     connData.DockerImageTag,
+			Name:          connData.Name,
+			ConnectorType: parseConnectorType(connData.ConnectorType),
 			Spec:          spec,
 			CreatedAt:     now,
 			UpdatedAt:     now,
 			RepositoryID:  &repositoryID,
 		}
-		if _, err := uc.storage.ManagedConnectors().Create(ctx, mc); err != nil {
-			return fmt.Errorf("creating managed connector %q: %w", c.Name, err)
+		if _, err := uc.storage.ManagedConnectors().Create(ctx, connector); err != nil {
+			return fmt.Errorf("creating managed connector %q: %w", connData.Name, err)
 		}
 	}
+
 	return nil
 }
 

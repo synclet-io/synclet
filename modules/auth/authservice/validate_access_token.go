@@ -24,6 +24,7 @@ func (uc *ValidateAccessToken) Execute(tokenString string) (*Claims, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method")
 		}
+
 		return []byte(uc.config.JWTSecret), nil
 	},
 		jwt.WithIssuer("synclet"),

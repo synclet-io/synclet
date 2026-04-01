@@ -69,14 +69,17 @@ func k8sModule(k8sEnabled bool) fx.Option {
 		// Start K8s orphan cleanup (startup + periodic).
 		fx.Invoke(func(lc fx.Lifecycle, cleaner *k8s.OrphanCleaner, logger *zap.Logger) {
 			runCtx, cancel := context.WithCancel(context.Background())
+
 			lc.Append(fx.Hook{
 				OnStart: func(ctx context.Context) error {
 					if err := cleaner.CleanupAll(ctx); err != nil {
 						logger.Error("k8s startup orphan cleanup failed", zap.Error(err))
 					}
+
 					go func() {
 						ticker := time.NewTicker(5 * time.Minute)
 						defer ticker.Stop()
+
 						for {
 							select {
 							case <-runCtx.Done():
@@ -88,10 +91,12 @@ func k8sModule(k8sEnabled bool) fx.Option {
 							}
 						}
 					}()
+
 					return nil
 				},
 				OnStop: func(_ context.Context) error {
 					cancel()
+
 					return nil
 				},
 			})
@@ -100,13 +105,16 @@ func k8sModule(k8sEnabled bool) fx.Option {
 		// Start reconciler as lifecycle hook.
 		fx.Invoke(func(lc fx.Lifecycle, reconciler *k8s.Reconciler) {
 			runCtx, cancel := context.WithCancel(context.Background())
+
 			lc.Append(fx.Hook{
 				OnStart: func(_ context.Context) error {
 					go reconciler.Run(runCtx)
+
 					return nil
 				},
 				OnStop: func(_ context.Context) error {
 					cancel()
+
 					return nil
 				},
 			})

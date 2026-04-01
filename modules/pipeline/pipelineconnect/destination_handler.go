@@ -60,17 +60,17 @@ func (h *DestinationHandler) CreateDestination(ctx context.Context, req *connect
 	}
 
 	if err := connectutil.ValidateStringLengths(
-		connectutil.StringValidation{Field: "name", Value: req.Msg.Name, MaxLen: connectutil.MaxNameLength},
+		connectutil.StringValidation{Field: "name", Value: req.Msg.GetName(), MaxLen: connectutil.MaxNameLength},
 	); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	managedConnectorID, err := uuid.Parse(req.Msg.ManagedConnectorId)
+	managedConnectorID, err := uuid.Parse(req.Msg.GetManagedConnectorId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid managed_connector_id: %w", err))
 	}
 
-	config, err := json.Marshal(req.Msg.Config.AsMap())
+	config, err := json.Marshal(req.Msg.GetConfig().AsMap())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -83,7 +83,7 @@ func (h *DestinationHandler) CreateDestination(ctx context.Context, req *connect
 
 	dest, err := h.createDestination.Execute(ctx, pipelinedestinations.CreateDestinationParams{
 		WorkspaceID:        workspaceID,
-		Name:               req.Msg.Name,
+		Name:               req.Msg.GetName(),
 		ManagedConnectorID: managedConnectorID,
 		Config:             config,
 	})
@@ -102,7 +102,7 @@ func (h *DestinationHandler) UpdateDestination(ctx context.Context, req *connect
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	id, err := uuid.Parse(req.Msg.Id)
+	id, err := uuid.Parse(req.Msg.GetId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -111,19 +111,23 @@ func (h *DestinationHandler) UpdateDestination(ctx context.Context, req *connect
 		ID:          id,
 		WorkspaceID: workspaceID,
 	}
+
 	if req.Msg.Name != nil {
 		if err := connectutil.ValidateStringLengths(
-			connectutil.StringValidation{Field: "name", Value: *req.Msg.Name, MaxLen: connectutil.MaxNameLength},
+			connectutil.StringValidation{Field: "name", Value: req.Msg.GetName(), MaxLen: connectutil.MaxNameLength},
 		); err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}
+
 		params.Name = req.Msg.Name
 	}
-	if req.Msg.Config != nil {
-		config, err := json.Marshal(req.Msg.Config.AsMap())
+
+	if req.Msg.GetConfig() != nil {
+		config, err := json.Marshal(req.Msg.GetConfig().AsMap())
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}
+
 		raw := json.RawMessage(config)
 		params.Config = &raw
 
@@ -135,11 +139,13 @@ func (h *DestinationHandler) UpdateDestination(ctx context.Context, req *connect
 		if err != nil {
 			return nil, mapError(err)
 		}
+
 		if err := runConnectionCheck(ctx, h.createCheckTask, h.waitForTaskResult,
 			workspaceID, existingDest.ManagedConnectorID, raw); err != nil {
 			return nil, err
 		}
 	}
+
 	if req.Msg.RuntimeConfig != nil {
 		params.RuntimeConfig = req.Msg.RuntimeConfig
 	}
@@ -160,7 +166,7 @@ func (h *DestinationHandler) DeleteDestination(ctx context.Context, req *connect
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	id, err := uuid.Parse(req.Msg.Id)
+	id, err := uuid.Parse(req.Msg.GetId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -181,7 +187,7 @@ func (h *DestinationHandler) GetDestination(ctx context.Context, req *connect.Re
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	id, err := uuid.Parse(req.Msg.Id)
+	id, err := uuid.Parse(req.Msg.GetId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -217,7 +223,7 @@ func (h *DestinationHandler) ListDestinations(ctx context.Context, req *connect.
 		protoDests[i] = destinationToProto(d)
 	}
 
-	paginated, total := paginateSlice(protoDests, req.Msg.PageSize, req.Msg.Offset)
+	paginated, total := paginateSlice(protoDests, req.Msg.GetPageSize(), req.Msg.GetOffset())
 
 	return connect.NewResponse(&pipelinev1.ListDestinationsResponse{
 		Destinations: paginated,
@@ -235,24 +241,27 @@ func (h *DestinationHandler) TestDestinationConnection(ctx context.Context, req 
 		WorkspaceID: workspaceID,
 	}
 
-	if req.Msg.ManagedConnectorId != "" && req.Msg.Config != nil {
+	if req.Msg.GetManagedConnectorId() != "" && req.Msg.GetConfig() != nil {
 		// Direct config path: test without creating a destination.
-		mcID, err := uuid.Parse(req.Msg.ManagedConnectorId)
+		mcID, err := uuid.Parse(req.Msg.GetManagedConnectorId())
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid managed_connector_id: %w", err))
 		}
-		configJSON, err := json.Marshal(req.Msg.Config.AsMap())
+
+		configJSON, err := json.Marshal(req.Msg.GetConfig().AsMap())
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid config: %w", err))
 		}
+
 		params.ManagedConnectorID = &mcID
 		params.Config = configJSON
-	} else if req.Msg.Id != "" {
+	} else if req.Msg.GetId() != "" {
 		// Existing destination path.
-		id, err := uuid.Parse(req.Msg.Id)
+		id, err := uuid.Parse(req.Msg.GetId())
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}
+
 		params.DestinationID = &id
 	} else {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("either id or managed_connector_id+config must be provided"))
@@ -268,14 +277,16 @@ func (h *DestinationHandler) TestDestinationConnection(ctx context.Context, req 
 	}), nil
 }
 
-func destinationToProto(d *pipelineservice.Destination) *pipelinev1.Destination {
+func destinationToProto(dest *pipelineservice.Destination) *pipelinev1.Destination {
 	var config *structpb.Struct
-	if d.Config != "" {
+
+	if dest.Config != "" {
 		// Mask secret references before returning to API
-		maskedConfig, err := pipelinesecrets.MaskConfigSecrets(d.Config)
+		maskedConfig, err := pipelinesecrets.MaskConfigSecrets(dest.Config)
 		if err != nil {
-			maskedConfig = d.Config
+			maskedConfig = dest.Config
 		}
+
 		var m map[string]any
 		if json.Unmarshal([]byte(maskedConfig), &m) == nil {
 			config, _ = structpb.NewStruct(m)
@@ -283,16 +294,17 @@ func destinationToProto(d *pipelineservice.Destination) *pipelinev1.Destination 
 	}
 
 	proto := &pipelinev1.Destination{
-		Id:                 d.ID.String(),
-		WorkspaceId:        d.WorkspaceID.String(),
-		Name:               d.Name,
-		ManagedConnectorId: d.ManagedConnectorID.String(),
+		Id:                 dest.ID.String(),
+		WorkspaceId:        dest.WorkspaceID.String(),
+		Name:               dest.Name,
+		ManagedConnectorId: dest.ManagedConnectorID.String(),
 		Config:             config,
-		CreatedAt:          timestamppb.New(d.CreatedAt),
-		UpdatedAt:          timestamppb.New(d.UpdatedAt),
+		CreatedAt:          timestamppb.New(dest.CreatedAt),
+		UpdatedAt:          timestamppb.New(dest.UpdatedAt),
 	}
-	if d.RuntimeConfig != nil {
-		proto.RuntimeConfig = d.RuntimeConfig
+	if dest.RuntimeConfig != nil {
+		proto.RuntimeConfig = dest.RuntimeConfig
 	}
+
 	return proto
 }

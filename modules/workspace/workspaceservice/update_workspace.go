@@ -27,7 +27,7 @@ func NewUpdateWorkspace(storage Storage) *UpdateWorkspace {
 
 // Execute updates the workspace fields specified in params.
 func (uc *UpdateWorkspace) Execute(ctx context.Context, params UpdateWorkspaceParams) (*Workspace, error) {
-	ws, err := uc.storage.Workspaces().First(ctx, &WorkspaceFilter{
+	workspace, err := uc.storage.Workspaces().First(ctx, &WorkspaceFilter{
 		ID: filter.Equals(params.ID),
 	})
 	if err != nil {
@@ -35,12 +35,12 @@ func (uc *UpdateWorkspace) Execute(ctx context.Context, params UpdateWorkspacePa
 	}
 
 	if params.Name != nil {
-		ws.Name = *params.Name
+		workspace.Name = *params.Name
 	}
 
-	ws.UpdatedAt = time.Now()
+	workspace.UpdatedAt = time.Now()
 
-	updated, err := uc.storage.Workspaces().Update(ctx, ws)
+	updated, err := uc.storage.Workspaces().Update(ctx, workspace)
 	if err != nil {
 		return nil, fmt.Errorf("updating workspace: %w", err)
 	}

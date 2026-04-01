@@ -36,6 +36,7 @@ func UserIDFromContext(ctx context.Context) (uuid.UUID, error) {
 	if !ok {
 		return uuid.UUID{}, fmt.Errorf("user ID not found in context")
 	}
+
 	return v, nil
 }
 
@@ -45,6 +46,7 @@ func EmailFromContext(ctx context.Context) (string, error) {
 	if !ok || v == "" {
 		return "", fmt.Errorf("email not found in context")
 	}
+
 	return v, nil
 }
 
@@ -54,6 +56,7 @@ func WorkspaceIDFromContext(ctx context.Context) (uuid.UUID, error) {
 	if !ok {
 		return uuid.UUID{}, fmt.Errorf("workspace ID not found in context")
 	}
+
 	return v, nil
 }
 

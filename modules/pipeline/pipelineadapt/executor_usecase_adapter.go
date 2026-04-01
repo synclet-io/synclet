@@ -69,6 +69,7 @@ func (a *UseCaseExecutorBackend) ClaimJob(ctx context.Context, workerID string) 
 	if err != nil {
 		return nil, fmt.Errorf("claiming job bundle: %w", err)
 	}
+
 	return result, nil
 }
 
@@ -103,6 +104,7 @@ func (a *UseCaseExecutorBackend) Heartbeat(ctx context.Context, jobID uuid.UUID,
 	cancelled, err := a.checkJobCancelled.Execute(ctx, pipelinejobs.CheckJobCancelledParams{JobID: jobID})
 	if err != nil {
 		slog.Error("usecase backend: check cancelled failed", "job_id", jobID.String(), "error", err)
+
 		return &pipelinesync.HeartbeatResult{Cancelled: false}, nil
 	}
 
@@ -147,6 +149,7 @@ func (a *UseCaseExecutorBackend) ReportLog(ctx context.Context, jobID uuid.UUID,
 	}); err != nil {
 		slog.Error("usecase backend: report log failed", "job_id", jobID.String(), "error", err)
 	}
+
 	return nil
 }
 
@@ -156,9 +159,11 @@ func (a *UseCaseExecutorBackend) ClaimConnectorTask(ctx context.Context, workerI
 	if err != nil {
 		return nil, fmt.Errorf("claiming connector task: %w", err)
 	}
+
 	if result == nil {
 		return nil, nil
 	}
+
 	return &pipelinesync.ClaimConnectorTaskResult{
 		TaskID:      result.TaskID,
 		TaskType:    result.TaskType,

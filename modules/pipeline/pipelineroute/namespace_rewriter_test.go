@@ -63,6 +63,7 @@ func makeGlobalStateMsg(descriptors ...protocol.StreamDescriptor) *protocol.Airb
 			StreamState:      json.RawMessage(`{}`),
 		}
 	}
+
 	return &protocol.AirbyteMessage{
 		Type: protocol.MessageTypeState,
 		State: &protocol.AirbyteStateMessage{
@@ -116,14 +117,14 @@ func TestNamespaceRewriter_Destination(t *testing.T) {
 		msg := makeRecordMsg("users", "public")
 		rewriter.RewriteRecord(msg)
 		assert.Equal(t, "pre_users", msg.Record.Stream)
-		assert.Equal(t, "", msg.Record.Namespace)
+		assert.Empty(t, msg.Record.Namespace)
 	})
 
 	t.Run("RewriteState stream type clears namespace, prepends prefix", func(t *testing.T) {
 		msg := makeStreamStateMsg("users", "public")
 		rewriter.RewriteState(msg)
 		assert.Equal(t, "pre_users", msg.State.Stream.StreamDescriptor.Name)
-		assert.Equal(t, "", msg.State.Stream.StreamDescriptor.Namespace)
+		assert.Empty(t, msg.State.Stream.StreamDescriptor.Namespace)
 	})
 }
 
@@ -189,7 +190,7 @@ func TestNamespaceRewriter_NoPrefix(t *testing.T) {
 	msg := makeRecordMsg("users", "public")
 	rewriter.RewriteRecord(msg)
 	assert.Equal(t, "users", msg.Record.Stream) // No prefix applied.
-	assert.Equal(t, "", msg.Record.Namespace)   // Namespace cleared for Destination.
+	assert.Empty(t, msg.Record.Namespace)       // Namespace cleared for Destination.
 }
 
 func TestNamespaceRewriter_FallbackForUnknownStream(t *testing.T) {
@@ -200,5 +201,5 @@ func TestNamespaceRewriter_FallbackForUnknownStream(t *testing.T) {
 	msg := makeRecordMsg("unknown_stream", "some_ns")
 	rewriter.RewriteRecord(msg)
 	assert.Equal(t, "x_unknown_stream", msg.Record.Stream)
-	assert.Equal(t, "", msg.Record.Namespace) // Destination clears namespace.
+	assert.Empty(t, msg.Record.Namespace) // Destination clears namespace.
 }

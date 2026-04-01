@@ -57,7 +57,6 @@ func (uc *GetConfiguredCatalog) Execute(ctx context.Context, params GetConfigure
 	latestRecord, discoverErr := uc.storage.CatalogDiscoverys().First(ctx, &pipelineservice.CatalogDiscoveryFilter{
 		SourceID: filter.Equals(conn.SourceID),
 	}, dbutil.WithOrder(pipelineservice.CatalogDiscoveryFieldVersion, dbutil.OrderDirDesc))
-
 	if discoverErr == nil {
 		var latestCatalog protocol.AirbyteCatalog
 		if err := json.Unmarshal([]byte(latestRecord.CatalogJSON), &latestCatalog); err == nil {

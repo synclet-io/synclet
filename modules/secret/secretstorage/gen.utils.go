@@ -37,6 +37,7 @@ func (i *ipValue) Scan(src any) error {
 	default:
 		return errors.Errorf("can't parse ipValue from: %T", src)
 	}
+
 	return nil
 }
 
@@ -106,6 +107,7 @@ func (s uuidSliceValue) Value() (driver.Value, error) {
 	for i, u := range s {
 		result[i] = u.String()
 	}
+
 	return result.Value()
 }
 

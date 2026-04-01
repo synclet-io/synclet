@@ -45,6 +45,7 @@ func (s *SlackChannel) Deliver(ctx context.Context, channel *NotificationChannel
 		if err != nil {
 			return fmt.Errorf("decrypting slack webhook_url: %w", err)
 		}
+
 		webhookURL = decrypted
 	}
 
@@ -61,12 +62,14 @@ func (s *SlackChannel) Deliver(ctx context.Context, channel *NotificationChannel
 	if err != nil {
 		return fmt.Errorf("creating request: %w", err)
 	}
+
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("sending slack notification: %w", err)
 	}
+
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
@@ -81,8 +84,10 @@ func formatSlackMessage(event WebhookEvent) string {
 	if event.ConnectionID != "" {
 		msg += fmt.Sprintf(" (connection: %s)", event.ConnectionID)
 	}
+
 	if event.Error != "" {
 		msg += fmt.Sprintf(": %s", event.Error)
 	}
+
 	return msg
 }

@@ -30,25 +30,30 @@ type mockRunner struct {
 func (m *mockRunner) Run(_ context.Context, opts container.RunOptions) (*container.RunResult, error) {
 	m.lastRunOpts = opts
 	idx := m.runCalls
+
 	m.runCalls++
 	if idx < len(m.runErrors) && m.runErrors[idx] != nil {
 		return nil, m.runErrors[idx]
 	}
+
 	if idx < len(m.runResults) {
 		return m.runResults[idx], nil
 	}
+
 	return &container.RunResult{}, nil
 }
 
 func (m *mockRunner) Pull(_ context.Context, image string) error {
 	m.pullCalled = true
 	m.pullImage = image
+
 	return m.pullError
 }
 
 func (m *mockRunner) ResolveDigest(_ context.Context, image string) (string, error) {
 	m.resolveDigestCalled = true
 	m.resolveDigestImage = image
+
 	return m.resolveDigestResult, m.resolveDigestError
 }
 

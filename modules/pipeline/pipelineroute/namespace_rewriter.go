@@ -32,25 +32,25 @@ func NewNamespaceRewriter(
 	customFormat *string,
 	prefix *string,
 ) *NamespaceRewriter {
-	r := &NamespaceRewriter{
+	rewriter := &NamespaceRewriter{
 		mapping:      make(map[streamKey]streamKey, len(catalog.Streams)),
 		nsDef:        nsDef,
 		customFormat: customFormat,
 		prefix:       prefix,
 	}
 
-	for _, cs := range catalog.Streams {
+	for _, configuredStream := range catalog.Streams {
 		srcKey := streamKey{
-			namespace: cs.Stream.Namespace,
-			name:      cs.Stream.Name,
+			namespace: configuredStream.Stream.Namespace,
+			name:      configuredStream.Stream.Name,
 		}
-		r.mapping[srcKey] = streamKey{
-			namespace: r.rewriteNamespace(cs.Stream.Namespace),
-			name:      r.rewriteName(cs.Stream.Name),
+		rewriter.mapping[srcKey] = streamKey{
+			namespace: rewriter.rewriteNamespace(configuredStream.Stream.Namespace),
+			name:      rewriter.rewriteName(configuredStream.Stream.Name),
 		}
 	}
 
-	return r
+	return rewriter
 }
 
 // RewriteRecord rewrites the stream name and namespace on a RECORD message.
@@ -64,6 +64,7 @@ func (r *NamespaceRewriter) RewriteRecord(msg *protocol.AirbyteMessage) {
 	if target, ok := r.mapping[src]; ok {
 		msg.Record.Stream = target.name
 		msg.Record.Namespace = target.namespace
+
 		return
 	}
 
@@ -128,17 +129,18 @@ func (r *NamespaceRewriter) RewriteTrace(msg *protocol.AirbyteMessage) {
 }
 
 // rewriteDescriptor applies the namespace/prefix mapping to a StreamDescriptor.
-func (r *NamespaceRewriter) rewriteDescriptor(d *protocol.StreamDescriptor) {
-	src := streamKey{namespace: d.Namespace, name: d.Name}
+func (r *NamespaceRewriter) rewriteDescriptor(desc *protocol.StreamDescriptor) {
+	src := streamKey{namespace: desc.Namespace, name: desc.Name}
 	if target, ok := r.mapping[src]; ok {
-		d.Name = target.name
-		d.Namespace = target.namespace
+		desc.Name = target.name
+		desc.Namespace = target.namespace
+
 		return
 	}
 
 	// Fallback for descriptors not in catalog.
-	d.Name = r.rewriteName(d.Name)
-	d.Namespace = r.rewriteNamespace(d.Namespace)
+	desc.Name = r.rewriteName(desc.Name)
+	desc.Namespace = r.rewriteNamespace(desc.Namespace)
 }
 
 // rewriteName prepends the stream prefix if configured.
@@ -146,6 +148,7 @@ func (r *NamespaceRewriter) rewriteName(name string) string {
 	if r.prefix != nil && *r.prefix != "" {
 		return *r.prefix + name
 	}
+
 	return name
 }
 
@@ -160,6 +163,7 @@ func (r *NamespaceRewriter) rewriteNamespace(originalNamespace string) string {
 		if r.customFormat != nil {
 			return strings.ReplaceAll(*r.customFormat, "${SOURCE_NAMESPACE}", originalNamespace)
 		}
+
 		return originalNamespace
 	default:
 		return originalNamespace

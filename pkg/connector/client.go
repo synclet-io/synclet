@@ -113,6 +113,7 @@ func (c *ConnectorClient) Read(ctx context.Context, image string, config json.Ra
 	var stateBytes []byte
 	if state != nil {
 		stateBytes = state
+
 		cmd = append(cmd, "--state", "/tmp/state.json")
 	}
 
@@ -139,6 +140,7 @@ func (c *ConnectorClient) Read(ctx context.Context, image string, config json.Ra
 	}
 
 	wrapped := newExitAwareReader(result.Stdout, result.Stderr, result.Done, &result.ExitCode, "source")
+
 	return wrapped, cleanup, nil
 }
 
@@ -176,6 +178,7 @@ func (c *ConnectorClient) Write(ctx context.Context, image string, config json.R
 	}
 
 	wrapped := newExitAwareReader(result.Stdout, result.Stderr, result.Done, &result.ExitCode, "destination")
+
 	return wrapped, cleanup, nil
 }
 
@@ -206,9 +209,11 @@ func (r *exitAwareReader) Read(p []byte) (int, error) {
 	if err == io.EOF {
 		// Stdout closed — wait for container to fully exit.
 		<-r.done
+
 		if *r.exitCode != 0 {
 			stderrContent, _ := io.ReadAll(r.stderr)
 			stderrStr := truncateString(string(bytes.TrimSpace(stderrContent)), 1024)
+
 			return n, &ExitCodeError{
 				ExitCode: *r.exitCode,
 				Role:     r.role,
@@ -216,6 +221,7 @@ func (r *exitAwareReader) Read(p []byte) (int, error) {
 			}
 		}
 	}
+
 	return n, err
 }
 
@@ -258,6 +264,7 @@ func (c *ConnectorClient) runWithAutoPull(ctx context.Context, opts container.Ru
 // isImageNotFoundError checks if an error is a Docker "image not found" error.
 func isImageNotFoundError(err error) bool {
 	msg := err.Error()
+
 	return strings.Contains(msg, "No such image") || strings.Contains(msg, "reference does not exist")
 }
 
@@ -285,8 +292,10 @@ func (c *ConnectorClient) runAndCollect(ctx context.Context, opts container.RunO
 			if errors.Is(err, io.EOF) {
 				break
 			}
+
 			return nil, fmt.Errorf("reading messages: %w", err)
 		}
+
 		messages = append(messages, msg)
 	}
 
@@ -302,6 +311,7 @@ func (c *ConnectorClient) runAndCollect(ctx context.Context, opts container.RunO
 	if result.ExitCode != 0 {
 		stderrContent, _ := io.ReadAll(result.Stderr)
 		stderrStr := truncateString(string(bytes.TrimSpace(stderrContent)), 1024)
+
 		return nil, fmt.Errorf("container exited with code %d: %s", result.ExitCode, stderrStr)
 	}
 
@@ -316,12 +326,14 @@ func extractTraceError(messages []*protocol.AirbyteMessage) error {
 			if msg.Trace.Error.InternalMessage != "" {
 				errMsg = fmt.Sprintf("%s (internal: %s)", errMsg, msg.Trace.Error.InternalMessage)
 			}
+
 			return &connectorError{
 				Message:     errMsg,
 				FailureType: msg.Trace.Error.FailureType,
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -330,5 +342,6 @@ func truncateString(s string, maxLen int) string {
 	if len(s) <= maxLen {
 		return s
 	}
+
 	return s[:maxLen] + "..."
 }

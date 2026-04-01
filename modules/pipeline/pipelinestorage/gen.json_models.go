@@ -54,6 +54,7 @@ func convertManagedConnectorToJsonModel(src *pipelineservice.ManagedConnector) (
 	} else {
 		result.RepositoryID = toPtr(fromPtr(src.RepositoryID))
 	}
+
 	return result, nil
 }
 
@@ -77,6 +78,7 @@ func convertManagedConnectorFromJsonModel(src *jsonManagedConnector) (*pipelines
 	} else {
 		result.RepositoryID = toPtr(fromPtr(src.RepositoryID))
 	}
+
 	return result, nil
 }
 
@@ -131,6 +133,7 @@ func convertRepositoryToJsonModel(src *pipelineservice.Repository) (*jsonReposit
 	}
 	result.CreatedAt = (src.CreatedAt).UTC()
 	result.UpdatedAt = (src.UpdatedAt).UTC()
+
 	return result, nil
 }
 
@@ -163,6 +166,7 @@ func convertRepositoryFromJsonModel(src *jsonRepository) (*pipelineservice.Repos
 	}
 	result.CreatedAt = src.CreatedAt
 	result.UpdatedAt = src.UpdatedAt
+
 	return result, nil
 }
 
@@ -223,6 +227,7 @@ func convertRepositoryConnectorToJsonModel(src *pipelineservice.RepositoryConnec
 	}
 	result.SourceType = tmp12
 	result.Metadata = src.Metadata
+
 	return result, nil
 }
 
@@ -258,6 +263,7 @@ func convertRepositoryConnectorFromJsonModel(src *jsonRepositoryConnector) (*pip
 	}
 	result.SourceType = tmp26
 	result.Metadata = src.Metadata
+
 	return result, nil
 }
 
@@ -294,6 +300,7 @@ func convertSourceToJsonModel(src *pipelineservice.Source) (*jsonSource, error) 
 	} else {
 		result.RuntimeConfig = toPtr(fromPtr(src.RuntimeConfig))
 	}
+
 	return result, nil
 }
 
@@ -311,6 +318,7 @@ func convertSourceFromJsonModel(src *jsonSource) (*pipelineservice.Source, error
 	} else {
 		result.RuntimeConfig = toPtr(fromPtr(src.RuntimeConfig))
 	}
+
 	return result, nil
 }
 
@@ -347,6 +355,7 @@ func convertDestinationToJsonModel(src *pipelineservice.Destination) (*jsonDesti
 	} else {
 		result.RuntimeConfig = toPtr(fromPtr(src.RuntimeConfig))
 	}
+
 	return result, nil
 }
 
@@ -364,6 +373,7 @@ func convertDestinationFromJsonModel(src *jsonDestination) (*pipelineservice.Des
 	} else {
 		result.RuntimeConfig = toPtr(fromPtr(src.RuntimeConfig))
 	}
+
 	return result, nil
 }
 
@@ -438,6 +448,7 @@ func convertConnectionToJsonModel(src *pipelineservice.Connection) (*jsonConnect
 	}
 	result.CreatedAt = (src.CreatedAt).UTC()
 	result.UpdatedAt = (src.UpdatedAt).UTC()
+
 	return result, nil
 }
 
@@ -486,6 +497,7 @@ func convertConnectionFromJsonModel(src *jsonConnection) (*pipelineservice.Conne
 	}
 	result.CreatedAt = src.CreatedAt
 	result.UpdatedAt = src.UpdatedAt
+
 	return result, nil
 }
 
@@ -568,6 +580,7 @@ func convertJobToJsonModel(src *pipelineservice.Job) (*jsonJob, error) {
 		result.FailureReason = toPtr(fromPtr(src.FailureReason))
 	}
 	result.CreatedAt = (src.CreatedAt).UTC()
+
 	return result, nil
 }
 
@@ -624,6 +637,7 @@ func convertJobFromJsonModel(src *jsonJob) (*pipelineservice.Job, error) {
 		result.FailureReason = toPtr(fromPtr(src.FailureReason))
 	}
 	result.CreatedAt = src.CreatedAt
+
 	return result, nil
 }
 
@@ -662,6 +676,7 @@ func convertJobAttemptToJsonModel(src *pipelineservice.JobAttempt) (*jsonJobAtte
 		result.Error = toPtr(fromPtr(src.Error))
 	}
 	result.SyncStatsJSON = src.SyncStatsJSON
+
 	return result, nil
 }
 
@@ -682,6 +697,7 @@ func convertJobAttemptFromJsonModel(src *jsonJobAttempt) (*pipelineservice.JobAt
 		result.Error = toPtr(fromPtr(src.Error))
 	}
 	result.SyncStatsJSON = src.SyncStatsJSON
+
 	return result, nil
 }
 
@@ -708,6 +724,7 @@ func convertCatalogDiscoveryToJsonModel(src *pipelineservice.CatalogDiscovery) (
 	result.Version = src.Version
 	result.CatalogJSON = src.CatalogJSON
 	result.DiscoveredAt = (src.DiscoveredAt).UTC()
+
 	return result, nil
 }
 
@@ -718,6 +735,7 @@ func convertCatalogDiscoveryFromJsonModel(src *jsonCatalogDiscovery) (*pipelines
 	result.Version = src.Version
 	result.CatalogJSON = src.CatalogJSON
 	result.DiscoveredAt = src.DiscoveredAt
+
 	return result, nil
 }
 
@@ -744,6 +762,7 @@ func convertConfiguredCatalogToJsonModel(src *pipelineservice.ConfiguredCatalog)
 	result.StreamsJSON = src.StreamsJSON
 	result.CreatedAt = (src.CreatedAt).UTC()
 	result.UpdatedAt = (src.UpdatedAt).UTC()
+
 	return result, nil
 }
 
@@ -754,6 +773,7 @@ func convertConfiguredCatalogFromJsonModel(src *jsonConfiguredCatalog) (*pipelin
 	result.StreamsJSON = src.StreamsJSON
 	result.CreatedAt = src.CreatedAt
 	result.UpdatedAt = src.UpdatedAt
+
 	return result, nil
 }
 
@@ -778,6 +798,7 @@ func convertJobLogToJsonModel(src *pipelineservice.JobLog) (*jsonJobLog, error) 
 	result.JobID = src.JobID
 	result.LogLine = src.LogLine
 	result.CreatedAt = (src.CreatedAt).UTC()
+
 	return result, nil
 }
 
@@ -787,6 +808,7 @@ func convertJobLogFromJsonModel(src *jsonJobLog) (*pipelineservice.JobLog, error
 	result.JobID = src.JobID
 	result.LogLine = src.LogLine
 	result.CreatedAt = src.CreatedAt
+
 	return result, nil
 }
 
@@ -811,6 +833,7 @@ func convertConnectionStateToJsonModel(src *pipelineservice.ConnectionState) (*j
 	result.StateType = src.StateType
 	result.StateBlob = src.StateBlob
 	result.UpdatedAt = (src.UpdatedAt).UTC()
+
 	return result, nil
 }
 
@@ -820,6 +843,7 @@ func convertConnectionStateFromJsonModel(src *jsonConnectionState) (*pipelineser
 	result.StateType = src.StateType
 	result.StateBlob = src.StateBlob
 	result.UpdatedAt = src.UpdatedAt
+
 	return result, nil
 }
 
@@ -856,6 +880,7 @@ func convertCheckPayloadToJsonModel(src *pipelineservice.CheckPayload) (*jsonChe
 	} else {
 		result.Config = toPtr(fromPtr(src.Config))
 	}
+
 	return result, nil
 }
 
@@ -877,6 +902,7 @@ func convertCheckPayloadFromJsonModel(src *jsonCheckPayload) (*pipelineservice.C
 	} else {
 		result.Config = toPtr(fromPtr(src.Config))
 	}
+
 	return result, nil
 }
 
@@ -895,12 +921,14 @@ func (s jsonSpecPayload) Value() (driver.Value, error) {
 func convertSpecPayloadToJsonModel(src *pipelineservice.SpecPayload) (*jsonSpecPayload, error) {
 	result := &jsonSpecPayload{}
 	result.ManagedConnectorID = src.ManagedConnectorID
+
 	return result, nil
 }
 
 func convertSpecPayloadFromJsonModel(src *jsonSpecPayload) (*pipelineservice.SpecPayload, error) {
 	result := &pipelineservice.SpecPayload{}
 	result.ManagedConnectorID = src.ManagedConnectorID
+
 	return result, nil
 }
 
@@ -921,6 +949,7 @@ func convertDiscoverPayloadToJsonModel(src *pipelineservice.DiscoverPayload) (*j
 	result := &jsonDiscoverPayload{}
 	result.SourceID = src.SourceID
 	result.ManagedConnectorID = src.ManagedConnectorID
+
 	return result, nil
 }
 
@@ -928,6 +957,7 @@ func convertDiscoverPayloadFromJsonModel(src *jsonDiscoverPayload) (*pipelineser
 	result := &pipelineservice.DiscoverPayload{}
 	result.SourceID = src.SourceID
 	result.ManagedConnectorID = src.ManagedConnectorID
+
 	return result, nil
 }
 
@@ -948,6 +978,7 @@ func convertCheckResultToJsonModel(src *pipelineservice.CheckResult) (*jsonCheck
 	result := &jsonCheckResult{}
 	result.Success = src.Success
 	result.Message = src.Message
+
 	return result, nil
 }
 
@@ -955,6 +986,7 @@ func convertCheckResultFromJsonModel(src *jsonCheckResult) (*pipelineservice.Che
 	result := &pipelineservice.CheckResult{}
 	result.Success = src.Success
 	result.Message = src.Message
+
 	return result, nil
 }
 
@@ -989,6 +1021,7 @@ func convertSpecResultToJsonModel(src *pipelineservice.SpecResult) (*jsonSpecRes
 	result.SupportedDestinationSyncModes = src.SupportedDestinationSyncModes
 	result.AdvancedAuth = src.AdvancedAuth
 	result.ProtocolVersion = src.ProtocolVersion
+
 	return result, nil
 }
 
@@ -1003,6 +1036,7 @@ func convertSpecResultFromJsonModel(src *jsonSpecResult) (*pipelineservice.SpecR
 	result.SupportedDestinationSyncModes = src.SupportedDestinationSyncModes
 	result.AdvancedAuth = src.AdvancedAuth
 	result.ProtocolVersion = src.ProtocolVersion
+
 	return result, nil
 }
 
@@ -1021,12 +1055,14 @@ func (d jsonDiscoverResult) Value() (driver.Value, error) {
 func convertDiscoverResultToJsonModel(src *pipelineservice.DiscoverResult) (*jsonDiscoverResult, error) {
 	result := &jsonDiscoverResult{}
 	result.Catalog = src.Catalog
+
 	return result, nil
 }
 
 func convertDiscoverResultFromJsonModel(src *jsonDiscoverResult) (*pipelineservice.DiscoverResult, error) {
 	result := &pipelineservice.DiscoverResult{}
 	result.Catalog = src.Catalog
+
 	return result, nil
 }
 
@@ -1051,6 +1087,7 @@ func convertWorkspaceSettingsToJsonModel(src *pipelineservice.WorkspaceSettings)
 	result.MaxJobsPerWorkspace = src.MaxJobsPerWorkspace
 	result.CreatedAt = (src.CreatedAt).UTC()
 	result.UpdatedAt = (src.UpdatedAt).UTC()
+
 	return result, nil
 }
 
@@ -1060,6 +1097,7 @@ func convertWorkspaceSettingsFromJsonModel(src *jsonWorkspaceSettings) (*pipelin
 	result.MaxJobsPerWorkspace = src.MaxJobsPerWorkspace
 	result.CreatedAt = src.CreatedAt
 	result.UpdatedAt = src.UpdatedAt
+
 	return result, nil
 }
 
@@ -1130,6 +1168,7 @@ func convertConnectorTaskToJsonModel(src *pipelineservice.ConnectorTask) (*jsonC
 	} else {
 		result.CompletedAt = toPtr((fromPtr(src.CompletedAt)).UTC())
 	}
+
 	return result, nil
 }
 
@@ -1178,6 +1217,7 @@ func convertConnectorTaskFromJsonModel(src *jsonConnectorTask) (*pipelineservice
 	} else {
 		result.CompletedAt = toPtr(fromPtr(src.CompletedAt))
 	}
+
 	return result, nil
 }
 
@@ -1204,6 +1244,7 @@ func convertStreamGenerationToJsonModel(src *pipelineservice.StreamGeneration) (
 	result.StreamName = src.StreamName
 	result.GenerationID = src.GenerationID
 	result.UpdatedAt = (src.UpdatedAt).UTC()
+
 	return result, nil
 }
 
@@ -1214,5 +1255,6 @@ func convertStreamGenerationFromJsonModel(src *jsonStreamGeneration) (*pipelines
 	result.StreamName = src.StreamName
 	result.GenerationID = src.GenerationID
 	result.UpdatedAt = src.UpdatedAt
+
 	return result, nil
 }

@@ -14,6 +14,7 @@ func paginateSlice[T any](items []T, pageSize, offset int32) (result []T, total 
 	if start < 0 {
 		start = 0
 	}
+
 	if start >= total {
 		return nil, total
 	}

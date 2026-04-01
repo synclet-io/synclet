@@ -41,6 +41,7 @@ func (uc *GetWorkspaceStats) Execute(ctx context.Context, params pipelineservice
 
 	result.TotalSyncs = currentStats.SyncsTotal
 	result.FailedSyncs = currentStats.SyncsFailed
+
 	result.RecordsSynced = currentStats.RecordsRead
 	if currentStats.SyncsTotal > 0 {
 		result.SuccessRate = float64(currentStats.SyncsSucceeded) / float64(currentStats.SyncsTotal) * 100
@@ -60,6 +61,7 @@ func (uc *GetWorkspaceStats) Execute(ctx context.Context, params pipelineservice
 	if previousStats.SyncsTotal > 0 {
 		prevSuccessRate = float64(previousStats.SyncsSucceeded) / float64(previousStats.SyncsTotal) * 100
 	}
+
 	result.SuccessRateDelta = result.SuccessRate - prevSuccessRate
 
 	// Active connections count.
@@ -71,11 +73,13 @@ func (uc *GetWorkspaceStats) Execute(ctx context.Context, params pipelineservice
 	}
 
 	var activeCount int32
+
 	for _, conn := range connections {
 		if conn.Status == pipelineservice.ConnectionStatusActive {
 			activeCount++
 		}
 	}
+
 	result.ActiveConnections = activeCount
 
 	// Connection health grid.
@@ -86,6 +90,7 @@ func (uc *GetWorkspaceStats) Execute(ctx context.Context, params pipelineservice
 	if topErr != nil {
 		uc.logger.WithError(topErr).Warn(ctx, "failed to query top connections for dashboard")
 	}
+
 	result.TopConnections = topConns
 
 	// Failure breakdown.
@@ -93,6 +98,7 @@ func (uc *GetWorkspaceStats) Execute(ctx context.Context, params pipelineservice
 	if err != nil {
 		return nil, fmt.Errorf("querying failure breakdown: %w", err)
 	}
+
 	result.FailureBreakdown = categorizeFailedJobs(failedJobs)
 
 	return result, nil
@@ -126,6 +132,7 @@ func (uc *GetWorkspaceStats) computeConnectionHealths(ctx context.Context, conne
 		}
 
 		health := pipelineservice.HealthDisabled
+
 		if conn.Status == pipelineservice.ConnectionStatusActive {
 			if lastSyncAt != nil {
 				health = ComputeHealthStatus(lastStatus, schedule, *lastSyncAt, time.Now())
@@ -159,8 +166,8 @@ func (uc *GetWorkspaceStats) queryTopConnections(ctx context.Context, workspaceI
 
 	// Batch-fetch last completed times and sparklines for all top connections.
 	topConnIDs := make([]uuid.UUID, len(rows))
-	for i, r := range rows {
-		topConnIDs[i] = r.ConnectionID
+	for i, row := range rows {
+		topConnIDs[i] = row.ConnectionID
 	}
 
 	lastCompletedMap, _ := uc.statsStorage.QueryConnectionLastCompletedAtBatch(ctx, topConnIDs)
@@ -174,8 +181,8 @@ func (uc *GetWorkspaceStats) queryTopConnections(ctx context.Context, workspaceI
 	}
 
 	items := make([]pipelineservice.TopConnectionItem, len(rows))
-	for i, r := range rows {
-		sparkline := sparklineMap[r.ConnectionID]
+	for i, row := range rows {
+		sparkline := sparklineMap[row.ConnectionID]
 
 		// Reverse to chronological order (batch query returns DESC order).
 		for l, ri := 0, len(sparkline)-1; l < ri; l, ri = l+1, ri-1 {
@@ -183,11 +190,11 @@ func (uc *GetWorkspaceStats) queryTopConnections(ctx context.Context, workspaceI
 		}
 
 		items[i] = pipelineservice.TopConnectionItem{
-			ConnectionID:    r.ConnectionID,
-			ConnectionName:  nameMap[r.ConnectionID],
-			RecordsSynced:   r.RecordsSynced,
-			BytesSynced:     r.BytesSynced,
-			LastSyncAt:      lastCompletedMap[r.ConnectionID],
+			ConnectionID:    row.ConnectionID,
+			ConnectionName:  nameMap[row.ConnectionID],
+			RecordsSynced:   row.RecordsSynced,
+			BytesSynced:     row.BytesSynced,
+			LastSyncAt:      lastCompletedMap[row.ConnectionID],
 			SparklineValues: sparkline,
 		}
 	}
@@ -201,7 +208,9 @@ func computeDelta(previous, current float64) float64 {
 		if current == 0 {
 			return 0
 		}
+
 		return 100
 	}
+
 	return ((current - previous) / previous) * 100
 }

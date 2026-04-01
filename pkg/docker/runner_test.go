@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	pkgcontainer "github.com/synclet-io/synclet/pkg/container"
 )
@@ -12,11 +13,12 @@ import (
 func TestBoundedBuffer_UnderLimit(t *testing.T) {
 	buf := newBoundedBuffer(100)
 	n, err := buf.Write([]byte("hello"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 5, n)
+
 	out := make([]byte, 100)
 	n, err = buf.Read(out)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "hello", string(out[:n]))
 }
 
@@ -57,24 +59,27 @@ func TestBoundedBuffer_EmptyRead(t *testing.T) {
 
 func TestDefaultDockerResourceLimits(t *testing.T) {
 	// Test default constant values.
-	assert.Equal(t, int64(2*1024*1024*1024), defaultDockerMemoryLimit)
-	assert.Equal(t, 1.0, defaultDockerCPULimit)
+	assert.Equal(t, defaultDockerMemoryLimit, int64(2*1024*1024*1024))
+	assert.InDelta(t, 1.0, defaultDockerCPULimit, 0.001)
 
 	// Test defaulting logic: when opts are 0, defaults apply.
 	t.Run("zero opts get defaults", func(t *testing.T) {
 		var memory int64
 		var nanoCPUs int64
+
 		opts := pkgcontainer.RunOptions{MemoryLimit: 0, CPULimit: 0}
 		if opts.MemoryLimit > 0 {
 			memory = opts.MemoryLimit
 		} else {
 			memory = defaultDockerMemoryLimit
 		}
+
 		if opts.CPULimit > 0 {
 			nanoCPUs = int64(opts.CPULimit * 1e9)
 		} else {
 			nanoCPUs = int64(defaultDockerCPULimit * 1e9)
 		}
+
 		assert.Equal(t, int64(2*1024*1024*1024), memory)
 		assert.Equal(t, int64(1e9), nanoCPUs)
 	})
@@ -83,17 +88,20 @@ func TestDefaultDockerResourceLimits(t *testing.T) {
 	t.Run("explicit opts override defaults", func(t *testing.T) {
 		var memory int64
 		var nanoCPUs int64
+
 		opts := pkgcontainer.RunOptions{MemoryLimit: 4 * 1024 * 1024 * 1024, CPULimit: 2.0}
 		if opts.MemoryLimit > 0 {
 			memory = opts.MemoryLimit
 		} else {
 			memory = defaultDockerMemoryLimit
 		}
+
 		if opts.CPULimit > 0 {
 			nanoCPUs = int64(opts.CPULimit * 1e9)
 		} else {
 			nanoCPUs = int64(defaultDockerCPULimit * 1e9)
 		}
+
 		assert.Equal(t, int64(4*1024*1024*1024), memory)
 		assert.Equal(t, int64(2e9), nanoCPUs)
 	})

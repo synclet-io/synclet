@@ -131,6 +131,7 @@ func (f *RegistryFetcher) Fetch(ctx context.Context, url string, authHeader *str
 	if err != nil {
 		return nil, fmt.Errorf("creating request: %w", err)
 	}
+
 	if authHeader != nil && *authHeader != "" {
 		req.Header.Set("Authorization", *authHeader)
 	}
@@ -154,18 +155,23 @@ func (f *RegistryFetcher) Fetch(ctx context.Context, url string, authHeader *str
 	}
 
 	var connectors []ConnectorData
+
 	for _, s := range registry.Sources {
 		if s.Tombstone || isEnterpriseLicensed(s) {
 			continue
 		}
+
 		connectors = append(connectors, toConnectorData(s, "source"))
 	}
+
 	for _, d := range registry.Destinations {
 		if d.Tombstone || isEnterpriseLicensed(d) {
 			continue
 		}
+
 		connectors = append(connectors, toConnectorData(d, "destination"))
 	}
+
 	return connectors, nil
 }
 
@@ -176,72 +182,75 @@ func isEnterpriseLicensed(c airbyteConnector) bool {
 }
 
 // toConnectorData maps an airbyteConnector to ConnectorData, extracting all metadata fields.
-func toConnectorData(c airbyteConnector, connectorType string) ConnectorData {
-	metadata := buildMetadata(c)
+func toConnectorData(connector airbyteConnector, connectorType string) ConnectorData {
+	metadata := buildMetadata(connector)
+
 	return ConnectorData{
-		Name:             c.Name,
-		DockerRepository: c.DockerRepository,
-		DockerImageTag:   c.DockerImageTag,
-		DocumentationURL: c.DocumentationURL,
-		ReleaseStage:     c.ReleaseStage,
-		IconURL:          c.IconURL, // Use iconUrl CDN URL (D-04), not icon filename
+		Name:             connector.Name,
+		DockerRepository: connector.DockerRepository,
+		DockerImageTag:   connector.DockerImageTag,
+		DocumentationURL: connector.DocumentationURL,
+		ReleaseStage:     connector.ReleaseStage,
+		IconURL:          connector.IconURL, // Use iconUrl CDN URL (D-04), not icon filename
 		ConnectorType:    connectorType,
-		Spec:             marshalConnectorSpec(c.Spec, c.DocumentationURL),
-		SupportLevel:     c.SupportLevel,
-		License:          c.License,
-		SourceType:       c.SourceType,
+		Spec:             marshalConnectorSpec(connector.Spec, connector.DocumentationURL),
+		SupportLevel:     connector.SupportLevel,
+		License:          connector.License,
+		SourceType:       connector.SourceType,
 		Metadata:         pipelineservice.MarshalMetadata(&metadata),
 	}
 }
 
 // buildMetadata constructs a RepositoryConnectorMetadata from an airbyteConnector.
-func buildMetadata(c airbyteConnector) pipelineservice.RepositoryConnectorMetadata {
-	m := pipelineservice.RepositoryConnectorMetadata{
-		MaxSecondsBetweenMessages: c.MaxSecondsBetweenMessages,
-		ErdURL:                    c.ErdURL,
-		ReleaseDate:               c.ReleaseDate,
-		Language:                  c.Language,
-		Tags:                      c.Tags,
-		SupportsRefreshes:         c.SupportsRefreshes,
-		SupportsFileTransfer:      c.SupportsFileTransfer,
-		SupportsDataActivation:    c.SupportsDataActivation,
+func buildMetadata(connector airbyteConnector) pipelineservice.RepositoryConnectorMetadata {
+	meta := pipelineservice.RepositoryConnectorMetadata{
+		MaxSecondsBetweenMessages: connector.MaxSecondsBetweenMessages,
+		ErdURL:                    connector.ErdURL,
+		ReleaseDate:               connector.ReleaseDate,
+		Language:                  connector.Language,
+		Tags:                      connector.Tags,
+		SupportsRefreshes:         connector.SupportsRefreshes,
+		SupportsFileTransfer:      connector.SupportsFileTransfer,
+		SupportsDataActivation:    connector.SupportsDataActivation,
 	}
 
 	// Breaking changes from releases section.
-	if c.Releases != nil {
-		if len(c.Releases.BreakingChanges) > 0 {
-			m.BreakingChanges = make(map[string]pipelineservice.BreakingChange, len(c.Releases.BreakingChanges))
-			for version, bc := range c.Releases.BreakingChanges {
-				m.BreakingChanges[version] = pipelineservice.BreakingChange{
+	if connector.Releases != nil {
+		if len(connector.Releases.BreakingChanges) > 0 {
+			meta.BreakingChanges = make(map[string]pipelineservice.BreakingChange, len(connector.Releases.BreakingChanges))
+			for version, bc := range connector.Releases.BreakingChanges {
+				meta.BreakingChanges[version] = pipelineservice.BreakingChange{
 					Message:                   bc.Message,
 					MigrationDocumentationURL: bc.MigrationDocumentationURL,
 					UpgradeDeadline:           bc.UpgradeDeadline,
 				}
 			}
 		}
-		m.MigrationDocumentationURL = c.Releases.MigrationDocumentationURL
+
+		meta.MigrationDocumentationURL = connector.Releases.MigrationDocumentationURL
 	}
 
 	// Resource requirements.
-	if c.ResourceRequirements != nil && len(c.ResourceRequirements.JobSpecific) > 0 {
-		rr := &pipelineservice.ResourceRequirements{}
-		for _, js := range c.ResourceRequirements.JobSpecific {
-			rr.JobSpecific = append(rr.JobSpecific, pipelineservice.JobSpecificResourceRequirement{
-				JobType: js.JobType,
+	if connector.ResourceRequirements != nil && len(connector.ResourceRequirements.JobSpecific) > 0 {
+		resReqs := &pipelineservice.ResourceRequirements{}
+		for _, jobSpec := range connector.ResourceRequirements.JobSpecific {
+			resReqs.JobSpecific = append(resReqs.JobSpecific, pipelineservice.JobSpecificResourceRequirement{
+				JobType: jobSpec.JobType,
 				ResourceRequirements: pipelineservice.ResourceRequirementValues{
-					MemoryLimit:   js.ResourceRequirements.MemoryLimit,
-					MemoryRequest: js.ResourceRequirements.MemoryRequest,
-					CPULimit:      js.ResourceRequirements.CPULimit,
-					CPURequest:    js.ResourceRequirements.CPURequest,
+					MemoryLimit:   jobSpec.ResourceRequirements.MemoryLimit,
+					MemoryRequest: jobSpec.ResourceRequirements.MemoryRequest,
+					CPULimit:      jobSpec.ResourceRequirements.CPULimit,
+					CPURequest:    jobSpec.ResourceRequirements.CPURequest,
 				},
 			})
 		}
-		m.ResourceRequirements = rr
+
+		meta.ResourceRequirements = resReqs
 	}
 
 	// External documentation URLs.
-	for _, doc := range c.ExternalDocumentationURLs {
-		m.ExternalDocumentationURLs = append(m.ExternalDocumentationURLs, pipelineservice.ExternalDocumentationURL{
+	for _, doc := range connector.ExternalDocumentationURLs {
+		meta.ExternalDocumentationURLs = append(meta.ExternalDocumentationURLs, pipelineservice.ExternalDocumentationURL{
 			Title: doc.Title,
 			Type:  doc.Type,
 			URL:   doc.URL,
@@ -249,16 +258,16 @@ func buildMetadata(c airbyteConnector) pipelineservice.RepositoryConnectorMetada
 	}
 
 	// Suggested streams.
-	if c.SuggestedStreams != nil {
-		m.SuggestedStreams = c.SuggestedStreams.Streams
+	if connector.SuggestedStreams != nil {
+		meta.SuggestedStreams = connector.SuggestedStreams.Streams
 	}
 
 	// Allowed hosts.
-	if c.AllowedHosts != nil {
-		m.AllowedHosts = c.AllowedHosts.Hosts
+	if connector.AllowedHosts != nil {
+		meta.AllowedHosts = connector.AllowedHosts.Hosts
 	}
 
-	return m
+	return meta
 }
 
 // marshalConnectorSpec wraps connectionSpecification in a ConnectorSpecification-compatible
@@ -267,6 +276,7 @@ func marshalConnectorSpec(spec *airbyteSpec, documentationURL string) string {
 	if spec == nil || len(spec.ConnectionSpecification) == 0 {
 		return ""
 	}
+
 	wrapper := struct {
 		DocumentationURL        string          `json:"documentationUrl,omitempty"`
 		ConnectionSpecification json.RawMessage `json:"connectionSpecification"`
@@ -274,9 +284,11 @@ func marshalConnectorSpec(spec *airbyteSpec, documentationURL string) string {
 		DocumentationURL:        documentationURL,
 		ConnectionSpecification: spec.ConnectionSpecification,
 	}
+
 	data, err := json.Marshal(wrapper)
 	if err != nil {
 		return ""
 	}
+
 	return string(data)
 }

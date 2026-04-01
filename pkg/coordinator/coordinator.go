@@ -94,6 +94,7 @@ func Run(ctx context.Context, cfg Config) error {
 
 	// 4. Create Reporter for gRPC heartbeat/state/log delivery.
 	reporter := NewReporter(cfg.ServerAddr, cfg.JobID, cfg.ConnectionID)
+
 	reporter.Start(ctx)
 	defer reporter.Stop()
 
@@ -143,6 +144,7 @@ func runPipeline(ctx context.Context, cfg Config, reporter *Reporter) (*pipeline
 	if err != nil {
 		return nil, fmt.Errorf("opening source stdout FIFO: %w", err)
 	}
+
 	defer func() { _ = sourceStdout.Close() }()
 
 	destStdin, err := openFIFO(ctx, filepath.Join(cfg.DataDir, DestStdinFIFO), os.O_WRONLY)
@@ -155,8 +157,10 @@ func runPipeline(ctx context.Context, cfg Config, reporter *Reporter) (*pipeline
 	destStdout, err := openFIFO(ctx, filepath.Join(cfg.DataDir, DestStdoutFIFO), os.O_RDONLY)
 	if err != nil {
 		_ = destStdin.Close()
+
 		return nil, fmt.Errorf("opening dest stdout FIFO: %w", err)
 	}
+
 	defer func() { _ = destStdout.Close() }()
 
 	// Start heartbeat goroutine. During routing, intermediate stats are not
@@ -168,6 +172,7 @@ func runPipeline(ctx context.Context, cfg Config, reporter *Reporter) (*pipeline
 	go func() {
 		ticker := time.NewTicker(10 * time.Second)
 		defer ticker.Stop()
+
 		for {
 			select {
 			case <-heartbeatCtx.Done():
@@ -188,6 +193,7 @@ func runPipeline(ctx context.Context, cfg Config, reporter *Reporter) (*pipeline
 
 	// Build namespace rewriter from source catalog and connection settings.
 	var rewriter *pipelineroute.NamespaceRewriter
+
 	if cfg.NamespaceDefinition != "" {
 		sourceCatalogBytes, readErr := os.ReadFile(filepath.Join(cfg.SecretsDir, "source-catalog"))
 		if readErr != nil {
@@ -198,14 +204,17 @@ func runPipeline(ctx context.Context, cfg Config, reporter *Reporter) (*pipeline
 				slog.Error("coordinator: failed to unmarshal source catalog for rewriter", "error", err)
 			} else {
 				nsDef := parseNamespaceDefinition(cfg.NamespaceDefinition)
+
 				var customFmt *string
 				if cfg.CustomNamespaceFormat != "" {
 					customFmt = &cfg.CustomNamespaceFormat
 				}
+
 				var prefix *string
 				if cfg.StreamPrefix != "" {
 					prefix = &cfg.StreamPrefix
 				}
+
 				rewriter = pipelineroute.NewNamespaceRewriter(&catalog, nsDef, customFmt, prefix)
 				slog.Info("coordinator: namespace rewriter created", "namespace_definition", cfg.NamespaceDefinition, "streams", len(catalog.Streams))
 			}
@@ -223,15 +232,19 @@ func runPipeline(ctx context.Context, cfg Config, reporter *Reporter) (*pipeline
 // the FIFO stream closing. Returns -1 only if the file never appears.
 func waitForExitCode(path string, timeout time.Duration) int32 {
 	deadline := time.Now().Add(timeout)
+
 	for {
 		code, err := ReadExitCode(path)
 		if err == nil {
 			return code
 		}
+
 		if time.Now().After(deadline) {
 			slog.Warn("coordinator: exit code file not found after timeout", "path", path)
+
 			return -1
 		}
+
 		time.Sleep(200 * time.Millisecond)
 	}
 }
@@ -245,10 +258,12 @@ func openFIFO(ctx context.Context, path string, flag int) (*os.File, error) {
 		err  error
 	}
 	ch := make(chan result, 1)
+
 	go func() {
 		f, err := os.OpenFile(path, flag, 0)
 		ch <- result{f, err}
 	}()
+
 	select {
 	case <-ctx.Done():
 		return nil, fmt.Errorf("%s: %w", filepath.Base(path), ctx.Err())

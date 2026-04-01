@@ -33,6 +33,7 @@ func (a *K8sJobCreatorAdapter) CreateSyncJob(ctx context.Context, opts pipelines
 	if opts.RuntimeConfig != "" {
 		runtimeConfigPtr = &opts.RuntimeConfig
 	}
+
 	runtimeCfg := pipelineservice.ResolveRuntimeConfig(a.runtimeDefaults, pipelineservice.ParseRuntimeConfig(runtimeConfigPtr))
 	srcMemLimit, srcCPULimit, srcMemReq, srcCPUReq := pipelineservice.ToContainerResources(runtimeCfg)
 
@@ -43,17 +44,20 @@ func (a *K8sJobCreatorAdapter) CreateSyncJob(ctx context.Context, opts pipelines
 			a.logger.WithError(err).Warn(ctx, "failed to parse tolerations from runtime config")
 		}
 	}
+
 	var nodeSelector map[string]string
 	if len(runtimeCfg.NodeSelector) > 0 {
 		if err := json.Unmarshal(runtimeCfg.NodeSelector, &nodeSelector); err != nil {
 			a.logger.WithError(err).Warn(ctx, "failed to parse nodeSelector from runtime config")
 		}
 	}
+
 	var affinity *corev1.Affinity
 	if len(runtimeCfg.Affinity) > 0 {
 		affinity = &corev1.Affinity{}
 		if err := json.Unmarshal(runtimeCfg.Affinity, affinity); err != nil {
 			a.logger.WithError(err).Warn(ctx, "failed to parse affinity from runtime config")
+
 			affinity = nil
 		}
 	}

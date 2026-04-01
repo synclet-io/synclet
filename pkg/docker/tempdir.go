@@ -20,6 +20,7 @@ func CreateTempDir(files map[string][]byte) (string, error) {
 		if err := os.WriteFile(path, content, 0o600); err != nil {
 			// Clean up on error.
 			_ = os.RemoveAll(dir)
+
 			return "", fmt.Errorf("writing temp file %s: %w", name, err)
 		}
 	}
@@ -32,5 +33,6 @@ func CleanupTempDir(path string) error {
 	if err := os.RemoveAll(path); err != nil {
 		return fmt.Errorf("removing temp dir %s: %w", path, err)
 	}
+
 	return nil
 }

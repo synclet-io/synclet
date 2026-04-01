@@ -37,10 +37,12 @@ func ParseRuntimeConfig(jsonb *string) *RuntimeConfig {
 	if jsonb == nil || *jsonb == "" {
 		return nil
 	}
+
 	var cfg RuntimeConfig
 	if err := json.Unmarshal([]byte(*jsonb), &cfg); err != nil {
 		return nil
 	}
+
 	return &cfg
 }
 
@@ -62,24 +64,31 @@ func ResolveRuntimeConfig(defaults RuntimeDefaults, override *RuntimeConfig) Run
 	if override.CPURequest != "" {
 		result.CPURequest = override.CPURequest
 	}
+
 	if override.CPULimit != "" {
 		result.CPULimit = override.CPULimit
 	}
+
 	if override.MemoryRequest != "" {
 		result.MemoryRequest = override.MemoryRequest
 	}
+
 	if override.MemoryLimit != "" {
 		result.MemoryLimit = override.MemoryLimit
 	}
+
 	if len(override.Tolerations) > 0 {
 		result.Tolerations = override.Tolerations
 	}
+
 	if len(override.NodeSelector) > 0 {
 		result.NodeSelector = override.NodeSelector
 	}
+
 	if len(override.Affinity) > 0 {
 		result.Affinity = override.Affinity
 	}
+
 	if override.ServiceAccountName != "" {
 		result.ServiceAccountName = override.ServiceAccountName
 	}
@@ -101,33 +110,39 @@ func ValidateRuntimeConfig(cfg *RuntimeConfig) error {
 			errs = append(errs, fmt.Sprintf("cpu_request: %v", err))
 		}
 	}
+
 	if cfg.CPULimit != "" {
 		if _, err := resource.ParseQuantity(cfg.CPULimit); err != nil {
 			errs = append(errs, fmt.Sprintf("cpu_limit: %v", err))
 		}
 	}
+
 	if cfg.MemoryRequest != "" {
 		if _, err := resource.ParseQuantity(cfg.MemoryRequest); err != nil {
 			errs = append(errs, fmt.Sprintf("memory_request: %v", err))
 		}
 	}
+
 	if cfg.MemoryLimit != "" {
 		if _, err := resource.ParseQuantity(cfg.MemoryLimit); err != nil {
 			errs = append(errs, fmt.Sprintf("memory_limit: %v", err))
 		}
 	}
+
 	if len(cfg.Tolerations) > 0 {
 		var tolerations []corev1.Toleration
 		if err := json.Unmarshal(cfg.Tolerations, &tolerations); err != nil {
 			errs = append(errs, fmt.Sprintf("tolerations: must be a JSON array of Toleration objects: %v", err))
 		}
 	}
+
 	if len(cfg.NodeSelector) > 0 {
 		var ns map[string]string
 		if err := json.Unmarshal(cfg.NodeSelector, &ns); err != nil {
 			errs = append(errs, fmt.Sprintf("node_selector: must be a JSON object with string values: %v", err))
 		}
 	}
+
 	if len(cfg.Affinity) > 0 {
 		var affinity corev1.Affinity
 		if err := json.Unmarshal(cfg.Affinity, &affinity); err != nil {
@@ -138,6 +153,7 @@ func ValidateRuntimeConfig(cfg *RuntimeConfig) error {
 	if len(errs) > 0 {
 		return fmt.Errorf("invalid runtime config: %s", strings.Join(errs, "; "))
 	}
+
 	return nil
 }
 
@@ -149,20 +165,24 @@ func ToContainerResources(cfg RuntimeConfig) (memoryLimit int64, cpuLimit float6
 			memoryLimit = q.Value()
 		}
 	}
+
 	if cfg.CPULimit != "" {
 		if q, err := resource.ParseQuantity(cfg.CPULimit); err == nil {
 			cpuLimit = q.AsApproximateFloat64()
 		}
 	}
+
 	if cfg.MemoryRequest != "" {
 		if q, err := resource.ParseQuantity(cfg.MemoryRequest); err == nil {
 			memoryRequest = q.Value()
 		}
 	}
+
 	if cfg.CPURequest != "" {
 		if q, err := resource.ParseQuantity(cfg.CPURequest); err == nil {
 			cpuRequest = q.AsApproximateFloat64()
 		}
 	}
+
 	return
 }

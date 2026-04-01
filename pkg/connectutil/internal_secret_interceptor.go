@@ -24,6 +24,7 @@ func (i *InternalSecretInterceptor) WrapUnary(next connect.UnaryFunc) connect.Un
 		if err := i.validateSecret(req.Header().Get("X-Internal-Secret")); err != nil {
 			return nil, err
 		}
+
 		return next(ctx, req)
 	}
 }
@@ -37,6 +38,7 @@ func (i *InternalSecretInterceptor) WrapStreamingHandler(next connect.StreamingH
 		if err := i.validateSecret(conn.RequestHeader().Get("X-Internal-Secret")); err != nil {
 			return err
 		}
+
 		return next(ctx, conn)
 	}
 }
@@ -45,8 +47,10 @@ func (i *InternalSecretInterceptor) validateSecret(provided string) error {
 	if i.secret == "" {
 		return connect.NewError(connect.CodeUnauthenticated, fmt.Errorf("internal API token not configured"))
 	}
+
 	if subtle.ConstantTimeCompare([]byte(provided), []byte(i.secret)) != 1 {
 		return connect.NewError(connect.CodeUnauthenticated, nil)
 	}
+
 	return nil
 }

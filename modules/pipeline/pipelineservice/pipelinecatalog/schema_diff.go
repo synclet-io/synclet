@@ -53,12 +53,15 @@ func normalizeType(raw json.RawMessage) string {
 	if err := json.Unmarshal(raw, &arr); err == nil {
 		// Filter out "null" -- it indicates nullability, not the data type.
 		var types []string
+
 		for _, t := range arr {
 			if t != "null" {
 				types = append(types, t)
 			}
 		}
+
 		sort.Strings(types)
+
 		return strings.Join(types, ",")
 	}
 
@@ -87,10 +90,13 @@ func parseColumns(schema json.RawMessage) map[string]string {
 		var desc columnTypeDescriptor
 		if err := json.Unmarshal(propRaw, &desc); err != nil {
 			columns[name] = ""
+
 			continue
 		}
+
 		columns[name] = normalizeType(desc.Type)
 	}
+
 	return columns
 }
 
@@ -111,6 +117,7 @@ func ComputeSchemaDiff(old, updated *protocol.AirbyteCatalog) []SchemaChange {
 				StreamName: oldStream.Name,
 				Namespace:  oldStream.Namespace,
 			})
+
 			continue
 		}
 
@@ -134,12 +141,15 @@ func ComputeSchemaDiff(old, updated *protocol.AirbyteCatalog) []SchemaChange {
 		if changes[i].StreamName != changes[j].StreamName {
 			return changes[i].StreamName < changes[j].StreamName
 		}
+
 		if changes[i].Namespace != changes[j].Namespace {
 			return changes[i].Namespace < changes[j].Namespace
 		}
+
 		if changes[i].Type != changes[j].Type {
 			return changes[i].Type < changes[j].Type
 		}
+
 		return changes[i].ColumnName < changes[j].ColumnName
 	})
 
@@ -151,10 +161,12 @@ func buildStreamMap(catalog *protocol.AirbyteCatalog) map[string]protocol.Airbyt
 	if catalog == nil {
 		return nil
 	}
+
 	m := make(map[string]protocol.AirbyteStream, len(catalog.Streams))
 	for _, s := range catalog.Streams {
 		m[streamKey(s.Namespace, s.Name)] = s
 	}
+
 	return m
 }
 
@@ -175,8 +187,10 @@ func diffColumns(oldStream, newStream protocol.AirbyteStream) []SchemaChange {
 				Namespace:  oldStream.Namespace,
 				ColumnName: col,
 			})
+
 			continue
 		}
+
 		if oldType != newType {
 			changes = append(changes, SchemaChange{
 				Type:       ColumnTypeChanged,

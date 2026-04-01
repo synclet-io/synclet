@@ -41,22 +41,24 @@ type CreateDestinationParams struct {
 // Execute creates a new destination.
 func (uc *CreateDestination) Execute(ctx context.Context, params CreateDestinationParams) (*pipelineservice.Destination, error) {
 	// Verify managed connector exists and is ready.
-	mc, err := uc.storage.ManagedConnectors().First(ctx, &pipelineservice.ManagedConnectorFilter{
+	connector, err := uc.storage.ManagedConnectors().First(ctx, &pipelineservice.ManagedConnectorFilter{
 		ID:          filter.Equals(params.ManagedConnectorID),
 		WorkspaceID: filter.Equals(params.WorkspaceID),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("managed connector not found: %w", err)
 	}
+
 	now := time.Now()
 	destID := uuid.New()
 	config := string(params.Config)
 
 	// Encrypt secret fields using the managed connector's spec.
-	encryptedConfig, encErr := pipelinesecrets.EncryptConfigSecrets(ctx, uc.secrets, "destination", destID, config, mc.Spec)
+	encryptedConfig, encErr := pipelinesecrets.EncryptConfigSecrets(ctx, uc.secrets, "destination", destID, config, connector.Spec)
 	if encErr != nil {
 		return nil, fmt.Errorf("encrypting destination config secrets: %w", encErr)
 	}
+
 	config = encryptedConfig
 
 	dest := &pipelineservice.Destination{

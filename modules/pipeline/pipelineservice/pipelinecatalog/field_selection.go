@@ -16,13 +16,13 @@ func ValidateSelectedFields(selectedFields []protocol.SelectedField, jsonSchema 
 		return fmt.Errorf("parsing json schema: %w", err)
 	}
 
-	for _, sf := range selectedFields {
-		if len(sf.FieldPath) == 0 {
+	for _, selectedField := range selectedFields {
+		if len(selectedField.FieldPath) == 0 {
 			return fmt.Errorf("empty field path in selected fields")
 		}
 
-		if !fieldPathExists(schema, sf.FieldPath) {
-			return fmt.Errorf("field path %v not found in schema", sf.FieldPath)
+		if !fieldPathExists(schema, selectedField.FieldPath) {
+			return fmt.Errorf("field path %v not found in schema", selectedField.FieldPath)
 		}
 	}
 
@@ -73,6 +73,7 @@ func filterSchemaBySelectedFields(jsonSchema json.RawMessage, selectedFields []p
 
 	// Build set of top-level field names to keep.
 	keep := make(map[string]bool)
+
 	for _, sf := range selectedFields {
 		if len(sf.FieldPath) > 0 {
 			keep[sf.FieldPath[0]] = true
@@ -80,6 +81,7 @@ func filterSchemaBySelectedFields(jsonSchema json.RawMessage, selectedFields []p
 	}
 
 	filtered := make(map[string]json.RawMessage)
+
 	for name, prop := range props {
 		if keep[name] {
 			filtered[name] = prop
@@ -110,6 +112,7 @@ func FilterRecordData(data json.RawMessage, selectedFields []protocol.SelectedFi
 	}
 
 	keep := make(map[string]bool)
+
 	for _, sf := range selectedFields {
 		if len(sf.FieldPath) > 0 {
 			keep[sf.FieldPath[0]] = true
@@ -117,6 +120,7 @@ func FilterRecordData(data json.RawMessage, selectedFields []protocol.SelectedFi
 	}
 
 	filtered := make(map[string]json.RawMessage)
+
 	for name, val := range record {
 		if keep[name] {
 			filtered[name] = val
@@ -139,16 +143,16 @@ func BuildDestinationCatalog(catalog *protocol.ConfiguredAirbyteCatalog) (*proto
 		Streams: make([]protocol.ConfiguredAirbyteStream, len(catalog.Streams)),
 	}
 
-	for i, s := range catalog.Streams {
-		dest.Streams[i] = s
+	for i, stream := range catalog.Streams {
+		dest.Streams[i] = stream
 
-		if len(s.SelectedFields) == 0 {
+		if len(stream.SelectedFields) == 0 {
 			continue
 		}
 
-		filteredSchema, err := filterSchemaBySelectedFields(s.Stream.JSONSchema, s.SelectedFields)
+		filteredSchema, err := filterSchemaBySelectedFields(stream.Stream.JSONSchema, stream.SelectedFields)
 		if err != nil {
-			return nil, fmt.Errorf("filtering schema for stream %q: %w", s.Stream.Name, err)
+			return nil, fmt.Errorf("filtering schema for stream %q: %w", stream.Stream.Name, err)
 		}
 
 		dest.Streams[i].Stream.JSONSchema = filteredSchema

@@ -47,11 +47,13 @@ func (uc *UpdateJobStatus) Execute(ctx context.Context, params UpdateJobStatusPa
 
 	// Record the attempt.
 	statsJSON := "{}"
+
 	if params.SyncStats != nil {
 		b, err := json.Marshal(params.SyncStats)
 		if err != nil {
 			return fmt.Errorf("marshaling sync stats: %w", err)
 		}
+
 		statsJSON = string(b)
 	}
 
@@ -71,6 +73,7 @@ func (uc *UpdateJobStatus) Execute(ctx context.Context, params UpdateJobStatusPa
 
 		// Classify exit code if available for retry decisions.
 		skipRetry := false
+
 		var exitErr *connector.ExitCodeError
 		if errors.As(params.SyncErr, &exitErr) {
 			category, reason := ClassifyExitCode(exitErr.ExitCode)
@@ -102,6 +105,7 @@ func (uc *UpdateJobStatus) Execute(ctx context.Context, params UpdateJobStatusPa
 		if _, err := tx.Jobs().Update(ctx, job); err != nil {
 			return fmt.Errorf("updating job: %w", err)
 		}
+
 		if _, err := tx.JobAttempts().Create(ctx, attempt); err != nil {
 			return fmt.Errorf("creating job attempt: %w", err)
 		}
@@ -114,6 +118,7 @@ func (uc *UpdateJobStatus) Execute(ctx context.Context, params UpdateJobStatusPa
 			})
 			if connErr == nil {
 				pipelineservice.RecomputeNextScheduledAt(conn, time.Now())
+
 				if _, updateErr := tx.Connections().Update(ctx, conn); updateErr != nil {
 					return fmt.Errorf("updating connection next_scheduled_at: %w", updateErr)
 				}
@@ -205,6 +210,7 @@ func (uc *RecoverStaleJobs) Execute(ctx context.Context, params RecoverStaleJobs
 	for _, j := range staleJobs {
 		seen[j.ID] = struct{}{}
 	}
+
 	for _, j := range nullHeartbeatJobs {
 		if j.HeartbeatAt == nil {
 			if _, ok := seen[j.ID]; !ok {
@@ -214,6 +220,7 @@ func (uc *RecoverStaleJobs) Execute(ctx context.Context, params RecoverStaleJobs
 	}
 
 	recovered := 0
+
 	for _, job := range staleJobs {
 		var errMsg string
 		if job.HeartbeatAt != nil {
@@ -221,12 +228,14 @@ func (uc *RecoverStaleJobs) Execute(ctx context.Context, params RecoverStaleJobs
 		} else {
 			errMsg = fmt.Sprintf("worker never sent heartbeat (started: %s)", derefTime(job.StartedAt).Format(time.RFC3339))
 		}
+
 		if err := uc.updateJobStatus.Execute(ctx, UpdateJobStatusParams{
 			ID:      job.ID,
 			SyncErr: fmt.Errorf("%s", errMsg),
 		}); err != nil {
 			continue
 		}
+
 		recovered++
 	}
 
@@ -271,5 +280,6 @@ func derefTime(t *time.Time) time.Time {
 	if t == nil {
 		return time.Time{}
 	}
+
 	return *t
 }

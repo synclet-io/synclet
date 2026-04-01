@@ -37,7 +37,7 @@ func (uc *BootstrapDefaultWorkspace) Execute(ctx context.Context) (*Workspace, e
 	}
 
 	now := time.Now()
-	ws := &Workspace{
+	workspace := &Workspace{
 		ID:        uuid.New(),
 		Name:      "Default",
 		Slug:      "default",
@@ -45,7 +45,7 @@ func (uc *BootstrapDefaultWorkspace) Execute(ctx context.Context) (*Workspace, e
 		UpdatedAt: now,
 	}
 
-	created, err := uc.storage.Workspaces().Create(ctx, ws)
+	created, err := uc.storage.Workspaces().Create(ctx, workspace)
 	if err != nil {
 		return nil, fmt.Errorf("creating default workspace: %w", err)
 	}

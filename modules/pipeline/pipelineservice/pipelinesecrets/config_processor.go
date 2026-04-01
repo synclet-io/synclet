@@ -28,6 +28,7 @@ func ExtractSecretPaths(specJSON string) ([]string, error) {
 	collectSecretPaths(connSpec, "", &paths)
 
 	sort.Strings(paths)
+
 	return uniqueStrings(paths), nil
 }
 
@@ -43,6 +44,7 @@ func MaskConfigSecrets(configJSON string) (string, error) {
 		if secretutil.IsSecretRef(value) {
 			return secretutil.SecretMask, true
 		}
+
 		return value, false
 	})
 
@@ -50,6 +52,7 @@ func MaskConfigSecrets(configJSON string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("marshaling config: %w", err)
 	}
+
 	return string(result), nil
 }
 
@@ -61,6 +64,7 @@ func ExtractSecretRefs(configJSON string) ([]uuid.UUID, error) {
 	}
 
 	var refs []uuid.UUID
+
 	walkAndCollect(configMap, func(value string) {
 		if secretutil.IsSecretRef(value) {
 			if id, err := secretutil.ExtractSecretID(value); err == nil {
@@ -114,11 +118,13 @@ func collectFromBranches(schema map[string]any, key, prefix string, paths *[]str
 	if !ok {
 		return
 	}
+
 	for _, branch := range branches {
 		branchMap, ok := branch.(map[string]any)
 		if !ok {
 			continue
 		}
+
 		collectSecretPaths(branchMap, prefix, paths)
 	}
 }
@@ -128,22 +134,24 @@ func isAirbyteSecret(field map[string]any) bool {
 	if !ok {
 		return false
 	}
+
 	b, ok := secret.(bool)
+
 	return ok && b
 }
 
 // walkAndReplace recursively walks a JSON object and replaces string values.
 func walkAndReplace(obj map[string]any, replacer func(string) (string, bool)) {
 	for key, value := range obj {
-		switch v := value.(type) {
+		switch val := value.(type) {
 		case string:
-			if newVal, replaced := replacer(v); replaced {
+			if newVal, replaced := replacer(val); replaced {
 				obj[key] = newVal
 			}
 		case map[string]any:
-			walkAndReplace(v, replacer)
+			walkAndReplace(val, replacer)
 		case []any:
-			for _, item := range v {
+			for _, item := range val {
 				if m, ok := item.(map[string]any); ok {
 					walkAndReplace(m, replacer)
 				}
@@ -155,13 +163,13 @@ func walkAndReplace(obj map[string]any, replacer func(string) (string, bool)) {
 // walkAndCollect recursively walks a JSON object and collects string values.
 func walkAndCollect(obj map[string]any, collector func(string)) {
 	for _, value := range obj {
-		switch v := value.(type) {
+		switch val := value.(type) {
 		case string:
-			collector(v)
+			collector(val)
 		case map[string]any:
-			walkAndCollect(v, collector)
+			walkAndCollect(val, collector)
 		case []any:
-			for _, item := range v {
+			for _, item := range val {
 				if m, ok := item.(map[string]any); ok {
 					walkAndCollect(m, collector)
 				}
@@ -170,18 +178,21 @@ func walkAndCollect(obj map[string]any, collector func(string)) {
 	}
 }
 
-func uniqueStrings(s []string) []string {
-	if len(s) == 0 {
-		return s
+func uniqueStrings(items []string) []string {
+	if len(items) == 0 {
+		return items
 	}
-	seen := make(map[string]bool, len(s))
-	result := make([]string, 0, len(s))
-	for _, v := range s {
-		if !seen[v] {
-			seen[v] = true
-			result = append(result, v)
+
+	seen := make(map[string]bool, len(items))
+
+	result := make([]string, 0, len(items))
+	for _, val := range items {
+		if !seen[val] {
+			seen[val] = true
+			result = append(result, val)
 		}
 	}
+
 	return result
 }
 
@@ -195,6 +206,7 @@ func GetNestedField(obj map[string]any, path string) (any, bool) {
 		if !ok {
 			return nil, false
 		}
+
 		current, ok = m[part]
 		if !ok {
 			return nil, false
@@ -214,6 +226,7 @@ func SetNestedField(obj map[string]any, path string, value any) {
 		if !ok {
 			return
 		}
+
 		current = next
 	}
 

@@ -48,6 +48,7 @@ func (uc *CreateChannel) Execute(ctx context.Context, params CreateChannelParams
 
 	// Encrypt sensitive config fields, tracking stored refs for cleanup on partial failure.
 	var storedRefs []string
+
 	for field, value := range params.Config {
 		if IsSensitiveField(params.ChannelType, field) && value != "" {
 			ref, err := uc.secrets.StoreSecret(ctx, "channel", channelID, value)
@@ -58,8 +59,10 @@ func (uc *CreateChannel) Execute(ctx context.Context, params CreateChannelParams
 						slog.Error("failed to clean up orphaned secret", "ref", r, "error", delErr)
 					}
 				}
+
 				return nil, fmt.Errorf("encrypting channel config field %s: %w", field, err)
 			}
+
 			storedRefs = append(storedRefs, ref)
 			params.Config[field] = ref
 		}
@@ -104,6 +107,7 @@ func validateChannelConfig(channelType ChannelType, config map[string]string) er
 		if config["bot_token"] == "" {
 			return fmt.Errorf("bot_token is required for telegram channels")
 		}
+
 		if config["chat_id"] == "" {
 			return fmt.Errorf("chat_id is required for telegram channels")
 		}

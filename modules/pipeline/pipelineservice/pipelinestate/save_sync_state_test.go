@@ -20,8 +20,8 @@ import (
 // mockStorage implements a minimal pipelineservice.Storage for testing state use cases.
 type mockStorage struct {
 	pipelineservice.Storage
-	connStates  *mockConnectionStatesStorage
-	streamGens  *mockStreamGenerationsStorage
+	connStates *mockConnectionStatesStorage
+	streamGens *mockStreamGenerationsStorage
 }
 
 func newMockStorage() *mockStorage {
@@ -53,30 +53,35 @@ func streamGenKey(connID uuid.UUID, ns, name string) string {
 	return connID.String() + "|" + ns + "|" + name
 }
 
-func (m *mockStreamGenerationsStorage) Find(_ context.Context, f *pipelineservice.StreamGenerationFilter, _ ...optionutil.Option[dbutil.SelectOptions]) ([]*pipelineservice.StreamGeneration, error) {
+func (m *mockStreamGenerationsStorage) Find(_ context.Context, genFilter *pipelineservice.StreamGenerationFilter, _ ...optionutil.Option[dbutil.SelectOptions]) ([]*pipelineservice.StreamGeneration, error) {
 	var result []*pipelineservice.StreamGeneration
-	for _, sg := range m.gens {
-		if f.ConnectionID != nil {
-			connVal := f.ConnectionID.(*filter.EqualsFilter[uuid.UUID]).Value
-			if sg.ConnectionID != connVal {
+
+	for _, streamGen := range m.gens {
+		if genFilter.ConnectionID != nil {
+			connVal := genFilter.ConnectionID.(*filter.EqualsFilter[uuid.UUID]).Value
+			if streamGen.ConnectionID != connVal {
 				continue
 			}
 		}
-		if f.StreamNamespace != nil {
-			nsVal := f.StreamNamespace.(*filter.EqualsFilter[string]).Value
-			if sg.StreamNamespace != nsVal {
+
+		if genFilter.StreamNamespace != nil {
+			nsVal := genFilter.StreamNamespace.(*filter.EqualsFilter[string]).Value
+			if streamGen.StreamNamespace != nsVal {
 				continue
 			}
 		}
-		if f.StreamName != nil {
-			nameVal := f.StreamName.(*filter.EqualsFilter[string]).Value
-			if sg.StreamName != nameVal {
+
+		if genFilter.StreamName != nil {
+			nameVal := genFilter.StreamName.(*filter.EqualsFilter[string]).Value
+			if streamGen.StreamName != nameVal {
 				continue
 			}
 		}
-		cp := sg.Copy()
+
+		cp := streamGen.Copy()
 		result = append(result, &cp)
 	}
+
 	return result, nil
 }
 
@@ -84,6 +89,7 @@ func (m *mockStreamGenerationsStorage) Save(_ context.Context, record *pipelines
 	cp := record.Copy()
 	key := streamGenKey(record.ConnectionID, record.StreamNamespace, record.StreamName)
 	m.gens[key] = &cp
+
 	return &cp, nil
 }
 
@@ -97,15 +103,18 @@ func (m *mockConnectionStatesStorage) First(_ context.Context, f *pipelineservic
 	for _, s := range m.states {
 		if s.ConnectionID == f.ConnectionID.(*filter.EqualsFilter[uuid.UUID]).Value {
 			cp := *s
+
 			return &cp, nil
 		}
 	}
+
 	return nil, pipelineservice.ErrConnectionStateNotFound
 }
 
 func (m *mockConnectionStatesStorage) Save(_ context.Context, record *pipelineservice.ConnectionState) (*pipelineservice.ConnectionState, error) {
 	cp := *record
 	m.states[record.ConnectionID] = &cp
+
 	return &cp, nil
 }
 
@@ -115,6 +124,7 @@ func (m *mockConnectionStatesStorage) Delete(_ context.Context, f *pipelineservi
 			delete(m.states, id)
 		}
 	}
+
 	return nil
 }
 
@@ -151,12 +161,12 @@ func TestSaveStreamState(t *testing.T) {
 
 func TestSaveStreamStateMerge(t *testing.T) {
 	store := newMockStorage()
-	uc := pipelinestate.NewSaveSyncState(store)
+	useCase := pipelinestate.NewSaveSyncState(store)
 	connID := uuid.New()
 	ctx := context.Background()
 
 	// Save "users" stream.
-	err := uc.Execute(ctx, pipelinestate.SaveSyncStateParams{
+	err := useCase.Execute(ctx, pipelinestate.SaveSyncStateParams{
 		ConnectionID: connID,
 		StateMessage: &protocol.AirbyteStateMessage{
 			Type: protocol.StateTypeStream,
@@ -169,7 +179,7 @@ func TestSaveStreamStateMerge(t *testing.T) {
 	require.NoError(t, err)
 
 	// Save "orders" stream.
-	err = uc.Execute(ctx, pipelinestate.SaveSyncStateParams{
+	err = useCase.Execute(ctx, pipelinestate.SaveSyncStateParams{
 		ConnectionID: connID,
 		StateMessage: &protocol.AirbyteStateMessage{
 			Type: protocol.StateTypeStream,
@@ -188,7 +198,7 @@ func TestSaveStreamStateMerge(t *testing.T) {
 	assert.Len(t, msgs, 2)
 
 	// Update "users" stream with new cursor.
-	err = uc.Execute(ctx, pipelinestate.SaveSyncStateParams{
+	err = useCase.Execute(ctx, pipelinestate.SaveSyncStateParams{
 		ConnectionID: connID,
 		StateMessage: &protocol.AirbyteStateMessage{
 			Type: protocol.StateTypeStream,
@@ -276,7 +286,7 @@ func TestSaveLegacyState(t *testing.T) {
 
 func TestStateFormat(t *testing.T) {
 	store := newMockStorage()
-	uc := pipelinestate.NewSaveSyncState(store)
+	useCase := pipelinestate.NewSaveSyncState(store)
 	connID := uuid.New()
 	ctx := context.Background()
 
@@ -287,7 +297,7 @@ func TestStateFormat(t *testing.T) {
 		{"users", "public", `{"cursor":"2024-01-01"}`},
 		{"orders", "", `{"cursor":"500"}`},
 	} {
-		err := uc.Execute(ctx, pipelinestate.SaveSyncStateParams{
+		err := useCase.Execute(ctx, pipelinestate.SaveSyncStateParams{
 			ConnectionID: connID,
 			StateMessage: &protocol.AirbyteStateMessage{
 				Type: protocol.StateTypeStream,
@@ -319,6 +329,7 @@ func TestStateFormat(t *testing.T) {
 	var raw []map[string]json.RawMessage
 	err = json.Unmarshal([]byte(blob), &raw)
 	require.NoError(t, err)
+
 	for _, entry := range raw {
 		assert.Contains(t, entry, "type")
 		assert.Contains(t, entry, "stream")

@@ -82,6 +82,7 @@ func (i *AuthInterceptor) authenticate(ctx context.Context, headers http.Header,
 		if cookieToken == "" {
 			return nil, connect.NewError(connect.CodeUnauthenticated, nil)
 		}
+
 		return i.authenticateJWT(ctx, cookieToken, workspaceHeader)
 	}
 
@@ -96,16 +97,20 @@ func (i *AuthInterceptor) authenticate(ctx context.Context, headers http.Header,
 		if err != nil {
 			return nil, connect.NewError(connect.CodeUnauthenticated, err)
 		}
+
 		uid, err := parseUUID(userID)
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("internal error"))
 		}
+
 		wsID, err := parseUUID(workspaceID)
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("internal error"))
 		}
+
 		ctx = ContextWithUserID(ctx, uid)
 		ctx = ContextWithWorkspaceID(ctx, wsID)
+
 		return ctx, nil
 	}
 
@@ -132,6 +137,7 @@ func (i *AuthInterceptor) authenticateJWT(ctx context.Context, token, workspaceH
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}
+
 		ctx = ContextWithWorkspaceID(ctx, wsID)
 	}
 

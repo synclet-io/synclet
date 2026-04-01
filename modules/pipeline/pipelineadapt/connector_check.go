@@ -25,8 +25,10 @@ func (a *ConnectorCheckAdapter) Check(ctx context.Context, image string, config 
 	if err != nil {
 		return err
 	}
+
 	if status.Status != protocol.ConnectionStatusSucceeded {
 		return fmt.Errorf("connector check failed: %s", status.Message)
 	}
+
 	return nil
 }

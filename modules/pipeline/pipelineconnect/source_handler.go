@@ -79,17 +79,17 @@ func (h *SourceHandler) CreateSource(ctx context.Context, req *connect.Request[p
 	}
 
 	if err := connectutil.ValidateStringLengths(
-		connectutil.StringValidation{Field: "name", Value: req.Msg.Name, MaxLen: connectutil.MaxNameLength},
+		connectutil.StringValidation{Field: "name", Value: req.Msg.GetName(), MaxLen: connectutil.MaxNameLength},
 	); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	managedConnectorID, err := uuid.Parse(req.Msg.ManagedConnectorId)
+	managedConnectorID, err := uuid.Parse(req.Msg.GetManagedConnectorId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid managed_connector_id: %w", err))
 	}
 
-	config, err := json.Marshal(req.Msg.Config.AsMap())
+	config, err := json.Marshal(req.Msg.GetConfig().AsMap())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -102,7 +102,7 @@ func (h *SourceHandler) CreateSource(ctx context.Context, req *connect.Request[p
 
 	src, err := h.createSource.Execute(ctx, pipelinesources.CreateSourceParams{
 		WorkspaceID:        workspaceID,
-		Name:               req.Msg.Name,
+		Name:               req.Msg.GetName(),
 		ManagedConnectorID: managedConnectorID,
 		Config:             config,
 	})
@@ -112,6 +112,7 @@ func (h *SourceHandler) CreateSource(ctx context.Context, req *connect.Request[p
 
 	// Auto-trigger discover (fire-and-forget).
 	var discoverTaskID *string
+
 	taskResult, discoverErr := h.createDiscoverTask.Execute(ctx, pipelinetasks.CreateDiscoverTaskParams{
 		SourceID:    src.ID,
 		WorkspaceID: workspaceID,
@@ -133,7 +134,7 @@ func (h *SourceHandler) UpdateSource(ctx context.Context, req *connect.Request[p
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	id, err := uuid.Parse(req.Msg.Id)
+	id, err := uuid.Parse(req.Msg.GetId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -142,19 +143,23 @@ func (h *SourceHandler) UpdateSource(ctx context.Context, req *connect.Request[p
 		ID:          id,
 		WorkspaceID: workspaceID,
 	}
+
 	if req.Msg.Name != nil {
 		if err := connectutil.ValidateStringLengths(
-			connectutil.StringValidation{Field: "name", Value: *req.Msg.Name, MaxLen: connectutil.MaxNameLength},
+			connectutil.StringValidation{Field: "name", Value: req.Msg.GetName(), MaxLen: connectutil.MaxNameLength},
 		); err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}
+
 		params.Name = req.Msg.Name
 	}
-	if req.Msg.Config != nil {
-		config, err := json.Marshal(req.Msg.Config.AsMap())
+
+	if req.Msg.GetConfig() != nil {
+		config, err := json.Marshal(req.Msg.GetConfig().AsMap())
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}
+
 		raw := json.RawMessage(config)
 		params.Config = &raw
 
@@ -166,11 +171,13 @@ func (h *SourceHandler) UpdateSource(ctx context.Context, req *connect.Request[p
 		if err != nil {
 			return nil, mapError(err)
 		}
+
 		if err := runConnectionCheck(ctx, h.createCheckTask, h.waitForTaskResult,
 			workspaceID, existingSource.ManagedConnectorID, raw); err != nil {
 			return nil, err
 		}
 	}
+
 	if req.Msg.RuntimeConfig != nil {
 		params.RuntimeConfig = req.Msg.RuntimeConfig
 	}
@@ -182,7 +189,8 @@ func (h *SourceHandler) UpdateSource(ctx context.Context, req *connect.Request[p
 
 	// Auto-trigger discover when config is updated.
 	var discoverTaskID *string
-	if req.Msg.Config != nil {
+
+	if req.Msg.GetConfig() != nil {
 		taskResult, discoverErr := h.createDiscoverTask.Execute(ctx, pipelinetasks.CreateDiscoverTaskParams{
 			SourceID:    id,
 			WorkspaceID: workspaceID,
@@ -205,7 +213,7 @@ func (h *SourceHandler) DeleteSource(ctx context.Context, req *connect.Request[p
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	id, err := uuid.Parse(req.Msg.Id)
+	id, err := uuid.Parse(req.Msg.GetId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -226,7 +234,7 @@ func (h *SourceHandler) GetSource(ctx context.Context, req *connect.Request[pipe
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	id, err := uuid.Parse(req.Msg.Id)
+	id, err := uuid.Parse(req.Msg.GetId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -262,7 +270,7 @@ func (h *SourceHandler) ListSources(ctx context.Context, req *connect.Request[pi
 		protoSources[i] = sourceToProto(s)
 	}
 
-	paginated, total := paginateSlice(protoSources, req.Msg.PageSize, req.Msg.Offset)
+	paginated, total := paginateSlice(protoSources, req.Msg.GetPageSize(), req.Msg.GetOffset())
 
 	return connect.NewResponse(&pipelinev1.ListSourcesResponse{
 		Sources: paginated,
@@ -280,24 +288,27 @@ func (h *SourceHandler) TestSourceConnection(ctx context.Context, req *connect.R
 		WorkspaceID: workspaceID,
 	}
 
-	if req.Msg.ManagedConnectorId != "" && req.Msg.Config != nil {
+	if req.Msg.GetManagedConnectorId() != "" && req.Msg.GetConfig() != nil {
 		// Direct config path: test without creating a source.
-		mcID, err := uuid.Parse(req.Msg.ManagedConnectorId)
+		mcID, err := uuid.Parse(req.Msg.GetManagedConnectorId())
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid managed_connector_id: %w", err))
 		}
-		configJSON, err := json.Marshal(req.Msg.Config.AsMap())
+
+		configJSON, err := json.Marshal(req.Msg.GetConfig().AsMap())
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid config: %w", err))
 		}
+
 		params.ManagedConnectorID = &mcID
 		params.Config = configJSON
-	} else if req.Msg.Id != "" {
+	} else if req.Msg.GetId() != "" {
 		// Existing source path.
-		id, err := uuid.Parse(req.Msg.Id)
+		id, err := uuid.Parse(req.Msg.GetId())
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}
+
 		params.SourceID = &id
 	} else {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("either id or managed_connector_id+config must be provided"))
@@ -319,7 +330,7 @@ func (h *SourceHandler) DiscoverSourceSchema(ctx context.Context, req *connect.R
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	sourceID, err := uuid.Parse(req.Msg.SourceId)
+	sourceID, err := uuid.Parse(req.Msg.GetSourceId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid source_id: %w", err))
 	}
@@ -343,7 +354,7 @@ func (h *SourceHandler) GetSourceCatalog(ctx context.Context, req *connect.Reque
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	sourceID, err := uuid.Parse(req.Msg.SourceId)
+	sourceID, err := uuid.Parse(req.Msg.GetSourceId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -372,14 +383,16 @@ func (h *SourceHandler) GetSystemInfo(ctx context.Context, req *connect.Request[
 	}), nil
 }
 
-func sourceToProto(s *pipelineservice.Source) *pipelinev1.Source {
+func sourceToProto(source *pipelineservice.Source) *pipelinev1.Source {
 	var config *structpb.Struct
-	if s.Config != "" {
+
+	if source.Config != "" {
 		// Mask secret references before returning to API
-		maskedConfig, err := pipelinesecrets.MaskConfigSecrets(s.Config)
+		maskedConfig, err := pipelinesecrets.MaskConfigSecrets(source.Config)
 		if err != nil {
-			maskedConfig = s.Config
+			maskedConfig = source.Config
 		}
+
 		var m map[string]any
 		if json.Unmarshal([]byte(maskedConfig), &m) == nil {
 			config, _ = structpb.NewStruct(m)
@@ -387,16 +400,17 @@ func sourceToProto(s *pipelineservice.Source) *pipelinev1.Source {
 	}
 
 	proto := &pipelinev1.Source{
-		Id:                 s.ID.String(),
-		WorkspaceId:        s.WorkspaceID.String(),
-		Name:               s.Name,
-		ManagedConnectorId: s.ManagedConnectorID.String(),
+		Id:                 source.ID.String(),
+		WorkspaceId:        source.WorkspaceID.String(),
+		Name:               source.Name,
+		ManagedConnectorId: source.ManagedConnectorID.String(),
 		Config:             config,
-		CreatedAt:          timestamppb.New(s.CreatedAt),
-		UpdatedAt:          timestamppb.New(s.UpdatedAt),
+		CreatedAt:          timestamppb.New(source.CreatedAt),
+		UpdatedAt:          timestamppb.New(source.UpdatedAt),
 	}
-	if s.RuntimeConfig != nil {
-		proto.RuntimeConfig = s.RuntimeConfig
+	if source.RuntimeConfig != nil {
+		proto.RuntimeConfig = source.RuntimeConfig
 	}
+
 	return proto
 }

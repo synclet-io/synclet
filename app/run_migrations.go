@@ -82,6 +82,7 @@ func runGooseCommand(_ string, proceed func(db *sql.DB) error, optionsList ...Ru
 			if !options.needToRunModule(migration.Module) {
 				continue
 			}
+
 			goose.WithSessionLocker(locker)
 			goose.SetTableName(migration.Module + "_goose_db_version")
 			goose.SetBaseFS(migration.FS)
@@ -97,9 +98,11 @@ func runGooseCommand(_ string, proceed func(db *sql.DB) error, optionsList ...Ru
 
 func RunMigrationsCreate(module, migrationName string) error {
 	found := false
+
 	for _, ms := range migrations.Sources() {
 		if ms.Module == module {
 			found = true
+
 			break
 		}
 	}

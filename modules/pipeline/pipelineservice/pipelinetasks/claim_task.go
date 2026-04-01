@@ -42,6 +42,7 @@ func (uc *ClaimTask) Execute(ctx context.Context, workerID string) (*ClaimTaskRe
 	if err != nil {
 		return nil, fmt.Errorf("claiming pending task: %w", err)
 	}
+
 	if task == nil {
 		return nil, nil
 	}
@@ -50,16 +51,17 @@ func (uc *ClaimTask) Execute(ctx context.Context, workerID string) (*ClaimTaskRe
 	var image string
 	var config []byte
 
-	switch p := task.Payload.(type) {
+	switch payload := task.Payload.(type) {
 	case *pipelineservice.CheckPayload:
-		image, config, err = uc.resolveCheckPayload(ctx, task.WorkspaceID, p)
+		image, config, err = uc.resolveCheckPayload(ctx, task.WorkspaceID, payload)
 	case *pipelineservice.SpecPayload:
-		image, err = uc.resolveSpecPayload(ctx, task.WorkspaceID, p)
+		image, err = uc.resolveSpecPayload(ctx, task.WorkspaceID, payload)
 	case *pipelineservice.DiscoverPayload:
-		image, config, err = uc.resolveDiscoverPayload(ctx, task.WorkspaceID, p)
+		image, config, err = uc.resolveDiscoverPayload(ctx, task.WorkspaceID, payload)
 	default:
 		return nil, fmt.Errorf("unknown payload type: %T", task.Payload)
 	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -75,38 +77,41 @@ func (uc *ClaimTask) Execute(ctx context.Context, workerID string) (*ClaimTaskRe
 
 // resolveCheckPayload resolves image and config for a check task.
 // CheckPayload may contain inline config or reference a source/destination.
-func (uc *ClaimTask) resolveCheckPayload(ctx context.Context, workspaceID uuid.UUID, p *pipelineservice.CheckPayload) (image string, config []byte, err error) {
+func (uc *ClaimTask) resolveCheckPayload(ctx context.Context, workspaceID uuid.UUID, payload *pipelineservice.CheckPayload) (image string, config []byte, err error) {
 	// Resolve managed connector for image, scoped to workspace.
-	mc, err := uc.storage.ManagedConnectors().First(ctx, &pipelineservice.ManagedConnectorFilter{
-		ID:          filter.Equals(p.ManagedConnectorID),
+	connector, err := uc.storage.ManagedConnectors().First(ctx, &pipelineservice.ManagedConnectorFilter{
+		ID:          filter.Equals(payload.ManagedConnectorID),
 		WorkspaceID: filter.Equals(workspaceID),
 	})
 	if err != nil {
 		return "", nil, fmt.Errorf("loading managed connector: %w", err)
 	}
-	image = mc.DockerImage + ":" + mc.DockerTag
+
+	image = connector.DockerImage + ":" + connector.DockerTag
 
 	// Resolve config: use inline config if present, otherwise load from source/destination.
 	var configJSON string
-	if p.Config != nil {
-		configJSON = *p.Config
-	} else if p.SourceID != nil {
+	if payload.Config != nil {
+		configJSON = *payload.Config
+	} else if payload.SourceID != nil {
 		src, err := uc.storage.Sources().First(ctx, &pipelineservice.SourceFilter{
-			ID:          filter.Equals(*p.SourceID),
+			ID:          filter.Equals(*payload.SourceID),
 			WorkspaceID: filter.Equals(workspaceID),
 		})
 		if err != nil {
 			return "", nil, fmt.Errorf("loading source: %w", err)
 		}
+
 		configJSON = src.Config
-	} else if p.DestinationID != nil {
+	} else if payload.DestinationID != nil {
 		dest, err := uc.storage.Destinations().First(ctx, &pipelineservice.DestinationFilter{
-			ID:          filter.Equals(*p.DestinationID),
+			ID:          filter.Equals(*payload.DestinationID),
 			WorkspaceID: filter.Equals(workspaceID),
 		})
 		if err != nil {
 			return "", nil, fmt.Errorf("loading destination: %w", err)
 		}
+
 		configJSON = dest.Config
 	}
 
@@ -120,32 +125,34 @@ func (uc *ClaimTask) resolveCheckPayload(ctx context.Context, workspaceID uuid.U
 }
 
 // resolveSpecPayload resolves image for a spec task (no config needed).
-func (uc *ClaimTask) resolveSpecPayload(ctx context.Context, workspaceID uuid.UUID, p *pipelineservice.SpecPayload) (string, error) {
-	mc, err := uc.storage.ManagedConnectors().First(ctx, &pipelineservice.ManagedConnectorFilter{
-		ID:          filter.Equals(p.ManagedConnectorID),
+func (uc *ClaimTask) resolveSpecPayload(ctx context.Context, workspaceID uuid.UUID, payload *pipelineservice.SpecPayload) (string, error) {
+	connector, err := uc.storage.ManagedConnectors().First(ctx, &pipelineservice.ManagedConnectorFilter{
+		ID:          filter.Equals(payload.ManagedConnectorID),
 		WorkspaceID: filter.Equals(workspaceID),
 	})
 	if err != nil {
 		return "", fmt.Errorf("loading managed connector: %w", err)
 	}
-	return mc.DockerImage + ":" + mc.DockerTag, nil
+
+	return connector.DockerImage + ":" + connector.DockerTag, nil
 }
 
 // resolveDiscoverPayload resolves image and config for a discover task.
-func (uc *ClaimTask) resolveDiscoverPayload(ctx context.Context, workspaceID uuid.UUID, p *pipelineservice.DiscoverPayload) (image string, config []byte, err error) {
+func (uc *ClaimTask) resolveDiscoverPayload(ctx context.Context, workspaceID uuid.UUID, payload *pipelineservice.DiscoverPayload) (image string, config []byte, err error) {
 	// Resolve managed connector for image, scoped to workspace.
-	mc, err := uc.storage.ManagedConnectors().First(ctx, &pipelineservice.ManagedConnectorFilter{
-		ID:          filter.Equals(p.ManagedConnectorID),
+	connector, err := uc.storage.ManagedConnectors().First(ctx, &pipelineservice.ManagedConnectorFilter{
+		ID:          filter.Equals(payload.ManagedConnectorID),
 		WorkspaceID: filter.Equals(workspaceID),
 	})
 	if err != nil {
 		return "", nil, fmt.Errorf("loading managed connector: %w", err)
 	}
-	image = mc.DockerImage + ":" + mc.DockerTag
+
+	image = connector.DockerImage + ":" + connector.DockerTag
 
 	// Resolve source config, scoped to workspace.
 	src, err := uc.storage.Sources().First(ctx, &pipelineservice.SourceFilter{
-		ID:          filter.Equals(p.SourceID),
+		ID:          filter.Equals(payload.SourceID),
 		WorkspaceID: filter.Equals(workspaceID),
 	})
 	if err != nil {

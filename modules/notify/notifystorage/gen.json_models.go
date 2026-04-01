@@ -41,6 +41,7 @@ func convertWebhookToJsonModel(src *notifyservice.Webhook) (*jsonWebhook, error)
 	result.Enabled = src.Enabled
 	result.CreatedAt = (src.CreatedAt).UTC()
 	result.UpdatedAt = (src.UpdatedAt).UTC()
+
 	return result, nil
 }
 
@@ -54,6 +55,7 @@ func convertWebhookFromJsonModel(src *jsonWebhook) (*notifyservice.Webhook, erro
 	result.Enabled = src.Enabled
 	result.CreatedAt = src.CreatedAt
 	result.UpdatedAt = src.UpdatedAt
+
 	return result, nil
 }
 
@@ -90,6 +92,7 @@ func convertNotificationChannelToJsonModel(src *notifyservice.NotificationChanne
 	result.Enabled = src.Enabled
 	result.CreatedAt = (src.CreatedAt).UTC()
 	result.UpdatedAt = (src.UpdatedAt).UTC()
+
 	return result, nil
 }
 
@@ -107,6 +110,7 @@ func convertNotificationChannelFromJsonModel(src *jsonNotificationChannel) (*not
 	result.Enabled = src.Enabled
 	result.CreatedAt = src.CreatedAt
 	result.UpdatedAt = src.UpdatedAt
+
 	return result, nil
 }
 
@@ -145,6 +149,7 @@ func convertNotificationRuleToJsonModel(src *notifyservice.NotificationRule) (*j
 	result.Enabled = src.Enabled
 	result.CreatedAt = (src.CreatedAt).UTC()
 	result.UpdatedAt = (src.UpdatedAt).UTC()
+
 	return result, nil
 }
 
@@ -163,5 +168,6 @@ func convertNotificationRuleFromJsonModel(src *jsonNotificationRule) (*notifyser
 	result.Enabled = src.Enabled
 	result.CreatedAt = src.CreatedAt
 	result.UpdatedAt = src.UpdatedAt
+
 	return result, nil
 }

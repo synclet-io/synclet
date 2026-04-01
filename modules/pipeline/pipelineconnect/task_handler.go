@@ -36,7 +36,7 @@ func (h *ConnectorTaskHandler) GetConnectorTaskResult(ctx context.Context, req *
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	taskID, err := uuid.Parse(req.Msg.TaskId)
+	taskID, err := uuid.Parse(req.Msg.GetTaskId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid task_id: %w", err))
 	}
@@ -57,21 +57,21 @@ func (h *ConnectorTaskHandler) GetConnectorTaskResult(ctx context.Context, req *
 
 	// Map typed result via one_of interface type switch.
 	if result.Result != nil {
-		switch r := result.Result.(type) {
+		switch taskResult := result.Result.(type) {
 		case *pipelineservice.CheckResult:
 			resp.Result = &pipelinev1.GetConnectorTaskResultResponse_CheckResult{
 				CheckResult: &pipelinev1.CheckTaskResult{
-					Success: r.Success,
-					Message: r.Message,
+					Success: taskResult.Success,
+					Message: taskResult.Message,
 				},
 			}
 		case *pipelineservice.SpecResult:
 			resp.Result = &pipelinev1.GetConnectorTaskResultResponse_SpecResult{
-				SpecResult: &pipelinev1.SpecTaskResult{Spec: specResultToProto(r)},
+				SpecResult: &pipelinev1.SpecTaskResult{Spec: specResultToProto(taskResult)},
 			}
 		case *pipelineservice.DiscoverResult:
 			resp.Result = &pipelinev1.GetConnectorTaskResultResponse_DiscoverResult{
-				DiscoverResult: &pipelinev1.DiscoverTaskResult{Catalog: catalogStringToProto(r.Catalog)},
+				DiscoverResult: &pipelinev1.DiscoverTaskResult{Catalog: catalogStringToProto(taskResult.Catalog)},
 			}
 		}
 	}
@@ -110,32 +110,32 @@ func mapTaskType(t pipelineservice.ConnectorTaskType) pipelinev1.ConnectorTaskTy
 }
 
 // specResultToProto converts a domain SpecResult to a typed proto ConnectorSpecification.
-func specResultToProto(r *pipelineservice.SpecResult) *protocolv1.ConnectorSpecification {
+func specResultToProto(specResult *pipelineservice.SpecResult) *protocolv1.ConnectorSpecification {
 	spec := &protocolv1.ConnectorSpecification{
-		DocumentationUrl:      r.DocumentationURL,
-		ChangelogUrl:          r.ChangelogURL,
-		SupportsIncremental:   r.SupportsIncremental,
-		SupportsNormalization: r.SupportsNormalization,
-		SupportsDbt:           r.SupportsDBT,
-		ProtocolVersion:       r.ProtocolVersion,
+		DocumentationUrl:      specResult.DocumentationURL,
+		ChangelogUrl:          specResult.ChangelogURL,
+		SupportsIncremental:   specResult.SupportsIncremental,
+		SupportsNormalization: specResult.SupportsNormalization,
+		SupportsDbt:           specResult.SupportsDBT,
+		ProtocolVersion:       specResult.ProtocolVersion,
 	}
 
 	// ConnectionSpecification: jsonb string -> structpb.Struct
-	if r.ConnectionSpecification != "" {
-		spec.ConnectionSpecification = rawJSONToStruct(json.RawMessage(r.ConnectionSpecification))
+	if specResult.ConnectionSpecification != "" {
+		spec.ConnectionSpecification = rawJSONToStruct(json.RawMessage(specResult.ConnectionSpecification))
 	}
 
 	// SupportedDestinationSyncModes: jsonb string -> []string
-	if r.SupportedDestinationSyncModes != "" {
+	if specResult.SupportedDestinationSyncModes != "" {
 		var modes []string
-		if json.Unmarshal([]byte(r.SupportedDestinationSyncModes), &modes) == nil {
+		if json.Unmarshal([]byte(specResult.SupportedDestinationSyncModes), &modes) == nil {
 			spec.SupportedDestinationSyncModes = modes
 		}
 	}
 
 	// AdvancedAuth: jsonb string -> protocolv1.AdvancedAuth
-	if r.AdvancedAuth != "" {
-		spec.AdvancedAuth = parseAdvancedAuth(r.AdvancedAuth)
+	if specResult.AdvancedAuth != "" {
+		spec.AdvancedAuth = parseAdvancedAuth(specResult.AdvancedAuth)
 	}
 
 	return spec
@@ -171,14 +171,17 @@ func rawJSONToStruct(data json.RawMessage) *structpb.Struct {
 	if len(data) == 0 {
 		return nil
 	}
+
 	var m map[string]any
 	if json.Unmarshal(data, &m) != nil {
 		return nil
 	}
+
 	s, err := structpb.NewStruct(m)
 	if err != nil {
 		return nil
 	}
+
 	return s
 }
 
@@ -203,28 +206,29 @@ func catalogToProto(catalog *protocol.AirbyteCatalog) *protocolv1.AirbyteCatalog
 	}
 
 	pbCatalog := &protocolv1.AirbyteCatalog{}
-	for _, s := range catalog.Streams {
+
+	for _, stream := range catalog.Streams {
 		pbStream := &protocolv1.AirbyteStream{
-			Name:                s.Name,
-			SourceDefinedCursor: s.SourceDefinedCursor,
-			DefaultCursorField:  s.DefaultCursorField,
-			Namespace:           s.Namespace,
-			IsResumable:         s.IsResumable,
-			IsFileBased:         s.IsFileBased,
+			Name:                stream.Name,
+			SourceDefinedCursor: stream.SourceDefinedCursor,
+			DefaultCursorField:  stream.DefaultCursorField,
+			Namespace:           stream.Namespace,
+			IsResumable:         stream.IsResumable,
+			IsFileBased:         stream.IsFileBased,
 		}
 
 		// JSONSchema: json.RawMessage -> structpb.Struct
-		if len(s.JSONSchema) > 0 {
-			pbStream.JsonSchema = rawJSONToStruct(s.JSONSchema)
+		if len(stream.JSONSchema) > 0 {
+			pbStream.JsonSchema = rawJSONToStruct(stream.JSONSchema)
 		}
 
 		// SupportedSyncModes: []SyncMode -> []string
-		for _, mode := range s.SupportedSyncModes {
+		for _, mode := range stream.SupportedSyncModes {
 			pbStream.SupportedSyncModes = append(pbStream.SupportedSyncModes, string(mode))
 		}
 
 		// SourceDefinedPrimaryKey: [][]string -> []*StringList
-		for _, pk := range s.SourceDefinedPrimaryKey {
+		for _, pk := range stream.SourceDefinedPrimaryKey {
 			pbStream.SourceDefinedPrimaryKey = append(pbStream.SourceDefinedPrimaryKey, &protocolv1.StringList{Values: pk})
 		}
 

@@ -40,13 +40,13 @@ func TestSyncOptions_PerContainerResources(t *testing.T) {
 	}
 
 	assert.Equal(t, int64(1024*1024*1024), opts.SourceMemoryLimit)
-	assert.Equal(t, 2.0, opts.SourceCPULimit)
+	assert.InDelta(t, 2.0, opts.SourceCPULimit, 0.001)
 	assert.Equal(t, int64(512*1024*1024), opts.SourceMemoryRequest)
-	assert.Equal(t, 0.5, opts.SourceCPURequest)
+	assert.InDelta(t, 0.5, opts.SourceCPURequest, 0.001)
 	assert.Equal(t, int64(2*1024*1024*1024), opts.DestMemoryLimit)
-	assert.Equal(t, 4.0, opts.DestCPULimit)
+	assert.InDelta(t, 4.0, opts.DestCPULimit, 0.001)
 	assert.Equal(t, int64(1024*1024*1024), opts.DestMemoryRequest)
-	assert.Equal(t, 1.0, opts.DestCPURequest)
+	assert.InDelta(t, 1.0, opts.DestCPURequest, 0.001)
 }
 
 func TestSyncOptions_SchedulingFields(t *testing.T) {
@@ -378,12 +378,15 @@ func TestLaunchSync_SecretVolume(t *testing.T) {
 
 	// Verify sync-configs volume exists with SecretVolumeSource.
 	var secretVol *corev1.Volume
+
 	for i := range podSpec.Volumes {
 		if podSpec.Volumes[i].Name == "sync-configs" {
 			secretVol = &podSpec.Volumes[i]
+
 			break
 		}
 	}
+
 	require.NotNil(t, secretVol, "sync-configs volume must exist")
 	require.NotNil(t, secretVol.Secret, "sync-configs must be a Secret volume")
 
@@ -394,12 +397,15 @@ func TestLaunchSync_SecretVolume(t *testing.T) {
 	orchContainer := podSpec.Containers[0]
 	assert.Equal(t, "orchestrator", orchContainer.Name)
 	var secretMount *corev1.VolumeMount
+
 	for i := range orchContainer.VolumeMounts {
 		if orchContainer.VolumeMounts[i].Name == "sync-configs" {
 			secretMount = &orchContainer.VolumeMounts[i]
+
 			break
 		}
 	}
+
 	require.NotNil(t, secretMount, "orchestrator must have sync-configs mount")
 	assert.Equal(t, "/secrets", secretMount.MountPath)
 	assert.True(t, secretMount.ReadOnly)
@@ -461,13 +467,17 @@ func TestLaunchSync_SecretsDir(t *testing.T) {
 
 	// Find --secrets-dir and verify the next arg is /secrets.
 	found := false
+
 	for i, arg := range orchArgs {
 		if arg == "--secrets-dir" && i+1 < len(orchArgs) {
 			assert.Equal(t, "/secrets", orchArgs[i+1])
+
 			found = true
+
 			break
 		}
 	}
+
 	assert.True(t, found, "orchestrator args must contain --secrets-dir /secrets")
 }
 
@@ -538,12 +548,15 @@ func TestLaunchConnectorTask_CreatesSecret(t *testing.T) {
 
 	// Verify volume mount exists.
 	var secretMount *corev1.VolumeMount
+
 	for i := range job.Spec.Template.Spec.Containers[0].VolumeMounts {
 		if job.Spec.Template.Spec.Containers[0].VolumeMounts[i].Name == "task-configs" {
 			secretMount = &job.Spec.Template.Spec.Containers[0].VolumeMounts[i]
+
 			break
 		}
 	}
+
 	require.NotNil(t, secretMount, "coordinator must have task-configs mount")
 	assert.Equal(t, "/secrets", secretMount.MountPath)
 	assert.True(t, secretMount.ReadOnly)
@@ -571,6 +584,7 @@ func TestLaunchConnectorTask_SpecNoSecret(t *testing.T) {
 	// No --secrets-dir arg.
 	job, err := client.BatchV1().Jobs("test-ns").Get(context.Background(), jobName, metav1.GetOptions{})
 	require.NoError(t, err)
+
 	coordArgs := job.Spec.Template.Spec.Containers[0].Command
 	assert.NotContains(t, coordArgs, "--secrets-dir")
 }

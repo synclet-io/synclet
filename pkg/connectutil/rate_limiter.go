@@ -33,13 +33,14 @@ type RateLimitInterceptor struct {
 // NewRateLimitInterceptor creates a rate limiting interceptor.
 // configs maps procedure paths to their rate limit configuration.
 func NewRateLimitInterceptor(configs map[string]RateLimitConfig) *RateLimitInterceptor {
-	rl := &RateLimitInterceptor{
+	rateLimiter := &RateLimitInterceptor{
 		limiters: make(map[string]*ipLimiter),
 		configs:  configs,
 		stopCh:   make(chan struct{}),
 	}
-	go rl.cleanupLoop()
-	return rl
+	go rateLimiter.cleanupLoop()
+
+	return rateLimiter
 }
 
 // Stop stops the cleanup goroutine.
@@ -47,26 +48,29 @@ func (r *RateLimitInterceptor) Stop() {
 	close(r.stopCh)
 }
 
-func (r *RateLimitInterceptor) getLimiter(ip string, cfg RateLimitConfig) *rate.Limiter {
+func (r *RateLimitInterceptor) getLimiter(ipAddr string, cfg RateLimitConfig) *rate.Limiter {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	if l, ok := r.limiters[ip]; ok {
-		l.lastSeen = time.Now()
-		return l.limiter
+	if limiter, ok := r.limiters[ipAddr]; ok {
+		limiter.lastSeen = time.Now()
+
+		return limiter.limiter
 	}
 
-	l := &ipLimiter{
+	limiter := &ipLimiter{
 		limiter:  rate.NewLimiter(cfg.Rate, cfg.Burst),
 		lastSeen: time.Now(),
 	}
-	r.limiters[ip] = l
-	return l.limiter
+	r.limiters[ipAddr] = limiter
+
+	return limiter.limiter
 }
 
 func (r *RateLimitInterceptor) cleanupLoop() {
 	ticker := time.NewTicker(5 * time.Minute)
 	defer ticker.Stop()
+
 	for {
 		select {
 		case <-ticker.C:
@@ -80,6 +84,7 @@ func (r *RateLimitInterceptor) cleanupLoop() {
 func (r *RateLimitInterceptor) cleanup() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+
 	for key, l := range r.limiters {
 		if time.Since(l.lastSeen) > 10*time.Minute {
 			delete(r.limiters, key)
@@ -96,6 +101,7 @@ func (r *RateLimitInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFu
 		}
 
 		ip := extractIP(req.Peer().Addr)
+
 		limiter := r.getLimiter(ip, cfg)
 		if !limiter.Allow() {
 			return nil, connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("rate limit exceeded, try again later"))
@@ -121,5 +127,6 @@ func extractIP(addr string) string {
 	if err != nil {
 		return addr
 	}
+
 	return host
 }

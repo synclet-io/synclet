@@ -81,6 +81,7 @@ func (w *K8sSyncWorker) Execute(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("claiming job: %w", err)
 	}
+
 	if result == nil {
 		return nil
 	}
@@ -90,17 +91,23 @@ func (w *K8sSyncWorker) Execute(ctx context.Context) error {
 	var catalog protocol.ConfiguredAirbyteCatalog
 	if err := json.Unmarshal(result.ConfiguredCatalog, &catalog); err != nil {
 		w.failJob(ctx, result.Job.ID, fmt.Errorf("unmarshaling catalog: %w", err))
+
 		return nil
 	}
+
 	destCatalog, err := pipelinecatalog.BuildDestinationCatalog(&catalog)
 	if err != nil {
 		w.failJob(ctx, result.Job.ID, fmt.Errorf("building destination catalog: %w", err))
+
 		return nil
 	}
+
 	pipelinecatalog.ApplyNamespaceAndPrefix(destCatalog, result.NamespaceDefinition, nilIfEmpty(result.CustomNamespaceFormat), nilIfEmpty(result.StreamPrefix))
+
 	destCatalogJSON, err := json.Marshal(destCatalog)
 	if err != nil {
 		w.failJob(ctx, result.Job.ID, fmt.Errorf("marshaling dest catalog: %w", err))
+
 		return nil
 	}
 
@@ -128,6 +135,7 @@ func (w *K8sSyncWorker) Execute(ctx context.Context) error {
 	k8sJobName, err := w.k8sRunner.CreateSyncJob(ctx, opts)
 	if err != nil {
 		w.failJob(ctx, result.Job.ID, fmt.Errorf("creating k8s job: %w", err))
+
 		return nil
 	}
 

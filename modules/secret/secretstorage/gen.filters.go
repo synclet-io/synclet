@@ -54,6 +54,7 @@ func buildSecretFilterExpr(filter *secretservice.SecretFilter, options ...func(*
 				}
 				exprs = append(exprs, expr)
 			}
+
 			return clause.Or(exprs...), nil
 		}),
 		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
@@ -68,6 +69,7 @@ func buildSecretFilterExpr(filter *secretservice.SecretFilter, options ...func(*
 				}
 				exprs = append(exprs, expr)
 			}
+
 			return clause.And(exprs...), nil
 		}),
 	)

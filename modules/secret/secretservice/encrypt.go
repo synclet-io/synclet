@@ -60,6 +60,7 @@ func Encrypt(masterKey, plaintext []byte) (ciphertext, salt, nonce []byte, err e
 	}
 
 	ciphertext = gcm.Seal(nil, nonce, plaintext, nil)
+
 	return ciphertext, salt, nonce, nil
 }
 
@@ -85,9 +86,11 @@ func Decrypt(masterKey, salt, nonce, ciphertext []byte) ([]byte, error) {
 
 func deriveKey(masterKey, salt []byte) ([]byte, error) {
 	hkdfReader := hkdf.New(sha256.New, masterKey, salt, hkdfInfo)
+
 	derivedKey := make([]byte, 32)
 	if _, err := io.ReadFull(hkdfReader, derivedKey); err != nil {
 		return nil, fmt.Errorf("deriving key: %w", err)
 	}
+
 	return derivedKey, nil
 }

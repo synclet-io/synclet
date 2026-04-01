@@ -42,6 +42,7 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
+
 				return values
 			}
 			info.AddField("Email", "email", db.Text)
@@ -61,6 +62,7 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
+
 				return values
 			}
 			info.AddField("PasswordHash", "password_hash", db.Text)
@@ -76,6 +78,7 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
+
 				return values
 			}
 			info.AddField("Name", "name", db.Text)
@@ -91,6 +94,7 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
+
 				return values
 			}
 			info.AddField("CreatedAt", "created_at", db.Timestamp)
@@ -106,6 +110,7 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
+
 				return values
 			}
 
@@ -137,6 +142,7 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
+
 				return values
 			}
 			info.AddField("UserID", "user_id", db.UUID)
@@ -156,6 +162,7 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
+
 				return values
 			}
 			info.AddField("TokenHash", "token_hash", db.Text)
@@ -175,6 +182,7 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
+
 				return values
 			}
 			info.AddField("ExpiresAt", "expires_at", db.Timestamp)
@@ -190,6 +198,7 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
+
 				return values
 			}
 			info.AddField("CreatedAt", "created_at", db.Timestamp)
@@ -205,6 +214,7 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
+
 				return values
 			}
 
@@ -236,6 +246,7 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
+
 				return values
 			}
 			info.AddField("WorkspaceID", "workspace_id", db.UUID)
@@ -255,6 +266,7 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
+
 				return values
 			}
 			info.AddField("UserID", "user_id", db.UUID)
@@ -274,6 +286,7 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
+
 				return values
 			}
 			info.AddField("Name", "name", db.Text)
@@ -289,6 +302,7 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
+
 				return values
 			}
 			info.AddField("KeyHash", "key_hash", db.Text)
@@ -308,6 +322,7 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
+
 				return values
 			}
 			info.AddField("LastUsedAt", "last_used_at", db.Timestamp)
@@ -323,6 +338,7 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
+
 				return values
 			}
 			info.AddField("ExpiresAt", "expires_at", db.Timestamp)
@@ -338,6 +354,7 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
+
 				return values
 			}
 			info.AddField("CreatedAt", "created_at", db.Timestamp)
@@ -353,6 +370,7 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
+
 				return values
 			}
 
@@ -384,6 +402,7 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
+
 				return values
 			}
 			info.AddField("UserID", "user_id", db.UUID)
@@ -403,6 +422,7 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
+
 				return values
 			}
 			info.AddField("ProviderSlug", "provider_slug", db.Text)
@@ -422,6 +442,7 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
+
 				return values
 			}
 			info.AddField("Subject", "subject", db.Text)
@@ -441,6 +462,7 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
+
 				return values
 			}
 			info.AddField("Email", "email", db.Text)
@@ -456,6 +478,7 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
+
 				return values
 			}
 			info.AddField("CreatedAt", "created_at", db.Timestamp)
@@ -471,6 +494,7 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
+
 				return values
 			}
 			info.AddField("LastLoginAt", "last_login_at", db.Timestamp)
@@ -486,6 +510,7 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
+
 				return values
 			}
 
@@ -517,6 +542,7 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
+
 				return values
 			}
 			info.AddField("State", "state", db.Text)
@@ -536,6 +562,7 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
+
 				return values
 			}
 			info.AddField("Verifier", "verifier", db.Text)
@@ -551,6 +578,7 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
+
 				return values
 			}
 			info.AddField("ProviderSlug", "provider_slug", db.Text)
@@ -566,6 +594,7 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
+
 				return values
 			}
 			info.AddField("ExpiresAt", "expires_at", db.Timestamp)
@@ -581,6 +610,7 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
+
 				return values
 			}
 			info.AddField("CreatedAt", "created_at", db.Timestamp)
@@ -596,6 +626,7 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
+
 				return values
 			}
 

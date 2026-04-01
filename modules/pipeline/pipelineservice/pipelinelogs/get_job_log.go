@@ -77,6 +77,7 @@ func (uc *GetJobLog) Execute(ctx context.Context, params GetJobLogParams) (*GetJ
 
 	lines := make([]string, len(logs))
 	var lastID int64
+
 	for i, l := range logs {
 		lines[i] = l.LogLine
 		if l.ID > lastID {

@@ -44,6 +44,7 @@ func convertManagedConnectorToDB(src *pipelineservice.ManagedConnector) (*dbMana
 	} else {
 		result.RepositoryID = toPtr(fromPtr(src.RepositoryID))
 	}
+
 	return result, nil
 }
 
@@ -67,6 +68,7 @@ func convertManagedConnectorFromDB(src *dbManagedConnector) (*pipelineservice.Ma
 	} else {
 		result.RepositoryID = toPtr(fromPtr(src.RepositoryID))
 	}
+
 	return result, nil
 }
 func (a dbManagedConnector) TableName() string {
@@ -116,6 +118,7 @@ func convertRepositoryToDB(src *pipelineservice.Repository) (*dbRepository, erro
 	}
 	result.CreatedAt = (src.CreatedAt).UTC()
 	result.UpdatedAt = (src.UpdatedAt).UTC()
+
 	return result, nil
 }
 
@@ -148,6 +151,7 @@ func convertRepositoryFromDB(src *dbRepository) (*pipelineservice.Repository, er
 	}
 	result.CreatedAt = src.CreatedAt
 	result.UpdatedAt = src.UpdatedAt
+
 	return result, nil
 }
 func (a dbRepository) TableName() string {
@@ -203,6 +207,7 @@ func convertRepositoryConnectorToDB(src *pipelineservice.RepositoryConnector) (*
 	}
 	result.SourceType = tmp12
 	result.Metadata = src.Metadata
+
 	return result, nil
 }
 
@@ -238,6 +243,7 @@ func convertRepositoryConnectorFromDB(src *dbRepositoryConnector) (*pipelineserv
 	}
 	result.SourceType = tmp26
 	result.Metadata = src.Metadata
+
 	return result, nil
 }
 func (a dbRepositoryConnector) TableName() string {
@@ -269,6 +275,7 @@ func convertSourceToDB(src *pipelineservice.Source) (*dbSource, error) {
 	} else {
 		result.RuntimeConfig = toPtr(fromPtr(src.RuntimeConfig))
 	}
+
 	return result, nil
 }
 
@@ -286,6 +293,7 @@ func convertSourceFromDB(src *dbSource) (*pipelineservice.Source, error) {
 	} else {
 		result.RuntimeConfig = toPtr(fromPtr(src.RuntimeConfig))
 	}
+
 	return result, nil
 }
 func (a dbSource) TableName() string {
@@ -317,6 +325,7 @@ func convertDestinationToDB(src *pipelineservice.Destination) (*dbDestination, e
 	} else {
 		result.RuntimeConfig = toPtr(fromPtr(src.RuntimeConfig))
 	}
+
 	return result, nil
 }
 
@@ -334,6 +343,7 @@ func convertDestinationFromDB(src *dbDestination) (*pipelineservice.Destination,
 	} else {
 		result.RuntimeConfig = toPtr(fromPtr(src.RuntimeConfig))
 	}
+
 	return result, nil
 }
 func (a dbDestination) TableName() string {
@@ -403,6 +413,7 @@ func convertConnectionToDB(src *pipelineservice.Connection) (*dbConnection, erro
 	}
 	result.CreatedAt = (src.CreatedAt).UTC()
 	result.UpdatedAt = (src.UpdatedAt).UTC()
+
 	return result, nil
 }
 
@@ -451,6 +462,7 @@ func convertConnectionFromDB(src *dbConnection) (*pipelineservice.Connection, er
 	}
 	result.CreatedAt = src.CreatedAt
 	result.UpdatedAt = src.UpdatedAt
+
 	return result, nil
 }
 func (a dbConnection) TableName() string {
@@ -528,6 +540,7 @@ func convertJobToDB(src *pipelineservice.Job) (*dbJob, error) {
 		result.FailureReason = toPtr(fromPtr(src.FailureReason))
 	}
 	result.CreatedAt = (src.CreatedAt).UTC()
+
 	return result, nil
 }
 
@@ -584,6 +597,7 @@ func convertJobFromDB(src *dbJob) (*pipelineservice.Job, error) {
 		result.FailureReason = toPtr(fromPtr(src.FailureReason))
 	}
 	result.CreatedAt = src.CreatedAt
+
 	return result, nil
 }
 func (a dbJob) TableName() string {
@@ -617,6 +631,7 @@ func convertJobAttemptToDB(src *pipelineservice.JobAttempt) (*dbJobAttempt, erro
 		result.Error = toPtr(fromPtr(src.Error))
 	}
 	result.SyncStatsJSON = src.SyncStatsJSON
+
 	return result, nil
 }
 
@@ -637,6 +652,7 @@ func convertJobAttemptFromDB(src *dbJobAttempt) (*pipelineservice.JobAttempt, er
 		result.Error = toPtr(fromPtr(src.Error))
 	}
 	result.SyncStatsJSON = src.SyncStatsJSON
+
 	return result, nil
 }
 func (a dbJobAttempt) TableName() string {
@@ -658,6 +674,7 @@ func convertCatalogDiscoveryToDB(src *pipelineservice.CatalogDiscovery) (*dbCata
 	result.Version = src.Version
 	result.CatalogJSON = src.CatalogJSON
 	result.DiscoveredAt = (src.DiscoveredAt).UTC()
+
 	return result, nil
 }
 
@@ -668,6 +685,7 @@ func convertCatalogDiscoveryFromDB(src *dbCatalogDiscovery) (*pipelineservice.Ca
 	result.Version = src.Version
 	result.CatalogJSON = src.CatalogJSON
 	result.DiscoveredAt = src.DiscoveredAt
+
 	return result, nil
 }
 func (a dbCatalogDiscovery) TableName() string {
@@ -689,6 +707,7 @@ func convertConfiguredCatalogToDB(src *pipelineservice.ConfiguredCatalog) (*dbCo
 	result.StreamsJSON = src.StreamsJSON
 	result.CreatedAt = (src.CreatedAt).UTC()
 	result.UpdatedAt = (src.UpdatedAt).UTC()
+
 	return result, nil
 }
 
@@ -699,6 +718,7 @@ func convertConfiguredCatalogFromDB(src *dbConfiguredCatalog) (*pipelineservice.
 	result.StreamsJSON = src.StreamsJSON
 	result.CreatedAt = src.CreatedAt
 	result.UpdatedAt = src.UpdatedAt
+
 	return result, nil
 }
 func (a dbConfiguredCatalog) TableName() string {
@@ -718,6 +738,7 @@ func convertJobLogToDB(src *pipelineservice.JobLog) (*dbJobLog, error) {
 	result.JobID = src.JobID
 	result.LogLine = src.LogLine
 	result.CreatedAt = (src.CreatedAt).UTC()
+
 	return result, nil
 }
 
@@ -727,6 +748,7 @@ func convertJobLogFromDB(src *dbJobLog) (*pipelineservice.JobLog, error) {
 	result.JobID = src.JobID
 	result.LogLine = src.LogLine
 	result.CreatedAt = src.CreatedAt
+
 	return result, nil
 }
 func (a dbJobLog) TableName() string {
@@ -746,6 +768,7 @@ func convertConnectionStateToDB(src *pipelineservice.ConnectionState) (*dbConnec
 	result.StateType = src.StateType
 	result.StateBlob = src.StateBlob
 	result.UpdatedAt = (src.UpdatedAt).UTC()
+
 	return result, nil
 }
 
@@ -755,6 +778,7 @@ func convertConnectionStateFromDB(src *dbConnectionState) (*pipelineservice.Conn
 	result.StateType = src.StateType
 	result.StateBlob = src.StateBlob
 	result.UpdatedAt = src.UpdatedAt
+
 	return result, nil
 }
 func (a dbConnectionState) TableName() string {
@@ -774,6 +798,7 @@ func convertWorkspaceSettingsToDB(src *pipelineservice.WorkspaceSettings) (*dbWo
 	result.MaxJobsPerWorkspace = src.MaxJobsPerWorkspace
 	result.CreatedAt = (src.CreatedAt).UTC()
 	result.UpdatedAt = (src.UpdatedAt).UTC()
+
 	return result, nil
 }
 
@@ -783,6 +808,7 @@ func convertWorkspaceSettingsFromDB(src *dbWorkspaceSettings) (*pipelineservice.
 	result.MaxJobsPerWorkspace = src.MaxJobsPerWorkspace
 	result.CreatedAt = src.CreatedAt
 	result.UpdatedAt = src.UpdatedAt
+
 	return result, nil
 }
 func (a dbWorkspaceSettings) TableName() string {
@@ -848,6 +874,7 @@ func convertConnectorTaskToDB(src *pipelineservice.ConnectorTask) (*dbConnectorT
 	} else {
 		result.CompletedAt = toPtr((fromPtr(src.CompletedAt)).UTC())
 	}
+
 	return result, nil
 }
 
@@ -896,6 +923,7 @@ func convertConnectorTaskFromDB(src *dbConnectorTask) (*pipelineservice.Connecto
 	} else {
 		result.CompletedAt = toPtr(fromPtr(src.CompletedAt))
 	}
+
 	return result, nil
 }
 func (a dbConnectorTask) TableName() string {
@@ -917,6 +945,7 @@ func convertStreamGenerationToDB(src *pipelineservice.StreamGeneration) (*dbStre
 	result.StreamName = src.StreamName
 	result.GenerationID = src.GenerationID
 	result.UpdatedAt = (src.UpdatedAt).UTC()
+
 	return result, nil
 }
 
@@ -927,6 +956,7 @@ func convertStreamGenerationFromDB(src *dbStreamGeneration) (*pipelineservice.St
 	result.StreamName = src.StreamName
 	result.GenerationID = src.GenerationID
 	result.UpdatedAt = src.UpdatedAt
+
 	return result, nil
 }
 func (a dbStreamGeneration) TableName() string {

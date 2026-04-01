@@ -16,8 +16,10 @@ func formatTraceLine(prefix string, msg *protocol.AirbyteTraceMessage) string {
 	if msg.Type == protocol.TraceTypeError && msg.Error != nil {
 		return fmt.Sprintf("%s ERROR: %s", prefix, msg.Error.Message)
 	}
+
 	if msg.Type == protocol.TraceTypeAnalytics && msg.Analytics != nil {
 		return fmt.Sprintf("%s TRACE: %s = %s", prefix, msg.Analytics.Type, msg.Analytics.Value)
 	}
+
 	return fmt.Sprintf("%s TRACE: %s", prefix, msg.Type)
 }

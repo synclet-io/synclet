@@ -24,6 +24,7 @@ func TestSecurityHeadersMiddleware(t *testing.T) {
 	handler.ServeHTTP(rec, req)
 
 	resp := rec.Result()
+
 	defer func() { _ = resp.Body.Close() }()
 
 	t.Run("sets X-Frame-Options", func(t *testing.T) {

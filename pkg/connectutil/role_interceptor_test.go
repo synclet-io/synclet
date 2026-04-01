@@ -64,7 +64,7 @@ func TestRoleInterceptor_checkRole(t *testing.T) {
 		err := interceptor.checkRole(ctx, procedure)
 		require.Error(t, err)
 		var connectErr *connect.Error
-		require.True(t, errors.As(err, &connectErr))
+		require.ErrorAs(t, err, &connectErr)
 		assert.Equal(t, connect.CodePermissionDenied, connectErr.Code())
 	})
 
@@ -81,7 +81,7 @@ func TestRoleInterceptor_checkRole(t *testing.T) {
 		err := interceptor.checkRole(ctx, procedure)
 		require.Error(t, err)
 		var connectErr *connect.Error
-		require.True(t, errors.As(err, &connectErr))
+		require.ErrorAs(t, err, &connectErr)
 		assert.Equal(t, connect.CodePermissionDenied, connectErr.Code())
 	})
 
@@ -126,7 +126,7 @@ func TestRoleInterceptor_checkRole(t *testing.T) {
 		err := interceptor.checkRole(ctx, procedure)
 		require.Error(t, err)
 		var connectErr *connect.Error
-		require.True(t, errors.As(err, &connectErr))
+		require.ErrorAs(t, err, &connectErr)
 		assert.Equal(t, connect.CodePermissionDenied, connectErr.Code())
 	})
 
@@ -195,7 +195,7 @@ func TestRoleInterceptor_checkRole(t *testing.T) {
 		err := interceptor.checkRole(ctx, procedure)
 		require.Error(t, err)
 		var connectErr *connect.Error
-		require.True(t, errors.As(err, &connectErr))
+		require.ErrorAs(t, err, &connectErr)
 		assert.Equal(t, connect.CodePermissionDenied, connectErr.Code())
 	})
 
@@ -211,7 +211,7 @@ func TestRoleInterceptor_checkRole(t *testing.T) {
 		err := interceptor.checkRole(ctx, procedure)
 		require.Error(t, err)
 		var connectErr *connect.Error
-		require.True(t, errors.As(err, &connectErr))
+		require.ErrorAs(t, err, &connectErr)
 		assert.Equal(t, connect.CodePermissionDenied, connectErr.Code())
 	})
 
@@ -228,7 +228,7 @@ func TestRoleInterceptor_checkRole(t *testing.T) {
 		err := interceptor.checkRole(ctx, procedure)
 		require.Error(t, err)
 		var connectErr *connect.Error
-		require.True(t, errors.As(err, &connectErr))
+		require.ErrorAs(t, err, &connectErr)
 		assert.Equal(t, connect.CodePermissionDenied, connectErr.Code())
 	})
 }

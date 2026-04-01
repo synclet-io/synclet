@@ -97,49 +97,54 @@ func (uc *ExportConfig) Execute(ctx context.Context, params ExportConfigParams) 
 
 	cfg := WorkspaceConfig{Version: "1"}
 
-	for _, s := range sources {
-		sourceNameByID[s.ID] = s.Name
-		mc := uc.resolveConnector(ctx, s.ManagedConnectorID, mcCache)
-		sc := SourceConfig{
-			Name:               s.Name,
-			ManagedConnectorID: s.ManagedConnectorID.String(),
-			Config:             redactSecrets(configToMap(s.Config)),
+	for _, source := range sources {
+		sourceNameByID[source.ID] = source.Name
+		connector := uc.resolveConnector(ctx, source.ManagedConnectorID, mcCache)
+
+		sourceConfig := SourceConfig{
+			Name:               source.Name,
+			ManagedConnectorID: source.ManagedConnectorID.String(),
+			Config:             redactSecrets(configToMap(source.Config)),
 		}
-		if mc != nil {
-			sc.ConnectorImage = mc.DockerImage
-			sc.ConnectorTag = mc.DockerTag
+		if connector != nil {
+			sourceConfig.ConnectorImage = connector.DockerImage
+			sourceConfig.ConnectorTag = connector.DockerTag
 		}
-		cfg.Sources = append(cfg.Sources, sc)
+
+		cfg.Sources = append(cfg.Sources, sourceConfig)
 	}
 
-	for _, d := range destinations {
-		destNameByID[d.ID] = d.Name
-		mc := uc.resolveConnector(ctx, d.ManagedConnectorID, mcCache)
-		dc := DestinationConfig{
-			Name:               d.Name,
-			ManagedConnectorID: d.ManagedConnectorID.String(),
-			Config:             redactSecrets(configToMap(d.Config)),
+	for _, dest := range destinations {
+		destNameByID[dest.ID] = dest.Name
+		connector := uc.resolveConnector(ctx, dest.ManagedConnectorID, mcCache)
+
+		destConfig := DestinationConfig{
+			Name:               dest.Name,
+			ManagedConnectorID: dest.ManagedConnectorID.String(),
+			Config:             redactSecrets(configToMap(dest.Config)),
 		}
-		if mc != nil {
-			dc.ConnectorImage = mc.DockerImage
-			dc.ConnectorTag = mc.DockerTag
+		if connector != nil {
+			destConfig.ConnectorImage = connector.DockerImage
+			destConfig.ConnectorTag = connector.DockerTag
 		}
-		cfg.Destinations = append(cfg.Destinations, dc)
+
+		cfg.Destinations = append(cfg.Destinations, destConfig)
 	}
 
-	for _, c := range connections {
+	for _, conn := range connections {
 		schedule := ""
-		if c.Schedule != nil {
-			schedule = *c.Schedule
+		if conn.Schedule != nil {
+			schedule = *conn.Schedule
 		}
-		cc := ConnectionConfig{
-			Source:      sourceNameByID[c.SourceID],
-			Destination: destNameByID[c.DestinationID],
+
+		connConfig := ConnectionConfig{
+			Source:      sourceNameByID[conn.SourceID],
+			Destination: destNameByID[conn.DestinationID],
 			Schedule:    schedule,
-			MaxAttempts: c.MaxAttempts,
-			Enabled:     c.Status == pipelineservice.ConnectionStatusActive,
+			MaxAttempts: conn.MaxAttempts,
+			Enabled:     conn.Status == pipelineservice.ConnectionStatusActive,
 		}
-		cfg.Connections = append(cfg.Connections, cc)
+		cfg.Connections = append(cfg.Connections, connConfig)
 	}
 
 	data, err := yaml.Marshal(cfg)
@@ -148,33 +153,40 @@ func (uc *ExportConfig) Execute(ctx context.Context, params ExportConfigParams) 
 	}
 
 	header := fmt.Sprintf("# Synclet workspace config — exported %s\n", time.Now().UTC().Format("2006-01-02"))
+
 	return append([]byte(header), data...), nil
 }
 
 // resolveConnector loads a managed connector by ID, caching results.
 func (uc *ExportConfig) resolveConnector(ctx context.Context, id uuid.UUID, cache map[uuid.UUID]*pipelineservice.ManagedConnector) *pipelineservice.ManagedConnector {
-	if mc, ok := cache[id]; ok {
-		return mc
+	if cached, ok := cache[id]; ok {
+		return cached
 	}
-	mc, err := uc.storage.ManagedConnectors().First(ctx, &pipelineservice.ManagedConnectorFilter{
+
+	connector, err := uc.storage.ManagedConnectors().First(ctx, &pipelineservice.ManagedConnectorFilter{
 		ID: filter.Equals(id),
 	})
 	if err != nil {
 		cache[id] = nil
+
 		return nil
 	}
-	cache[id] = mc
-	return mc
+
+	cache[id] = connector
+
+	return connector
 }
 
 func configToMap(raw string) map[string]any {
 	if raw == "" {
 		return nil
 	}
+
 	var m map[string]any
 	if err := json.Unmarshal([]byte(raw), &m); err != nil {
 		return nil
 	}
+
 	return m
 }
 
@@ -182,21 +194,23 @@ func redactSecrets(m map[string]any) map[string]any {
 	if m == nil {
 		return nil
 	}
+
 	result := make(map[string]any, len(m))
-	for k, v := range m {
-		switch val := v.(type) {
+	for key, value := range m {
+		switch val := value.(type) {
 		case string:
-			if isLikelySecret(k) {
-				result[k] = redactedPlaceholder
+			if isLikelySecret(key) {
+				result[key] = redactedPlaceholder
 			} else {
-				result[k] = val
+				result[key] = val
 			}
 		case map[string]any:
-			result[k] = redactSecrets(val)
+			result[key] = redactSecrets(val)
 		default:
-			result[k] = v
+			result[key] = value
 		}
 	}
+
 	return result
 }
 
@@ -209,5 +223,6 @@ func isLikelySecret(fieldName string) bool {
 			return true
 		}
 	}
+
 	return false
 }

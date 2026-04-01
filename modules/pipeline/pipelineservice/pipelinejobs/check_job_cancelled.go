@@ -34,5 +34,6 @@ func (uc *CheckJobCancelled) Execute(ctx context.Context, params CheckJobCancell
 	if err != nil {
 		return false, fmt.Errorf("checking job cancelled: %w", err)
 	}
+
 	return job.Status == pipelineservice.JobStatusCancelled, nil
 }

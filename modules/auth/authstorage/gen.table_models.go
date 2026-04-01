@@ -25,6 +25,7 @@ func convertUserToDB(src *authservice.User) (*dbUser, error) {
 	result.PasswordHash = src.PasswordHash
 	result.Name = src.Name
 	result.CreatedAt = (src.CreatedAt).UTC()
+
 	return result, nil
 }
 
@@ -35,6 +36,7 @@ func convertUserFromDB(src *dbUser) (*authservice.User, error) {
 	result.PasswordHash = src.PasswordHash
 	result.Name = src.Name
 	result.CreatedAt = src.CreatedAt
+
 	return result, nil
 }
 func (a dbUser) TableName() string {
@@ -56,6 +58,7 @@ func convertRefreshTokenToDB(src *authservice.RefreshToken) (*dbRefreshToken, er
 	result.TokenHash = src.TokenHash
 	result.ExpiresAt = (src.ExpiresAt).UTC()
 	result.CreatedAt = (src.CreatedAt).UTC()
+
 	return result, nil
 }
 
@@ -66,6 +69,7 @@ func convertRefreshTokenFromDB(src *dbRefreshToken) (*authservice.RefreshToken, 
 	result.TokenHash = src.TokenHash
 	result.ExpiresAt = src.ExpiresAt
 	result.CreatedAt = src.CreatedAt
+
 	return result, nil
 }
 func (a dbRefreshToken) TableName() string {
@@ -101,6 +105,7 @@ func convertAPIKeyToDB(src *authservice.APIKey) (*dbAPIKey, error) {
 		result.ExpiresAt = toPtr((fromPtr(src.ExpiresAt)).UTC())
 	}
 	result.CreatedAt = (src.CreatedAt).UTC()
+
 	return result, nil
 }
 
@@ -122,6 +127,7 @@ func convertAPIKeyFromDB(src *dbAPIKey) (*authservice.APIKey, error) {
 		result.ExpiresAt = toPtr(fromPtr(src.ExpiresAt))
 	}
 	result.CreatedAt = src.CreatedAt
+
 	return result, nil
 }
 func (a dbAPIKey) TableName() string {
@@ -147,6 +153,7 @@ func convertOIDCIdentityToDB(src *authservice.OIDCIdentity) (*dbOIDCIdentity, er
 	result.Email = src.Email
 	result.CreatedAt = (src.CreatedAt).UTC()
 	result.LastLoginAt = (src.LastLoginAt).UTC()
+
 	return result, nil
 }
 
@@ -159,6 +166,7 @@ func convertOIDCIdentityFromDB(src *dbOIDCIdentity) (*authservice.OIDCIdentity, 
 	result.Email = src.Email
 	result.CreatedAt = src.CreatedAt
 	result.LastLoginAt = src.LastLoginAt
+
 	return result, nil
 }
 func (a dbOIDCIdentity) TableName() string {
@@ -182,6 +190,7 @@ func convertOIDCStateToDB(src *authservice.OIDCState) (*dbOIDCState, error) {
 	result.ProviderSlug = src.ProviderSlug
 	result.ExpiresAt = (src.ExpiresAt).UTC()
 	result.CreatedAt = (src.CreatedAt).UTC()
+
 	return result, nil
 }
 
@@ -193,6 +202,7 @@ func convertOIDCStateFromDB(src *dbOIDCState) (*authservice.OIDCState, error) {
 	result.ProviderSlug = src.ProviderSlug
 	result.ExpiresAt = src.ExpiresAt
 	result.CreatedAt = src.CreatedAt
+
 	return result, nil
 }
 func (a dbOIDCState) TableName() string {

@@ -42,6 +42,7 @@ func (oc *OrphanCleaner) Cleanup(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
 	cleaned += syncCleaned
 
 	// Clean orphaned task jobs.
@@ -49,6 +50,7 @@ func (oc *OrphanCleaner) Cleanup(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
 	cleaned += taskCleaned
 
 	// Clean orphaned sync secrets.
@@ -56,6 +58,7 @@ func (oc *OrphanCleaner) Cleanup(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
 	cleaned += syncSecretsCleaned
 
 	// Clean orphaned task secrets.
@@ -63,6 +66,7 @@ func (oc *OrphanCleaner) Cleanup(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
 	cleaned += taskSecretsCleaned
 
 	if cleaned > 0 {
@@ -82,24 +86,28 @@ func (oc *OrphanCleaner) CleanupAll(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
 	cleaned += syncCleaned
 
 	taskCleaned, err := oc.cleanupTaskJobs(ctx, false)
 	if err != nil {
 		return err
 	}
+
 	cleaned += taskCleaned
 
 	syncSecretsCleaned, err := oc.cleanupSyncSecrets(ctx, false)
 	if err != nil {
 		return err
 	}
+
 	cleaned += syncSecretsCleaned
 
 	taskSecretsCleaned, err := oc.cleanupTaskSecrets(ctx, false)
 	if err != nil {
 		return err
 	}
+
 	cleaned += taskSecretsCleaned
 
 	if cleaned > 0 {
@@ -118,11 +126,13 @@ func (oc *OrphanCleaner) cleanupSyncJobs(ctx context.Context, applyGrace bool) (
 	}
 
 	cleaned := 0
+
 	for _, job := range jobs.Items {
 		syncJobID := job.Labels["synclet.io/sync-job"]
 		if syncJobID == "" {
 			continue
 		}
+
 		if applyGrace && time.Since(job.CreationTimestamp.Time) < orphanGracePeriod {
 			continue
 		}
@@ -131,15 +141,19 @@ func (oc *OrphanCleaner) cleanupSyncJobs(ctx context.Context, applyGrace bool) (
 		if err != nil {
 			oc.logger.Warn("k8s orphan cleanup: failed to check sync job status",
 				zap.String("sync_job_id", syncJobID), zap.Error(err))
+
 			continue
 		}
+
 		if !active {
 			oc.logger.Info("k8s orphan cleanup: removing orphaned sync job",
 				zap.String("k8s_job", job.Name), zap.String("sync_job_id", syncJobID))
 			oc.deleteK8sJob(ctx, job.Name)
+
 			cleaned++
 		}
 	}
+
 	return cleaned, nil
 }
 
@@ -152,11 +166,13 @@ func (oc *OrphanCleaner) cleanupTaskJobs(ctx context.Context, applyGrace bool) (
 	}
 
 	cleaned := 0
+
 	for _, job := range jobs.Items {
 		taskID := job.Labels["synclet.io/task"]
 		if taskID == "" {
 			continue
 		}
+
 		if applyGrace && time.Since(job.CreationTimestamp.Time) < orphanGracePeriod {
 			continue
 		}
@@ -165,15 +181,19 @@ func (oc *OrphanCleaner) cleanupTaskJobs(ctx context.Context, applyGrace bool) (
 		if err != nil {
 			oc.logger.Warn("k8s orphan cleanup: failed to check task status",
 				zap.String("task_id", taskID), zap.Error(err))
+
 			continue
 		}
+
 		if !active {
 			oc.logger.Info("k8s orphan cleanup: removing orphaned task job",
 				zap.String("k8s_job", job.Name), zap.String("task_id", taskID))
 			oc.deleteK8sJob(ctx, job.Name)
+
 			cleaned++
 		}
 	}
+
 	return cleaned, nil
 }
 
@@ -186,11 +206,13 @@ func (oc *OrphanCleaner) cleanupSyncSecrets(ctx context.Context, applyGrace bool
 	}
 
 	cleaned := 0
+
 	for _, secret := range secrets.Items {
 		syncJobID := secret.Labels["synclet.io/sync-job"]
 		if syncJobID == "" {
 			continue
 		}
+
 		if applyGrace && time.Since(secret.CreationTimestamp.Time) < orphanGracePeriod {
 			continue
 		}
@@ -199,15 +221,19 @@ func (oc *OrphanCleaner) cleanupSyncSecrets(ctx context.Context, applyGrace bool
 		if err != nil {
 			oc.logger.Warn("k8s orphan cleanup: failed to check sync job status for secret",
 				zap.String("sync_job_id", syncJobID), zap.Error(err))
+
 			continue
 		}
+
 		if !active {
 			oc.logger.Info("k8s orphan cleanup: removing orphaned sync secret",
 				zap.String("secret", secret.Name), zap.String("sync_job_id", syncJobID))
 			oc.deleteSecret(ctx, secret.Name)
+
 			cleaned++
 		}
 	}
+
 	return cleaned, nil
 }
 
@@ -220,11 +246,13 @@ func (oc *OrphanCleaner) cleanupTaskSecrets(ctx context.Context, applyGrace bool
 	}
 
 	cleaned := 0
+
 	for _, secret := range secrets.Items {
 		taskID := secret.Labels["synclet.io/task"]
 		if taskID == "" {
 			continue
 		}
+
 		if applyGrace && time.Since(secret.CreationTimestamp.Time) < orphanGracePeriod {
 			continue
 		}
@@ -233,15 +261,19 @@ func (oc *OrphanCleaner) cleanupTaskSecrets(ctx context.Context, applyGrace bool
 		if err != nil {
 			oc.logger.Warn("k8s orphan cleanup: failed to check task status for secret",
 				zap.String("task_id", taskID), zap.Error(err))
+
 			continue
 		}
+
 		if !active {
 			oc.logger.Info("k8s orphan cleanup: removing orphaned task secret",
 				zap.String("secret", secret.Name), zap.String("task_id", taskID))
 			oc.deleteSecret(ctx, secret.Name)
+
 			cleaned++
 		}
 	}
+
 	return cleaned, nil
 }
 

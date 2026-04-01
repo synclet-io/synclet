@@ -15,6 +15,7 @@ func TestSyncWorkerManager_RunJob(t *testing.T) {
 	mgr := NewSyncWorkerManager(context.Background(), (*logging.Logger)(nil))
 
 	executed := make(chan struct{})
+
 	mgr.RunJob(func(ctx context.Context) {
 		close(executed)
 	})
@@ -37,7 +38,7 @@ func TestSyncWorkerManager_Shutdown_WaitsForActiveJobs(t *testing.T) {
 	var completed atomic.Int32
 
 	// Start 3 blocking jobs.
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		mgr.RunJob(func(ctx context.Context) {
 			<-release
 			completed.Add(1)
@@ -46,12 +47,14 @@ func TestSyncWorkerManager_Shutdown_WaitsForActiveJobs(t *testing.T) {
 
 	// Shutdown should block while jobs are running.
 	shutdownDone := make(chan error, 1)
+
 	go func() {
 		shutdownDone <- mgr.Shutdown(5 * time.Second)
 	}()
 
 	// Give Shutdown a moment to start.
 	time.Sleep(50 * time.Millisecond)
+
 	select {
 	case <-shutdownDone:
 		t.Fatal("Shutdown returned before jobs completed")
@@ -77,6 +80,7 @@ func TestSyncWorkerManager_Shutdown_CancelsContext(t *testing.T) {
 	mgr := NewSyncWorkerManager(context.Background(), (*logging.Logger)(nil))
 
 	jobDone := make(chan struct{})
+
 	mgr.RunJob(func(ctx context.Context) {
 		<-ctx.Done()
 		close(jobDone)
@@ -119,6 +123,7 @@ func TestSyncWorkerManager_Context_DerivedFromParent(t *testing.T) {
 	mgr := NewSyncWorkerManager(parentCtx, (*logging.Logger)(nil))
 
 	jobCtxCancelled := make(chan struct{})
+
 	mgr.RunJob(func(ctx context.Context) {
 		<-ctx.Done()
 		close(jobCtxCancelled)

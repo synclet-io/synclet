@@ -48,9 +48,11 @@ func newOrchestrateCommand() *cobra.Command {
 				if taskID == "" {
 					return fmt.Errorf("--task-id is required in task mode")
 				}
+
 				if taskType == "" {
 					return fmt.Errorf("--task-type is required in task mode")
 				}
+
 				if serverAddr == "" {
 					return fmt.Errorf("--server-addr is required in task mode")
 				}
@@ -67,18 +69,23 @@ func newOrchestrateCommand() *cobra.Command {
 			if jobID == "" {
 				return fmt.Errorf("--job-id is required in sync mode")
 			}
+
 			if connectionID == "" {
 				return fmt.Errorf("--connection-id is required in sync mode")
 			}
+
 			if serverAddr == "" {
 				return fmt.Errorf("--server-addr is required in sync mode")
 			}
+
 			if sourceImage == "" {
 				return fmt.Errorf("--source-image is required in sync mode")
 			}
+
 			if destImage == "" {
 				return fmt.Errorf("--dest-image is required in sync mode")
 			}
+
 			if secretsDir == "" {
 				return fmt.Errorf("--secrets-dir is required in sync mode")
 			}

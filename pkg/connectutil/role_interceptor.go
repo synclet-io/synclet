@@ -37,27 +37,33 @@ func NewRoleInterceptor(checker MembershipChecker) *RoleInterceptor {
 // buildRoleMap iterates all registered proto service methods and extracts required_role options.
 func buildRoleMap() map[string]optionsv1.RequiredRole {
 	roles := make(map[string]optionsv1.RequiredRole)
+
 	protoregistry.GlobalFiles.RangeFiles(func(fd protoreflect.FileDescriptor) bool {
-		for i := 0; i < fd.Services().Len(); i++ {
-			sd := fd.Services().Get(i)
-			for j := 0; j < sd.Methods().Len(); j++ {
-				md := sd.Methods().Get(j)
-				opts := md.Options()
+		for i := range fd.Services().Len() {
+			svcDesc := fd.Services().Get(i)
+			for j := range svcDesc.Methods().Len() {
+				methodDesc := svcDesc.Methods().Get(j)
+
+				opts := methodDesc.Options()
 				if opts == nil {
 					continue
 				}
+
 				if !proto.HasExtension(opts, optionsv1.E_RequiredRole) {
 					continue
 				}
+
 				role := proto.GetExtension(opts, optionsv1.E_RequiredRole).(optionsv1.RequiredRole)
 				if role != optionsv1.RequiredRole_REQUIRED_ROLE_UNSPECIFIED {
-					procedure := "/" + string(sd.FullName()) + "/" + string(md.Name())
+					procedure := "/" + string(svcDesc.FullName()) + "/" + string(methodDesc.Name())
 					roles[procedure] = role
 				}
 			}
 		}
+
 		return true
 	})
+
 	return roles
 }
 
@@ -66,6 +72,7 @@ func (i *RoleInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
 		if err := i.checkRole(ctx, req.Spec().Procedure); err != nil {
 			return nil, err
 		}
+
 		return next(ctx, req)
 	}
 }
@@ -79,6 +86,7 @@ func (i *RoleInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc
 		if err := i.checkRole(ctx, conn.Spec().Procedure); err != nil {
 			return err
 		}
+
 		return next(ctx, conn)
 	}
 }
@@ -93,6 +101,7 @@ func (i *RoleInterceptor) checkRole(ctx context.Context, procedure string) error
 	if err != nil {
 		return connect.NewError(connect.CodePermissionDenied, nil)
 	}
+
 	userID, err := UserIDFromContext(ctx)
 	if err != nil {
 		return connect.NewError(connect.CodePermissionDenied, nil)
@@ -106,6 +115,7 @@ func (i *RoleInterceptor) checkRole(ctx context.Context, procedure string) error
 	if !meetsMinimumRole(roleStr, requiredRole) {
 		return connect.NewError(connect.CodePermissionDenied, nil)
 	}
+
 	return nil
 }
 
@@ -124,5 +134,6 @@ func meetsMinimumRole(actual string, required optionsv1.RequiredRole) bool {
 		optionsv1.RequiredRole_REQUIRED_ROLE_EDITOR: 2,
 		optionsv1.RequiredRole_REQUIRED_ROLE_ADMIN:  3,
 	}
+
 	return roleLevels[actual] >= requiredLevels[required]
 }

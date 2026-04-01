@@ -19,23 +19,28 @@ func (s *JobLogsStorage) AppendLog(ctx context.Context, jobID uuid.UUID, line st
 // GetLogs returns log lines for a job with cursor-based pagination.
 func (s *JobLogsStorage) GetLogs(ctx context.Context, jobID uuid.UUID, afterID int64, limit int) ([]pipelinesvc.JobLog, error) {
 	var rows []dbJobLog
+
 	query := s.DB.WithContext(ctx).
 		Where("job_id = ? AND id > ?", jobID, afterID).
 		Order("id ASC")
 	if limit > 0 {
 		query = query.Limit(limit)
 	}
+
 	if err := query.Find(&rows).Error; err != nil {
 		return nil, err
 	}
+
 	result := make([]pipelinesvc.JobLog, len(rows))
 	for i := range rows {
 		converted, err := convertJobLogFromDB(&rows[i])
 		if err != nil {
 			return nil, err
 		}
+
 		result[i] = *converted
 	}
+
 	return result, nil
 }
 
@@ -44,9 +49,11 @@ func (s *JobLogsStorage) BatchAppendLogs(ctx context.Context, jobID uuid.UUID, l
 	if len(lines) == 0 {
 		return nil
 	}
+
 	logs := make([]dbJobLog, len(lines))
 	for i, line := range lines {
 		logs[i] = dbJobLog{JobID: jobID, LogLine: line}
 	}
+
 	return s.DB.WithContext(ctx).Create(&logs).Error
 }

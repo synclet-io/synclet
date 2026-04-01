@@ -60,6 +60,7 @@ func (uc *CreateInvite) Execute(ctx context.Context, params CreateInviteParams) 
 	if err != nil {
 		return nil, fmt.Errorf("looking up user by email: %w", err)
 	}
+
 	if user != nil {
 		// User exists, check membership.
 		existingMember, err := uc.storage.WorkspaceMembers().First(ctx, &WorkspaceMemberFilter{
@@ -69,6 +70,7 @@ func (uc *CreateInvite) Execute(ctx context.Context, params CreateInviteParams) 
 		if err != nil {
 			return nil, fmt.Errorf("checking membership: %w", err)
 		}
+
 		if existingMember != nil {
 			return nil, AlreadyExistsError("this user is already a member of this workspace")
 		}
@@ -88,6 +90,7 @@ func (uc *CreateInvite) Execute(ctx context.Context, params CreateInviteParams) 
 	}
 
 	var invite *WorkspaceInvite
+
 	if existingInvite != nil {
 		// Replace existing pending invite: update role, TTL, inviter.
 		existingInvite.Role = params.Role
@@ -105,6 +108,7 @@ func (uc *CreateInvite) Execute(ctx context.Context, params CreateInviteParams) 
 		if _, err := rand.Read(tokenBytes); err != nil {
 			return nil, fmt.Errorf("generating invite token: %w", err)
 		}
+
 		token := hex.EncodeToString(tokenBytes)
 
 		invite = &WorkspaceInvite{
@@ -135,17 +139,19 @@ func (uc *CreateInvite) Execute(ctx context.Context, params CreateInviteParams) 
 // sendInviteEmailAsync sends the invite email in a goroutine.
 func (uc *CreateInvite) sendInviteEmailAsync(ctx context.Context, invite *WorkspaceInvite, inviterUserID uuid.UUID) {
 	// Gather workspace and inviter info for the email.
-	ws, err := uc.storage.Workspaces().First(ctx, &WorkspaceFilter{
+	workspace, err := uc.storage.Workspaces().First(ctx, &WorkspaceFilter{
 		ID: filter.Equals(invite.WorkspaceID),
 	})
-	if err != nil || ws == nil {
+	if err != nil || workspace == nil {
 		uc.logger.WithError(err).WithField("workspace_id", invite.WorkspaceID).Error(ctx, "failed to load workspace for invite email")
+
 		return
 	}
 
 	inviter, err := uc.userLookup.GetUserByID(ctx, inviterUserID)
 	if err != nil || inviter == nil {
 		uc.logger.WithError(err).WithField("inviter_id", inviterUserID).Error(ctx, "failed to load inviter for invite email")
+
 		return
 	}
 
@@ -154,9 +160,10 @@ func (uc *CreateInvite) sendInviteEmailAsync(ctx context.Context, invite *Worksp
 	go func() {
 		sendCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
+
 		sendErr := uc.emailSender.SendInviteEmail(sendCtx, SendInviteEmailParams{
 			To:            invite.Email,
-			WorkspaceName: ws.Name,
+			WorkspaceName: workspace.Name,
 			InviterName:   inviter.Name,
 			Role:          invite.Role.String(),
 			AcceptURL:     acceptURL,

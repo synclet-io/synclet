@@ -45,6 +45,7 @@ func (uc *GetConnectorVersions) Execute(ctx context.Context, params GetConnector
 
 	// Return the latest version from the first matching record.
 	latest := connectors[0].DockerImageTag
+
 	return &GetConnectorVersionsResult{
 		Versions:      []string{latest},
 		LatestVersion: latest,

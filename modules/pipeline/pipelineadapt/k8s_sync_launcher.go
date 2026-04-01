@@ -86,6 +86,7 @@ func (a *K8sSyncLauncherAdapter) Launch(ctx context.Context, jobID uuid.UUID) er
 	if err != nil {
 		return fmt.Errorf("counting jobs for sync_id: %w", err)
 	}
+
 	if err := a.populateGenerationIDs.Execute(ctx, pipelinecatalog.PopulateGenerationIDsParams{
 		ConnectionID: job.ConnectionID,
 		Catalog:      catalog,
@@ -100,12 +101,14 @@ func (a *K8sSyncLauncherAdapter) Launch(ctx context.Context, jobID uuid.UUID) er
 	if err != nil {
 		return fmt.Errorf("building destination catalog: %w", err)
 	}
+
 	pipelinecatalog.ApplyNamespaceAndPrefix(destCatalog, conn.NamespaceDefinition, conn.CustomNamespaceFormat, conn.StreamPrefix)
 
 	sourceCatalogJSON, err := json.Marshal(catalog)
 	if err != nil {
 		return fmt.Errorf("marshaling source catalog: %w", err)
 	}
+
 	destCatalogJSON, err := json.Marshal(destCatalog)
 	if err != nil {
 		return fmt.Errorf("marshaling catalog: %w", err)
@@ -137,17 +140,20 @@ func (a *K8sSyncLauncherAdapter) Launch(ctx context.Context, jobID uuid.UUID) er
 			a.logger.WithError(err).Warn(ctx, "failed to parse tolerations from runtime config")
 		}
 	}
+
 	var nodeSelector map[string]string
 	if len(srcCfg.NodeSelector) > 0 {
 		if err := json.Unmarshal(srcCfg.NodeSelector, &nodeSelector); err != nil {
 			a.logger.WithError(err).Warn(ctx, "failed to parse nodeSelector from runtime config")
 		}
 	}
+
 	var affinity *corev1.Affinity
 	if len(srcCfg.Affinity) > 0 {
 		affinity = &corev1.Affinity{}
 		if err := json.Unmarshal(srcCfg.Affinity, affinity); err != nil {
 			a.logger.WithError(err).Warn(ctx, "failed to parse affinity from runtime config")
+
 			affinity = nil
 		}
 	}
@@ -203,5 +209,6 @@ func ptrToString(p *string) string {
 	if p == nil {
 		return ""
 	}
+
 	return *p
 }

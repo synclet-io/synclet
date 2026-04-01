@@ -26,16 +26,17 @@ func NewListNotificationRules(storage Storage) *ListNotificationRules {
 
 // Execute returns all notification rules for the given workspace.
 func (uc *ListNotificationRules) Execute(ctx context.Context, params ListNotificationRulesParams) ([]*NotificationRule, error) {
-	f := &NotificationRuleFilter{
+	ruleFilter := &NotificationRuleFilter{
 		WorkspaceID: filter.Equals(params.WorkspaceID),
 	}
 
 	if params.ChannelID != nil {
-		f.ChannelID = filter.Equals(*params.ChannelID)
-	}
-	if params.ConnectionID != nil {
-		f.ConnectionID = filter.Equals(*params.ConnectionID)
+		ruleFilter.ChannelID = filter.Equals(*params.ChannelID)
 	}
 
-	return uc.storage.NotificationRules().Find(ctx, f)
+	if params.ConnectionID != nil {
+		ruleFilter.ConnectionID = filter.Equals(*params.ConnectionID)
+	}
+
+	return uc.storage.NotificationRules().Find(ctx, ruleFilter)
 }

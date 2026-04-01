@@ -67,6 +67,7 @@ func (r *Reconciler) Run(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			r.logger.Info(ctx, "stopping")
+
 			return
 		case <-ticker.C:
 			r.reconcile(ctx)
@@ -78,6 +79,7 @@ func (r *Reconciler) reconcile(ctx context.Context) {
 	staleJobs, err := r.provider.GetStaleJobs(ctx, r.timeout)
 	if err != nil {
 		r.logger.WithError(err).Error(ctx, "failed to get stale jobs")
+
 		return
 	}
 
@@ -87,57 +89,66 @@ func (r *Reconciler) reconcile(ctx context.Context) {
 
 	r.logger.WithField("count", len(staleJobs)).Info(ctx, "found stale jobs")
 
-	for _, sj := range staleJobs {
-		r.reconcileJob(ctx, sj)
+	for _, staleJob := range staleJobs {
+		r.reconcileJob(ctx, staleJob)
 	}
 }
 
-func (r *Reconciler) reconcileJob(ctx context.Context, sj StaleJob) {
+func (r *Reconciler) reconcileJob(ctx context.Context, staleJob StaleJob) {
 	log := r.logger.WithFields(
 		map[string]any{
-			"job_id":  sj.JobID,
-			"k8s_job": sj.K8sJobName,
+			"job_id":  staleJob.JobID,
+			"k8s_job": staleJob.K8sJobName,
 		},
 	)
 
-	if sj.K8sJobName == "" {
+	if staleJob.K8sJobName == "" {
 		// No K8s job name recorded — mark as failed.
 		log.Warn(ctx, "orphaned job with no K8s job name")
-		if err := r.provider.FailJob(ctx, sj.JobID, "orphaned — no K8s job name recorded"); err != nil {
+
+		if err := r.provider.FailJob(ctx, staleJob.JobID, "orphaned — no K8s job name recorded"); err != nil {
 			log.WithError(err).Error(ctx, "failed to mark job as failed")
 		}
+
 		return
 	}
 
 	// Check if K8s Job still exists.
-	k8sJob, err := r.client.BatchV1().Jobs(r.namespace).Get(ctx, sj.K8sJobName, metav1.GetOptions{})
+	k8sJob, err := r.client.BatchV1().Jobs(r.namespace).Get(ctx, staleJob.K8sJobName, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			log.Warn(ctx, "K8s job not found, marking as failed")
-			if err := r.provider.FailJob(ctx, sj.JobID, "orphaned — K8s job not found"); err != nil {
+
+			if err := r.provider.FailJob(ctx, staleJob.JobID, "orphaned — K8s job not found"); err != nil {
 				log.WithError(err).Error(ctx, "failed to mark job as failed")
 			}
+
 			return
 		}
+
 		log.WithError(err).Error(ctx, "failed to get K8s job")
+
 		return
 	}
 
 	// Check pod status.
 	pods, err := r.client.CoreV1().Pods(r.namespace).List(ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("synclet.io/job=%s", sj.K8sJobName),
+		LabelSelector: fmt.Sprintf("synclet.io/job=%s", staleJob.K8sJobName),
 	})
 	if err != nil {
 		log.WithError(err).Error(ctx, "failed to list pods")
+
 		return
 	}
 
 	if len(pods.Items) == 0 {
 		log.Warn(ctx, "no pods found for K8s job, marking as failed")
-		r.deleteK8sJob(ctx, sj.K8sJobName)
-		if err := r.provider.FailJob(ctx, sj.JobID, "orphaned — no pods found"); err != nil {
+		r.deleteK8sJob(ctx, staleJob.K8sJobName)
+
+		if err := r.provider.FailJob(ctx, staleJob.JobID, "orphaned — no pods found"); err != nil {
 			log.WithError(err).Error(ctx, "failed to mark job as failed")
 		}
+
 		return
 	}
 
@@ -146,37 +157,44 @@ func (r *Reconciler) reconcileJob(ctx context.Context, sj StaleJob) {
 	// Check for failed/crashloopbackoff pods.
 	if pod.Status.Phase == corev1.PodFailed {
 		log.Warn(ctx, "pod failed, cleaning up")
-		r.deleteK8sJob(ctx, sj.K8sJobName)
-		if err := r.provider.FailJob(ctx, sj.JobID, fmt.Sprintf("pod failed: %s", pod.Status.Reason)); err != nil {
+		r.deleteK8sJob(ctx, staleJob.K8sJobName)
+
+		if err := r.provider.FailJob(ctx, staleJob.JobID, fmt.Sprintf("pod failed: %s", pod.Status.Reason)); err != nil {
 			log.WithError(err).Error(ctx, "failed to mark job as failed")
 		}
+
 		return
 	}
 
 	// Check both regular and init container statuses for failure states.
 	allStatuses := make([]corev1.ContainerStatus, 0, len(pod.Status.ContainerStatuses)+len(pod.Status.InitContainerStatuses))
 	allStatuses = append(allStatuses, pod.Status.ContainerStatuses...)
+
 	allStatuses = append(allStatuses, pod.Status.InitContainerStatuses...)
-	for _, cs := range allStatuses {
-		if cs.State.Waiting != nil {
-			reason := cs.State.Waiting.Reason
+	for _, containerStatus := range allStatuses {
+		if containerStatus.State.Waiting != nil {
+			reason := containerStatus.State.Waiting.Reason
 			switch reason {
 			case "CrashLoopBackOff":
-				log.WithField("container", cs.Name).Warn(ctx, "container in CrashLoopBackOff, cleaning up")
-				r.deleteK8sJob(ctx, sj.K8sJobName)
-				if err := r.provider.FailJob(ctx, sj.JobID, fmt.Sprintf("container %s in CrashLoopBackOff", cs.Name)); err != nil {
+				log.WithField("container", containerStatus.Name).Warn(ctx, "container in CrashLoopBackOff, cleaning up")
+				r.deleteK8sJob(ctx, staleJob.K8sJobName)
+
+				if err := r.provider.FailJob(ctx, staleJob.JobID, fmt.Sprintf("container %s in CrashLoopBackOff", containerStatus.Name)); err != nil {
 					log.WithError(err).Error(ctx, "failed to mark job as failed")
 				}
+
 				return
 			case "ImagePullBackOff", "ErrImagePull":
 				log.WithFields(map[string]any{
-					"container": cs.Name,
+					"container": containerStatus.Name,
 					"reason":    reason,
 				}).Warn(ctx, "container image pull failed")
-				r.deleteK8sJob(ctx, sj.K8sJobName)
-				if err := r.provider.FailJob(ctx, sj.JobID, fmt.Sprintf("container %s: %s", cs.Name, reason)); err != nil {
+				r.deleteK8sJob(ctx, staleJob.K8sJobName)
+
+				if err := r.provider.FailJob(ctx, staleJob.JobID, fmt.Sprintf("container %s: %s", containerStatus.Name, reason)); err != nil {
 					log.WithError(err).Error(ctx, "failed to mark job as failed")
 				}
+
 				return
 			}
 		}
@@ -184,6 +202,7 @@ func (r *Reconciler) reconcileJob(ctx context.Context, sj StaleJob) {
 
 	// Pod is still running — leave it alone (orchestrator may reconnect).
 	_ = k8sJob
+
 	log.Info(ctx, "K8s job still running, leaving it")
 }
 

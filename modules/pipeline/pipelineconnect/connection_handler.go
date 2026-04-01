@@ -117,45 +117,47 @@ func (h *ConnectionHandler) CreateConnection(ctx context.Context, req *connect.R
 	}
 
 	if err := connectutil.ValidateStringLengths(
-		connectutil.StringValidation{Field: "name", Value: req.Msg.Name, MaxLen: connectutil.MaxNameLength},
+		connectutil.StringValidation{Field: "name", Value: req.Msg.GetName(), MaxLen: connectutil.MaxNameLength},
 	); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
+
 	if req.Msg.Schedule != nil {
 		if err := connectutil.ValidateStringLengths(
-			connectutil.StringValidation{Field: "schedule", Value: *req.Msg.Schedule, MaxLen: 128},
+			connectutil.StringValidation{Field: "schedule", Value: req.Msg.GetSchedule(), MaxLen: 128},
 		); err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}
 	}
 
 	var schedule *string
+
 	if req.Msg.Schedule != nil {
-		s := *req.Msg.Schedule
+		s := req.Msg.GetSchedule()
 		schedule = &s
 	}
 
-	sourceID, err := uuid.Parse(req.Msg.SourceId)
+	sourceID, err := uuid.Parse(req.Msg.GetSourceId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid source_id: %w", err))
 	}
 
-	destinationID, err := uuid.Parse(req.Msg.DestinationId)
+	destinationID, err := uuid.Parse(req.Msg.GetDestinationId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid destination_id: %w", err))
 	}
 
 	conn, err := h.createConnection.Execute(ctx, pipelineconnections.CreateConnectionParams{
 		WorkspaceID:           workspaceID,
-		Name:                  req.Msg.Name,
+		Name:                  req.Msg.GetName(),
 		SourceID:              sourceID,
 		DestinationID:         destinationID,
 		Schedule:              schedule,
-		SchemaChangePolicy:    protoToSchemaChangePolicy(req.Msg.SchemaChangePolicy),
-		MaxAttempts:           int(req.Msg.MaxAttempts),
-		NamespaceDefinition:   protoToNamespaceDefinition(req.Msg.NamespaceDefinition),
-		CustomNamespaceFormat: stringPtrFromProto(req.Msg.CustomNamespaceFormat),
-		StreamPrefix:          stringPtrFromProto(req.Msg.StreamPrefix),
+		SchemaChangePolicy:    protoToSchemaChangePolicy(req.Msg.GetSchemaChangePolicy()),
+		MaxAttempts:           int(req.Msg.GetMaxAttempts()),
+		NamespaceDefinition:   protoToNamespaceDefinition(req.Msg.GetNamespaceDefinition()),
+		CustomNamespaceFormat: stringPtrFromProto(req.Msg.GetCustomNamespaceFormat()),
+		StreamPrefix:          stringPtrFromProto(req.Msg.GetStreamPrefix()),
 	})
 	if err != nil {
 		return nil, mapError(err)
@@ -172,7 +174,7 @@ func (h *ConnectionHandler) UpdateConnection(ctx context.Context, req *connect.R
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	id, err := uuid.Parse(req.Msg.Id)
+	id, err := uuid.Parse(req.Msg.GetId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -181,40 +183,49 @@ func (h *ConnectionHandler) UpdateConnection(ctx context.Context, req *connect.R
 		ID:          id,
 		WorkspaceID: workspaceID,
 	}
+
 	if req.Msg.Name != nil {
 		if err := connectutil.ValidateStringLengths(
-			connectutil.StringValidation{Field: "name", Value: *req.Msg.Name, MaxLen: connectutil.MaxNameLength},
+			connectutil.StringValidation{Field: "name", Value: req.Msg.GetName(), MaxLen: connectutil.MaxNameLength},
 		); err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}
+
 		params.Name = req.Msg.Name
 	}
+
 	if req.Msg.Schedule != nil {
 		if err := connectutil.ValidateStringLengths(
-			connectutil.StringValidation{Field: "schedule", Value: *req.Msg.Schedule, MaxLen: 128},
+			connectutil.StringValidation{Field: "schedule", Value: req.Msg.GetSchedule(), MaxLen: 128},
 		); err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}
+
 		params.Schedule = &req.Msg.Schedule
 	}
+
 	if req.Msg.SchemaChangePolicy != nil {
-		v := protoToSchemaChangePolicy(*req.Msg.SchemaChangePolicy)
+		v := protoToSchemaChangePolicy(req.Msg.GetSchemaChangePolicy())
 		params.SchemaChangePolicy = &v
 	}
+
 	if req.Msg.MaxAttempts != nil {
-		v := int(*req.Msg.MaxAttempts)
+		v := int(req.Msg.GetMaxAttempts())
 		params.MaxAttempts = &v
 	}
+
 	if req.Msg.NamespaceDefinition != nil {
-		v := protoToNamespaceDefinition(*req.Msg.NamespaceDefinition)
+		v := protoToNamespaceDefinition(req.Msg.GetNamespaceDefinition())
 		params.NamespaceDefinition = &v
 	}
+
 	if req.Msg.CustomNamespaceFormat != nil {
-		v := stringPtrFromProto(*req.Msg.CustomNamespaceFormat)
+		v := stringPtrFromProto(req.Msg.GetCustomNamespaceFormat())
 		params.CustomNamespaceFormat = &v
 	}
+
 	if req.Msg.StreamPrefix != nil {
-		v := stringPtrFromProto(*req.Msg.StreamPrefix)
+		v := stringPtrFromProto(req.Msg.GetStreamPrefix())
 		params.StreamPrefix = &v
 	}
 
@@ -234,7 +245,7 @@ func (h *ConnectionHandler) DeleteConnection(ctx context.Context, req *connect.R
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	id, err := uuid.Parse(req.Msg.Id)
+	id, err := uuid.Parse(req.Msg.GetId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -255,7 +266,7 @@ func (h *ConnectionHandler) GetConnection(ctx context.Context, req *connect.Requ
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	id, err := uuid.Parse(req.Msg.Id)
+	id, err := uuid.Parse(req.Msg.GetId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -291,7 +302,7 @@ func (h *ConnectionHandler) ListConnections(ctx context.Context, req *connect.Re
 		protoConns[i] = connectionToProto(c)
 	}
 
-	paginated, total := paginateSlice(protoConns, req.Msg.PageSize, req.Msg.Offset)
+	paginated, total := paginateSlice(protoConns, req.Msg.GetPageSize(), req.Msg.GetOffset())
 
 	return connect.NewResponse(&pipelinev1.ListConnectionsResponse{
 		Connections: paginated,
@@ -305,7 +316,7 @@ func (h *ConnectionHandler) EnableConnection(ctx context.Context, req *connect.R
 		return nil, connect.NewError(connect.CodeUnauthenticated, fmt.Errorf("workspace context required"))
 	}
 
-	id, err := uuid.Parse(req.Msg.Id)
+	id, err := uuid.Parse(req.Msg.GetId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -329,7 +340,7 @@ func (h *ConnectionHandler) DisableConnection(ctx context.Context, req *connect.
 		return nil, connect.NewError(connect.CodeUnauthenticated, fmt.Errorf("workspace context required"))
 	}
 
-	id, err := uuid.Parse(req.Msg.Id)
+	id, err := uuid.Parse(req.Msg.GetId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -353,7 +364,7 @@ func (h *ConnectionHandler) DiscoverSchema(ctx context.Context, req *connect.Req
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	connID, err := uuid.Parse(req.Msg.ConnectionId)
+	connID, err := uuid.Parse(req.Msg.GetConnectionId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -387,7 +398,7 @@ func (h *ConnectionHandler) ConfigureStreams(ctx context.Context, req *connect.R
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	connID, err := uuid.Parse(req.Msg.ConnectionId)
+	connID, err := uuid.Parse(req.Msg.GetConnectionId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -400,28 +411,28 @@ func (h *ConnectionHandler) ConfigureStreams(ctx context.Context, req *connect.R
 		return nil, mapError(err)
 	}
 
-	streams := make([]protocol.ConfiguredAirbyteStream, len(req.Msg.Streams))
-	for i, s := range req.Msg.Streams {
-		pk := make([][]string, len(s.PrimaryKey))
-		for j, ck := range s.PrimaryKey {
-			pk[j] = ck.FieldPath
+	streams := make([]protocol.ConfiguredAirbyteStream, len(req.Msg.GetStreams()))
+	for i, stream := range req.Msg.GetStreams() {
+		primaryKey := make([][]string, len(stream.GetPrimaryKey()))
+		for j, ck := range stream.GetPrimaryKey() {
+			primaryKey[j] = ck.GetFieldPath()
 		}
 
-		sf := make([]protocol.SelectedField, len(s.SelectedFields))
-		for j, f := range s.SelectedFields {
-			sf[j] = protocol.SelectedField{FieldPath: f.FieldPath}
+		selectedFields := make([]protocol.SelectedField, len(stream.GetSelectedFields()))
+		for j, f := range stream.GetSelectedFields() {
+			selectedFields[j] = protocol.SelectedField{FieldPath: f.GetFieldPath()}
 		}
 
 		streams[i] = protocol.ConfiguredAirbyteStream{
 			Stream: protocol.AirbyteStream{
-				Name:      s.StreamName,
-				Namespace: s.Namespace,
+				Name:      stream.GetStreamName(),
+				Namespace: stream.GetNamespace(),
 			},
-			SyncMode:            protoToSyncMode(s.SyncMode),
-			DestinationSyncMode: protoToDestinationSyncMode(s.DestinationSyncMode),
-			CursorField:         s.CursorField,
-			PrimaryKey:          pk,
-			SelectedFields:      sf,
+			SyncMode:            protoToSyncMode(stream.GetSyncMode()),
+			DestinationSyncMode: protoToDestinationSyncMode(stream.GetDestinationSyncMode()),
+			CursorField:         stream.GetCursorField(),
+			PrimaryKey:          primaryKey,
+			SelectedFields:      selectedFields,
 		}
 	}
 
@@ -442,7 +453,7 @@ func (h *ConnectionHandler) GetDiscoveredCatalog(ctx context.Context, req *conne
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	connID, err := uuid.Parse(req.Msg.ConnectionId)
+	connID, err := uuid.Parse(req.Msg.GetConnectionId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -468,7 +479,7 @@ func (h *ConnectionHandler) GetConfiguredCatalog(ctx context.Context, req *conne
 		return nil, connect.NewError(connect.CodeUnauthenticated, fmt.Errorf("workspace context required"))
 	}
 
-	connID, err := uuid.Parse(req.Msg.ConnectionId)
+	connID, err := uuid.Parse(req.Msg.GetConnectionId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -510,7 +521,7 @@ func (h *ConnectionHandler) GetSchemaChanges(ctx context.Context, req *connect.R
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	connID, err := uuid.Parse(req.Msg.ConnectionId)
+	connID, err := uuid.Parse(req.Msg.GetConnectionId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -532,14 +543,14 @@ func (h *ConnectionHandler) GetSchemaChanges(ctx context.Context, req *connect.R
 	}
 
 	protoChanges := make([]*pipelinev1.SchemaChange, len(changes))
-	for i, c := range changes {
+	for i, change := range changes {
 		protoChanges[i] = &pipelinev1.SchemaChange{
-			Type:       string(c.Type),
-			StreamName: c.StreamName,
-			Namespace:  c.Namespace,
-			ColumnName: c.ColumnName,
-			OldType:    c.OldType,
-			NewType:    c.NewType,
+			Type:       string(change.Type),
+			StreamName: change.StreamName,
+			Namespace:  change.Namespace,
+			ColumnName: change.ColumnName,
+			OldType:    change.OldType,
+			NewType:    change.NewType,
 		}
 	}
 
@@ -554,20 +565,20 @@ func (h *ConnectionHandler) ResetStreamState(ctx context.Context, req *connect.R
 		return nil, connect.NewError(connect.CodeUnauthenticated, fmt.Errorf("workspace context required"))
 	}
 
-	connID, err := uuid.Parse(req.Msg.ConnectionId)
+	connID, err := uuid.Parse(req.Msg.GetConnectionId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid connection_id: %w", err))
 	}
 
-	if req.Msg.StreamName == "" {
+	if req.Msg.GetStreamName() == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("stream_name is required"))
 	}
 
 	if err := h.resetStreamState.Execute(ctx, pipelinestate.ResetStreamStateParams{
 		ConnectionID:    connID,
 		WorkspaceID:     wsID,
-		StreamName:      req.Msg.StreamName,
-		StreamNamespace: req.Msg.StreamNamespace,
+		StreamName:      req.Msg.GetStreamName(),
+		StreamNamespace: req.Msg.GetStreamNamespace(),
 	}); err != nil {
 		return nil, mapError(err)
 	}
@@ -581,7 +592,7 @@ func (h *ConnectionHandler) ResetConnectionState(ctx context.Context, req *conne
 		return nil, connect.NewError(connect.CodeUnauthenticated, fmt.Errorf("workspace context required"))
 	}
 
-	connID, err := uuid.Parse(req.Msg.ConnectionId)
+	connID, err := uuid.Parse(req.Msg.GetConnectionId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid connection_id: %w", err))
 	}
@@ -602,7 +613,7 @@ func (h *ConnectionHandler) ListStreamStates(ctx context.Context, req *connect.R
 		return nil, connect.NewError(connect.CodeUnauthenticated, fmt.Errorf("workspace context required"))
 	}
 
-	connID, err := uuid.Parse(req.Msg.ConnectionId)
+	connID, err := uuid.Parse(req.Msg.GetConnectionId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid connection_id: %w", err))
 	}
@@ -636,21 +647,21 @@ func (h *ConnectionHandler) UpdateStreamState(ctx context.Context, req *connect.
 		return nil, connect.NewError(connect.CodeUnauthenticated, fmt.Errorf("workspace context required"))
 	}
 
-	connID, err := uuid.Parse(req.Msg.ConnectionId)
+	connID, err := uuid.Parse(req.Msg.GetConnectionId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid connection_id: %w", err))
 	}
 
-	if req.Msg.StreamName == "" {
+	if req.Msg.GetStreamName() == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("stream_name is required"))
 	}
 
 	if err := h.updateStreamState.Execute(ctx, pipelinestate.UpdateStreamStateParams{
 		ConnectionID:    connID,
 		WorkspaceID:     wsID,
-		StreamName:      req.Msg.StreamName,
-		StreamNamespace: req.Msg.StreamNamespace,
-		StateData:       req.Msg.StateData,
+		StreamName:      req.Msg.GetStreamName(),
+		StreamNamespace: req.Msg.GetStreamNamespace(),
+		StateData:       req.Msg.GetStateData(),
 	}); err != nil {
 		return nil, mapError(err)
 	}
@@ -682,13 +693,13 @@ func (h *ConnectionHandler) ImportWorkspaceConfig(ctx context.Context, req *conn
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	if len(req.Msg.ConfigYaml) == 0 {
+	if len(req.Msg.GetConfigYaml()) == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("config_yaml is required"))
 	}
 
 	result, err := h.importConfig.Execute(ctx, pipelineconfig.ImportConfigParams{
 		WorkspaceID: workspaceID,
-		ConfigYAML:  req.Msg.ConfigYaml,
+		ConfigYAML:  req.Msg.GetConfigYaml(),
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -734,8 +745,9 @@ func (h *ConnectionHandler) UpdatePipelineSettings(
 	params := pipelinesettings.UpdateWorkspaceSettingsParams{
 		WorkspaceID: workspaceID,
 	}
+
 	if req.Msg.MaxJobsPerWorkspace != nil {
-		v := int(*req.Msg.MaxJobsPerWorkspace)
+		v := int(req.Msg.GetMaxJobsPerWorkspace())
 		params.MaxJobsPerWorkspace = &v
 	}
 
@@ -751,28 +763,28 @@ func (h *ConnectionHandler) UpdatePipelineSettings(
 	}), nil
 }
 
-func connectionToProto(c *pipelineservice.Connection) *pipelinev1.Connection {
+func connectionToProto(conn *pipelineservice.Connection) *pipelinev1.Connection {
 	schedule := ""
-	if c.Schedule != nil {
-		schedule = *c.Schedule
+	if conn.Schedule != nil {
+		schedule = *conn.Schedule
 	}
 
 	return &pipelinev1.Connection{
-		Id:                    c.ID.String(),
-		WorkspaceId:           c.WorkspaceID.String(),
-		Name:                  c.Name,
-		Status:                connectionStatusToProto(c.Status),
-		SourceId:              c.SourceID.String(),
-		DestinationId:         c.DestinationID.String(),
+		Id:                    conn.ID.String(),
+		WorkspaceId:           conn.WorkspaceID.String(),
+		Name:                  conn.Name,
+		Status:                connectionStatusToProto(conn.Status),
+		SourceId:              conn.SourceID.String(),
+		DestinationId:         conn.DestinationID.String(),
 		Schedule:              schedule,
-		SchemaChangePolicy:    schemaChangePolicyToProto(c.SchemaChangePolicy),
-		CreatedAt:             timestamppb.New(c.CreatedAt),
-		UpdatedAt:             timestamppb.New(c.UpdatedAt),
-		MaxAttempts:           int32(c.MaxAttempts),
-		NamespaceDefinition:   namespaceDefinitionToProto(c.NamespaceDefinition),
-		CustomNamespaceFormat: stringPtrOrEmpty(c.CustomNamespaceFormat),
-		StreamPrefix:          stringPtrOrEmpty(c.StreamPrefix),
-		NextScheduledAt:       timestampPtrOrNil(c.NextScheduledAt),
+		SchemaChangePolicy:    schemaChangePolicyToProto(conn.SchemaChangePolicy),
+		CreatedAt:             timestamppb.New(conn.CreatedAt),
+		UpdatedAt:             timestamppb.New(conn.UpdatedAt),
+		MaxAttempts:           int32(conn.MaxAttempts),
+		NamespaceDefinition:   namespaceDefinitionToProto(conn.NamespaceDefinition),
+		CustomNamespaceFormat: stringPtrOrEmpty(conn.CustomNamespaceFormat),
+		StreamPrefix:          stringPtrOrEmpty(conn.StreamPrefix),
+		NextScheduledAt:       timestampPtrOrNil(conn.NextScheduledAt),
 	}
 }
 
@@ -788,6 +800,7 @@ func timestampPtrOrNil(t *time.Time) *timestamppb.Timestamp {
 	if t == nil {
 		return nil
 	}
+
 	return timestamppb.New(*t)
 }
 

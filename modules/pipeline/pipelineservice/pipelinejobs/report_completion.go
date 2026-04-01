@@ -80,6 +80,7 @@ func (uc *ReportCompletion) Execute(ctx context.Context, params ReportCompletion
 
 	// Look up connection to get WorkspaceID for event emission and retention cleanup.
 	var workspaceID uuid.UUID
+
 	conn, connErr := uc.storage.Connections().First(ctx, &pipelineservice.ConnectionFilter{
 		ID: filter.Equals(params.ConnectionID),
 	})
@@ -92,10 +93,13 @@ func (uc *ReportCompletion) Execute(ctx context.Context, params ReportCompletion
 	// Emit sync events asynchronously with WaitGroup tracking for graceful shutdown.
 	if params.Success {
 		uc.wg.Add(1)
+
 		go func() {
 			defer uc.wg.Done()
+
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
+
 			if emitErr := uc.eventEmitter.EmitSyncCompleted(ctx, pipelineservice.SyncCompletedEvent{
 				ConnectionID: params.ConnectionID,
 				WorkspaceID:  workspaceID,
@@ -108,10 +112,13 @@ func (uc *ReportCompletion) Execute(ctx context.Context, params ReportCompletion
 		}()
 	} else {
 		uc.wg.Add(1)
+
 		go func() {
 			defer uc.wg.Done()
+
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
+
 			if emitErr := uc.eventEmitter.EmitSyncFailed(ctx, pipelineservice.SyncFailedEvent{
 				ConnectionID: params.ConnectionID,
 				WorkspaceID:  workspaceID,
@@ -131,10 +138,13 @@ func (uc *ReportCompletion) Execute(ctx context.Context, params ReportCompletion
 	// Trigger retention cleanup for this workspace (best-effort, non-blocking).
 	if conn != nil {
 		uc.wg.Add(1)
+
 		go func() {
 			defer uc.wg.Done()
+
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
+
 			if cleanupErr := uc.cleanupOldJobs.ExecuteForWorkspace(ctx, conn.WorkspaceID); cleanupErr != nil {
 				uc.logger.WithError(cleanupErr).Warn(ctx, "post-completion retention cleanup failed")
 			}

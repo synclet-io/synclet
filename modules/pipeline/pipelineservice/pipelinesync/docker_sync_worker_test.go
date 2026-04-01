@@ -36,6 +36,7 @@ func (m *mockBackend) ClaimJob(_ context.Context, _ string) (*pipelinejobs.Claim
 func (m *mockBackend) UpdateJobStatus(_ context.Context, params UpdateJobStatusParams) error {
 	m.updateCalled.Add(1)
 	m.lastUpdateParams = params
+
 	return m.updateErr
 }
 
@@ -43,6 +44,7 @@ func (m *mockBackend) Heartbeat(_ context.Context, _ uuid.UUID, _, _ int64) (*He
 	if m.heartbeatResult != nil {
 		return m.heartbeatResult, m.heartbeatErr
 	}
+
 	return &HeartbeatResult{}, m.heartbeatErr
 }
 
@@ -84,6 +86,7 @@ type mockExecutor struct {
 func (m *mockExecutor) Execute(_ context.Context, bundle *SyncBundle) (*pipelineservice.SyncStats, error) {
 	m.called.Add(1)
 	m.lastBundle = bundle
+
 	return m.stats, m.err
 }
 
@@ -111,7 +114,7 @@ func TestDockerSyncWorker_Execute_ClaimsJobAndSpawnsGoroutine(t *testing.T) {
 
 	manager := NewSyncWorkerManager(context.Background(), nil)
 
-	w := &DockerSyncWorker{
+	worker := &DockerSyncWorker{
 		backend:         backend,
 		executor:        executor,
 		manager:         manager,
@@ -120,7 +123,7 @@ func TestDockerSyncWorker_Execute_ClaimsJobAndSpawnsGoroutine(t *testing.T) {
 		workerID:        "test-worker",
 	}
 
-	err := w.Execute(context.Background())
+	err := worker.Execute(context.Background())
 	require.NoError(t, err)
 
 	// Wait for goroutine to finish.
@@ -139,13 +142,13 @@ func TestDockerSyncWorker_Execute_ClaimsJobAndSpawnsGoroutine(t *testing.T) {
 func TestDockerSyncWorker_Execute_ReturnsNilWhenNoJobs(t *testing.T) {
 	backend := &mockBackend{claimResult: nil}
 
-	w := &DockerSyncWorker{
+	worker := &DockerSyncWorker{
 		backend:   backend,
 		semaphore: make(chan struct{}, 10),
 		workerID:  "test-worker",
 	}
 
-	err := w.Execute(context.Background())
+	err := worker.Execute(context.Background())
 	require.NoError(t, err)
 }
 
@@ -160,13 +163,13 @@ func TestDockerSyncWorker_Execute_ReturnsNilWhenSemaphoreFull(t *testing.T) {
 	sem := make(chan struct{}, 1)
 	sem <- struct{}{}
 
-	w := &DockerSyncWorker{
+	worker := &DockerSyncWorker{
 		backend:   backend,
 		semaphore: sem,
 		workerID:  "test-worker",
 	}
 
-	err := w.Execute(context.Background())
+	err := worker.Execute(context.Background())
 	require.NoError(t, err)
 	// ClaimJob should NOT have been called since semaphore is full.
 }

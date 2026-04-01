@@ -29,16 +29,19 @@ type deliveryRecord struct {
 func (m *mockChannelDeliverer) Deliver(ctx context.Context, channel *NotificationChannel, event WebhookEvent) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
 	m.deliveries = append(m.deliveries, deliveryRecord{
 		ChannelID: channel.ID,
 		Event:     event,
 	})
+
 	return m.err
 }
 
 func (m *mockChannelDeliverer) deliveryCount() int {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
 	return len(m.deliveries)
 }
 
@@ -78,6 +81,7 @@ func (s *testChannelStore) First(ctx context.Context, f *NotificationChannelFilt
 			}
 		}
 	}
+
 	return nil, ErrNotificationChannelNotFound
 }
 
@@ -115,37 +119,44 @@ func (s *testRuleStore) First(_ context.Context, _ *NotificationRuleFilter, _ ..
 	if len(s.rules) > 0 {
 		return s.rules[0], nil
 	}
+
 	return nil, ErrNotificationRuleNotFound
 }
 
-func (s *testRuleStore) Find(_ context.Context, f *NotificationRuleFilter, _ ...optionutil.Option[dbutil.SelectOptions]) ([]*NotificationRule, error) {
+func (s *testRuleStore) Find(_ context.Context, ruleFilter *NotificationRuleFilter, _ ...optionutil.Option[dbutil.SelectOptions]) ([]*NotificationRule, error) {
 	var result []*NotificationRule
-	for _, r := range s.rules {
+
+	for _, rule := range s.rules {
 		// Filter by Enabled.
-		if f.Enabled != nil {
+		if ruleFilter.Enabled != nil {
 			enabledFilter := filter.Equals(true)
-			if filterEquals(f.Enabled, enabledFilter) && !r.Enabled {
+			if filterEquals(ruleFilter.Enabled, enabledFilter) && !rule.Enabled {
 				continue
 			}
 		}
 		// Filter by Or conditions for ConnectionID.
-		if len(f.Or) > 0 {
+		if len(ruleFilter.Or) > 0 {
 			matched := false
-			for _, orF := range f.Or {
+
+			for _, orF := range ruleFilter.Or {
 				if orF.ConnectionID != nil {
-					connFilter := filter.Equals(r.ConnectionID)
+					connFilter := filter.Equals(rule.ConnectionID)
 					if filterEquals(orF.ConnectionID, connFilter) {
 						matched = true
+
 						break
 					}
 				}
 			}
+
 			if !matched {
 				continue
 			}
 		}
-		result = append(result, r)
+
+		result = append(result, rule)
 	}
+
 	return result, nil
 }
 

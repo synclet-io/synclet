@@ -39,9 +39,11 @@ func (m *mockSchedulerConnectionsStorage) FindDueConnections(ctx context.Context
 	if m.parent.dueErr != nil {
 		return nil, m.parent.dueErr
 	}
+
 	if limit >= len(m.parent.dueConnections) {
 		return m.parent.dueConnections, nil
 	}
+
 	return m.parent.dueConnections[:limit], nil
 }
 
@@ -50,6 +52,7 @@ func (m *mockSchedulerConnectionsStorage) First(_ context.Context, f *pipelinese
 	if eq, ok := f.ID.(*filter.EqualsFilter[uuid.UUID]); ok {
 		return &pipelineservice.Connection{ID: eq.Value}, nil
 	}
+
 	return &pipelineservice.Connection{}, nil
 }
 
@@ -63,11 +66,13 @@ func (m *mockSchedulerConnectionsStorage) Find(_ context.Context, f *pipelineser
 			Schedule: &dc.Schedule,
 		})
 	}
+
 	return result, nil
 }
 
 func (m *mockSchedulerConnectionsStorage) Update(_ context.Context, conn *pipelineservice.Connection) (*pipelineservice.Connection, error) {
 	m.parent.updatedConnections = append(m.parent.updatedConnections, conn)
+
 	return conn, nil
 }
 
@@ -81,6 +86,7 @@ type mockSchedulerStorageWrapper struct {
 
 func (w *mockSchedulerStorageWrapper) ExecuteInTransaction(ctx context.Context, cb func(ctx context.Context, tx pipelineservice.Storage) error) error {
 	w.mock.txExecuted = true
+
 	return cb(ctx, w)
 }
 
@@ -88,6 +94,7 @@ func (w *mockSchedulerStorageWrapper) WithAdvisoryLock(ctx context.Context, scop
 	if !w.mock.lockAcquired {
 		return fmt.Errorf("lock not acquired")
 	}
+
 	return w.mock.lockErr
 }
 
@@ -113,7 +120,9 @@ func (m *mockSchedulerJobsStorageWrapper) Create(ctx context.Context, job *pipel
 	if m.mock.createErr != nil {
 		return nil, m.mock.createErr
 	}
+
 	m.mock.createdJobs = append(m.mock.createdJobs, job)
+
 	return job, nil
 }
 
@@ -135,11 +144,14 @@ func TestSyncScheduler_Execute(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, mock.txExecuted, "should execute in transaction")
 		assert.Len(t, mock.createdJobs, 2, "should create 2 jobs")
+
 		for _, job := range mock.createdJobs {
 			assert.Equal(t, pipelineservice.JobStatusScheduled, job.Status)
 			assert.Equal(t, pipelineservice.JobTypeSync, job.JobType)
 		}
+
 		assert.Len(t, mock.updatedConnections, 2, "should update next_scheduled_at for 2 connections")
+
 		for _, conn := range mock.updatedConnections {
 			assert.NotNil(t, conn.NextScheduledAt, "next_scheduled_at should be set")
 		}

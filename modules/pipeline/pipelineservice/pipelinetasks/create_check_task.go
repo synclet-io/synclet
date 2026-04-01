@@ -50,7 +50,7 @@ func (uc *CreateCheckTask) Execute(ctx context.Context, params CreateCheckTaskPa
 
 	if hasDirectConfig {
 		// Direct config path: encrypt secrets and store config in the payload.
-		mc, err := uc.storage.ManagedConnectors().First(ctx, &pipelineservice.ManagedConnectorFilter{
+		connector, err := uc.storage.ManagedConnectors().First(ctx, &pipelineservice.ManagedConnectorFilter{
 			ID:          filter.Equals(*params.ManagedConnectorID),
 			WorkspaceID: filter.Equals(params.WorkspaceID),
 		})
@@ -58,12 +58,12 @@ func (uc *CreateCheckTask) Execute(ctx context.Context, params CreateCheckTaskPa
 			return nil, fmt.Errorf("managed connector not found: %w", err)
 		}
 
-		encrypted, err := pipelinesecrets.EncryptConfigSecrets(ctx, uc.secrets, "connector_task", taskID, string(params.Config), mc.Spec)
+		encrypted, err := pipelinesecrets.EncryptConfigSecrets(ctx, uc.secrets, "connector_task", taskID, string(params.Config), connector.Spec)
 		if err != nil {
 			return nil, fmt.Errorf("encrypting config secrets: %w", err)
 		}
 
-		payload.ManagedConnectorID = mc.ID
+		payload.ManagedConnectorID = connector.ID
 		payload.Config = &encrypted
 	} else {
 		// Entity reference path: resolve managed connector ID from source/destination.
@@ -75,6 +75,7 @@ func (uc *CreateCheckTask) Execute(ctx context.Context, params CreateCheckTaskPa
 			if err != nil {
 				return nil, fmt.Errorf("finding source: %w", err)
 			}
+
 			payload.SourceID = params.SourceID
 			payload.ManagedConnectorID = src.ManagedConnectorID
 		} else {
@@ -85,6 +86,7 @@ func (uc *CreateCheckTask) Execute(ctx context.Context, params CreateCheckTaskPa
 			if err != nil {
 				return nil, fmt.Errorf("finding destination: %w", err)
 			}
+
 			payload.DestinationID = params.DestinationID
 			payload.ManagedConnectorID = dst.ManagedConnectorID
 		}

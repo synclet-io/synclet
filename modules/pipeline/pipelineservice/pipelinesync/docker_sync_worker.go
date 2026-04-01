@@ -90,11 +90,13 @@ func (w *DockerSyncWorker) Execute(ctx context.Context) error {
 	result, err := w.backend.ClaimJob(ctx, w.workerID)
 	if err != nil {
 		<-w.semaphore
+
 		return err
 	}
 
 	if result == nil {
 		<-w.semaphore
+
 		return nil
 	}
 
@@ -113,6 +115,7 @@ func (w *DockerSyncWorker) Execute(ctx context.Context) error {
 
 	w.manager.RunJob(func(jobCtx context.Context) {
 		defer func() { <-w.semaphore }()
+
 		w.executeJob(jobCtx, result)
 	})
 
@@ -131,6 +134,7 @@ func (w *DockerSyncWorker) executeJob(ctx context.Context, result *pipelinejobs.
 	catalog := &protocol.ConfiguredAirbyteCatalog{}
 	if err := json.Unmarshal(result.ConfiguredCatalog, catalog); err != nil {
 		w.failJob(ctx, result.Job.ID, result.WorkspaceID, result.ConnectionID, fmt.Errorf("unmarshaling catalog: %w", err))
+
 		return
 	}
 
@@ -171,6 +175,7 @@ func (w *DockerSyncWorker) executeJob(ctx context.Context, result *pipelinejobs.
 	if execErr != nil && execCtx.Err() == context.DeadlineExceeded {
 		reason := fmt.Sprintf("max sync duration exceeded (%s)", w.maxSyncDuration)
 		execErr = fmt.Errorf("%s: %w", reason, execErr)
+
 		if w.logger != nil {
 			w.logger.WithFields(map[string]interface{}{"worker_id": w.workerID, "job_id": result.Job.ID.String(), "max_duration": w.maxSyncDuration}).Warn(ctx, "job timed out")
 		}
@@ -183,17 +188,20 @@ func (w *DockerSyncWorker) executeJob(ctx context.Context, result *pipelinejobs.
 		if w.logger != nil {
 			w.logger.WithFields(map[string]interface{}{"worker_id": w.workerID, "job_id": result.Job.ID.String()}).Info(ctx, "job cancelled")
 		}
+
 		return
 	}
 
 	// Update job status via ExecutorBackend.
 	var errMsg string
+
 	var recordsRead, bytesSynced, durationMs int64
 	if stats != nil {
 		recordsRead = stats.RecordsRead
 		bytesSynced = stats.BytesSynced
 		durationMs = stats.Duration.Milliseconds()
 	}
+
 	if execErr != nil {
 		errMsg = execErr.Error()
 	}
@@ -225,12 +233,14 @@ func (w *DockerSyncWorker) recordMetrics(ctx context.Context, result *pipelinejo
 
 	if execErr != nil {
 		w.metrics.ObserveSyncFailed(wsID, connID)
+
 		if w.logger != nil {
 			w.logger.WithError(execErr).WithFields(map[string]interface{}{"worker_id": w.workerID, "job_id": result.Job.ID.String()}).Error(ctx, "job failed")
 		}
 	} else {
 		var recordsRead, bytesSynced int64
 		var duration time.Duration
+
 		if stats != nil {
 			recordsRead = stats.RecordsRead
 			bytesSynced = stats.BytesSynced
@@ -238,6 +248,7 @@ func (w *DockerSyncWorker) recordMetrics(ctx context.Context, result *pipelinejo
 		}
 
 		w.metrics.ObserveSyncCompleted(wsID, connID, duration, recordsRead, bytesSynced)
+
 		if recordsRead == 0 {
 			w.metrics.ObserveZeroRecordSync(wsID, connID)
 		}
@@ -284,13 +295,17 @@ func (w *DockerSyncWorker) heartbeatAndCancel(ctx context.Context, cancel contex
 				if w.logger != nil {
 					w.logger.WithError(err).WithField("job_id", jobID.String()).Warn(ctx, "heartbeat failed")
 				}
+
 				continue
 			}
+
 			if result.Cancelled {
 				if w.logger != nil {
 					w.logger.WithField("job_id", jobID.String()).Info(ctx, "cancel detected via heartbeat, stopping execution")
 				}
+
 				cancel()
+
 				return
 			}
 		}
@@ -302,6 +317,7 @@ func nilIfEmpty(s string) *string {
 	if s == "" {
 		return nil
 	}
+
 	return &s
 }
 

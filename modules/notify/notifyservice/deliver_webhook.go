@@ -58,19 +58,19 @@ func (uc *DeliverWebhook) Execute(ctx context.Context, params DeliverWebhookPara
 		return fmt.Errorf("marshaling event: %w", err)
 	}
 
-	for _, wh := range webhooks {
-		if !webhookMatchesEvent(wh, params.Event.Event) {
+	for _, webhook := range webhooks {
+		if !webhookMatchesEvent(webhook, params.Event.Event) {
 			continue
 		}
 
 		// Re-validate URL at delivery time to prevent DNS rebinding attacks.
-		if err := connectutil.ValidateWebhookURLAtDelivery(wh.URL); err != nil {
+		if err := connectutil.ValidateWebhookURLAtDelivery(webhook.URL); err != nil {
 			continue
 		}
 
 		// Retry up to 3 times with context-aware backoff.
-		for attempt := 0; attempt < 3; attempt++ {
-			if err := uc.sendWebhook(ctx, wh, payload); err == nil {
+		for attempt := range 3 {
+			if err := uc.sendWebhook(ctx, webhook, payload); err == nil {
 				break
 			}
 
@@ -87,8 +87,8 @@ func (uc *DeliverWebhook) Execute(ctx context.Context, params DeliverWebhookPara
 	return nil
 }
 
-func (uc *DeliverWebhook) sendWebhook(ctx context.Context, wh *Webhook, payload []byte) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, wh.URL, bytes.NewReader(payload))
+func (uc *DeliverWebhook) sendWebhook(ctx context.Context, webhook *Webhook, payload []byte) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, webhook.URL, bytes.NewReader(payload))
 	if err != nil {
 		return err
 	}
@@ -96,15 +96,17 @@ func (uc *DeliverWebhook) sendWebhook(ctx context.Context, wh *Webhook, payload 
 	req.Header.Set("Content-Type", "application/json")
 
 	// Sign with HMAC-SHA256, decrypting secret if needed.
-	if wh.Secret != "" {
-		secret := wh.Secret
+	if webhook.Secret != "" {
+		secret := webhook.Secret
 		if secretutil.IsSecretRef(secret) {
 			decrypted, err := uc.secrets.RetrieveSecret(ctx, secret)
 			if err != nil {
 				return fmt.Errorf("decrypting webhook secret: %w", err)
 			}
+
 			secret = decrypted
 		}
+
 		mac := hmac.New(sha256.New, []byte(secret))
 		mac.Write(payload)
 		sig := hex.EncodeToString(mac.Sum(nil))
@@ -115,6 +117,7 @@ func (uc *DeliverWebhook) sendWebhook(ctx context.Context, wh *Webhook, payload 
 	if err != nil {
 		return err
 	}
+
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode >= 300 {
@@ -124,9 +127,9 @@ func (uc *DeliverWebhook) sendWebhook(ctx context.Context, wh *Webhook, payload 
 	return nil
 }
 
-func webhookMatchesEvent(wh *Webhook, eventType string) bool {
+func webhookMatchesEvent(webhook *Webhook, eventType string) bool {
 	var events []string
-	if err := json.Unmarshal([]byte(wh.Events), &events); err != nil {
+	if err := json.Unmarshal([]byte(webhook.Events), &events); err != nil {
 		return false
 	}
 

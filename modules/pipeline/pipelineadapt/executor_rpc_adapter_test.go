@@ -24,6 +24,7 @@ func TestRPCExecutorBackend_ImplementsInterface(t *testing.T) {
 func TestRPCExecutorBackend_TokenInterceptorSetsHeader(t *testing.T) {
 	// Verify that the token interceptor sets the X-Internal-Secret header.
 	var receivedHeader string
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		receivedHeader = r.Header.Get("X-Internal-Secret")
 		// Return a minimal valid Connect response.

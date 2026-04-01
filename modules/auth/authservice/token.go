@@ -60,6 +60,7 @@ func generateTokenPair(ctx context.Context, storage Storage, config Config, user
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
 	accessToken, err := token.SignedString([]byte(config.JWTSecret))
 	if err != nil {
 		return nil, fmt.Errorf("signing access token: %w", err)
@@ -73,7 +74,7 @@ func generateTokenPair(ctx context.Context, storage Storage, config Config, user
 
 	refreshTokenHash := hashToken(refreshTokenRaw)
 
-	rt := &RefreshToken{
+	refreshToken := &RefreshToken{
 		ID:        uuid.New(),
 		UserID:    user.ID,
 		TokenHash: refreshTokenHash,
@@ -81,7 +82,7 @@ func generateTokenPair(ctx context.Context, storage Storage, config Config, user
 		CreatedAt: now,
 	}
 
-	if _, err := storage.RefreshTokens().Create(ctx, rt); err != nil {
+	if _, err := storage.RefreshTokens().Create(ctx, refreshToken); err != nil {
 		return nil, fmt.Errorf("storing refresh token: %w", err)
 	}
 
@@ -89,13 +90,14 @@ func generateTokenPair(ctx context.Context, storage Storage, config Config, user
 		AccessToken:      accessToken,
 		RefreshToken:     refreshTokenRaw,
 		ExpiresAt:        expiresAt,
-		RefreshExpiresAt: rt.ExpiresAt,
+		RefreshExpiresAt: refreshToken.ExpiresAt,
 	}, nil
 }
 
 // hashToken returns the SHA-256 hex hash of a token string.
 func hashToken(token string) string {
 	h := sha256.Sum256([]byte(token))
+
 	return hex.EncodeToString(h[:])
 }
 
@@ -105,5 +107,6 @@ func generateRandomString(n int) (string, error) {
 	if _, err := rand.Read(b); err != nil {
 		return "", err
 	}
+
 	return hex.EncodeToString(b), nil
 }

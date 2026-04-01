@@ -28,6 +28,7 @@ func (uc *RevokeInvite) Execute(ctx context.Context, inviteID, workspaceID uuid.
 	if err != nil {
 		return fmt.Errorf("finding invite: %w", err)
 	}
+
 	if invite == nil {
 		return ErrWorkspaceInviteNotFound
 	}

@@ -22,6 +22,7 @@ func CreateFIFOs(dir string) error {
 			return fmt.Errorf("creating FIFO %s: %w", name, err)
 		}
 	}
+
 	return nil
 }
 
@@ -38,12 +39,15 @@ func ReadExitCode(path string) (int32, error) {
 	}
 
 	var code int32
+
 	for _, b := range data {
 		if b < '0' || b > '9' {
 			break
 		}
+
 		code = code*10 + int32(b-'0')
 	}
+
 	return code, nil
 }
 
@@ -81,5 +85,6 @@ func shellQuote(s string) string {
 	if s == "" {
 		return "''"
 	}
+
 	return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'"
 }

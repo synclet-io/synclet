@@ -18,6 +18,7 @@ func (e *connectorError) Error() string {
 	if e.FailureType != "" {
 		return fmt.Sprintf("connector error (%s): %s", e.FailureType, e.Message)
 	}
+
 	return fmt.Sprintf("connector error: %s", e.Message)
 }
 
@@ -33,5 +34,6 @@ func (e *ExitCodeError) Error() string {
 	if e.Stderr != "" {
 		return fmt.Sprintf("%s connector exited with code %d: %s", e.Role, e.ExitCode, e.Stderr)
 	}
+
 	return fmt.Sprintf("%s connector exited with code %d", e.Role, e.ExitCode)
 }

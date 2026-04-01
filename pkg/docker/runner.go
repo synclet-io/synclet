@@ -40,32 +40,38 @@ func newBoundedBuffer(maxSize int) *boundedBuffer {
 	return &boundedBuffer{maxSize: maxSize}
 }
 
-func (b *boundedBuffer) Write(p []byte) (int, error) {
+func (b *boundedBuffer) Write(data []byte) (int, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	// If the incoming data alone exceeds maxSize, keep only the tail.
-	if len(p) >= b.maxSize {
+	if len(data) >= b.maxSize {
 		b.buf = make([]byte, b.maxSize)
-		copy(b.buf, p[len(p)-b.maxSize:])
-		return len(p), nil
+		copy(b.buf, data[len(data)-b.maxSize:])
+
+		return len(data), nil
 	}
 	// Discard oldest data to make room.
-	if len(b.buf)+len(p) > b.maxSize {
-		overflow := len(b.buf) + len(p) - b.maxSize
+	if len(b.buf)+len(data) > b.maxSize {
+		overflow := len(b.buf) + len(data) - b.maxSize
 		b.buf = b.buf[overflow:]
 	}
-	b.buf = append(b.buf, p...)
-	return len(p), nil
+
+	b.buf = append(b.buf, data...)
+
+	return len(data), nil
 }
 
-func (b *boundedBuffer) Read(p []byte) (int, error) {
+func (b *boundedBuffer) Read(dest []byte) (int, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
+
 	if len(b.buf) == 0 {
 		return 0, io.EOF
 	}
-	n := copy(p, b.buf)
+
+	n := copy(dest, b.buf)
 	b.buf = b.buf[n:]
+
 	return n, nil
 }
 
@@ -84,6 +90,7 @@ func NewContainerRunner() (*ContainerRunner, error) {
 	if err != nil {
 		return nil, fmt.Errorf("creating docker client: %w", err)
 	}
+
 	return &ContainerRunner{client: cli}, nil
 }
 
@@ -94,11 +101,13 @@ func (r *ContainerRunner) ResolveDigest(ctx context.Context, img string) (string
 	if err != nil {
 		return "", fmt.Errorf("inspecting image %s: %w", img, err)
 	}
+
 	for _, digest := range inspect.RepoDigests {
 		if strings.Contains(digest, "@sha256:") {
 			return digest, nil
 		}
 	}
+
 	return "", fmt.Errorf("no sha256 digest found for image %s", img)
 }
 
@@ -114,6 +123,7 @@ func (r *ContainerRunner) Pull(ctx context.Context, img string) (rerr error) {
 	if _, err := io.Copy(io.Discard, reader); err != nil {
 		return fmt.Errorf("reading pull progress for %s: %w", img, err)
 	}
+
 	return nil
 }
 
@@ -126,16 +136,20 @@ func (r *ContainerRunner) Run(ctx context.Context, opts RunOptions) (*RunResult,
 	if opts.ConfigFile != nil {
 		files["config.json"] = opts.ConfigFile
 	}
+
 	if opts.CatalogFile != nil {
 		files["catalog.json"] = opts.CatalogFile
 	}
+
 	if opts.StateFile != nil {
 		files["state.json"] = opts.StateFile
 	}
 
 	var tempDir string
+
 	if len(files) > 0 {
 		var err error
+
 		tempDir, err = CreateTempDir(files)
 		if err != nil {
 			return nil, fmt.Errorf("creating temp dir: %w", err)
@@ -187,6 +201,7 @@ func (r *ContainerRunner) Run(ctx context.Context, opts RunOptions) (*RunResult,
 	} else {
 		hostCfg.Memory = defaultDockerMemoryLimit
 	}
+
 	if opts.CPULimit > 0 {
 		// Docker expects NanoCPUs: 1 CPU core = 1e9 NanoCPUs.
 		hostCfg.NanoCPUs = int64(opts.CPULimit * 1e9)
@@ -198,6 +213,7 @@ func (r *ContainerRunner) Run(ctx context.Context, opts RunOptions) (*RunResult,
 	resp, err := r.client.ContainerCreate(ctx, containerCfg, hostCfg, nil, nil, opts.Name)
 	if err != nil {
 		cleanup()
+
 		return nil, fmt.Errorf("creating container: %w", err)
 	}
 
@@ -213,15 +229,20 @@ func (r *ContainerRunner) Run(ctx context.Context, opts RunOptions) (*RunResult,
 	if err != nil {
 		// Use context.WithoutCancel so cleanup succeeds even if ctx was cancelled.
 		_ = r.client.ContainerRemove(context.WithoutCancel(ctx), containerID, dockercontainer.RemoveOptions{Force: true})
+
 		cleanup()
+
 		return nil, fmt.Errorf("attaching to container: %w", err)
 	}
 
 	// Start container.
 	if err := r.client.ContainerStart(ctx, containerID, dockercontainer.StartOptions{}); err != nil {
 		attachResp.Close()
+
 		_ = r.client.ContainerRemove(context.WithoutCancel(ctx), containerID, dockercontainer.RemoveOptions{Force: true})
+
 		cleanup()
+
 		return nil, fmt.Errorf("starting container: %w", err)
 	}
 
@@ -258,6 +279,7 @@ func (r *ContainerRunner) Run(ctx context.Context, opts RunOptions) (*RunResult,
 		case status := <-statusCh:
 			result.ExitCode = int(status.StatusCode)
 		}
+
 		close(exitCodeReady)
 
 		// Close stdin to unblock the stdin copy goroutine and the router's pipe writes.
@@ -275,6 +297,7 @@ func (r *ContainerRunner) Run(ctx context.Context, opts RunOptions) (*RunResult,
 	if opts.Stdin != nil {
 		go func() {
 			defer func() { _ = attachResp.CloseWrite() }()
+
 			_, _ = io.Copy(attachResp.Conn, opts.Stdin)
 		}()
 	}
@@ -303,6 +326,7 @@ func (r *ContainerRunner) Run(ctx context.Context, opts RunOptions) (*RunResult,
 func (r *ContainerRunner) ListByLabel(ctx context.Context, label string) ([]dockercontainer.Summary, error) {
 	filterArgs := filters.NewArgs()
 	filterArgs.Add("label", label)
+
 	return r.client.ContainerList(ctx, dockercontainer.ListOptions{
 		All:     true,
 		Filters: filterArgs,
@@ -314,6 +338,7 @@ func (r *ContainerRunner) Stop(ctx context.Context, containerID string) error {
 	if err := r.client.ContainerStop(ctx, containerID, dockercontainer.StopOptions{}); err != nil {
 		return fmt.Errorf("stopping container %s: %w", containerID, err)
 	}
+
 	return nil
 }
 
@@ -325,6 +350,7 @@ func (r *ContainerRunner) StopWithTimeout(ctx context.Context, containerID strin
 	}); err != nil {
 		return fmt.Errorf("stopping container %s with %ds timeout: %w", containerID, timeoutSeconds, err)
 	}
+
 	return nil
 }
 
@@ -335,5 +361,6 @@ func (r *ContainerRunner) Remove(ctx context.Context, containerID string) error 
 	}); err != nil {
 		return fmt.Errorf("removing container %s: %w", containerID, err)
 	}
+
 	return nil
 }

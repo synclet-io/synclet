@@ -60,10 +60,12 @@ func MarshalMetadata(m *RepositoryConnectorMetadata) string {
 	if m == nil {
 		return "{}"
 	}
+
 	data, err := json.Marshal(m)
 	if err != nil {
 		return "{}"
 	}
+
 	return string(data)
 }
 
@@ -72,9 +74,11 @@ func UnmarshalMetadata(s string) (*RepositoryConnectorMetadata, error) {
 	if s == "" || s == "{}" {
 		return &RepositoryConnectorMetadata{}, nil
 	}
+
 	var m RepositoryConnectorMetadata
 	if err := json.Unmarshal([]byte(s), &m); err != nil {
 		return nil, err
 	}
+
 	return &m, nil
 }

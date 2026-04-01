@@ -42,12 +42,15 @@ func (h *OIDCHTTPHandler) RegisterRoutes() pnphttpserver.MuxHandlerRegistrar {
 
 func (h *OIDCHTTPHandler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	provider := mux.Vars(r)["provider"]
+
 	authURL, err := h.startOIDCLogin.Execute(r.Context(), provider)
 	if err != nil {
 		h.logger.Error(r.Context(), "OIDC login failed", "error", err, "provider", provider)
 		http.Error(w, "OIDC login failed", http.StatusBadRequest)
+
 		return
 	}
+
 	http.Redirect(w, r, authURL, http.StatusFound)
 }
 
@@ -59,12 +62,16 @@ func (h *OIDCHTTPHandler) handleCallback(w http.ResponseWriter, r *http.Request)
 	if code == "" || state == "" {
 		// Check for error response from provider.
 		errMsg := r.URL.Query().Get("error")
+
 		errDesc := r.URL.Query().Get("error_description")
 		if errMsg != "" {
 			http.Redirect(w, r, h.frontendURL+"/login?error="+url.QueryEscape(errMsg+": "+errDesc), http.StatusFound)
+
 			return
 		}
+
 		http.Error(w, "missing code or state parameter", http.StatusBadRequest)
+
 		return
 	}
 
@@ -72,6 +79,7 @@ func (h *OIDCHTTPHandler) handleCallback(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		// Redirect to frontend login page with error.
 		http.Redirect(w, r, h.frontendURL+"/login?error=oidc_failed", http.StatusFound)
+
 		return
 	}
 

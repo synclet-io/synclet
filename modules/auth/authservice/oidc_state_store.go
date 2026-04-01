@@ -28,12 +28,14 @@ func generateState() (string, error) {
 	if _, err := rand.Read(b); err != nil {
 		return "", err
 	}
+
 	return hex.EncodeToString(b), nil
 }
 
 // Set stores a PKCE verifier and provider slug keyed by state with a TTL.
 func (s *StateStore) Set(ctx context.Context, state, verifier, provider string, ttl time.Duration) error {
 	now := time.Now()
+
 	_, err := s.storage.OIDCStates().Create(ctx, &OIDCState{
 		ID:           uuid.New(),
 		State:        state,
@@ -45,6 +47,7 @@ func (s *StateStore) Set(ctx context.Context, state, verifier, provider string, 
 	if err != nil {
 		return fmt.Errorf("creating OIDC state: %w", err)
 	}
+
 	return nil
 }
 

@@ -27,13 +27,13 @@ func TestValidateWebhookURL(t *testing.T) {
 		{"rejects unspecified address", "http://0.0.0.0/webhook", true},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := ValidateWebhookURL(tt.url)
-			if tt.wantErr {
-				assert.Error(t, err, "expected error for URL: %s", tt.url)
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
+			err := ValidateWebhookURL(testCase.url)
+			if testCase.wantErr {
+				assert.Error(t, err, "expected error for URL: %s", testCase.url)
 			} else {
-				assert.NoError(t, err, "expected no error for URL: %s", tt.url)
+				assert.NoError(t, err, "expected no error for URL: %s", testCase.url)
 			}
 		})
 	}

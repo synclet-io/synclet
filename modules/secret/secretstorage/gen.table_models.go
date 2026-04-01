@@ -45,6 +45,7 @@ func convertSecretToDB(src *secretservice.Secret) (*dbSecret, error) {
 	result.OwnerID = src.OwnerID
 	result.CreatedAt = (src.CreatedAt).UTC()
 	result.UpdatedAt = (src.UpdatedAt).UTC()
+
 	return result, nil
 }
 
@@ -74,6 +75,7 @@ func convertSecretFromDB(src *dbSecret) (*secretservice.Secret, error) {
 	result.OwnerID = src.OwnerID
 	result.CreatedAt = src.CreatedAt
 	result.UpdatedAt = src.UpdatedAt
+
 	return result, nil
 }
 func (a dbSecret) TableName() string {

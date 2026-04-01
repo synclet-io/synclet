@@ -35,5 +35,6 @@ func (s *JobRetentionStorageImpl) DeleteOldestTerminalJobs(ctx context.Context, 
 	if result.Error != nil {
 		return 0, fmt.Errorf("deleting old jobs: %w", result.Error)
 	}
+
 	return result.RowsAffected, nil
 }

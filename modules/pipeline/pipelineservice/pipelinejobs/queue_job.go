@@ -48,6 +48,7 @@ func (uc *QueueJob) Execute(ctx context.Context, params QueueJobParams) (*pipeli
 	if err != nil {
 		return nil, fmt.Errorf("checking active jobs: %w", err)
 	}
+
 	if len(activeJobs) > 0 {
 		return nil, &pipelineservice.ValidationError{Field: "connection_id", Message: "connection already has an active job"}
 	}
@@ -56,6 +57,7 @@ func (uc *QueueJob) Execute(ctx context.Context, params QueueJobParams) (*pipeli
 	if maxAttempts <= 0 {
 		maxAttempts = conn.MaxAttempts
 	}
+
 	if maxAttempts <= 0 {
 		maxAttempts = 3
 	}

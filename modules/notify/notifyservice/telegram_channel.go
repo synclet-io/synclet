@@ -47,6 +47,7 @@ func (t *TelegramChannel) Deliver(ctx context.Context, channel *NotificationChan
 		if err != nil {
 			return fmt.Errorf("decrypting telegram bot_token: %w", err)
 		}
+
 		botToken = decrypted
 	}
 
@@ -72,6 +73,7 @@ func (t *TelegramChannel) Deliver(ctx context.Context, channel *NotificationChan
 	if err != nil {
 		return fmt.Errorf("creating request: %w", err)
 	}
+
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := t.httpClient.Do(req) //nolint:bodyclose // closed via multierr.AppendInvoke below
@@ -92,8 +94,10 @@ func formatTelegramMessage(event WebhookEvent) string {
 	if event.ConnectionID != "" {
 		msg += fmt.Sprintf("\nConnection: %s", event.ConnectionID)
 	}
+
 	if event.Error != "" {
 		msg += fmt.Sprintf("\nError: %s", event.Error)
 	}
+
 	return msg
 }

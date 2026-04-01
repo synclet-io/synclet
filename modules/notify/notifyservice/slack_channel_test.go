@@ -35,6 +35,7 @@ func TestSlackChannel_Deliver_SendsCorrectPayload(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		receivedContentType = r.Header.Get("Content-Type")
 		receivedBody, _ = io.ReadAll(r.Body)
+
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()
@@ -83,7 +84,7 @@ func TestSlackChannel_Deliver_ReturnsErrorOnNon2xx(t *testing.T) {
 	}
 
 	err := slack.Deliver(context.Background(), channel, WebhookEvent{Event: "sync.failed"})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "status 500")
 }
 
@@ -96,11 +97,12 @@ func TestSlackChannel_Deliver_ReturnsErrorWhenWebhookURLMissing(t *testing.T) {
 	}
 
 	err := slack.Deliver(context.Background(), channel, WebhookEvent{Event: "sync.failed"})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "webhook_url")
 }
 
 func mustJSON(v interface{}) string {
 	b, _ := json.Marshal(v)
+
 	return string(b)
 }

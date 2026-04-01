@@ -30,7 +30,7 @@ func NewDeleteWebhook(storage Storage, secrets SecretsProvider) *DeleteWebhook {
 // Execute deletes the webhook matching the given ID and workspace.
 func (uc *DeleteWebhook) Execute(ctx context.Context, params DeleteWebhookParams) error {
 	// Load webhook to check if secret needs cleanup.
-	wh, err := uc.storage.Webhooks().First(ctx, &WebhookFilter{
+	webhook, err := uc.storage.Webhooks().First(ctx, &WebhookFilter{
 		ID:          filter.Equals(params.ID),
 		WorkspaceID: filter.Equals(params.WorkspaceID),
 	})
@@ -39,8 +39,8 @@ func (uc *DeleteWebhook) Execute(ctx context.Context, params DeleteWebhookParams
 	}
 
 	// Clean up encrypted secret if present.
-	if wh.Secret != "" && secretutil.IsSecretRef(wh.Secret) {
-		_ = uc.secrets.DeleteSecret(ctx, wh.Secret) // non-fatal
+	if webhook.Secret != "" && secretutil.IsSecretRef(webhook.Secret) {
+		_ = uc.secrets.DeleteSecret(ctx, webhook.Secret) // non-fatal
 	}
 
 	return uc.storage.Webhooks().Delete(ctx, &WebhookFilter{

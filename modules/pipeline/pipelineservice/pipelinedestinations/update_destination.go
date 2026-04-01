@@ -48,6 +48,7 @@ func (uc *UpdateDestination) Execute(ctx context.Context, params UpdateDestinati
 	if params.Name != nil {
 		dest.Name = *params.Name
 	}
+
 	if params.Config != nil {
 		newConfig := string(*params.Config)
 
@@ -62,6 +63,7 @@ func (uc *UpdateDestination) Execute(ctx context.Context, params UpdateDestinati
 			if encErr != nil {
 				return nil, fmt.Errorf("encrypting destination config secrets: %w", encErr)
 			}
+
 			newConfig = encryptedConfig
 		}
 
@@ -77,6 +79,7 @@ func (uc *UpdateDestination) Execute(ctx context.Context, params UpdateDestinati
 				}
 			}
 		}
+
 		dest.RuntimeConfig = params.RuntimeConfig
 	}
 
@@ -122,6 +125,7 @@ func (uc *UpdateDestinationInternal) Execute(ctx context.Context, params UpdateD
 	if params.Name != nil {
 		dest.Name = *params.Name
 	}
+
 	if params.Config != nil {
 		newConfig := string(*params.Config)
 
@@ -136,6 +140,7 @@ func (uc *UpdateDestinationInternal) Execute(ctx context.Context, params UpdateD
 			if encErr != nil {
 				return nil, fmt.Errorf("encrypting destination config secrets: %w", encErr)
 			}
+
 			newConfig = encryptedConfig
 		}
 

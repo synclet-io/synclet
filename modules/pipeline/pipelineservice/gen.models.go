@@ -74,12 +74,15 @@ func copyConnectorTaskPayload(val ConnectorTaskPayload) ConnectorTaskPayload {
 	switch val := val.(type) {
 	case *CheckPayload:
 		valCopy := val.Copy()
+
 		return &valCopy
 	case *SpecPayload:
 		valCopy := val.Copy()
+
 		return &valCopy
 	case *DiscoverPayload:
 		valCopy := val.Copy()
+
 		return &valCopy
 	}
 	panic("called copyConnectorTaskPayload with invalid type")
@@ -149,12 +152,15 @@ func copyConnectorTaskResult(val ConnectorTaskResult) ConnectorTaskResult {
 	switch val := val.(type) {
 	case *CheckResult:
 		valCopy := val.Copy()
+
 		return &valCopy
 	case *SpecResult:
 		valCopy := val.Copy()
+
 		return &valCopy
 	case *DiscoverResult:
 		valCopy := val.Copy()
+
 		return &valCopy
 	}
 	panic("called copyConnectorTaskResult with invalid type")

@@ -105,7 +105,7 @@ func (h *StatsHandler) GetWorkspaceStats(ctx context.Context, req *connect.Reque
 
 	result, err := h.getWorkspaceStats.Execute(ctx, pipelineservice.GetWorkspaceStatsParams{
 		WorkspaceID: workspaceID,
-		TimeRange:   timeRangeToDomain(req.Msg.TimeRange),
+		TimeRange:   timeRangeToDomain(req.Msg.GetTimeRange()),
 	})
 	if err != nil {
 		return nil, mapError(err)
@@ -126,16 +126,16 @@ func (h *StatsHandler) GetWorkspaceStats(ctx context.Context, req *connect.Reque
 
 	// Map top connections.
 	topConns := make([]*statsv1.TopConnection, len(result.TopConnections))
-	for i, tc := range result.TopConnections {
+	for i, topConn := range result.TopConnections {
 		topConns[i] = &statsv1.TopConnection{
-			ConnectionId:    tc.ConnectionID.String(),
-			ConnectionName:  tc.ConnectionName,
-			RecordsSynced:   tc.RecordsSynced,
-			BytesSynced:     tc.BytesSynced,
-			SparklineValues: tc.SparklineValues,
+			ConnectionId:    topConn.ConnectionID.String(),
+			ConnectionName:  topConn.ConnectionName,
+			RecordsSynced:   topConn.RecordsSynced,
+			BytesSynced:     topConn.BytesSynced,
+			SparklineValues: topConn.SparklineValues,
 		}
-		if tc.LastSyncAt != nil {
-			topConns[i].LastSyncAt = timestamppb.New(*tc.LastSyncAt)
+		if topConn.LastSyncAt != nil {
+			topConns[i].LastSyncAt = timestamppb.New(*topConn.LastSyncAt)
 		}
 	}
 
@@ -170,7 +170,7 @@ func (h *StatsHandler) GetConnectionStats(ctx context.Context, req *connect.Requ
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	connectionID, err := uuid.Parse(req.Msg.ConnectionId)
+	connectionID, err := uuid.Parse(req.Msg.GetConnectionId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid connection_id: %w", err))
 	}
@@ -178,7 +178,7 @@ func (h *StatsHandler) GetConnectionStats(ctx context.Context, req *connect.Requ
 	result, err := h.getConnectionStats.Execute(ctx, pipelineservice.GetConnectionStatsParams{
 		ConnectionID: connectionID,
 		WorkspaceID:  workspaceID,
-		TimeRange:    timeRangeToDomain(req.Msg.TimeRange),
+		TimeRange:    timeRangeToDomain(req.Msg.GetTimeRange()),
 	})
 	if err != nil {
 		return nil, mapError(err)
@@ -239,13 +239,14 @@ func (h *StatsHandler) GetSyncTimeline(ctx context.Context, req *connect.Request
 
 	params := pipelineservice.GetSyncTimelineParams{
 		WorkspaceID: workspaceID,
-		TimeRange:   timeRangeToDomain(req.Msg.TimeRange),
+		TimeRange:   timeRangeToDomain(req.Msg.GetTimeRange()),
 	}
-	if req.Msg.ConnectionId != "" {
-		connID, err := uuid.Parse(req.Msg.ConnectionId)
+	if req.Msg.GetConnectionId() != "" {
+		connID, err := uuid.Parse(req.Msg.GetConnectionId())
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid connection_id: %w", err))
 		}
+
 		params.ConnectionID = &connID
 	}
 

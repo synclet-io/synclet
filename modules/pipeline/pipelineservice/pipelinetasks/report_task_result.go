@@ -59,6 +59,7 @@ func (uc *ReportTaskResult) Execute(ctx context.Context, params ReportTaskResult
 			if err != nil {
 				return fmt.Errorf("parsing task result: %w", err)
 			}
+
 			task.Result = &result
 		}
 	} else {
@@ -121,18 +122,21 @@ func parseTaskResult(taskType pipelineservice.ConnectorTaskType, data []byte) (p
 		if err := json.Unmarshal(data, &r); err != nil {
 			return nil, fmt.Errorf("unmarshaling check result: %w", err)
 		}
+
 		return &r, nil
 	case pipelineservice.ConnectorTaskTypeSpec:
 		var r pipelineservice.SpecResult
 		if err := json.Unmarshal(data, &r); err != nil {
 			return nil, fmt.Errorf("unmarshaling spec result: %w", err)
 		}
+
 		return &r, nil
 	case pipelineservice.ConnectorTaskTypeDiscover:
 		var r pipelineservice.DiscoverResult
 		if err := json.Unmarshal(data, &r); err != nil {
 			return nil, fmt.Errorf("unmarshaling discover result: %w", err)
 		}
+
 		return &r, nil
 	default:
 		return nil, fmt.Errorf("unknown task type: %s", taskType)

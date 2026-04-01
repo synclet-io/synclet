@@ -38,7 +38,7 @@ type AddConnectorParams struct {
 // and stores the resulting spec on the connector before returning.
 func (uc *AddConnector) Execute(ctx context.Context, params AddConnectorParams) (*pipelineservice.ManagedConnector, error) {
 	now := time.Now()
-	mc := &pipelineservice.ManagedConnector{
+	connector := &pipelineservice.ManagedConnector{
 		ID:            uuid.New(),
 		WorkspaceID:   params.WorkspaceID,
 		DockerImage:   params.DockerImage,
@@ -51,7 +51,7 @@ func (uc *AddConnector) Execute(ctx context.Context, params AddConnectorParams) 
 		RepositoryID:  params.RepositoryID,
 	}
 
-	created, err := uc.storage.ManagedConnectors().Create(ctx, mc)
+	created, err := uc.storage.ManagedConnectors().Create(ctx, connector)
 	if err != nil {
 		return nil, fmt.Errorf("creating managed connector: %w", err)
 	}
@@ -84,12 +84,15 @@ func (uc *AddConnector) Execute(ctx context.Context, params AddConnectorParams) 
 		if err != nil {
 			return nil, fmt.Errorf("converting spec result to JSON: %w", err)
 		}
+
 		created.Spec = specJSON
 		created.UpdatedAt = time.Now()
+
 		updated, err := uc.storage.ManagedConnectors().Update(ctx, created)
 		if err != nil {
 			return nil, fmt.Errorf("updating connector spec: %w", err)
 		}
+
 		return updated, nil
 	}
 
@@ -98,36 +101,36 @@ func (uc *AddConnector) Execute(ctx context.Context, params AddConnectorParams) 
 
 // specResultToJSON converts typed SpecResult fields back to a JSON string
 // matching the protocol.ConnectorSpecification shape for ManagedConnector.Spec storage.
-func specResultToJSON(sr *pipelineservice.SpecResult) (string, error) {
+func specResultToJSON(specResult *pipelineservice.SpecResult) (string, error) {
 	spec := map[string]any{
-		"documentationUrl":      sr.DocumentationURL,
-		"changelogUrl":          sr.ChangelogURL,
-		"supportsIncremental":   sr.SupportsIncremental,
-		"supportsNormalization": sr.SupportsNormalization,
-		"supportsDBT":           sr.SupportsDBT,
-		"protocol_version":      sr.ProtocolVersion,
+		"documentationUrl":      specResult.DocumentationURL,
+		"changelogUrl":          specResult.ChangelogURL,
+		"supportsIncremental":   specResult.SupportsIncremental,
+		"supportsNormalization": specResult.SupportsNormalization,
+		"supportsDBT":           specResult.SupportsDBT,
+		"protocol_version":      specResult.ProtocolVersion,
 	}
 
 	// ConnectionSpecification is already a JSON string (jsonb field)
-	if sr.ConnectionSpecification != "" {
+	if specResult.ConnectionSpecification != "" {
 		var connSpec any
-		if err := json.Unmarshal([]byte(sr.ConnectionSpecification), &connSpec); err == nil {
+		if err := json.Unmarshal([]byte(specResult.ConnectionSpecification), &connSpec); err == nil {
 			spec["connectionSpecification"] = connSpec
 		}
 	}
 
 	// SupportedDestinationSyncModes is a JSON array string (jsonb field)
-	if sr.SupportedDestinationSyncModes != "" {
+	if specResult.SupportedDestinationSyncModes != "" {
 		var modes any
-		if err := json.Unmarshal([]byte(sr.SupportedDestinationSyncModes), &modes); err == nil {
+		if err := json.Unmarshal([]byte(specResult.SupportedDestinationSyncModes), &modes); err == nil {
 			spec["supported_destination_sync_modes"] = modes
 		}
 	}
 
 	// AdvancedAuth is a JSON object string (jsonb field)
-	if sr.AdvancedAuth != "" {
+	if specResult.AdvancedAuth != "" {
 		var auth any
-		if err := json.Unmarshal([]byte(sr.AdvancedAuth), &auth); err == nil {
+		if err := json.Unmarshal([]byte(specResult.AdvancedAuth), &auth); err == nil {
 			spec["advancedAuth"] = auth
 		}
 	}
@@ -136,5 +139,6 @@ func specResultToJSON(sr *pipelineservice.SpecResult) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("marshaling spec to JSON: %w", err)
 	}
+
 	return string(data), nil
 }

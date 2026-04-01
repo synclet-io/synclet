@@ -20,10 +20,12 @@ func mapError(err error) error {
 	if errors.As(err, &notFound) {
 		return connect.NewError(connect.CodeNotFound, err)
 	}
+
 	var alreadyExists notifyservice.AlreadyExistsError
 	if errors.As(err, &alreadyExists) {
 		return connect.NewError(connect.CodeAlreadyExists, err)
 	}
+
 	var validation *notifyservice.ValidationError
 	if errors.As(err, &validation) {
 		return connect.NewError(connect.CodeInvalidArgument, err)
@@ -63,28 +65,28 @@ func (h *Handler) CreateWebhook(ctx context.Context, req *connect.Request[webhoo
 	}
 
 	if err := connectutil.ValidateStringLengths(
-		connectutil.StringValidation{Field: "url", Value: req.Msg.Url, MaxLen: connectutil.MaxURLLength},
-		connectutil.StringValidation{Field: "secret", Value: req.Msg.Secret, MaxLen: connectutil.MaxNameLength},
+		connectutil.StringValidation{Field: "url", Value: req.Msg.GetUrl(), MaxLen: connectutil.MaxURLLength},
+		connectutil.StringValidation{Field: "secret", Value: req.Msg.GetSecret(), MaxLen: connectutil.MaxNameLength},
 	); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	if err := connectutil.ValidateWebhookURL(req.Msg.Url); err != nil {
+	if err := connectutil.ValidateWebhookURL(req.Msg.GetUrl()); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	wh, err := h.createWebhook.Execute(ctx, notifyservice.CreateWebhookParams{
+	webhook, err := h.createWebhook.Execute(ctx, notifyservice.CreateWebhookParams{
 		WorkspaceID: workspaceID,
-		URL:         req.Msg.Url,
-		Events:      req.Msg.Events,
-		Secret:      req.Msg.Secret,
+		URL:         req.Msg.GetUrl(),
+		Events:      req.Msg.GetEvents(),
+		Secret:      req.Msg.GetSecret(),
 	})
 	if err != nil {
 		return nil, mapError(err)
 	}
 
 	return connect.NewResponse(&webhookv1.CreateWebhookResponse{
-		Webhook: webhookToProto(wh),
+		Webhook: webhookToProto(webhook),
 	}), nil
 }
 
@@ -94,7 +96,7 @@ func (h *Handler) UpdateWebhook(ctx context.Context, req *connect.Request[webhoo
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	id, err := uuid.Parse(req.Msg.Id)
+	id, err := uuid.Parse(req.Msg.GetId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -102,25 +104,27 @@ func (h *Handler) UpdateWebhook(ctx context.Context, req *connect.Request[webhoo
 	params := notifyservice.UpdateWebhookParams{
 		ID:          id,
 		WorkspaceID: workspaceID,
-		Events:      req.Msg.Events,
+		Events:      req.Msg.GetEvents(),
 	}
 	if req.Msg.Url != nil {
-		if err := connectutil.ValidateWebhookURL(*req.Msg.Url); err != nil {
+		if err := connectutil.ValidateWebhookURL(req.Msg.GetUrl()); err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}
+
 		params.URL = req.Msg.Url
 	}
+
 	if req.Msg.Enabled != nil {
 		params.Enabled = req.Msg.Enabled
 	}
 
-	wh, err := h.updateWebhook.Execute(ctx, params)
+	webhook, err := h.updateWebhook.Execute(ctx, params)
 	if err != nil {
 		return nil, mapError(err)
 	}
 
 	return connect.NewResponse(&webhookv1.UpdateWebhookResponse{
-		Webhook: webhookToProto(wh),
+		Webhook: webhookToProto(webhook),
 	}), nil
 }
 
@@ -130,7 +134,7 @@ func (h *Handler) DeleteWebhook(ctx context.Context, req *connect.Request[webhoo
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	id, err := uuid.Parse(req.Msg.Id)
+	id, err := uuid.Parse(req.Msg.GetId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -168,19 +172,19 @@ func (h *Handler) ListWebhooks(ctx context.Context, req *connect.Request[webhook
 	}), nil
 }
 
-func webhookToProto(wh *notifyservice.Webhook) *webhookv1.WebhookInfo {
+func webhookToProto(webhook *notifyservice.Webhook) *webhookv1.WebhookInfo {
 	var events []string
-	if err := json.Unmarshal([]byte(wh.Events), &events); err != nil {
+	if err := json.Unmarshal([]byte(webhook.Events), &events); err != nil {
 		events = []string{} // Explicit empty on corruption.
 	}
 
 	return &webhookv1.WebhookInfo{
-		Id:          wh.ID.String(),
-		WorkspaceId: wh.WorkspaceID.String(),
-		Url:         wh.URL,
+		Id:          webhook.ID.String(),
+		WorkspaceId: webhook.WorkspaceID.String(),
+		Url:         webhook.URL,
 		Events:      events,
-		Enabled:     wh.Enabled,
-		CreatedAt:   timestamppb.New(wh.CreatedAt),
-		UpdatedAt:   timestamppb.New(wh.UpdatedAt),
+		Enabled:     webhook.Enabled,
+		CreatedAt:   timestamppb.New(webhook.CreatedAt),
+		UpdatedAt:   timestamppb.New(webhook.UpdatedAt),
 	}
 }

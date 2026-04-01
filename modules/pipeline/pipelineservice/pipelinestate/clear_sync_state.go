@@ -50,9 +50,12 @@ func (uc *ClearSyncState) Execute(ctx context.Context, params ClearSyncStatePara
 		if err != nil {
 			return fmt.Errorf("loading stream generations for connection: %w", err)
 		}
+
 		now := time.Now()
+
 		for _, sg := range allGens {
 			sg.GenerationID++
+
 			sg.UpdatedAt = now
 			if _, err := uc.storage.StreamGenerations().Save(ctx, sg); err != nil {
 				return fmt.Errorf("incrementing generation for %s.%s: %w", sg.StreamNamespace, sg.StreamName, err)
@@ -76,6 +79,7 @@ func (uc *ClearSyncState) Execute(ctx context.Context, params ClearSyncStatePara
 	}
 
 	targetName := *params.StreamName
+
 	targetNS := ""
 	if params.StreamNamespace != nil {
 		targetNS = *params.StreamNamespace
@@ -83,13 +87,14 @@ func (uc *ClearSyncState) Execute(ctx context.Context, params ClearSyncStatePara
 
 	// Filter out the matching stream.
 	filtered := make([]*protocol.AirbyteStateMessage, 0, len(msgs))
-	for _, m := range msgs {
-		if m.Type == protocol.StateTypeStream && m.Stream != nil &&
-			m.Stream.StreamDescriptor.Name == targetName &&
-			m.Stream.StreamDescriptor.Namespace == targetNS {
+	for _, msg := range msgs {
+		if msg.Type == protocol.StateTypeStream && msg.Stream != nil &&
+			msg.Stream.StreamDescriptor.Name == targetName &&
+			msg.Stream.StreamDescriptor.Namespace == targetNS {
 			continue // skip this stream
 		}
-		filtered = append(filtered, m)
+
+		filtered = append(filtered, msg)
 	}
 
 	data, err := json.Marshal(filtered)
@@ -134,11 +139,13 @@ func (uc *ClearSyncState) incrementStreamGeneration(ctx context.Context, connect
 			GenerationID:    1,
 			UpdatedAt:       now,
 		})
+
 		return err
 	}
 
 	existing[0].GenerationID++
 	existing[0].UpdatedAt = now
 	_, err = uc.storage.StreamGenerations().Save(ctx, existing[0])
+
 	return err
 }

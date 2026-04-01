@@ -41,16 +41,19 @@ func (s *SMTPEmailSender) SendEmail(to, subject, htmlBody string) error {
 	// SECURITY: Use explicit TLS to prevent plaintext credential transmission.
 	tlsConfig := &tls.Config{ServerName: s.config.Host}
 	dialer := &tls.Dialer{Config: tlsConfig}
+
 	conn, err := dialer.DialContext(context.Background(), "tcp", addr)
 	if err != nil {
 		return fmt.Errorf("tls dial: %w", err)
 	}
+
 	defer func() { _ = conn.Close() }()
 
 	client, err := smtp.NewClient(conn, s.config.Host)
 	if err != nil {
 		return fmt.Errorf("smtp client: %w", err)
 	}
+
 	defer func() { _ = client.Close() }()
 
 	if s.config.Username != "" {
@@ -63,18 +66,21 @@ func (s *SMTPEmailSender) SendEmail(to, subject, htmlBody string) error {
 	if err := client.Mail(s.config.From); err != nil {
 		return fmt.Errorf("smtp mail: %w", err)
 	}
+
 	if err := client.Rcpt(to); err != nil {
 		return fmt.Errorf("smtp rcpt: %w", err)
 	}
 
-	w, err := client.Data()
+	writer, err := client.Data()
 	if err != nil {
 		return fmt.Errorf("smtp data: %w", err)
 	}
-	if _, err := w.Write(msg); err != nil {
+
+	if _, err := writer.Write(msg); err != nil {
 		return fmt.Errorf("smtp write: %w", err)
 	}
-	if err := w.Close(); err != nil {
+
+	if err := writer.Close(); err != nil {
 		return fmt.Errorf("smtp close data: %w", err)
 	}
 

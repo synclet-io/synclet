@@ -48,6 +48,7 @@ func authModule() fx.Option {
 			func(cfg *authConfig) authservice.Config {
 				config := authservice.DefaultConfig()
 				config.JWTSecret = cfg.JWTSecret
+
 				return config
 			},
 			func(cfg *authConfig) registrationEnabled {
@@ -80,25 +81,34 @@ func authModule() fx.Option {
 			authservice.NewStateStore,
 			func(logger *logging.Logger) (map[string]*authservice.OIDCProvider, oidcCallbackBaseURL) {
 				oidcLogger := logger.Named("oidc")
+
 				oidcCfg, err := parseOIDCConfig()
 				if err != nil {
 					oidcLogger.WithError(err).Error(context.Background(), "failed to parse OIDC config")
+
 					return nil, ""
 				}
+
 				if oidcCfg == nil {
 					oidcLogger.Info(context.Background(), "OIDC disabled (OIDC_PROVIDERS not set)")
+
 					return nil, ""
 				}
+
 				providers := make(map[string]*authservice.OIDCProvider)
+
 				for _, cfg := range oidcCfg.Providers {
-					p, err := authservice.NewOIDCProvider(context.Background(), cfg, oidcCfg.CallbackBaseURL)
+					provider, err := authservice.NewOIDCProvider(context.Background(), cfg, oidcCfg.CallbackBaseURL)
 					if err != nil {
 						oidcLogger.WithError(err).Error(context.Background(), "failed to initialize OIDC provider", "provider", cfg.Slug)
+
 						continue
 					}
-					providers[cfg.Slug] = p
+
+					providers[cfg.Slug] = provider
 					oidcLogger.Info(context.Background(), "OIDC provider initialized", "provider", cfg.Slug)
 				}
+
 				return providers, oidcCallbackBaseURL(oidcCfg.CallbackBaseURL)
 			},
 			authservice.NewGetOIDCProviders,
@@ -131,7 +141,9 @@ func authHTTPServerModule() fx.Option {
 					// No-op registrar when OIDC is disabled.
 					return pnphttpserver.MuxHandlerRegistrarFunc(func(router *mux.Router) {})
 				}
+
 				handler := authconnect.NewOIDCHTTPHandler(startOIDCLogin, handleOIDCCallback, string(callbackBaseURL), logger, cookieCfg)
+
 				return handler.RegisterRoutes()
 			}),
 			fx.Private,

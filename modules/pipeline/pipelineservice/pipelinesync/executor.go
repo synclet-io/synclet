@@ -92,6 +92,7 @@ func (e *SyncExecutor) Execute(ctx context.Context, bundle *SyncBundle) (*pipeli
 
 	// Resolve runtime config for source and set resource limits on the reader.
 	srcRuntimeCfg := pipelineservice.ResolveRuntimeConfig(e.runtimeDefaults, pipelineservice.ParseRuntimeConfig(&bundle.SourceRuntimeConfig))
+
 	srcMemLimit, srcCPULimit, _, _ := pipelineservice.ToContainerResources(srcRuntimeCfg)
 	if rc, ok := e.sourceReader.(pipelineservice.ResourceConfigurable); ok {
 		rc.SetResourceLimits(srcMemLimit, srcCPULimit)
@@ -108,6 +109,7 @@ func (e *SyncExecutor) Execute(ctx context.Context, bundle *SyncBundle) (*pipeli
 	destCatalog, err := pipelinecatalog.BuildDestinationCatalog(catalog)
 	if err != nil {
 		sourceCleanup()
+
 		return nil, fmt.Errorf("building destination catalog: %w", err)
 	}
 
@@ -120,6 +122,7 @@ func (e *SyncExecutor) Execute(ctx context.Context, bundle *SyncBundle) (*pipeli
 
 	// Resolve runtime config for destination and set resource limits on the writer.
 	destRuntimeCfg := pipelineservice.ResolveRuntimeConfig(e.runtimeDefaults, pipelineservice.ParseRuntimeConfig(&bundle.DestRuntimeConfig))
+
 	destMemLimit, destCPULimit, _, _ := pipelineservice.ToContainerResources(destRuntimeCfg)
 	if rc, ok := e.destWriter.(pipelineservice.ResourceConfigurable); ok {
 		rc.SetResourceLimits(destMemLimit, destCPULimit)
@@ -130,6 +133,7 @@ func (e *SyncExecutor) Execute(ctx context.Context, bundle *SyncBundle) (*pipeli
 	if err != nil {
 		_ = srcPipeWriter.Close()
 		_ = srcPipeReader.Close()
+
 		return nil, fmt.Errorf("starting destination write: %w", err)
 	}
 	defer destCleanup()

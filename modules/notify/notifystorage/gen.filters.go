@@ -54,6 +54,7 @@ func buildWebhookFilterExpr(filter *notifyservice.WebhookFilter, options ...func
 				}
 				exprs = append(exprs, expr)
 			}
+
 			return clause.Or(exprs...), nil
 		}),
 		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
@@ -68,6 +69,7 @@ func buildWebhookFilterExpr(filter *notifyservice.WebhookFilter, options ...func
 				}
 				exprs = append(exprs, expr)
 			}
+
 			return clause.And(exprs...), nil
 		}),
 	)
@@ -112,6 +114,7 @@ func buildNotificationChannelFilterExpr(filter *notifyservice.NotificationChanne
 				}
 				exprs = append(exprs, expr)
 			}
+
 			return clause.Or(exprs...), nil
 		}),
 		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
@@ -126,6 +129,7 @@ func buildNotificationChannelFilterExpr(filter *notifyservice.NotificationChanne
 				}
 				exprs = append(exprs, expr)
 			}
+
 			return clause.And(exprs...), nil
 		}),
 	)
@@ -173,6 +177,7 @@ func buildNotificationRuleFilterExpr(filter *notifyservice.NotificationRuleFilte
 				}
 				exprs = append(exprs, expr)
 			}
+
 			return clause.Or(exprs...), nil
 		}),
 		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
@@ -187,6 +192,7 @@ func buildNotificationRuleFilterExpr(filter *notifyservice.NotificationRuleFilte
 				}
 				exprs = append(exprs, expr)
 			}
+
 			return clause.And(exprs...), nil
 		}),
 	)

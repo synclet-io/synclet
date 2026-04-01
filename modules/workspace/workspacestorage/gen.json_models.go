@@ -35,6 +35,7 @@ func convertWorkspaceToJsonModel(src *workspaceservice.Workspace) (*jsonWorkspac
 	result.Slug = src.Slug
 	result.CreatedAt = (src.CreatedAt).UTC()
 	result.UpdatedAt = (src.UpdatedAt).UTC()
+
 	return result, nil
 }
 
@@ -45,6 +46,7 @@ func convertWorkspaceFromJsonModel(src *jsonWorkspace) (*workspaceservice.Worksp
 	result.Slug = src.Slug
 	result.CreatedAt = src.CreatedAt
 	result.UpdatedAt = src.UpdatedAt
+
 	return result, nil
 }
 
@@ -75,6 +77,7 @@ func convertWorkspaceMemberToJsonModel(src *workspaceservice.WorkspaceMember) (*
 	}
 	result.Role = tmp3
 	result.JoinedAt = (src.JoinedAt).UTC()
+
 	return result, nil
 }
 
@@ -89,6 +92,7 @@ func convertWorkspaceMemberFromJsonModel(src *jsonWorkspaceMember) (*workspacese
 	}
 	result.Role = tmp8
 	result.JoinedAt = src.JoinedAt
+
 	return result, nil
 }
 
@@ -133,6 +137,7 @@ func convertWorkspaceInviteToJsonModel(src *workspaceservice.WorkspaceInvite) (*
 	result.ExpiresAt = (src.ExpiresAt).UTC()
 	result.CreatedAt = (src.CreatedAt).UTC()
 	result.UpdatedAt = (src.UpdatedAt).UTC()
+
 	return result, nil
 }
 
@@ -156,5 +161,6 @@ func convertWorkspaceInviteFromJsonModel(src *jsonWorkspaceInvite) (*workspacese
 	result.ExpiresAt = src.ExpiresAt
 	result.CreatedAt = src.CreatedAt
 	result.UpdatedAt = src.UpdatedAt
+
 	return result, nil
 }

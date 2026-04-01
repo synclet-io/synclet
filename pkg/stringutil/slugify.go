@@ -12,5 +12,6 @@ func Slugify(s string) string {
 	slug := strings.ToLower(strings.TrimSpace(s))
 	slug = nonAlphanumeric.ReplaceAllString(slug, "-")
 	slug = strings.Trim(slug, "-")
+
 	return slug
 }

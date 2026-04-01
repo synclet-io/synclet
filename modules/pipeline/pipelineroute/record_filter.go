@@ -18,13 +18,15 @@ import (
 func NewFilteringReader(source io.Reader, catalog *protocol.ConfiguredAirbyteCatalog) io.Reader {
 	// Build a map of stream key -> selected fields for quick lookup.
 	fieldMap := make(map[string][]protocol.SelectedField)
-	for _, s := range catalog.Streams {
-		if len(s.SelectedFields) > 0 {
-			key := s.Stream.Name
-			if s.Stream.Namespace != "" {
-				key = s.Stream.Namespace + "." + s.Stream.Name
+
+	for _, stream := range catalog.Streams {
+		if len(stream.SelectedFields) > 0 {
+			key := stream.Stream.Name
+			if stream.Stream.Namespace != "" {
+				key = stream.Stream.Namespace + "." + stream.Stream.Name
 			}
-			fieldMap[key] = s.SelectedFields
+
+			fieldMap[key] = stream.SelectedFields
 		}
 	}
 
@@ -59,7 +61,7 @@ type recordEnvelope struct {
 	} `json:"record"`
 }
 
-func (r *filteringReader) Read(p []byte) (int, error) {
+func (r *filteringReader) Read(buf []byte) (int, error) {
 	for r.buf.Len() == 0 {
 		if r.done {
 			return 0, io.EOF
@@ -80,7 +82,7 @@ func (r *filteringReader) Read(p []byte) (int, error) {
 		r.buf.WriteByte('\n')
 	}
 
-	return r.buf.Read(p)
+	return r.buf.Read(buf)
 }
 
 func (r *filteringReader) filterLine(line []byte) []byte {
@@ -120,12 +122,14 @@ func (r *filteringReader) filterLine(line []byte) []byte {
 	}
 
 	record["data"] = filteredData
+
 	recordJSON, err := json.Marshal(record)
 	if err != nil {
 		return line
 	}
 
 	full["record"] = recordJSON
+
 	result, err := json.Marshal(full)
 	if err != nil {
 		return line

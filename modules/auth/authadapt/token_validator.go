@@ -25,6 +25,7 @@ func (a *TokenValidator) ValidateAccessToken(tokenString string) (userID, email 
 	if err != nil {
 		return "", "", err
 	}
+
 	return claims.UserID.String(), claims.Email, nil
 }
 
@@ -33,5 +34,6 @@ func (a *TokenValidator) ValidateAPIKey(ctx context.Context, rawKey string) (use
 	if err != nil {
 		return "", "", err
 	}
+
 	return apiKey.UserID.String(), apiKey.WorkspaceID.String(), nil
 }

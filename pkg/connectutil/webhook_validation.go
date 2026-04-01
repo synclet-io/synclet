@@ -14,16 +14,16 @@ func ValidateWebhookURL(rawURL string) error {
 		return fmt.Errorf("webhook URL is required")
 	}
 
-	u, err := url.Parse(rawURL)
+	parsedURL, err := url.Parse(rawURL)
 	if err != nil {
 		return fmt.Errorf("invalid webhook URL")
 	}
 
-	if u.Scheme != "https" && u.Scheme != "http" {
+	if parsedURL.Scheme != "https" && parsedURL.Scheme != "http" {
 		return fmt.Errorf("webhook URL must use http or https scheme")
 	}
 
-	hostname := u.Hostname()
+	hostname := parsedURL.Hostname()
 	if hostname == "" {
 		return fmt.Errorf("webhook URL must have a hostname")
 	}
@@ -33,11 +33,13 @@ func ValidateWebhookURL(rawURL string) error {
 		if isBlockedIP(ip) {
 			return fmt.Errorf("webhook URL must not point to a private or internal address")
 		}
+
 		return nil
 	}
 
 	// Resolve hostname and check all IPs.
 	resolver := &net.Resolver{}
+
 	ips, err := resolver.LookupIPAddr(context.Background(), hostname)
 	if err != nil {
 		return fmt.Errorf("cannot resolve webhook URL hostname: %s", hostname)

@@ -30,6 +30,7 @@ func NewCleanupTasks(storage pipelineservice.Storage, config CleanupTasksConfig)
 	if config.RetentionPeriod < time.Hour {
 		return nil, fmt.Errorf("CONNECTOR_TASK_RETENTION must be >= 1h, got %s", config.RetentionPeriod)
 	}
+
 	return &CleanupTasks{storage: storage, config: config}, nil
 }
 
@@ -52,6 +53,7 @@ func (uc *CleanupTasks) Execute(ctx context.Context) error {
 
 		// 2. Timeout pending tasks that have been waiting too long (D-05).
 		pendingCutoff := now.Add(-uc.config.PendingTimeout)
+
 		stalePending, err := tx.ConnectorTasks().Find(ctx, &pipelineservice.ConnectorTaskFilter{
 			Status:    filter.Equals(pipelineservice.ConnectorTaskStatusPending),
 			CreatedAt: filter.Less(pendingCutoff),
@@ -59,10 +61,12 @@ func (uc *CleanupTasks) Execute(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("finding stale pending tasks: %w", err)
 		}
+
 		for _, task := range stalePending {
 			errMsg := "timed out waiting for executor"
 			task.Status = pipelineservice.ConnectorTaskStatusFailed
 			task.ErrorMessage = &errMsg
+
 			task.CompletedAt = &now
 			if _, err := tx.ConnectorTasks().Update(ctx, task); err != nil {
 				return fmt.Errorf("timing out pending task %s: %w", task.ID, err)
@@ -71,6 +75,7 @@ func (uc *CleanupTasks) Execute(ctx context.Context) error {
 
 		// 3. Timeout orphaned running tasks whose executor did not report back (Pitfall 4).
 		runningCutoff := now.Add(-uc.config.RunningTimeout)
+
 		staleRunning, err := tx.ConnectorTasks().Find(ctx, &pipelineservice.ConnectorTaskFilter{
 			Status:    filter.Equals(pipelineservice.ConnectorTaskStatusRunning),
 			UpdatedAt: filter.Less(runningCutoff),
@@ -78,10 +83,12 @@ func (uc *CleanupTasks) Execute(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("finding stale running tasks: %w", err)
 		}
+
 		for _, task := range staleRunning {
 			errMsg := "executor did not report result (orphaned)"
 			task.Status = pipelineservice.ConnectorTaskStatusFailed
 			task.ErrorMessage = &errMsg
+
 			task.CompletedAt = &now
 			if _, err := tx.ConnectorTasks().Update(ctx, task); err != nil {
 				return fmt.Errorf("timing out running task %s: %w", task.ID, err)

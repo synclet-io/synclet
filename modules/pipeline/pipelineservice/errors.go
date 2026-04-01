@@ -12,5 +12,6 @@ func (e *ValidationError) Error() string {
 	if e.Field != "" {
 		return fmt.Sprintf("validation error on %s: %s", e.Field, e.Message)
 	}
+
 	return fmt.Sprintf("validation error: %s", e.Message)
 }

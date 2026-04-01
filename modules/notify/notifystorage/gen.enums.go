@@ -23,6 +23,7 @@ func convertChannelTypeToDB(channelTypeValue notifyservice.ChannelType) (string,
 	if !ok {
 		return "", fmt.Errorf("unknown ChannelType value: %d", channelTypeValue)
 	}
+
 	return result, nil
 }
 
@@ -35,6 +36,7 @@ func convertChannelTypeFromDB(channelTypeValue string) (notifyservice.ChannelTyp
 	if !ok {
 		return 0, fmt.Errorf("unknown ChannelType db value: %s", channelTypeValue)
 	}
+
 	return result, nil
 }
 
@@ -53,6 +55,7 @@ func convertNotificationConditionToDB(notificationConditionValue notifyservice.N
 	if !ok {
 		return "", fmt.Errorf("unknown NotificationCondition value: %d", notificationConditionValue)
 	}
+
 	return result, nil
 }
 
@@ -65,5 +68,6 @@ func convertNotificationConditionFromDB(notificationConditionValue string) (noti
 	if !ok {
 		return 0, fmt.Errorf("unknown NotificationCondition db value: %s", notificationConditionValue)
 	}
+
 	return result, nil
 }

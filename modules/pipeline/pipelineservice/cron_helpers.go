@@ -16,11 +16,14 @@ func ComputeNextScheduledAt(schedule *string, from time.Time) *time.Time {
 	if schedule == nil || *schedule == "" {
 		return nil
 	}
+
 	sched, err := CronParser.Parse(*schedule)
 	if err != nil {
 		return nil
 	}
+
 	next := sched.Next(from)
+
 	return &next
 }
 

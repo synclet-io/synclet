@@ -29,6 +29,7 @@ type tokenInterceptor struct {
 func (i *tokenInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
 	return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
 		req.Header().Set("X-Internal-Secret", i.token)
+
 		return next(ctx, req)
 	}
 }
@@ -50,17 +51,21 @@ type RPCExecutorBackend struct {
 // NewRPCExecutorBackend creates a new RPCExecutorBackend with the given API URL and token.
 func NewRPCExecutorBackend(apiURL, token string) *RPCExecutorBackend {
 	httpClient := &http.Client{Timeout: 30 * time.Second}
+
 	var opts []connect.ClientOption
 	if token != "" {
 		opts = append(opts, connect.WithInterceptors(&tokenInterceptor{token: token}))
 	}
+
 	client := executorv1connect.NewExecutorServiceClient(httpClient, apiURL, opts...)
+
 	return &RPCExecutorBackend{client: client}
 }
 
 // ClaimJob calls the ClaimJob RPC and maps the proto response to the domain type.
 func (a *RPCExecutorBackend) ClaimJob(ctx context.Context, workerID string) (*pipelinejobs.ClaimJobBundleResult, error) {
 	var result *pipelinejobs.ClaimJobBundleResult
+
 	err := a.sendWithRetry(ctx, "ClaimJob", func(ctx context.Context) error {
 		resp, callErr := a.client.ClaimJob(ctx, connect.NewRequest(&executorv1.ClaimJobRequest{
 			WorkerId: workerID,
@@ -69,29 +74,34 @@ func (a *RPCExecutorBackend) ClaimJob(ctx context.Context, workerID string) (*pi
 			return callErr
 		}
 
-		if !resp.Msg.HasJob {
+		if !resp.Msg.GetHasJob() {
 			result = nil
+
 			return nil
 		}
 
 		// Parse all UUID fields explicitly.
-		parsedJobID, parseErr := uuid.Parse(resp.Msg.JobId)
+		parsedJobID, parseErr := uuid.Parse(resp.Msg.GetJobId())
 		if parseErr != nil {
 			return fmt.Errorf("parsing job_id: %w", parseErr)
 		}
-		parsedConnID, parseErr := uuid.Parse(resp.Msg.ConnectionId)
+
+		parsedConnID, parseErr := uuid.Parse(resp.Msg.GetConnectionId())
 		if parseErr != nil {
 			return fmt.Errorf("parsing connection_id: %w", parseErr)
 		}
-		parsedWorkspaceID, parseErr := uuid.Parse(resp.Msg.WorkspaceId)
+
+		parsedWorkspaceID, parseErr := uuid.Parse(resp.Msg.GetWorkspaceId())
 		if parseErr != nil {
 			return fmt.Errorf("parsing workspace_id: %w", parseErr)
 		}
-		parsedSourceID, parseErr := uuid.Parse(resp.Msg.SourceId)
+
+		parsedSourceID, parseErr := uuid.Parse(resp.Msg.GetSourceId())
 		if parseErr != nil {
 			return fmt.Errorf("parsing source_id: %w", parseErr)
 		}
-		parsedDestID, parseErr := uuid.Parse(resp.Msg.DestinationId)
+
+		parsedDestID, parseErr := uuid.Parse(resp.Msg.GetDestinationId())
 		if parseErr != nil {
 			return fmt.Errorf("parsing destination_id: %w", parseErr)
 		}
@@ -101,8 +111,8 @@ func (a *RPCExecutorBackend) ClaimJob(ctx context.Context, workerID string) (*pi
 			Job: &pipelineservice.Job{
 				ID:           parsedJobID,
 				ConnectionID: parsedConnID,
-				JobType:      protoJobTypeToDomain(resp.Msg.JobType),
-				MaxAttempts:  int(resp.Msg.MaxAttempts),
+				JobType:      protoJobTypeToDomain(resp.Msg.GetJobType()),
+				MaxAttempts:  int(resp.Msg.GetMaxAttempts()),
 				// Other Job fields (Status, StartedAt, AttemptCount, etc.) are zero-valued.
 				// This is intentional: executor only needs ID, ConnectionID, MaxAttempts.
 				// Status tracking happens server-side via UpdateJobStatus RPC.
@@ -111,18 +121,18 @@ func (a *RPCExecutorBackend) ClaimJob(ctx context.Context, workerID string) (*pi
 			WorkspaceID:           parsedWorkspaceID,
 			SourceID:              parsedSourceID,
 			DestinationID:         parsedDestID,
-			SourceImage:           resp.Msg.SourceImage,
-			SourceConfig:          resp.Msg.SourceConfig,
-			DestImage:             resp.Msg.DestImage,
-			DestConfig:            resp.Msg.DestConfig,
-			ConfiguredCatalog:     resp.Msg.ConfiguredCatalog,
-			StateBlob:             resp.Msg.StateBlob,
-			SourceRuntimeConfig:   resp.Msg.SourceRuntimeConfig,
-			DestRuntimeConfig:     resp.Msg.DestRuntimeConfig,
-			NamespaceDefinition:   protoNamespaceDefToDomain(resp.Msg.NamespaceDefinition),
-			CustomNamespaceFormat: resp.Msg.CustomNamespaceFormat,
-			StreamPrefix:          resp.Msg.StreamPrefix,
-			MaxAttempts:           int(resp.Msg.MaxAttempts),
+			SourceImage:           resp.Msg.GetSourceImage(),
+			SourceConfig:          resp.Msg.GetSourceConfig(),
+			DestImage:             resp.Msg.GetDestImage(),
+			DestConfig:            resp.Msg.GetDestConfig(),
+			ConfiguredCatalog:     resp.Msg.GetConfiguredCatalog(),
+			StateBlob:             resp.Msg.GetStateBlob(),
+			SourceRuntimeConfig:   resp.Msg.GetSourceRuntimeConfig(),
+			DestRuntimeConfig:     resp.Msg.GetDestRuntimeConfig(),
+			NamespaceDefinition:   protoNamespaceDefToDomain(resp.Msg.GetNamespaceDefinition()),
+			CustomNamespaceFormat: resp.Msg.GetCustomNamespaceFormat(),
+			StreamPrefix:          resp.Msg.GetStreamPrefix(),
+			MaxAttempts:           int(resp.Msg.GetMaxAttempts()),
 		}
 
 		return nil
@@ -130,6 +140,7 @@ func (a *RPCExecutorBackend) ClaimJob(ctx context.Context, workerID string) (*pi
 	if err != nil {
 		return nil, err
 	}
+
 	return result, nil
 }
 
@@ -144,6 +155,7 @@ func (a *RPCExecutorBackend) UpdateJobStatus(ctx context.Context, params pipelin
 			BytesSynced:  params.BytesSynced,
 			DurationMs:   params.DurationMs,
 		}))
+
 		return err
 	})
 }
@@ -151,6 +163,7 @@ func (a *RPCExecutorBackend) UpdateJobStatus(ctx context.Context, params pipelin
 // Heartbeat calls the Heartbeat RPC with retry and returns cancellation status.
 func (a *RPCExecutorBackend) Heartbeat(ctx context.Context, jobID uuid.UUID, recordsRead, bytesSynced int64) (*pipelinesync.HeartbeatResult, error) {
 	var result *pipelinesync.HeartbeatResult
+
 	err := a.sendWithRetry(ctx, "Heartbeat", func(ctx context.Context) error {
 		resp, callErr := a.client.Heartbeat(ctx, connect.NewRequest(&executorv1.HeartbeatRequest{
 			JobId:       jobID.String(),
@@ -160,12 +173,15 @@ func (a *RPCExecutorBackend) Heartbeat(ctx context.Context, jobID uuid.UUID, rec
 		if callErr != nil {
 			return callErr
 		}
-		result = &pipelinesync.HeartbeatResult{Cancelled: resp.Msg.Cancelled}
+
+		result = &pipelinesync.HeartbeatResult{Cancelled: resp.Msg.GetCancelled()}
+
 		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
+
 	return result, nil
 }
 
@@ -183,6 +199,7 @@ func (a *RPCExecutorBackend) ReportState(ctx context.Context, connectionID, jobI
 		StateData:    stateData,
 		StateType:    airbyteStateTypeToProto(stateMsg.Type),
 	}))
+
 	return callErr
 }
 
@@ -198,6 +215,7 @@ func (a *RPCExecutorBackend) ReportCompletion(ctx context.Context, params pipeli
 			BytesSynced:  params.BytesSynced,
 			DurationMs:   params.DurationMs,
 		}))
+
 		return err
 	})
 }
@@ -210,6 +228,7 @@ func (a *RPCExecutorBackend) ReportConfigUpdate(ctx context.Context, connectorTy
 		ConnectorId:   connectorID.String(),
 		Config:        config,
 	}))
+
 	return err
 }
 
@@ -220,12 +239,14 @@ func (a *RPCExecutorBackend) ReportLog(ctx context.Context, jobID uuid.UUID, lin
 		JobId:    jobID.String(),
 		LogLines: lines,
 	}))
+
 	return err
 }
 
 // ClaimConnectorTask calls the ClaimConnectorTask RPC with retry (D-15).
 func (a *RPCExecutorBackend) ClaimConnectorTask(ctx context.Context, workerID string) (*pipelinesync.ClaimConnectorTaskResult, error) {
 	var result *pipelinesync.ClaimConnectorTaskResult
+
 	err := a.sendWithRetry(ctx, "ClaimConnectorTask", func(ctx context.Context) error {
 		resp, callErr := a.client.ClaimConnectorTask(ctx, connect.NewRequest(&executorv1.ClaimConnectorTaskRequest{
 			WorkerId: workerID,
@@ -234,32 +255,36 @@ func (a *RPCExecutorBackend) ClaimConnectorTask(ctx context.Context, workerID st
 			return callErr
 		}
 
-		if !resp.Msg.HasTask {
+		if !resp.Msg.GetHasTask() {
 			result = nil
+
 			return nil
 		}
 
-		parsedTaskID, parseErr := uuid.Parse(resp.Msg.TaskId)
+		parsedTaskID, parseErr := uuid.Parse(resp.Msg.GetTaskId())
 		if parseErr != nil {
 			return fmt.Errorf("parsing task_id: %w", parseErr)
 		}
-		parsedWorkspaceID, parseErr := uuid.Parse(resp.Msg.WorkspaceId)
+
+		parsedWorkspaceID, parseErr := uuid.Parse(resp.Msg.GetWorkspaceId())
 		if parseErr != nil {
 			return fmt.Errorf("parsing workspace_id: %w", parseErr)
 		}
 
 		result = &pipelinesync.ClaimConnectorTaskResult{
 			TaskID:      parsedTaskID,
-			TaskType:    protoTaskTypeToDomain(resp.Msg.TaskType),
-			Image:       resp.Msg.Image,
-			Config:      resp.Msg.Config,
+			TaskType:    protoTaskTypeToDomain(resp.Msg.GetTaskType()),
+			Image:       resp.Msg.GetImage(),
+			Config:      resp.Msg.GetConfig(),
 			WorkspaceID: parsedWorkspaceID,
 		}
+
 		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
+
 	return result, nil
 }
 
@@ -272,6 +297,7 @@ func (a *RPCExecutorBackend) ReportConnectorTaskResult(ctx context.Context, para
 			ErrorMessage: params.ErrorMessage,
 			Result:       params.Result,
 		}))
+
 		return err
 	})
 }
@@ -285,7 +311,8 @@ func (a *RPCExecutorBackend) IsJobActive(ctx context.Context, jobID string) (boo
 	if err != nil {
 		return false, err
 	}
-	return resp.Msg.Active, nil
+
+	return resp.Msg.GetActive(), nil
 }
 
 // sendWithRetry retries a function with exponential backoff per D-12.

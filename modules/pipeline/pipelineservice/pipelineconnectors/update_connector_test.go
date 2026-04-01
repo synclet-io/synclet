@@ -53,9 +53,11 @@ func (m *mockManagedConnectorsStorage) First(_ context.Context, f *pipelineservi
 	for _, mc := range m.connectors {
 		if matchManagedConnectorFilter(mc, f) {
 			cp := mc.Copy()
+
 			return &cp, nil
 		}
 	}
+
 	return nil, pipelineservice.ErrManagedConnectorNotFound
 }
 
@@ -63,47 +65,56 @@ func (m *mockManagedConnectorsStorage) Update(_ context.Context, mc *pipelineser
 	if _, ok := m.connectors[mc.ID]; !ok {
 		return nil, pipelineservice.ErrManagedConnectorNotFound
 	}
+
 	cp := mc.Copy()
 	m.connectors[mc.ID] = &cp
+
 	return &cp, nil
 }
 
 func (m *mockManagedConnectorsStorage) Find(_ context.Context, f *pipelineservice.ManagedConnectorFilter, _ ...optionutil.Option[dbutil.SelectOptions]) ([]*pipelineservice.ManagedConnector, error) {
 	var result []*pipelineservice.ManagedConnector
+
 	for _, mc := range m.connectors {
 		if matchManagedConnectorFilter(mc, f) {
 			cp := mc.Copy()
 			result = append(result, &cp)
 		}
 	}
+
 	return result, nil
 }
 
-func matchManagedConnectorFilter(mc *pipelineservice.ManagedConnector, f *pipelineservice.ManagedConnectorFilter) bool {
-	if f.ID != nil {
-		switch ft := f.ID.(type) {
+func matchManagedConnectorFilter(connector *pipelineservice.ManagedConnector, connFilter *pipelineservice.ManagedConnectorFilter) bool {
+	if connFilter.ID != nil {
+		switch filterType := connFilter.ID.(type) {
 		case *filter.EqualsFilter[uuid.UUID]:
-			if mc.ID != ft.Value {
+			if connector.ID != filterType.Value {
 				return false
 			}
 		case *filter.InFilter[uuid.UUID]:
 			found := false
-			for _, v := range ft.Values {
-				if mc.ID == v {
+
+			for _, v := range filterType.Values {
+				if connector.ID == v {
 					found = true
+
 					break
 				}
 			}
+
 			if !found {
 				return false
 			}
 		}
 	}
-	if f.WorkspaceID != nil {
-		if mc.WorkspaceID != f.WorkspaceID.(*filter.EqualsFilter[uuid.UUID]).Value {
+
+	if connFilter.WorkspaceID != nil {
+		if connector.WorkspaceID != connFilter.WorkspaceID.(*filter.EqualsFilter[uuid.UUID]).Value {
 			return false
 		}
 	}
+
 	return true
 }
 
@@ -117,48 +128,57 @@ func (m *mockRepositoryConnectorsStorage) First(_ context.Context, f *pipelinese
 	for _, rc := range m.connectors {
 		if matchRepoConnectorFilter(rc, f) {
 			cp := rc.Copy()
+
 			return &cp, nil
 		}
 	}
+
 	return nil, pipelineservice.ErrRepositoryConnectorNotFound
 }
 
 func (m *mockRepositoryConnectorsStorage) Find(_ context.Context, f *pipelineservice.RepositoryConnectorFilter, _ ...optionutil.Option[dbutil.SelectOptions]) ([]*pipelineservice.RepositoryConnector, error) {
 	var result []*pipelineservice.RepositoryConnector
+
 	for _, rc := range m.connectors {
 		if matchRepoConnectorFilter(rc, f) {
 			cp := rc.Copy()
 			result = append(result, &cp)
 		}
 	}
+
 	return result, nil
 }
 
-func matchRepoConnectorFilter(rc *pipelineservice.RepositoryConnector, f *pipelineservice.RepositoryConnectorFilter) bool {
-	if f.RepositoryID != nil {
-		switch ft := f.RepositoryID.(type) {
+func matchRepoConnectorFilter(repoConnector *pipelineservice.RepositoryConnector, connFilter *pipelineservice.RepositoryConnectorFilter) bool {
+	if connFilter.RepositoryID != nil {
+		switch filterType := connFilter.RepositoryID.(type) {
 		case *filter.EqualsFilter[uuid.UUID]:
-			if rc.RepositoryID != ft.Value {
+			if repoConnector.RepositoryID != filterType.Value {
 				return false
 			}
 		case *filter.InFilter[uuid.UUID]:
 			found := false
-			for _, v := range ft.Values {
-				if rc.RepositoryID == v {
+
+			for _, v := range filterType.Values {
+				if repoConnector.RepositoryID == v {
 					found = true
+
 					break
 				}
 			}
+
 			if !found {
 				return false
 			}
 		}
 	}
-	if f.DockerRepository != nil {
-		if rc.DockerRepository != f.DockerRepository.(*filter.EqualsFilter[string]).Value {
+
+	if connFilter.DockerRepository != nil {
+		if repoConnector.DockerRepository != connFilter.DockerRepository.(*filter.EqualsFilter[string]).Value {
 			return false
 		}
 	}
+
 	return true
 }
 
@@ -166,7 +186,7 @@ func matchRepoConnectorFilter(rc *pipelineservice.RepositoryConnector, f *pipeli
 
 func TestUpdateManagedConnector_Success(t *testing.T) {
 	store := newMockStorage()
-	uc := pipelineconnectors.NewUpdateManagedConnector(store)
+	useCase := pipelineconnectors.NewUpdateManagedConnector(store)
 
 	workspaceID := uuid.New()
 	repoID := uuid.New()
@@ -197,19 +217,19 @@ func TestUpdateManagedConnector_Success(t *testing.T) {
 		Spec:             `{"new":"spec"}`,
 	}
 
-	result, err := uc.Execute(context.Background(), pipelineconnectors.UpdateManagedConnectorParams{
+	result, err := useCase.Execute(context.Background(), pipelineconnectors.UpdateManagedConnectorParams{
 		ConnectorID: connectorID,
 		WorkspaceID: workspaceID,
 	})
 
 	require.NoError(t, err)
 	assert.Equal(t, "0.2.0", result.DockerTag)
-	assert.Equal(t, `{"new":"spec"}`, result.Spec)
+	assert.JSONEq(t, `{"new":"spec"}`, result.Spec)
 }
 
 func TestUpdateManagedConnector_NoRepository(t *testing.T) {
 	store := newMockStorage()
-	uc := pipelineconnectors.NewUpdateManagedConnector(store)
+	useCase := pipelineconnectors.NewUpdateManagedConnector(store)
 
 	workspaceID := uuid.New()
 	connectorID := uuid.New()
@@ -227,7 +247,7 @@ func TestUpdateManagedConnector_NoRepository(t *testing.T) {
 		RepositoryID: nil,
 	}
 
-	_, err := uc.Execute(context.Background(), pipelineconnectors.UpdateManagedConnectorParams{
+	_, err := useCase.Execute(context.Background(), pipelineconnectors.UpdateManagedConnectorParams{
 		ConnectorID: connectorID,
 		WorkspaceID: workspaceID,
 	})
@@ -238,7 +258,7 @@ func TestUpdateManagedConnector_NoRepository(t *testing.T) {
 
 func TestUpdateManagedConnector_AlreadyUpToDate(t *testing.T) {
 	store := newMockStorage()
-	uc := pipelineconnectors.NewUpdateManagedConnector(store)
+	useCase := pipelineconnectors.NewUpdateManagedConnector(store)
 
 	workspaceID := uuid.New()
 	repoID := uuid.New()
@@ -269,12 +289,12 @@ func TestUpdateManagedConnector_AlreadyUpToDate(t *testing.T) {
 	}
 
 	// UpdateManagedConnector still updates even if same tag (no skip -- that's batch logic).
-	result, err := uc.Execute(context.Background(), pipelineconnectors.UpdateManagedConnectorParams{
+	result, err := useCase.Execute(context.Background(), pipelineconnectors.UpdateManagedConnectorParams{
 		ConnectorID: connectorID,
 		WorkspaceID: workspaceID,
 	})
 
 	require.NoError(t, err)
 	assert.Equal(t, "0.2.0", result.DockerTag)
-	assert.Equal(t, `{"same":"spec"}`, result.Spec)
+	assert.JSONEq(t, `{"same":"spec"}`, result.Spec)
 }

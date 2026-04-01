@@ -27,10 +27,13 @@ func (h Handler) Register(r *mux.Router) {
 		if len(path) > 1 {
 			if f, err := distFS.Open(path[1:]); err == nil {
 				_ = f.Close()
+
 				fileServer.ServeHTTP(w, req)
+
 				return
 			}
 		}
+
 		req.URL.Path = "/"
 		fileServer.ServeHTTP(w, req)
 	})

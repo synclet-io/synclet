@@ -22,6 +22,7 @@ type SyncWorkerManager struct {
 // should be the FX app context so FX signal handling propagates cancellation.
 func NewSyncWorkerManager(parentCtx context.Context, logger *logging.Logger) *SyncWorkerManager {
 	ctx, cancel := context.WithCancel(parentCtx)
+
 	return &SyncWorkerManager{
 		ctx:    ctx,
 		cancel: cancel,
@@ -34,8 +35,10 @@ func NewSyncWorkerManager(parentCtx context.Context, logger *logging.Logger) *Sy
 // ensuring all deferred cleanup (container stops) completes before shutdown proceeds.
 func (m *SyncWorkerManager) RunJob(fn func(ctx context.Context)) {
 	m.wg.Add(1)
+
 	go func() {
 		defer m.wg.Done()
+
 		fn(m.ctx)
 	}()
 }
@@ -51,6 +54,7 @@ func (m *SyncWorkerManager) Shutdown(timeout time.Duration) error {
 	m.cancel()
 
 	done := make(chan struct{})
+
 	go func() {
 		m.wg.Wait()
 		close(done)
@@ -59,6 +63,7 @@ func (m *SyncWorkerManager) Shutdown(timeout time.Duration) error {
 	select {
 	case <-done:
 		m.logger.Info(context.Background(), "all sync workers stopped gracefully")
+
 		return nil
 	case <-time.After(timeout):
 		return fmt.Errorf("shutdown timed out after %s with active syncs still running", timeout)

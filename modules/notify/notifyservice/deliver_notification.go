@@ -130,6 +130,7 @@ func (uc *DeliverNotification) dispatchToChannel(ctx context.Context, channelID,
 	})
 	if err != nil {
 		uc.logger.WithError(err).WithField("channel_id", channelID).Error(ctx, "loading notification channel")
+
 		return
 	}
 
@@ -140,6 +141,7 @@ func (uc *DeliverNotification) dispatchToChannel(ctx context.Context, channelID,
 	deliverer, ok := uc.deliverers[channel.ChannelType]
 	if !ok {
 		uc.logger.WithField("channel_type", channel.ChannelType).Warn(ctx, "no deliverer for channel type")
+
 		return
 	}
 

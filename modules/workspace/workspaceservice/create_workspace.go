@@ -25,7 +25,7 @@ func (uc *CreateWorkspace) Execute(ctx context.Context, name string, ownerUserID
 	now := time.Now()
 	slug := stringutil.Slugify(name)
 
-	ws := &Workspace{
+	workspace := &Workspace{
 		ID:        uuid.New(),
 		Name:      name,
 		Slug:      slug,
@@ -33,7 +33,7 @@ func (uc *CreateWorkspace) Execute(ctx context.Context, name string, ownerUserID
 		UpdatedAt: now,
 	}
 
-	created, err := uc.storage.Workspaces().Create(ctx, ws)
+	created, err := uc.storage.Workspaces().Create(ctx, workspace)
 	if err != nil {
 		return nil, fmt.Errorf("creating workspace: %w", err)
 	}

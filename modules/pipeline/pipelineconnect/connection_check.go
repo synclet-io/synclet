@@ -29,6 +29,7 @@ func runConnectionCheck(
 	defer cancel()
 
 	mcID := managedConnectorID
+
 	taskResult, err := createCheckTask.Execute(checkCtx, pipelinetasks.CreateCheckTaskParams{
 		WorkspaceID:        workspaceID,
 		ManagedConnectorID: &mcID,
@@ -48,6 +49,7 @@ func runConnectionCheck(
 			return connect.NewError(connect.CodeDeadlineExceeded,
 				fmt.Errorf("connection check timed out"))
 		}
+
 		return connect.NewError(connect.CodeInternal,
 			fmt.Errorf("connection check failed: %w", err))
 	}
@@ -57,6 +59,7 @@ func runConnectionCheck(
 		if msg == "" {
 			msg = "connection check failed"
 		}
+
 		return connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("%s", msg))
 	}
 
@@ -66,6 +69,7 @@ func runConnectionCheck(
 		if msg == "" {
 			msg = "connection check failed"
 		}
+
 		return connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("%s", msg))
 	}
 

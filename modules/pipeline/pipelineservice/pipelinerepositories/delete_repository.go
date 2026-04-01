@@ -52,6 +52,7 @@ func (uc *DeleteRepository) Execute(ctx context.Context, params DeleteRepository
 		ID:          filter.Equals(params.RepositoryID),
 		WorkspaceID: filter.Equals(params.WorkspaceID),
 	}
+
 	repo, err := uc.storage.Repositorys().First(ctx, repoFilter)
 	if err != nil {
 		return nil, fmt.Errorf("loading repository: %w", err)

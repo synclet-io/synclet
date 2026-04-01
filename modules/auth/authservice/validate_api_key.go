@@ -37,6 +37,7 @@ func (uc *ValidateAPIKey) Execute(ctx context.Context, rawKey string) (*APIKey, 
 
 	// Update last used.
 	now := time.Now()
+
 	apiKey.LastUsedAt = &now
 	if _, err := uc.storage.APIKeys().Update(ctx, apiKey); err != nil {
 		uc.logger.WithError(err).WithField("api_key_id", apiKey.ID).Warn(ctx, "failed to update API key last used timestamp")

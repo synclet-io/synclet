@@ -53,5 +53,6 @@ func generateAPIKey() (string, error) {
 	if _, err := rand.Read(b); err != nil {
 		return "", err
 	}
+
 	return "synclet_sk_" + hex.EncodeToString(b), nil
 }

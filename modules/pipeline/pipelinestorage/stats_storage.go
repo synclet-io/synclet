@@ -437,6 +437,7 @@ func (s *StatsStorage) QuerySyncTimeline(ctx context.Context, workspaceID uuid.U
 
 	if connectionID != nil {
 		query += ` AND connection_id = ?`
+
 		args = append(args, *connectionID)
 	}
 

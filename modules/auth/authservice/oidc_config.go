@@ -34,11 +34,13 @@ func ValidateBoundClaims(boundClaims map[string]string, tokenClaims map[string]i
 		if !ok {
 			return fmt.Errorf("bound claim %q not present in token", claimName)
 		}
+
 		actualStr := fmt.Sprintf("%v", actual)
 		if actualStr != requiredValue {
 			return fmt.Errorf("bound claim %q: expected %q, got %q", claimName, requiredValue, actualStr)
 		}
 	}
+
 	return nil
 }
 
@@ -48,19 +50,23 @@ func ValidateEmailDomain(email string, emailVerified bool, allowedDomains []stri
 	if len(allowedDomains) == 0 {
 		return nil
 	}
+
 	if !emailVerified {
 		return fmt.Errorf("email not verified by provider")
 	}
+
 	parts := strings.SplitN(email, "@", 2)
 	if len(parts) != 2 {
 		return fmt.Errorf("invalid email format")
 	}
+
 	domain := strings.ToLower(parts[1])
 	for _, allowed := range allowedDomains {
 		if strings.ToLower(allowed) == domain {
 			return nil
 		}
 	}
+
 	return fmt.Errorf("email domain %q not in allowed list", domain)
 }
 
@@ -69,23 +75,25 @@ func MapRole(roleClaim string, roleMapping map[string]string, defaultRole string
 	if roleClaim == "" || roleMapping == nil {
 		return defaultRole
 	}
+
 	raw, ok := tokenClaims[roleClaim]
 	if !ok {
 		return defaultRole
 	}
 	// Handle both string and []interface{} (JSON array) claim types.
 	var claimValues []string
-	switch v := raw.(type) {
+
+	switch val := raw.(type) {
 	case string:
-		claimValues = []string{v}
+		claimValues = []string{val}
 	case []interface{}:
-		for _, item := range v {
+		for _, item := range val {
 			if s, ok := item.(string); ok {
 				claimValues = append(claimValues, s)
 			}
 		}
 	case []string:
-		claimValues = v
+		claimValues = val
 	default:
 		return defaultRole
 	}
@@ -95,11 +103,13 @@ func MapRole(roleClaim string, roleMapping map[string]string, defaultRole string
 		if !ok {
 			continue
 		}
+
 		for _, cv := range claimValues {
 			if cv == expectedClaim {
 				return role
 			}
 		}
 	}
+
 	return defaultRole
 }

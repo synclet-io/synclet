@@ -45,13 +45,14 @@ func (uc *TestDestinationConnection) Execute(ctx context.Context, params TestDes
 	}
 
 	// Resolve Docker image from managed connector.
-	mc, err := uc.storage.ManagedConnectors().First(ctx, &pipelineservice.ManagedConnectorFilter{
+	connector, err := uc.storage.ManagedConnectors().First(ctx, &pipelineservice.ManagedConnectorFilter{
 		ID: filter.Equals(dest.ManagedConnectorID),
 	})
 	if err != nil {
 		return fmt.Errorf("loading managed connector: %w", err)
 	}
-	image := mc.DockerImage + ":" + mc.DockerTag
+
+	image := connector.DockerImage + ":" + connector.DockerTag
 
 	// Decrypt secret references for connector operation
 	decryptedConfig, err := pipelinesecrets.DecryptConfigSecrets(ctx, uc.secrets, dest.Config)

@@ -109,13 +109,16 @@ func workspaceModule(options *RunAppOptions) fx.Option {
 						if mode != pipelinev1.WorkspacesMode_WORKSPACES_MODE_SINGLE {
 							return nil
 						}
+
 						ws, err := bootstrap.Execute(ctx)
 						if err != nil {
 							return fmt.Errorf("bootstrapping default workspace: %w", err)
 						}
+
 						if ws != nil {
 							logger.WithField("id", ws.ID.String()).Info(ctx, "default workspace bootstrapped")
 						}
+
 						return nil
 					},
 				})

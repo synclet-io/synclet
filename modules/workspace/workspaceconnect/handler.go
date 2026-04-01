@@ -78,18 +78,18 @@ func (h *Handler) CreateWorkspace(ctx context.Context, req *connect.Request[work
 	}
 
 	if err := connectutil.ValidateStringLengths(
-		connectutil.StringValidation{Field: "name", Value: req.Msg.Name, MaxLen: connectutil.MaxNameLength},
+		connectutil.StringValidation{Field: "name", Value: req.Msg.GetName(), MaxLen: connectutil.MaxNameLength},
 	); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	ws, err := h.createWorkspace.Execute(ctx, req.Msg.Name, ownerID)
+	workspace, err := h.createWorkspace.Execute(ctx, req.Msg.GetName(), ownerID)
 	if err != nil {
 		return nil, mapError(err)
 	}
 
 	return connect.NewResponse(&workspacev1.CreateWorkspaceResponse{
-		Workspace: workspaceToProto(ws),
+		Workspace: workspaceToProto(workspace),
 	}), nil
 }
 
@@ -105,22 +105,23 @@ func (h *Handler) UpdateWorkspace(ctx context.Context, req *connect.Request[work
 		ID: workspaceID,
 	}
 
-	if req.Msg.Name != "" {
+	if req.Msg.GetName() != "" {
 		if err := connectutil.ValidateStringLengths(
-			connectutil.StringValidation{Field: "name", Value: req.Msg.Name, MaxLen: connectutil.MaxNameLength},
+			connectutil.StringValidation{Field: "name", Value: req.Msg.GetName(), MaxLen: connectutil.MaxNameLength},
 		); err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}
+
 		params.Name = &req.Msg.Name
 	}
 
-	ws, err := h.updateWorkspace.Execute(ctx, params)
+	workspace, err := h.updateWorkspace.Execute(ctx, params)
 	if err != nil {
 		return nil, mapError(err)
 	}
 
 	return connect.NewResponse(&workspacev1.UpdateWorkspaceResponse{
-		Workspace: workspaceToProto(ws),
+		Workspace: workspaceToProto(workspace),
 	}), nil
 }
 
@@ -140,7 +141,7 @@ func (h *Handler) DeleteWorkspace(ctx context.Context, req *connect.Request[work
 }
 
 func (h *Handler) GetWorkspace(ctx context.Context, req *connect.Request[workspacev1.GetWorkspaceRequest]) (*connect.Response[workspacev1.GetWorkspaceResponse], error) {
-	id, err := uuid.Parse(req.Msg.Id)
+	id, err := uuid.Parse(req.Msg.GetId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -150,13 +151,13 @@ func (h *Handler) GetWorkspace(ctx context.Context, req *connect.Request[workspa
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	ws, err := h.getWorkspace.Execute(ctx, id, &userID)
+	workspace, err := h.getWorkspace.Execute(ctx, id, &userID)
 	if err != nil {
 		return nil, mapError(err)
 	}
 
 	return connect.NewResponse(&workspacev1.GetWorkspaceResponse{
-		Workspace: workspaceToProto(ws),
+		Workspace: workspaceToProto(workspace),
 	}), nil
 }
 
@@ -189,7 +190,7 @@ func (h *Handler) RemoveMember(ctx context.Context, req *connect.Request[workspa
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	userID, err := uuid.Parse(req.Msg.UserId)
+	userID, err := uuid.Parse(req.Msg.GetUserId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -240,15 +241,15 @@ func (h *Handler) CreateInvite(ctx context.Context, req *connect.Request[workspa
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("workspace ID required"))
 	}
 
-	role := protoToMemberRole(req.Msg.Role)
+	role := protoToMemberRole(req.Msg.GetRole())
 	if !role.IsValid() {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid role: %v", req.Msg.Role))
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid role: %v", req.Msg.GetRole()))
 	}
 
 	invite, err := h.createInvite.Execute(ctx, workspaceservice.CreateInviteParams{
 		WorkspaceID:   workspaceID,
 		InviterUserID: userID,
-		Email:         req.Msg.Email,
+		Email:         req.Msg.GetEmail(),
 		Role:          role,
 	})
 	if err != nil {
@@ -273,7 +274,7 @@ func (h *Handler) AcceptInvite(ctx context.Context, req *connect.Request[workspa
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("cannot determine user email"))
 	}
 
-	result, err := h.acceptInvite.Execute(ctx, req.Msg.Token, userID, userEmail)
+	result, err := h.acceptInvite.Execute(ctx, req.Msg.GetToken(), userID, userEmail)
 	if err != nil {
 		return nil, mapError(err)
 	}
@@ -286,7 +287,7 @@ func (h *Handler) AcceptInvite(ctx context.Context, req *connect.Request[workspa
 
 // DeclineInvite declines an invite by token. No auth required.
 func (h *Handler) DeclineInvite(ctx context.Context, req *connect.Request[workspacev1.DeclineInviteRequest]) (*connect.Response[workspacev1.DeclineInviteResponse], error) {
-	if err := h.declineInvite.Execute(ctx, req.Msg.Token); err != nil {
+	if err := h.declineInvite.Execute(ctx, req.Msg.GetToken()); err != nil {
 		return nil, mapError(err)
 	}
 
@@ -300,7 +301,7 @@ func (h *Handler) RevokeInvite(ctx context.Context, req *connect.Request[workspa
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("workspace ID required"))
 	}
 
-	inviteID, err := uuid.Parse(req.Msg.InviteId)
+	inviteID, err := uuid.Parse(req.Msg.GetInviteId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -319,7 +320,7 @@ func (h *Handler) ResendInvite(ctx context.Context, req *connect.Request[workspa
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("workspace ID required"))
 	}
 
-	inviteID, err := uuid.Parse(req.Msg.InviteId)
+	inviteID, err := uuid.Parse(req.Msg.GetInviteId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -355,7 +356,7 @@ func (h *Handler) ListInvites(ctx context.Context, req *connect.Request[workspac
 
 // GetInviteByToken retrieves invite info by token. No auth required.
 func (h *Handler) GetInviteByToken(ctx context.Context, req *connect.Request[workspacev1.GetInviteByTokenRequest]) (*connect.Response[workspacev1.GetInviteByTokenResponse], error) {
-	result, err := h.getInviteByToken.Execute(ctx, req.Msg.Token)
+	result, err := h.getInviteByToken.Execute(ctx, req.Msg.GetToken())
 	if err != nil {
 		return nil, mapError(err)
 	}
@@ -373,28 +374,29 @@ func inviteByTokenResultToProto(result *workspaceservice.InviteByTokenResult) *w
 	if result.IsExpired {
 		info.Status = workspacev1.InviteStatus_INVITE_STATUS_EXPIRED
 	}
+
 	return info
 }
 
 // Proto conversion helpers
 
-func workspaceToProto(ws *workspaceservice.Workspace) *workspacev1.WorkspaceInfo {
+func workspaceToProto(workspace *workspaceservice.Workspace) *workspacev1.WorkspaceInfo {
 	return &workspacev1.WorkspaceInfo{
-		Id:                  ws.ID.String(),
-		Name:                ws.Name,
-		Slug:                ws.Slug,
-		CreatedAt:           timestamppb.New(ws.CreatedAt),
-		UpdatedAt:           timestamppb.New(ws.UpdatedAt),
+		Id:        workspace.ID.String(),
+		Name:      workspace.Name,
+		Slug:      workspace.Slug,
+		CreatedAt: timestamppb.New(workspace.CreatedAt),
+		UpdatedAt: timestamppb.New(workspace.UpdatedAt),
 	}
 }
 
-func memberToProto(m *workspaceservice.WorkspaceMember) *workspacev1.WorkspaceMemberInfo {
+func memberToProto(member *workspaceservice.WorkspaceMember) *workspacev1.WorkspaceMemberInfo {
 	return &workspacev1.WorkspaceMemberInfo{
-		Id:          m.ID.String(),
-		WorkspaceId: m.WorkspaceID.String(),
-		UserId:      m.UserID.String(),
-		Role:        memberRoleToProto(m.Role),
-		JoinedAt:    timestamppb.New(m.JoinedAt),
+		Id:          member.ID.String(),
+		WorkspaceId: member.WorkspaceID.String(),
+		UserId:      member.UserID.String(),
+		Role:        memberRoleToProto(member.Role),
+		JoinedAt:    timestamppb.New(member.JoinedAt),
 	}
 }
 

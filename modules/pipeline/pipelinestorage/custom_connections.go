@@ -22,6 +22,7 @@ func (s *ConnectionsStorage) FindDueConnections(ctx context.Context, limit int) 
 	}
 
 	var rows []row
+
 	result := s.DB.WithContext(ctx).
 		Raw(`SELECT c.id, c.source_id, c.destination_id, c.schedule, c.max_attempts
 		     FROM pipeline.connections c
@@ -44,14 +45,15 @@ func (s *ConnectionsStorage) FindDueConnections(ctx context.Context, limit int) 
 	}
 
 	connections := make([]pipelinesvc.DueConnection, len(rows))
-	for i, r := range rows {
+	for i, row := range rows {
 		connections[i] = pipelinesvc.DueConnection{
-			ConnectionID:  r.ConnectionID,
-			SourceID:      r.SourceID,
-			DestinationID: r.DestinationID,
-			Schedule:      r.Schedule,
-			MaxAttempts:   r.MaxAttempts,
+			ConnectionID:  row.ConnectionID,
+			SourceID:      row.SourceID,
+			DestinationID: row.DestinationID,
+			Schedule:      row.Schedule,
+			MaxAttempts:   row.MaxAttempts,
 		}
 	}
+
 	return connections, nil
 }

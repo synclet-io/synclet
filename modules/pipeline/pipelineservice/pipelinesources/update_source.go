@@ -48,6 +48,7 @@ func (uc *UpdateSource) Execute(ctx context.Context, params UpdateSourceParams) 
 	if params.Name != nil {
 		src.Name = *params.Name
 	}
+
 	if params.Config != nil {
 		newConfig := string(*params.Config)
 
@@ -62,6 +63,7 @@ func (uc *UpdateSource) Execute(ctx context.Context, params UpdateSourceParams) 
 			if encErr != nil {
 				return nil, fmt.Errorf("encrypting source config secrets: %w", encErr)
 			}
+
 			newConfig = encryptedConfig
 		}
 
@@ -77,6 +79,7 @@ func (uc *UpdateSource) Execute(ctx context.Context, params UpdateSourceParams) 
 				}
 			}
 		}
+
 		src.RuntimeConfig = params.RuntimeConfig
 	}
 
@@ -122,6 +125,7 @@ func (uc *UpdateSourceInternal) Execute(ctx context.Context, params UpdateSource
 	if params.Name != nil {
 		src.Name = *params.Name
 	}
+
 	if params.Config != nil {
 		newConfig := string(*params.Config)
 
@@ -136,6 +140,7 @@ func (uc *UpdateSourceInternal) Execute(ctx context.Context, params UpdateSource
 			if encErr != nil {
 				return nil, fmt.Errorf("encrypting source config secrets: %w", encErr)
 			}
+
 			newConfig = encryptedConfig
 		}
 

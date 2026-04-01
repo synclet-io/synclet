@@ -51,146 +51,167 @@ func (uc *ImportConfig) Execute(ctx context.Context, params ImportConfigParams) 
 
 	// Import sources
 	sourceIDByName := make(map[string]uuid.UUID)
-	for _, sc := range cfg.Sources {
-		if sc.Name == "" || sc.ManagedConnectorID == "" {
-			result.Errors = append(result.Errors, fmt.Sprintf("source missing required fields: name=%q managed_connector_id=%q", sc.Name, sc.ManagedConnectorID))
+
+	for _, sourceConfig := range cfg.Sources {
+		if sourceConfig.Name == "" || sourceConfig.ManagedConnectorID == "" {
+			result.Errors = append(result.Errors, fmt.Sprintf("source missing required fields: name=%q managed_connector_id=%q", sourceConfig.Name, sourceConfig.ManagedConnectorID))
+
 			continue
 		}
 
-		managedConnectorID, err := uuid.Parse(sc.ManagedConnectorID)
+		managedConnectorID, err := uuid.Parse(sourceConfig.ManagedConnectorID)
 		if err != nil {
-			result.Errors = append(result.Errors, fmt.Sprintf("source %q: invalid managed_connector_id: %v", sc.Name, err))
+			result.Errors = append(result.Errors, fmt.Sprintf("source %q: invalid managed_connector_id: %v", sourceConfig.Name, err))
+
 			continue
 		}
 
-		configJSON := filterRedacted(sc.Config)
+		configJSON := filterRedacted(sourceConfig.Config)
 		configBytes, _ := json.Marshal(configJSON)
 
 		existing, _ := uc.storage.Sources().Find(ctx, &pipelineservice.SourceFilter{
 			WorkspaceID: filter.Equals(params.WorkspaceID),
-			Name:        filter.Equals(sc.Name),
+			Name:        filter.Equals(sourceConfig.Name),
 		})
 
 		if len(existing) > 0 {
 			src := existing[0]
-			sourceIDByName[sc.Name] = src.ID
-			mergedConfig := mergeConfigs(configToMap(src.Config), sc.Config)
+			sourceIDByName[sourceConfig.Name] = src.ID
+			mergedConfig := mergeConfigs(configToMap(src.Config), sourceConfig.Config)
 			mergedBytes, _ := json.Marshal(mergedConfig)
 			src.ManagedConnectorID = managedConnectorID
+
 			src.Config = string(mergedBytes)
 			if _, err := uc.storage.Sources().Update(ctx, src); err != nil {
-				result.Errors = append(result.Errors, fmt.Sprintf("updating source %q: %v", sc.Name, err))
+				result.Errors = append(result.Errors, fmt.Sprintf("updating source %q: %v", sourceConfig.Name, err))
+
 				continue
 			}
+
 			result.Updated++
 		} else {
 			src := pipelineservice.Source{
 				ID:                 uuid.New(),
 				WorkspaceID:        params.WorkspaceID,
-				Name:               sc.Name,
+				Name:               sourceConfig.Name,
 				ManagedConnectorID: managedConnectorID,
 				Config:             string(configBytes),
 			}
 			if _, err := uc.storage.Sources().Create(ctx, &src); err != nil {
-				result.Errors = append(result.Errors, fmt.Sprintf("creating source %q: %v", sc.Name, err))
+				result.Errors = append(result.Errors, fmt.Sprintf("creating source %q: %v", sourceConfig.Name, err))
+
 				continue
 			}
-			sourceIDByName[sc.Name] = src.ID
+
+			sourceIDByName[sourceConfig.Name] = src.ID
 			result.Created++
 		}
 	}
 
 	// Import destinations
 	destIDByName := make(map[string]uuid.UUID)
-	for _, dc := range cfg.Destinations {
-		if dc.Name == "" || dc.ManagedConnectorID == "" {
-			result.Errors = append(result.Errors, fmt.Sprintf("destination missing required fields: name=%q managed_connector_id=%q", dc.Name, dc.ManagedConnectorID))
+
+	for _, destConfig := range cfg.Destinations {
+		if destConfig.Name == "" || destConfig.ManagedConnectorID == "" {
+			result.Errors = append(result.Errors, fmt.Sprintf("destination missing required fields: name=%q managed_connector_id=%q", destConfig.Name, destConfig.ManagedConnectorID))
+
 			continue
 		}
 
-		managedConnectorID, err := uuid.Parse(dc.ManagedConnectorID)
+		managedConnectorID, err := uuid.Parse(destConfig.ManagedConnectorID)
 		if err != nil {
-			result.Errors = append(result.Errors, fmt.Sprintf("destination %q: invalid managed_connector_id: %v", dc.Name, err))
+			result.Errors = append(result.Errors, fmt.Sprintf("destination %q: invalid managed_connector_id: %v", destConfig.Name, err))
+
 			continue
 		}
 
-		configJSON := filterRedacted(dc.Config)
+		configJSON := filterRedacted(destConfig.Config)
 		configBytes, _ := json.Marshal(configJSON)
 
 		existing, _ := uc.storage.Destinations().Find(ctx, &pipelineservice.DestinationFilter{
 			WorkspaceID: filter.Equals(params.WorkspaceID),
-			Name:        filter.Equals(dc.Name),
+			Name:        filter.Equals(destConfig.Name),
 		})
 
 		if len(existing) > 0 {
 			dst := existing[0]
-			destIDByName[dc.Name] = dst.ID
-			mergedConfig := mergeConfigs(configToMap(dst.Config), dc.Config)
+			destIDByName[destConfig.Name] = dst.ID
+			mergedConfig := mergeConfigs(configToMap(dst.Config), destConfig.Config)
 			mergedBytes, _ := json.Marshal(mergedConfig)
 			dst.ManagedConnectorID = managedConnectorID
+
 			dst.Config = string(mergedBytes)
 			if _, err := uc.storage.Destinations().Update(ctx, dst); err != nil {
-				result.Errors = append(result.Errors, fmt.Sprintf("updating destination %q: %v", dc.Name, err))
+				result.Errors = append(result.Errors, fmt.Sprintf("updating destination %q: %v", destConfig.Name, err))
+
 				continue
 			}
+
 			result.Updated++
 		} else {
 			dst := pipelineservice.Destination{
 				ID:                 uuid.New(),
 				WorkspaceID:        params.WorkspaceID,
-				Name:               dc.Name,
+				Name:               destConfig.Name,
 				ManagedConnectorID: managedConnectorID,
 				Config:             string(configBytes),
 			}
 			if _, err := uc.storage.Destinations().Create(ctx, &dst); err != nil {
-				result.Errors = append(result.Errors, fmt.Sprintf("creating destination %q: %v", dc.Name, err))
+				result.Errors = append(result.Errors, fmt.Sprintf("creating destination %q: %v", destConfig.Name, err))
+
 				continue
 			}
-			destIDByName[dc.Name] = dst.ID
+
+			destIDByName[destConfig.Name] = dst.ID
 			result.Created++
 		}
 	}
 
 	// Import connections
-	for _, cc := range cfg.Connections {
-		if cc.Source == "" || cc.Destination == "" {
+	for _, connConfig := range cfg.Connections {
+		if connConfig.Source == "" || connConfig.Destination == "" {
 			result.Errors = append(result.Errors, "connection missing source or destination name")
+
 			continue
 		}
 
-		sourceID, ok := sourceIDByName[cc.Source]
+		sourceID, ok := sourceIDByName[connConfig.Source]
 		if !ok {
 			existing, _ := uc.storage.Sources().Find(ctx, &pipelineservice.SourceFilter{
 				WorkspaceID: filter.Equals(params.WorkspaceID),
-				Name:        filter.Equals(cc.Source),
+				Name:        filter.Equals(connConfig.Source),
 			})
 			if len(existing) == 0 {
-				result.Errors = append(result.Errors, fmt.Sprintf("source %q not found for connection", cc.Source))
+				result.Errors = append(result.Errors, fmt.Sprintf("source %q not found for connection", connConfig.Source))
+
 				continue
 			}
+
 			sourceID = existing[0].ID
 		}
 
-		destID, ok := destIDByName[cc.Destination]
+		destID, ok := destIDByName[connConfig.Destination]
 		if !ok {
 			existing, _ := uc.storage.Destinations().Find(ctx, &pipelineservice.DestinationFilter{
 				WorkspaceID: filter.Equals(params.WorkspaceID),
-				Name:        filter.Equals(cc.Destination),
+				Name:        filter.Equals(connConfig.Destination),
 			})
 			if len(existing) == 0 {
-				result.Errors = append(result.Errors, fmt.Sprintf("destination %q not found for connection", cc.Destination))
+				result.Errors = append(result.Errors, fmt.Sprintf("destination %q not found for connection", connConfig.Destination))
+
 				continue
 			}
+
 			destID = existing[0].ID
 		}
 
 		var schedule *string
-		if cc.Schedule != "" {
-			schedule = &cc.Schedule
+		if connConfig.Schedule != "" {
+			schedule = &connConfig.Schedule
 		}
 
 		status := pipelineservice.ConnectionStatusInactive
-		if cc.Enabled {
+		if connConfig.Enabled {
 			status = pipelineservice.ConnectionStatusActive
 		}
 
@@ -203,25 +224,31 @@ func (uc *ImportConfig) Execute(ctx context.Context, params ImportConfigParams) 
 		if len(existingConns) > 0 {
 			conn := existingConns[0]
 			conn.Schedule = schedule
+
 			conn.Status = status
-			if cc.MaxAttempts > 0 {
-				conn.MaxAttempts = cc.MaxAttempts
+			if connConfig.MaxAttempts > 0 {
+				conn.MaxAttempts = connConfig.MaxAttempts
 			}
+
 			pipelineservice.RecomputeNextScheduledAt(conn, time.Now())
+
 			if _, err := uc.storage.Connections().Update(ctx, conn); err != nil {
-				result.Errors = append(result.Errors, fmt.Sprintf("updating connection %s->%s: %v", cc.Source, cc.Destination, err))
+				result.Errors = append(result.Errors, fmt.Sprintf("updating connection %s->%s: %v", connConfig.Source, connConfig.Destination, err))
+
 				continue
 			}
+
 			result.Updated++
 		} else {
-			maxAttempts := cc.MaxAttempts
+			maxAttempts := connConfig.MaxAttempts
 			if maxAttempts == 0 {
 				maxAttempts = 3
 			}
+
 			conn := pipelineservice.Connection{
 				ID:                  uuid.New(),
 				WorkspaceID:         params.WorkspaceID,
-				Name:                fmt.Sprintf("%s -> %s", cc.Source, cc.Destination),
+				Name:                fmt.Sprintf("%s -> %s", connConfig.Source, connConfig.Destination),
 				Status:              status,
 				SourceID:            sourceID,
 				DestinationID:       destID,
@@ -231,10 +258,13 @@ func (uc *ImportConfig) Execute(ctx context.Context, params ImportConfigParams) 
 				NamespaceDefinition: pipelineservice.NamespaceDefinitionSource,
 			}
 			pipelineservice.RecomputeNextScheduledAt(&conn, time.Now())
+
 			if _, err := uc.storage.Connections().Create(ctx, &conn); err != nil {
-				result.Errors = append(result.Errors, fmt.Sprintf("creating connection %s->%s: %v", cc.Source, cc.Destination, err))
+				result.Errors = append(result.Errors, fmt.Sprintf("creating connection %s->%s: %v", connConfig.Source, connConfig.Destination, err))
+
 				continue
 			}
+
 			result.Created++
 		}
 	}
@@ -247,13 +277,16 @@ func filterRedacted(m map[string]any) map[string]any {
 	if m == nil {
 		return map[string]any{}
 	}
+
 	result := make(map[string]any, len(m))
 	for k, v := range m {
 		if s, ok := v.(string); ok && s == redactedPlaceholder {
 			continue
 		}
+
 		result[k] = v
 	}
+
 	return result
 }
 
@@ -262,15 +295,19 @@ func mergeConfigs(existing, incoming map[string]any) map[string]any {
 	if existing == nil {
 		return filterRedacted(incoming)
 	}
+
 	result := make(map[string]any, len(existing))
 	for k, v := range existing {
 		result[k] = v
 	}
+
 	for k, v := range incoming {
 		if s, ok := v.(string); ok && s == redactedPlaceholder {
 			continue // Keep existing value
 		}
+
 		result[k] = v
 	}
+
 	return result
 }

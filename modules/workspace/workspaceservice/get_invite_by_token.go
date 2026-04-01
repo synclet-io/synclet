@@ -39,11 +39,12 @@ func (uc *GetInviteByToken) Execute(ctx context.Context, token string) (*InviteB
 	if err != nil {
 		return nil, fmt.Errorf("finding invite by token: %w", err)
 	}
+
 	if invite == nil {
 		return nil, ErrWorkspaceInviteNotFound
 	}
 
-	ws, err := uc.storage.Workspaces().First(ctx, &WorkspaceFilter{
+	workspace, err := uc.storage.Workspaces().First(ctx, &WorkspaceFilter{
 		ID: filter.Equals(invite.WorkspaceID),
 	})
 	if err != nil {
@@ -51,11 +52,12 @@ func (uc *GetInviteByToken) Execute(ctx context.Context, token string) (*InviteB
 	}
 
 	var workspaceName string
-	if ws != nil {
-		workspaceName = ws.Name
+	if workspace != nil {
+		workspaceName = workspace.Name
 	}
 
 	var inviterName string
+
 	inviter, err := uc.userLookup.GetUserByID(ctx, invite.InviterUserID)
 	if err == nil && inviter != nil {
 		inviterName = inviter.Name

@@ -32,7 +32,7 @@ type UpdateManagedConnectorParams struct {
 // and updates the connector's docker_tag and spec.
 func (uc *UpdateManagedConnector) Execute(ctx context.Context, params UpdateManagedConnectorParams) (*pipelineservice.ManagedConnector, error) {
 	// 1. Load managed connector (workspace-scoped).
-	mc, err := uc.storage.ManagedConnectors().First(ctx, &pipelineservice.ManagedConnectorFilter{
+	connector, err := uc.storage.ManagedConnectors().First(ctx, &pipelineservice.ManagedConnectorFilter{
 		ID:          filter.Equals(params.ConnectorID),
 		WorkspaceID: filter.Equals(params.WorkspaceID),
 	})
@@ -41,29 +41,31 @@ func (uc *UpdateManagedConnector) Execute(ctx context.Context, params UpdateMana
 	}
 
 	// 2. Verify it has a repository_id (custom connectors cannot be updated this way).
-	if mc.RepositoryID == nil {
+	if connector.RepositoryID == nil {
 		return nil, fmt.Errorf("connector is not linked to a repository")
 	}
 
 	// 3. Find matching repository_connector by docker_image within the same repository.
 	repoConn, err := uc.storage.RepositoryConnectors().First(ctx, &pipelineservice.RepositoryConnectorFilter{
-		RepositoryID:     filter.Equals(*mc.RepositoryID),
-		DockerRepository: filter.Equals(mc.DockerImage),
+		RepositoryID:     filter.Equals(*connector.RepositoryID),
+		DockerRepository: filter.Equals(connector.DockerImage),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("loading repository connector: %w", err)
 	}
 
 	// 4. Update managed connector.
-	mc.DockerTag = repoConn.DockerImageTag
+	connector.DockerTag = repoConn.DockerImageTag
+
 	spec := repoConn.Spec
 	if spec == "" {
 		spec = "{}"
 	}
-	mc.Spec = spec
-	mc.UpdatedAt = time.Now()
 
-	updated, err := uc.storage.ManagedConnectors().Update(ctx, mc)
+	connector.Spec = spec
+	connector.UpdatedAt = time.Now()
+
+	updated, err := uc.storage.ManagedConnectors().Update(ctx, connector)
 	if err != nil {
 		return nil, fmt.Errorf("updating managed connector: %w", err)
 	}

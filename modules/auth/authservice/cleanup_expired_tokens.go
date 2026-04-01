@@ -28,6 +28,7 @@ func (uc *CleanupExpiredTokens) Execute(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("listing refresh tokens: %w", err)
 	}
+
 	for _, token := range tokens {
 		if now.After(token.ExpiresAt) {
 			if err := uc.storage.RefreshTokens().Delete(ctx, &RefreshTokenFilter{

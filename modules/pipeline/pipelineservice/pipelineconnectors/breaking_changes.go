@@ -44,21 +44,22 @@ func DetectBreakingChanges(currentTag, targetTag string, metadata *pipelineservi
 	}
 
 	var collected []versionedEntry
-	for versionStr, bc := range metadata.BreakingChanges {
-		v, parseErr := semver.StrictNewVersion(versionStr)
+
+	for versionStr, change := range metadata.BreakingChanges {
+		ver, parseErr := semver.StrictNewVersion(versionStr)
 		if parseErr != nil {
 			continue
 		}
 
 		// current < breakingVersion <= target
-		if currentVer.LessThan(v) && (v.LessThan(targetVer) || v.Equal(targetVer)) {
+		if currentVer.LessThan(ver) && (ver.LessThan(targetVer) || ver.Equal(targetVer)) {
 			collected = append(collected, versionedEntry{
-				ver: v,
+				ver: ver,
 				entry: VersionedBreakingChange{
 					Version:                   versionStr,
-					Message:                   bc.Message,
-					MigrationDocumentationURL: bc.MigrationDocumentationURL,
-					UpgradeDeadline:           bc.UpgradeDeadline,
+					Message:                   change.Message,
+					MigrationDocumentationURL: change.MigrationDocumentationURL,
+					UpgradeDeadline:           change.UpgradeDeadline,
 				},
 			})
 		}

@@ -42,6 +42,7 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
+
 				return values
 			}
 			info.AddField("EncryptedValue", "encrypted_value", db.Text)
@@ -57,6 +58,7 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
+
 				return values
 			}
 			info.AddField("Salt", "salt", db.Text)
@@ -72,6 +74,7 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
+
 				return values
 			}
 			info.AddField("Nonce", "nonce", db.Text)
@@ -87,6 +90,7 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
+
 				return values
 			}
 			info.AddField("KeyVersion", "key_version", db.Int)
@@ -102,6 +106,7 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
+
 				return values
 			}
 			info.AddField("OwnerType", "owner_type", db.Text)
@@ -121,6 +126,7 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
+
 				return values
 			}
 			info.AddField("OwnerID", "owner_id", db.UUID)
@@ -140,6 +146,7 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
+
 				return values
 			}
 			info.AddField("CreatedAt", "created_at", db.Timestamp)
@@ -155,6 +162,7 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
+
 				return values
 			}
 			info.AddField("UpdatedAt", "updated_at", db.Timestamp)
@@ -170,6 +178,7 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
+
 				return values
 			}
 

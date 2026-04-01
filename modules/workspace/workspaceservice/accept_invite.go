@@ -35,6 +35,7 @@ func (uc *AcceptInvite) Execute(ctx context.Context, token string, userID uuid.U
 	if err != nil {
 		return nil, fmt.Errorf("finding invite by token: %w", err)
 	}
+
 	if invite == nil {
 		return nil, ErrWorkspaceInviteNotFound
 	}
@@ -59,25 +60,28 @@ func (uc *AcceptInvite) Execute(ctx context.Context, token string, userID uuid.U
 	if err != nil {
 		return nil, fmt.Errorf("checking existing membership: %w", err)
 	}
+
 	if existingMember != nil {
 		// Already a member -- just mark invite as accepted.
 		invite.Status = InviteStatusAccepted
+
 		invite.UpdatedAt = time.Now()
 		if _, err := uc.storage.WorkspaceInvites().Update(ctx, invite); err != nil {
 			return nil, fmt.Errorf("updating invite status: %w", err)
 		}
 
-		ws, err := uc.storage.Workspaces().First(ctx, &WorkspaceFilter{ID: filter.Equals(invite.WorkspaceID)})
-		if err != nil || ws == nil {
+		workspace, err := uc.storage.Workspaces().First(ctx, &WorkspaceFilter{ID: filter.Equals(invite.WorkspaceID)})
+		if err != nil || workspace == nil {
 			return nil, fmt.Errorf("loading workspace: %w", err)
 		}
 
-		return &AcceptInviteResult{WorkspaceID: ws.ID, WorkspaceName: ws.Name}, nil
+		return &AcceptInviteResult{WorkspaceID: workspace.ID, WorkspaceName: workspace.Name}, nil
 	}
 
 	// Create membership and mark invite accepted atomically to prevent invite reuse on partial failure.
 	now := time.Now()
-	var ws *Workspace
+	var workspace *Workspace
+
 	if err := uc.storage.ExecuteInTransaction(ctx, func(ctx context.Context, tx Storage) error {
 		member := &WorkspaceMember{
 			ID:          uuid.New(),
@@ -91,14 +95,16 @@ func (uc *AcceptInvite) Execute(ctx context.Context, token string, userID uuid.U
 		}
 
 		invite.Status = InviteStatusAccepted
+
 		invite.UpdatedAt = now
 		if _, err := tx.WorkspaceInvites().Update(ctx, invite); err != nil {
 			return fmt.Errorf("updating invite status: %w", err)
 		}
 
 		var txErr error
-		ws, txErr = tx.Workspaces().First(ctx, &WorkspaceFilter{ID: filter.Equals(invite.WorkspaceID)})
-		if txErr != nil || ws == nil {
+
+		workspace, txErr = tx.Workspaces().First(ctx, &WorkspaceFilter{ID: filter.Equals(invite.WorkspaceID)})
+		if txErr != nil || workspace == nil {
 			return fmt.Errorf("loading workspace: %w", txErr)
 		}
 
@@ -107,7 +113,7 @@ func (uc *AcceptInvite) Execute(ctx context.Context, token string, userID uuid.U
 		return nil, err
 	}
 
-	return &AcceptInviteResult{WorkspaceID: ws.ID, WorkspaceName: ws.Name}, nil
+	return &AcceptInviteResult{WorkspaceID: workspace.ID, WorkspaceName: workspace.Name}, nil
 }
 
 // ValidationError represents a validation error in the workspace service.

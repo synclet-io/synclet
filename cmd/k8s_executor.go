@@ -29,6 +29,7 @@ mode (--standalone), runs in-process with direct DB access.`,
 			if standalone {
 				opts = append(opts, app.WithStandalone())
 			}
+
 			app.RunServer(opts...)
 		},
 	}

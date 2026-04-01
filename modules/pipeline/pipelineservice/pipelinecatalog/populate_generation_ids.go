@@ -73,27 +73,28 @@ func ResolveStreamGenerations(
 		genMap[streamKey(sg.StreamNamespace, sg.StreamName)] = sg
 	}
 
-	var toSave []*pipelineservice.StreamGeneration
+	toSave := make([]*pipelineservice.StreamGeneration, 0, len(catalog.Streams))
 	now := time.Now()
 
-	for i, s := range catalog.Streams {
+	for i, stream := range catalog.Streams {
 		catalog.Streams[i].SyncID = syncID
 
-		key := streamKey(s.Stream.Namespace, s.Stream.Name)
+		key := streamKey(stream.Stream.Namespace, stream.Stream.Name)
+
 		genID := int64(0)
 		if existing := genMap[key]; existing != nil {
 			genID = existing.GenerationID
 		}
 
 		// Increment generation for full_refresh syncs.
-		if s.SyncMode == protocol.SyncModeFullRefresh {
+		if stream.SyncMode == protocol.SyncModeFullRefresh {
 			genID++
 		}
 
 		catalog.Streams[i].GenerationID = genID
 
 		// Set minimum_generation_id based on destination sync mode.
-		switch s.DestinationSyncMode {
+		switch stream.DestinationSyncMode {
 		case protocol.DestinationSyncModeOverwrite:
 			catalog.Streams[i].MinimumGenerationID = genID
 		default:
@@ -102,8 +103,8 @@ func ResolveStreamGenerations(
 
 		toSave = append(toSave, &pipelineservice.StreamGeneration{
 			ConnectionID:    connectionID,
-			StreamNamespace: s.Stream.Namespace,
-			StreamName:      s.Stream.Name,
+			StreamNamespace: stream.Stream.Namespace,
+			StreamName:      stream.Stream.Name,
 			GenerationID:    genID,
 			UpdatedAt:       now,
 		})

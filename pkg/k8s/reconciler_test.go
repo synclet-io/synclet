@@ -34,6 +34,7 @@ func (m *mockStaleJobProvider) GetStaleJobs(_ context.Context, _ time.Duration) 
 
 func (m *mockStaleJobProvider) FailJob(_ context.Context, jobID, reason string) error {
 	m.failJobCalls = append(m.failJobCalls, failJobCall{JobID: jobID, Reason: reason})
+
 	return nil
 }
 
@@ -41,6 +42,7 @@ func (m *mockStaleJobProvider) IsJobActive(_ context.Context, jobID string) (boo
 	if m.activeJobs != nil {
 		return m.activeJobs[jobID], nil
 	}
+
 	return false, nil
 }
 
@@ -48,6 +50,7 @@ func (m *mockStaleJobProvider) IsTaskActive(_ context.Context, taskID string) (b
 	if m.activeTasks != nil {
 		return m.activeTasks[taskID], nil
 	}
+
 	return false, nil
 }
 
@@ -263,17 +266,17 @@ func TestScanForOrphans(t *testing.T) {
 	}, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	oc := NewOrphanCleaner(client, "default", provider, zaptest.NewLogger(t))
-	err = oc.Cleanup(ctx)
+	orphanCleaner := NewOrphanCleaner(client, "default", provider, zaptest.NewLogger(t))
+	err = orphanCleaner.Cleanup(ctx)
 	require.NoError(t, err)
 
 	// Orphan job should be deleted.
 	_, err = client.BatchV1().Jobs("default").Get(ctx, "orphan-k8s-job", metav1.GetOptions{})
-	assert.Error(t, err, "orphan K8s job should have been deleted")
+	require.Error(t, err, "orphan K8s job should have been deleted")
 
 	// Active job should still exist.
 	_, err = client.BatchV1().Jobs("default").Get(ctx, "active-k8s-job", metav1.GetOptions{})
-	assert.NoError(t, err, "active K8s job should NOT have been deleted")
+	require.NoError(t, err, "active K8s job should NOT have been deleted")
 
 	// Recent job should still exist (grace period).
 	_, err = client.BatchV1().Jobs("default").Get(ctx, "recent-k8s-job", metav1.GetOptions{})
@@ -302,8 +305,8 @@ func TestOrphanCleaner_CleansOrphanedSyncSecrets(t *testing.T) {
 	}, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	oc := NewOrphanCleaner(client, "default", provider, zaptest.NewLogger(t))
-	err = oc.Cleanup(ctx)
+	orphanCleaner := NewOrphanCleaner(client, "default", provider, zaptest.NewLogger(t))
+	err = orphanCleaner.Cleanup(ctx)
 	require.NoError(t, err)
 
 	// Orphan secret should be deleted.
@@ -333,8 +336,8 @@ func TestOrphanCleaner_KeepsSyncSecretForActiveJob(t *testing.T) {
 	}, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	oc := NewOrphanCleaner(client, "default", provider, zaptest.NewLogger(t))
-	err = oc.Cleanup(ctx)
+	orphanCleaner := NewOrphanCleaner(client, "default", provider, zaptest.NewLogger(t))
+	err = orphanCleaner.Cleanup(ctx)
 	require.NoError(t, err)
 
 	// Active secret should still exist.
@@ -364,8 +367,8 @@ func TestOrphanCleaner_CleansOrphanedTaskSecrets(t *testing.T) {
 	}, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	oc := NewOrphanCleaner(client, "default", provider, zaptest.NewLogger(t))
-	err = oc.Cleanup(ctx)
+	orphanCleaner := NewOrphanCleaner(client, "default", provider, zaptest.NewLogger(t))
+	err = orphanCleaner.Cleanup(ctx)
 	require.NoError(t, err)
 
 	// Orphan task secret should be deleted.
@@ -393,16 +396,16 @@ func TestOrphanCleaner_GracePeriodApplies(t *testing.T) {
 	}, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	oc := NewOrphanCleaner(client, "default", provider, zaptest.NewLogger(t))
+	orphanCleaner := NewOrphanCleaner(client, "default", provider, zaptest.NewLogger(t))
 
 	// Cleanup with grace should NOT delete the recent secret.
-	err = oc.Cleanup(ctx)
+	err = orphanCleaner.Cleanup(ctx)
 	require.NoError(t, err)
 	_, err = client.CoreV1().Secrets("default").Get(ctx, "synclet-sync-recent", metav1.GetOptions{})
-	assert.NoError(t, err, "recent sync secret should NOT have been deleted (grace period)")
+	require.NoError(t, err, "recent sync secret should NOT have been deleted (grace period)")
 
 	// CleanupAll (no grace) SHOULD delete it.
-	err = oc.CleanupAll(ctx)
+	err = orphanCleaner.CleanupAll(ctx)
 	require.NoError(t, err)
 	_, err = client.CoreV1().Secrets("default").Get(ctx, "synclet-sync-recent", metav1.GetOptions{})
 	assert.Error(t, err, "recent sync secret should have been deleted by CleanupAll")

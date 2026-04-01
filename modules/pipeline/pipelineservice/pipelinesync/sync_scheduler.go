@@ -72,12 +72,14 @@ func (s *SyncScheduler) Execute(ctx context.Context) error {
 				ID: filter.Equals(dc.ConnectionID),
 			}
 		}
+
 		connRecords, err := tx.Connections().Find(ctx, &pipelineservice.ConnectionFilter{
 			Or: orFilters,
 		})
 		if err != nil {
 			return fmt.Errorf("batch loading connections: %w", err)
 		}
+
 		connByID := make(map[uuid.UUID]*pipelineservice.Connection, len(connRecords))
 		for _, c := range connRecords {
 			connByID[c.ID] = c
@@ -85,6 +87,7 @@ func (s *SyncScheduler) Execute(ctx context.Context) error {
 
 		now := time.Now()
 		created := 0
+
 		for _, conn := range dueConnections {
 			job := &pipelineservice.Job{
 				ID:           uuid.New(),
@@ -98,6 +101,7 @@ func (s *SyncScheduler) Execute(ctx context.Context) error {
 				if s.logger != nil {
 					s.logger.WithError(err).WithField("connection_id", conn.ConnectionID.String()).Error(ctx, "creating scheduled job")
 				}
+
 				continue
 			}
 
@@ -105,6 +109,7 @@ func (s *SyncScheduler) Execute(ctx context.Context) error {
 			connRecord := connByID[conn.ConnectionID]
 			if connRecord != nil {
 				pipelineservice.RecomputeNextScheduledAt(connRecord, now)
+
 				if _, err := tx.Connections().Update(ctx, connRecord); err != nil {
 					if s.logger != nil {
 						s.logger.WithError(err).WithField("connection_id", conn.ConnectionID.String()).Error(ctx, "advancing next_scheduled_at")

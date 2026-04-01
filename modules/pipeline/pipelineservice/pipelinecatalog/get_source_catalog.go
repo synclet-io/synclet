@@ -58,6 +58,7 @@ func (uc *GetSourceCatalog) Execute(ctx context.Context, params GetSourceCatalog
 		if errors.As(err, &nfe) {
 			return nil, pipelineservice.NotFoundError("no catalog discovered for this source")
 		}
+
 		return nil, fmt.Errorf("getting latest catalog: %w", err)
 	}
 

@@ -69,7 +69,7 @@ func NewExecutorHandler(
 
 // Heartbeat updates the heartbeat timestamp and checks for cancellation per D-05.
 func (h *ExecutorHandler) Heartbeat(ctx context.Context, req *connect.Request[executorv1.HeartbeatRequest]) (*connect.Response[executorv1.HeartbeatResponse], error) {
-	jobID, err := uuid.Parse(req.Msg.JobId)
+	jobID, err := uuid.Parse(req.Msg.GetJobId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid job_id: %w", err))
 	}
@@ -77,7 +77,8 @@ func (h *ExecutorHandler) Heartbeat(ctx context.Context, req *connect.Request[ex
 	// Update heartbeat timestamp.
 	if err := h.updateHeartbeat.Execute(ctx, pipelinejobs.UpdateHeartbeatParams{ID: jobID}); err != nil {
 		h.logger.WithError(err).Error(ctx, "executor: heartbeat update failed",
-			"job_id", req.Msg.JobId)
+			"job_id", req.Msg.GetJobId())
+
 		return nil, mapError(err)
 	}
 
@@ -85,7 +86,7 @@ func (h *ExecutorHandler) Heartbeat(ctx context.Context, req *connect.Request[ex
 	cancelled, err := h.checkJobCancelled.Execute(ctx, pipelinejobs.CheckJobCancelledParams{JobID: jobID})
 	if err != nil {
 		h.logger.WithError(err).Error(ctx, "executor: cancel check failed",
-			"job_id", req.Msg.JobId)
+			"job_id", req.Msg.GetJobId())
 		// Non-fatal: return heartbeat success without cancellation info.
 		return connect.NewResponse(&executorv1.HeartbeatResponse{}), nil
 	}
@@ -97,13 +98,13 @@ func (h *ExecutorHandler) Heartbeat(ctx context.Context, req *connect.Request[ex
 
 // ReportState persists a state checkpoint from the executor.
 func (h *ExecutorHandler) ReportState(ctx context.Context, req *connect.Request[executorv1.ReportStateRequest]) (*connect.Response[executorv1.ReportStateResponse], error) {
-	connectionID, err := uuid.Parse(req.Msg.ConnectionId)
+	connectionID, err := uuid.Parse(req.Msg.GetConnectionId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid connection_id: %w", err))
 	}
 
 	var stateMsg protocol.AirbyteStateMessage
-	if err := json.Unmarshal(req.Msg.StateData, &stateMsg); err != nil {
+	if err := json.Unmarshal(req.Msg.GetStateData(), &stateMsg); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid state_data: %w", err))
 	}
 
@@ -112,7 +113,8 @@ func (h *ExecutorHandler) ReportState(ctx context.Context, req *connect.Request[
 		StateMessage: &stateMsg,
 	}); err != nil {
 		h.logger.WithError(err).Error(ctx, "executor: state save failed",
-			"job_id", req.Msg.JobId)
+			"job_id", req.Msg.GetJobId())
+
 		return nil, mapError(err)
 	}
 
@@ -121,12 +123,12 @@ func (h *ExecutorHandler) ReportState(ctx context.Context, req *connect.Request[
 
 // ReportCompletion marks a job as completed or failed.
 func (h *ExecutorHandler) ReportCompletion(ctx context.Context, req *connect.Request[executorv1.ReportCompletionRequest]) (*connect.Response[executorv1.ReportCompletionResponse], error) {
-	jobID, err := uuid.Parse(req.Msg.JobId)
+	jobID, err := uuid.Parse(req.Msg.GetJobId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid job_id: %w", err))
 	}
 
-	connectionID, err := uuid.Parse(req.Msg.ConnectionId)
+	connectionID, err := uuid.Parse(req.Msg.GetConnectionId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid connection_id: %w", err))
 	}
@@ -134,14 +136,15 @@ func (h *ExecutorHandler) ReportCompletion(ctx context.Context, req *connect.Req
 	if err := h.reportCompletion.Execute(ctx, pipelinejobs.ReportCompletionParams{
 		JobID:        jobID,
 		ConnectionID: connectionID,
-		Success:      req.Msg.Success,
-		ErrorMessage: req.Msg.ErrorMessage,
-		RecordsRead:  req.Msg.RecordsRead,
-		BytesSynced:  req.Msg.BytesSynced,
-		DurationMs:   req.Msg.DurationMs,
+		Success:      req.Msg.GetSuccess(),
+		ErrorMessage: req.Msg.GetErrorMessage(),
+		RecordsRead:  req.Msg.GetRecordsRead(),
+		BytesSynced:  req.Msg.GetBytesSynced(),
+		DurationMs:   req.Msg.GetDurationMs(),
 	}); err != nil {
 		h.logger.WithError(err).Error(ctx, "executor: completion failed",
-			"job_id", req.Msg.JobId)
+			"job_id", req.Msg.GetJobId())
+
 		return nil, mapError(err)
 	}
 
@@ -150,15 +153,15 @@ func (h *ExecutorHandler) ReportCompletion(ctx context.Context, req *connect.Req
 
 // ReportConfigUpdate handles config update reports from executors.
 func (h *ExecutorHandler) ReportConfigUpdate(ctx context.Context, req *connect.Request[executorv1.ReportConfigUpdateRequest]) (*connect.Response[executorv1.ReportConfigUpdateResponse], error) {
-	connectorID, err := uuid.Parse(req.Msg.ConnectorId)
+	connectorID, err := uuid.Parse(req.Msg.GetConnectorId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid connector_id: %w", err))
 	}
 
 	if err := h.handleConfigUpdate.Execute(ctx, pipelinejobs.HandleConfigUpdateParams{
-		ConnectorType: protoConnectorTypeToDomain(req.Msg.ConnectorType),
+		ConnectorType: protoConnectorTypeToDomain(req.Msg.GetConnectorType()),
 		ConnectorID:   connectorID,
-		Config:        req.Msg.Config,
+		Config:        req.Msg.GetConfig(),
 	}); err != nil {
 		return nil, mapError(err)
 	}
@@ -168,17 +171,17 @@ func (h *ExecutorHandler) ReportConfigUpdate(ctx context.Context, req *connect.R
 
 // ReportLog receives batched log lines from executors and persists them.
 func (h *ExecutorHandler) ReportLog(ctx context.Context, req *connect.Request[executorv1.ReportLogRequest]) (*connect.Response[executorv1.ReportLogResponse], error) {
-	jobID, err := uuid.Parse(req.Msg.JobId)
+	jobID, err := uuid.Parse(req.Msg.GetJobId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
 	if err := h.batchAppendLogs.Execute(ctx, pipelinelogs.BatchAppendJobLogsParams{
 		JobID:    jobID,
-		LogLines: req.Msg.LogLines,
+		LogLines: req.Msg.GetLogLines(),
 	}); err != nil {
 		h.logger.WithError(err).Error(ctx, "executor: failed to batch append logs",
-			"job_id", req.Msg.JobId)
+			"job_id", req.Msg.GetJobId())
 		// Non-fatal: return success anyway so executor doesn't retry.
 	}
 
@@ -188,10 +191,11 @@ func (h *ExecutorHandler) ReportLog(ctx context.Context, req *connect.Request[ex
 // ClaimJob claims the next available job and returns the full executor bundle per D-02.
 func (h *ExecutorHandler) ClaimJob(ctx context.Context, req *connect.Request[executorv1.ClaimJobRequest]) (*connect.Response[executorv1.ClaimJobResponse], error) {
 	result, err := h.claimJobBundle.Execute(ctx, pipelinejobs.ClaimJobParams{
-		WorkerID: req.Msg.WorkerId,
+		WorkerID: req.Msg.GetWorkerId(),
 	})
 	if err != nil {
 		h.logger.WithError(err).Error(ctx, "executor: claim job failed")
+
 		return nil, mapError(err)
 	}
 
@@ -227,20 +231,20 @@ func (h *ExecutorHandler) ClaimJob(ctx context.Context, req *connect.Request[exe
 
 // UpdateJobStatus reports job completion or failure per D-03.
 func (h *ExecutorHandler) UpdateJobStatus(ctx context.Context, req *connect.Request[executorv1.UpdateJobStatusRequest]) (*connect.Response[executorv1.UpdateJobStatusResponse], error) {
-	jobID, err := uuid.Parse(req.Msg.JobId)
+	jobID, err := uuid.Parse(req.Msg.GetJobId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid job_id: %w", err))
 	}
 
 	// Build SyncStats from request.
 	stats := &pipelineservice.SyncStats{
-		RecordsRead: req.Msg.RecordsRead,
-		BytesSynced: req.Msg.BytesSynced,
+		RecordsRead: req.Msg.GetRecordsRead(),
+		BytesSynced: req.Msg.GetBytesSynced(),
 	}
 
 	var syncErr error
-	if !req.Msg.Success {
-		syncErr = fmt.Errorf("%s", req.Msg.ErrorMessage)
+	if !req.Msg.GetSuccess() {
+		syncErr = fmt.Errorf("%s", req.Msg.GetErrorMessage())
 	}
 
 	if err := h.updateJobStatus.Execute(ctx, pipelinejobs.UpdateJobStatusParams{
@@ -249,7 +253,8 @@ func (h *ExecutorHandler) UpdateJobStatus(ctx context.Context, req *connect.Requ
 		SyncStats: stats,
 	}); err != nil {
 		h.logger.WithError(err).Error(ctx, "executor: update job status failed",
-			"job_id", req.Msg.JobId)
+			"job_id", req.Msg.GetJobId())
+
 		return nil, mapError(err)
 	}
 
@@ -260,7 +265,7 @@ func (h *ExecutorHandler) UpdateJobStatus(ctx context.Context, req *connect.Requ
 // Returns active=true only for Running or Starting statuses.
 // Returns active=false for all other statuses and on any error (including not found).
 func (h *ExecutorHandler) IsJobActive(ctx context.Context, req *connect.Request[executorv1.IsJobActiveRequest]) (*connect.Response[executorv1.IsJobActiveResponse], error) {
-	jobID, err := uuid.Parse(req.Msg.JobId)
+	jobID, err := uuid.Parse(req.Msg.GetJobId())
 	if err != nil {
 		return connect.NewResponse(&executorv1.IsJobActiveResponse{Active: false}), nil //nolint:nilerr // invalid UUID means not active
 	}
@@ -277,9 +282,10 @@ func (h *ExecutorHandler) IsJobActive(ctx context.Context, req *connect.Request[
 
 // ClaimConnectorTask claims the next pending connector task for the given worker (D-15).
 func (h *ExecutorHandler) ClaimConnectorTask(ctx context.Context, req *connect.Request[executorv1.ClaimConnectorTaskRequest]) (*connect.Response[executorv1.ClaimConnectorTaskResponse], error) {
-	result, err := h.claimTask.Execute(ctx, req.Msg.WorkerId)
+	result, err := h.claimTask.Execute(ctx, req.Msg.GetWorkerId())
 	if err != nil {
 		h.logger.WithError(err).Error(ctx, "executor: claim connector task failed")
+
 		return nil, mapError(err)
 	}
 
@@ -301,19 +307,20 @@ func (h *ExecutorHandler) ClaimConnectorTask(ctx context.Context, req *connect.R
 
 // ReportConnectorTaskResult reports the result of a connector task (D-18/D-19).
 func (h *ExecutorHandler) ReportConnectorTaskResult(ctx context.Context, req *connect.Request[executorv1.ReportConnectorTaskResultRequest]) (*connect.Response[executorv1.ReportConnectorTaskResultResponse], error) {
-	taskID, err := uuid.Parse(req.Msg.TaskId)
+	taskID, err := uuid.Parse(req.Msg.GetTaskId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid task_id: %w", err))
 	}
 
 	if err := h.reportTaskResult.Execute(ctx, pipelinetasks.ReportTaskResultParams{
 		TaskID:       taskID,
-		Success:      req.Msg.Success,
-		ErrorMessage: req.Msg.ErrorMessage,
-		Result:       req.Msg.Result,
+		Success:      req.Msg.GetSuccess(),
+		ErrorMessage: req.Msg.GetErrorMessage(),
+		Result:       req.Msg.GetResult(),
 	}); err != nil {
 		h.logger.WithError(err).Error(ctx, "executor: report connector task result failed",
-			"task_id", req.Msg.TaskId)
+			"task_id", req.Msg.GetTaskId())
+
 		return nil, mapError(err)
 	}
 

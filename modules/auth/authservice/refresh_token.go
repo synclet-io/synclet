@@ -37,6 +37,7 @@ func (uc *RefreshTokenUC) Execute(ctx context.Context, refreshToken string) (*To
 		}); err != nil {
 			return nil, fmt.Errorf("delete expired refresh token: %w", err)
 		}
+
 		return nil, fmt.Errorf("refresh token expired")
 	}
 
@@ -49,6 +50,7 @@ func (uc *RefreshTokenUC) Execute(ctx context.Context, refreshToken string) (*To
 
 	// Delete old token and create new pair atomically to prevent reuse and token loss.
 	var result *TokenPair
+
 	if err := uc.storage.ExecuteInTransaction(ctx, func(ctx context.Context, tx Storage) error {
 		if err := tx.RefreshTokens().Delete(ctx, &RefreshTokenFilter{
 			ID: filter.Equals(storedToken.ID),
@@ -58,6 +60,7 @@ func (uc *RefreshTokenUC) Execute(ctx context.Context, refreshToken string) (*To
 
 		var err error
 		result, err = generateTokenPair(ctx, tx, uc.config, user)
+
 		return err
 	}); err != nil {
 		return nil, err

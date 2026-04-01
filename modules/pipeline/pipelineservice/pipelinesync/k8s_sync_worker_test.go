@@ -21,6 +21,7 @@ func (m *mockK8sJobCreator) CreateSyncJob(ctx context.Context, opts K8sSyncJobOp
 	if m.createSyncJobFn != nil {
 		return m.createSyncJobFn(ctx, opts)
 	}
+
 	return "synclet-sync-test-123", nil
 }
 
@@ -82,7 +83,7 @@ func TestK8sSyncWorker_CreateSyncJobFailure(t *testing.T) {
 		InternalAPIURL: "http://synclet:8081",
 	})
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "k8s api unavailable")
 }
 

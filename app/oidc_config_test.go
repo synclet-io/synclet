@@ -28,26 +28,26 @@ func TestParseOIDCProviderConfigs(t *testing.T) {
 	require.Len(t, configs, 2)
 
 	// Google provider.
-	g := configs[0]
-	assert.Equal(t, "google", g.Slug)
-	assert.Equal(t, "Google", g.DisplayName)
-	assert.Equal(t, "https://accounts.google.com", g.Issuer)
-	assert.Equal(t, "google-client-id", g.ClientID)
-	assert.Equal(t, "google-secret", g.ClientSecret)
-	assert.Equal(t, []string{"openid", "profile", "email"}, g.Scopes) // default
-	assert.Equal(t, "viewer", g.DefaultRole)                          // default
-	assert.True(t, g.AutoCreateUser)
+	google := configs[0]
+	assert.Equal(t, "google", google.Slug)
+	assert.Equal(t, "Google", google.DisplayName)
+	assert.Equal(t, "https://accounts.google.com", google.Issuer)
+	assert.Equal(t, "google-client-id", google.ClientID)
+	assert.Equal(t, "google-secret", google.ClientSecret)
+	assert.Equal(t, []string{"openid", "profile", "email"}, google.Scopes) // default
+	assert.Equal(t, "viewer", google.DefaultRole)                          // default
+	assert.True(t, google.AutoCreateUser)
 
 	// Okta provider.
-	o := configs[1]
-	assert.Equal(t, "okta", o.Slug)
-	assert.Equal(t, "https://myorg.okta.com", o.Issuer)
-	assert.Equal(t, []string{"openid", "profile"}, o.Scopes)
-	assert.Equal(t, "editor", o.DefaultRole)
-	assert.Equal(t, "groups", o.RoleClaim)
-	assert.Equal(t, map[string]string{"admin": "synclet-admins"}, o.RoleMapping)
-	assert.Equal(t, []string{"mycompany.com", "partner.com"}, o.AllowedDomains)
-	assert.Equal(t, map[string]string{"department": "engineering"}, o.BoundClaims)
+	okta := configs[1]
+	assert.Equal(t, "okta", okta.Slug)
+	assert.Equal(t, "https://myorg.okta.com", okta.Issuer)
+	assert.Equal(t, []string{"openid", "profile"}, okta.Scopes)
+	assert.Equal(t, "editor", okta.DefaultRole)
+	assert.Equal(t, "groups", okta.RoleClaim)
+	assert.Equal(t, map[string]string{"admin": "synclet-admins"}, okta.RoleMapping)
+	assert.Equal(t, []string{"mycompany.com", "partner.com"}, okta.AllowedDomains)
+	assert.Equal(t, map[string]string{"department": "engineering"}, okta.BoundClaims)
 }
 
 func TestParseOIDCProviderConfigs_Empty(t *testing.T) {

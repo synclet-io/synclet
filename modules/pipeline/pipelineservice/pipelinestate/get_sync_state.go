@@ -52,6 +52,7 @@ func (uc *GetSyncState) Execute(ctx context.Context, params GetSyncStateParams) 
 	if err := json.Unmarshal([]byte(state.StateBlob), &messages); err != nil {
 		return nil, fmt.Errorf("unmarshaling state blob: %w", err)
 	}
+
 	if len(messages) == 0 {
 		return nil, nil
 	}
@@ -62,6 +63,7 @@ func (uc *GetSyncState) Execute(ctx context.Context, params GetSyncStateParams) 
 		if messages[0].Data == nil {
 			return nil, nil
 		}
+
 		return messages[0].Data, nil
 	}
 
@@ -76,5 +78,6 @@ func (uc *GetSyncState) Execute(ctx context.Context, params GetSyncStateParams) 
 	if err != nil {
 		return nil, fmt.Errorf("marshaling state for connector: %w", err)
 	}
+
 	return data, nil
 }

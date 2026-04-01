@@ -34,11 +34,14 @@ func (uc *ClaimJob) Execute(ctx context.Context, params ClaimJobParams) (*pipeli
 	if err != nil {
 		return nil, fmt.Errorf("claiming next scheduled job: %w", err)
 	}
+
 	if job == nil {
 		return nil, nil
 	}
+
 	if uc.logger != nil {
 		uc.logger.WithFields(map[string]interface{}{"job_id": job.ID.String(), "connection_id": job.ConnectionID.String()}).Info(ctx, "claimed job")
 	}
+
 	return job, nil
 }

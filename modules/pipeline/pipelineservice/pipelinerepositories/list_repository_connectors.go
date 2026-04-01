@@ -46,24 +46,27 @@ func (uc *ListRepositoryConnectors) Execute(ctx context.Context, params ListRepo
 		}
 	}
 
-	f := &pipelineservice.RepositoryConnectorFilter{
+	connFilter := &pipelineservice.RepositoryConnectorFilter{
 		RepositoryID: filter.Equals(params.RepositoryID),
 	}
 
 	if params.ConnectorType != "" {
-		f.ConnectorType = filter.Equals(parseConnectorType(params.ConnectorType))
-	}
-	if params.SupportLevel != "" {
-		f.SupportLevel = filter.Equals(parseSupportLevel(params.SupportLevel))
-	}
-	if params.License != "" {
-		f.License = filter.Equals(params.License)
-	}
-	if params.SourceType != "" {
-		f.SourceType = filter.Equals(parseSourceType(params.SourceType))
+		connFilter.ConnectorType = filter.Equals(parseConnectorType(params.ConnectorType))
 	}
 
-	connectors, err := uc.storage.RepositoryConnectors().Find(ctx, f)
+	if params.SupportLevel != "" {
+		connFilter.SupportLevel = filter.Equals(parseSupportLevel(params.SupportLevel))
+	}
+
+	if params.License != "" {
+		connFilter.License = filter.Equals(params.License)
+	}
+
+	if params.SourceType != "" {
+		connFilter.SourceType = filter.Equals(parseSourceType(params.SourceType))
+	}
+
+	connectors, err := uc.storage.RepositoryConnectors().Find(ctx, connFilter)
 	if err != nil {
 		return nil, fmt.Errorf("listing repository connectors: %w", err)
 	}
@@ -72,12 +75,14 @@ func (uc *ListRepositoryConnectors) Execute(ctx context.Context, params ListRepo
 	if params.Search != "" {
 		search := strings.ToLower(params.Search)
 		var filtered []*pipelineservice.RepositoryConnector
+
 		for _, c := range connectors {
 			if strings.Contains(strings.ToLower(c.Name), search) ||
 				strings.Contains(strings.ToLower(c.DockerRepository), search) {
 				filtered = append(filtered, c)
 			}
 		}
+
 		return filtered, nil
 	}
 

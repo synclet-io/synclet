@@ -47,6 +47,7 @@ func NewK8sHandler(params K8sHandlerParams) *K8sHandler {
 // OnStateConfirmed forwards confirmed state to the server via the reporter.
 func (h *K8sHandler) OnStateConfirmed(_ context.Context, msg *protocol.AirbyteStateMessage) error {
 	h.reporter.QueueState(msg)
+
 	return nil
 }
 
@@ -55,7 +56,9 @@ func (h *K8sHandler) OnSourceControl(_ context.Context, msg *protocol.AirbyteCon
 	if msg.Type != protocol.ControlMessageTypeConnectorConfig || msg.ConnectorConfig == nil {
 		return nil
 	}
+
 	h.reporter.QueueConfigUpdate(executorv1.ConnectorType_CONNECTOR_TYPE_SOURCE, h.sourceID, msg.ConnectorConfig.Config)
+
 	return nil
 }
 
@@ -64,12 +67,15 @@ func (h *K8sHandler) OnDestControl(_ context.Context, msg *protocol.AirbyteContr
 	if msg.Type != protocol.ControlMessageTypeConnectorConfig || msg.ConnectorConfig == nil {
 		return nil
 	}
+
 	h.reporter.QueueConfigUpdate(executorv1.ConnectorType_CONNECTOR_TYPE_DESTINATION, h.destID, msg.ConnectorConfig.Config)
+
 	return nil
 }
 
 // OnLog forwards a pre-formatted log line to the K8s reporter for async delivery.
 func (h *K8sHandler) OnLog(_ context.Context, line string) error {
 	h.reporter.QueueLog(line)
+
 	return nil
 }

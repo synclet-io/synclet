@@ -33,6 +33,7 @@ func (uc *GetSyncTimeline) Execute(ctx context.Context, params pipelineservice.G
 		if err != nil {
 			return nil, fmt.Errorf("verifying connection ownership: %w", err)
 		}
+
 		if conn == nil {
 			return nil, pipelineservice.ErrConnectionNotFound
 		}
@@ -59,24 +60,24 @@ func (uc *GetSyncTimeline) Execute(ctx context.Context, params pipelineservice.G
 		Durations:  make([]pipelineservice.DurationPointItem, len(rows)),
 	}
 
-	for i, r := range rows {
-		label := formatBucketLabel(r.BucketStart, params.TimeRange)
+	for i, row := range rows {
+		label := formatBucketLabel(row.BucketStart, params.TimeRange)
 
 		result.Points[i] = pipelineservice.TimelinePointItem{
 			Label:     label,
-			Succeeded: r.SyncsSucceeded,
-			Failed:    r.SyncsFailed,
+			Succeeded: row.SyncsSucceeded,
+			Failed:    row.SyncsFailed,
 		}
 
 		result.Throughput[i] = pipelineservice.ThroughputPointItem{
 			Label:       label,
-			RecordsRead: r.RecordsRead,
-			BytesSynced: r.BytesSynced,
+			RecordsRead: row.RecordsRead,
+			BytesSynced: row.BytesSynced,
 		}
 
 		result.Durations[i] = pipelineservice.DurationPointItem{
 			Label:         label,
-			AvgDurationMs: r.AvgDurationMs,
+			AvgDurationMs: row.AvgDurationMs,
 		}
 	}
 

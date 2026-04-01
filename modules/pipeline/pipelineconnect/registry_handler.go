@@ -140,7 +140,7 @@ func (h *RegistryHandler) GetConnectorSpec(ctx context.Context, req *connect.Req
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	id, err := uuid.Parse(req.Msg.Id)
+	id, err := uuid.Parse(req.Msg.GetId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid connector id: %w", err))
 	}
@@ -181,28 +181,30 @@ func (h *RegistryHandler) AddConnector(ctx context.Context, req *connect.Request
 	}
 
 	if err := connectutil.ValidateStringLengths(
-		connectutil.StringValidation{Field: "name", Value: req.Msg.Name, MaxLen: connectutil.MaxNameLength},
-		connectutil.StringValidation{Field: "docker_image", Value: req.Msg.DockerImage, MaxLen: connectutil.MaxNameLength},
-		connectutil.StringValidation{Field: "docker_tag", Value: req.Msg.DockerTag, MaxLen: 128},
+		connectutil.StringValidation{Field: "name", Value: req.Msg.GetName(), MaxLen: connectutil.MaxNameLength},
+		connectutil.StringValidation{Field: "docker_image", Value: req.Msg.GetDockerImage(), MaxLen: connectutil.MaxNameLength},
+		connectutil.StringValidation{Field: "docker_tag", Value: req.Msg.GetDockerTag(), MaxLen: 128},
 	); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
 	var repoID *uuid.UUID
-	if req.Msg.RepositoryId != "" {
-		parsed, err := uuid.Parse(req.Msg.RepositoryId)
+
+	if req.Msg.GetRepositoryId() != "" {
+		parsed, err := uuid.Parse(req.Msg.GetRepositoryId())
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid repository_id: %w", err))
 		}
+
 		repoID = &parsed
 	}
 
-	mc, err := h.addConnector.Execute(ctx, pipelineconnectors.AddConnectorParams{
+	connector, err := h.addConnector.Execute(ctx, pipelineconnectors.AddConnectorParams{
 		WorkspaceID:   workspaceID,
-		DockerImage:   req.Msg.DockerImage,
-		DockerTag:     req.Msg.DockerTag,
-		Name:          req.Msg.Name,
-		ConnectorType: protoToConnectorType(req.Msg.ConnectorType),
+		DockerImage:   req.Msg.GetDockerImage(),
+		DockerTag:     req.Msg.GetDockerTag(),
+		Name:          req.Msg.GetName(),
+		ConnectorType: protoToConnectorType(req.Msg.GetConnectorType()),
 		RepositoryID:  repoID,
 	})
 	if err != nil {
@@ -210,7 +212,7 @@ func (h *RegistryHandler) AddConnector(ctx context.Context, req *connect.Request
 	}
 
 	return connect.NewResponse(&registryv1.AddConnectorResponse{
-		Id: mc.ID.String(),
+		Id: connector.ID.String(),
 	}), nil
 }
 
@@ -221,7 +223,7 @@ func (h *RegistryHandler) GetManagedConnector(ctx context.Context, req *connect.
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	id, err := uuid.Parse(req.Msg.Id)
+	id, err := uuid.Parse(req.Msg.GetId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid connector id: %w", err))
 	}
@@ -268,7 +270,7 @@ func (h *RegistryHandler) DeleteManagedConnector(ctx context.Context, req *conne
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	id, err := uuid.Parse(req.Msg.Id)
+	id, err := uuid.Parse(req.Msg.GetId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid connector id: %w", err))
 	}
@@ -291,21 +293,21 @@ func (h *RegistryHandler) AddRepository(ctx context.Context, req *connect.Reques
 	}
 
 	if err := connectutil.ValidateStringLengths(
-		connectutil.StringValidation{Field: "name", Value: req.Msg.Name, MaxLen: connectutil.MaxNameLength},
-		connectutil.StringValidation{Field: "url", Value: req.Msg.Url, MaxLen: connectutil.MaxURLLength},
+		connectutil.StringValidation{Field: "name", Value: req.Msg.GetName(), MaxLen: connectutil.MaxNameLength},
+		connectutil.StringValidation{Field: "url", Value: req.Msg.GetUrl(), MaxLen: connectutil.MaxURLLength},
 	); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
 	var authHeader *string
-	if req.Msg.AuthHeader != "" {
+	if req.Msg.GetAuthHeader() != "" {
 		authHeader = &req.Msg.AuthHeader
 	}
 
 	repo, err := h.addRepository.Execute(ctx, pipelinerepositories.AddRepositoryParams{
 		WorkspaceID: workspaceID,
-		Name:        req.Msg.Name,
-		URL:         req.Msg.Url,
+		Name:        req.Msg.GetName(),
+		URL:         req.Msg.GetUrl(),
 		AuthHeader:  authHeader,
 	})
 	if err != nil {
@@ -343,7 +345,7 @@ func (h *RegistryHandler) ListRepositories(ctx context.Context, _ *connect.Reque
 
 // DeleteRepository removes a repository and disassociates managed connectors (admin-only).
 func (h *RegistryHandler) DeleteRepository(ctx context.Context, req *connect.Request[registryv1.DeleteRepositoryRequest]) (*connect.Response[registryv1.DeleteRepositoryResponse], error) {
-	repoID, err := uuid.Parse(req.Msg.Id)
+	repoID, err := uuid.Parse(req.Msg.GetId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid repository id: %w", err))
 	}
@@ -368,7 +370,7 @@ func (h *RegistryHandler) DeleteRepository(ctx context.Context, req *connect.Req
 
 // SyncRepository triggers a manual sync of a repository (admin-only).
 func (h *RegistryHandler) SyncRepository(ctx context.Context, req *connect.Request[registryv1.SyncRepositoryRequest]) (*connect.Response[registryv1.SyncRepositoryResponse], error) {
-	repoID, err := uuid.Parse(req.Msg.Id)
+	repoID, err := uuid.Parse(req.Msg.GetId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid repository id: %w", err))
 	}
@@ -398,7 +400,7 @@ func (h *RegistryHandler) ListRepositoryConnectors(ctx context.Context, req *con
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	repoID, err := uuid.Parse(req.Msg.RepositoryId)
+	repoID, err := uuid.Parse(req.Msg.GetRepositoryId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid repository_id: %w", err))
 	}
@@ -406,15 +408,16 @@ func (h *RegistryHandler) ListRepositoryConnectors(ctx context.Context, req *con
 	params := pipelinerepositories.ListRepositoryConnectorsParams{
 		RepositoryID: repoID,
 		WorkspaceID:  workspaceID,
-		Search:       req.Msg.Search,
+		Search:       req.Msg.GetSearch(),
 	}
-	if req.Msg.Type != registryv1.ConnectorType_CONNECTOR_TYPE_UNSPECIFIED {
-		params.ConnectorType = protoToConnectorType(req.Msg.Type).String()
+	if req.Msg.GetType() != registryv1.ConnectorType_CONNECTOR_TYPE_UNSPECIFIED {
+		params.ConnectorType = protoToConnectorType(req.Msg.GetType()).String()
 	}
-	if f := req.Msg.Filter; f != nil {
-		params.SupportLevel = protoToSupportLevel(f.SupportLevel)
-		params.License = protoToLicense(f.License)
-		params.SourceType = protoToSourceType(f.SourceType)
+
+	if f := req.Msg.GetFilter(); f != nil {
+		params.SupportLevel = protoToSupportLevel(f.GetSupportLevel())
+		params.License = protoToLicense(f.GetLicense())
+		params.SourceType = protoToSourceType(f.GetSourceType())
 	}
 
 	connectors, err := h.listRepoConnectors.Execute(ctx, params)
@@ -423,18 +426,18 @@ func (h *RegistryHandler) ListRepositoryConnectors(ctx context.Context, req *con
 	}
 
 	infos := make([]*registryv1.ConnectorInfo, len(connectors))
-	for i, c := range connectors {
+	for i, connector := range connectors {
 		infos[i] = &registryv1.ConnectorInfo{
-			DockerImage:   c.DockerRepository,
-			Name:          c.Name,
-			IconUrl:       c.IconURL,
-			DocsUrl:       c.DocumentationURL,
-			ReleaseStage:  releaseStageToProto(c.ReleaseStage),
-			LatestVersion: c.DockerImageTag,
-			Type:          managedConnectorTypeToProto(c.ConnectorType),
-			SupportLevel:  supportLevelToProto(c.SupportLevel),
-			License:       licenseStringToProto(c.License),
-			SourceType:    sourceTypeToProto(c.SourceType),
+			DockerImage:   connector.DockerRepository,
+			Name:          connector.Name,
+			IconUrl:       connector.IconURL,
+			DocsUrl:       connector.DocumentationURL,
+			ReleaseStage:  releaseStageToProto(connector.ReleaseStage),
+			LatestVersion: connector.DockerImageTag,
+			Type:          managedConnectorTypeToProto(connector.ConnectorType),
+			SupportLevel:  supportLevelToProto(connector.SupportLevel),
+			License:       licenseStringToProto(connector.License),
+			SourceType:    sourceTypeToProto(connector.SourceType),
 		}
 	}
 
@@ -445,12 +448,12 @@ func (h *RegistryHandler) ListRepositoryConnectors(ctx context.Context, req *con
 
 // GetConnectorVersions returns available versions for a connector image.
 func (h *RegistryHandler) GetConnectorVersions(ctx context.Context, req *connect.Request[registryv1.GetConnectorVersionsRequest]) (*connect.Response[registryv1.GetConnectorVersionsResponse], error) {
-	if req.Msg.ConnectorImage == "" {
+	if req.Msg.GetConnectorImage() == "" {
 		return connect.NewResponse(&registryv1.GetConnectorVersionsResponse{}), nil
 	}
 
 	result, err := h.getConnectorVersions.Execute(ctx, pipelinerepositories.GetConnectorVersionsParams{
-		ConnectorImage: req.Msg.ConnectorImage,
+		ConnectorImage: req.Msg.GetConnectorImage(),
 	})
 	if err != nil {
 		return nil, mapError(fmt.Errorf("getting connector versions: %w", err))
@@ -469,12 +472,12 @@ func (h *RegistryHandler) UpdateManagedConnector(ctx context.Context, req *conne
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	connectorID, err := uuid.Parse(req.Msg.Id)
+	connectorID, err := uuid.Parse(req.Msg.GetId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid connector id: %w", err))
 	}
 
-	mc, err := h.updateConnector.Execute(ctx, pipelineconnectors.UpdateManagedConnectorParams{
+	connector, err := h.updateConnector.Execute(ctx, pipelineconnectors.UpdateManagedConnectorParams{
 		ConnectorID: connectorID,
 		WorkspaceID: workspaceID,
 	})
@@ -483,7 +486,7 @@ func (h *RegistryHandler) UpdateManagedConnector(ctx context.Context, req *conne
 	}
 
 	return connect.NewResponse(&registryv1.UpdateManagedConnectorResponse{
-		Connector: managedConnectorToProto(mc),
+		Connector: managedConnectorToProto(connector),
 	}), nil
 }
 
@@ -495,11 +498,13 @@ func (h *RegistryHandler) BatchUpdateConnectors(ctx context.Context, req *connec
 	}
 
 	var connectorIDs []uuid.UUID
-	for _, idStr := range req.Msg.ConnectorIds {
+
+	for _, idStr := range req.Msg.GetConnectorIds() {
 		id, err := uuid.Parse(idStr)
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid connector id %q: %w", idStr, err))
 		}
+
 		connectorIDs = append(connectorIDs, id)
 	}
 

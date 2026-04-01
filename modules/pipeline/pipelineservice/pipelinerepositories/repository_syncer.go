@@ -34,6 +34,7 @@ func NewRepositorySyncer(storage pipelineservice.Storage, syncRepo *SyncReposito
 func (s *RepositorySyncer) Run(ctx context.Context) {
 	ticker := time.NewTicker(s.interval)
 	defer ticker.Stop()
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -48,12 +49,15 @@ func (s *RepositorySyncer) syncAll(ctx context.Context) {
 	repos, err := s.storage.Repositorys().Find(ctx, &pipelineservice.RepositoryFilter{})
 	if err != nil {
 		s.logger.WithError(err).Error(ctx, "failed to list repositories for sync")
+
 		return
 	}
+
 	for _, repo := range repos {
 		if repo.Status == pipelineservice.RepositoryStatusSyncing {
 			continue // skip if already syncing
 		}
+
 		if _, err := s.syncRepo.Execute(ctx, SyncRepositoryParams{RepositoryID: repo.ID, WorkspaceID: repo.WorkspaceID}); err != nil {
 			s.logger.WithError(err).Warn(ctx, "failed to sync repository",
 				"repo_id", repo.ID.String(),

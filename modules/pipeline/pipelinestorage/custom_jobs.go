@@ -15,6 +15,7 @@ import (
 func (s *JobsStorage) ClaimNextScheduledJob(ctx context.Context, workerID string) (*pipelinesvc.Job, error) {
 	var row dbJob
 	now := time.Now()
+
 	result := s.DB.WithContext(ctx).
 		Raw(`UPDATE pipeline.jobs SET status = ?, worker_id = ?, started_at = ?, heartbeat_at = ?
 		     WHERE id = (
@@ -31,15 +32,18 @@ func (s *JobsStorage) ClaimNextScheduledJob(ctx context.Context, workerID string
 	if result.Error != nil {
 		return nil, fmt.Errorf("claiming scheduled job: %w", result.Error)
 	}
+
 	if result.RowsAffected == 0 {
 		return nil, nil
 	}
+
 	return convertJobFromDB(&row)
 }
 
 // CountActiveJobs counts jobs with status in (scheduled, starting, running).
 func (s *JobsStorage) CountActiveJobs(ctx context.Context) (int, error) {
 	var count int
+
 	result := s.DB.WithContext(ctx).
 		Raw(`SELECT COUNT(*) FROM pipeline.jobs WHERE status IN (?, ?, ?)`,
 			jobStatusScheduled, jobStatusStarting, jobStatusRunning).
@@ -47,5 +51,6 @@ func (s *JobsStorage) CountActiveJobs(ctx context.Context) (int, error) {
 	if result.Error != nil {
 		return 0, fmt.Errorf("counting active jobs: %w", result.Error)
 	}
+
 	return count, nil
 }

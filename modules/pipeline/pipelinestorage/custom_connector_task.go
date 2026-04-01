@@ -12,6 +12,7 @@ import (
 // Returns nil, nil if no pending task is available.
 func (s *ConnectorTasksStorage) ClaimPendingTask(ctx context.Context, workerID string) (*pipelinesvc.ConnectorTask, error) {
 	var row dbConnectorTask
+
 	result := s.DB.WithContext(ctx).
 		Raw(`UPDATE pipeline.connector_tasks
 		     SET status = ?, worker_id = ?, updated_at = NOW()
@@ -29,8 +30,10 @@ func (s *ConnectorTasksStorage) ClaimPendingTask(ctx context.Context, workerID s
 	if result.Error != nil {
 		return nil, fmt.Errorf("claiming pending connector task: %w", result.Error)
 	}
+
 	if result.RowsAffected == 0 {
 		return nil, nil
 	}
+
 	return convertConnectorTaskFromDB(&row)
 }

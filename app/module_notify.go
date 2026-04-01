@@ -84,8 +84,10 @@ func notifyModule() fx.Option {
 				func(cfg *smtpConfig, logger *logging.Logger) notifyservice.EmailSender {
 					if cfg.SMTPHost == "" {
 						logger.Named("notify").Warn(context.Background(), "SMTP not configured: email delivery disabled. Set SMTP_HOST to enable.")
+
 						return notifyservice.NewNoOpEmailSender()
 					}
+
 					return notifyservice.NewSMTPEmailSender(notifyservice.SMTPConfig{
 						Host:     cfg.SMTPHost,
 						Port:     cfg.SMTPPort,

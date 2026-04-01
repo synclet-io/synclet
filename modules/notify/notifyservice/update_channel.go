@@ -45,6 +45,7 @@ func (uc *UpdateChannel) Execute(ctx context.Context, params UpdateChannelParams
 	if params.Name != nil {
 		channel.Name = *params.Name
 	}
+
 	if params.Config != nil {
 		if err := validateChannelConfig(channel.ChannelType, params.Config); err != nil {
 			return nil, fmt.Errorf("invalid config: %w", err)
@@ -63,10 +64,12 @@ func (uc *UpdateChannel) Execute(ctx context.Context, params UpdateChannelParams
 				if oldRef, ok := existingConfig[field]; ok && secretutil.IsSecretRef(oldRef) {
 					_ = uc.secrets.DeleteSecret(ctx, oldRef) // non-fatal
 				}
+
 				ref, err := uc.secrets.StoreSecret(ctx, "channel", channel.ID, value)
 				if err != nil {
 					return nil, fmt.Errorf("encrypting channel config field %s: %w", field, err)
 				}
+
 				params.Config[field] = ref
 			}
 		}
@@ -75,8 +78,10 @@ func (uc *UpdateChannel) Execute(ctx context.Context, params UpdateChannelParams
 		if err != nil {
 			return nil, fmt.Errorf("marshaling config: %w", err)
 		}
+
 		channel.Config = string(configJSON)
 	}
+
 	if params.Enabled != nil {
 		channel.Enabled = *params.Enabled
 	}

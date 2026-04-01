@@ -22,6 +22,7 @@ func NewOIDCProvider(ctx context.Context, cfg OIDCProviderConfig, callbackBaseUR
 	if err != nil {
 		return nil, fmt.Errorf("discovering OIDC provider %s: %w", cfg.Slug, err)
 	}
+
 	oauth2Cfg := oauth2.Config{
 		ClientID:     cfg.ClientID,
 		ClientSecret: cfg.ClientSecret,
@@ -32,6 +33,7 @@ func NewOIDCProvider(ctx context.Context, cfg OIDCProviderConfig, callbackBaseUR
 	verifier := provider.Verifier(&oidc.Config{
 		ClientID: cfg.ClientID,
 	})
+
 	return &OIDCProvider{
 		Config:       cfg,
 		oidcProvider: provider,

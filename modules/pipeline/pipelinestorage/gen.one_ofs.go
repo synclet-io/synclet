@@ -53,6 +53,7 @@ func (c *jsonConnectorTaskPayload) UnmarshalJSON(bytes []byte) error {
 		}
 		c.Val = &value.Value
 	}
+
 	return nil
 }
 func (c *jsonConnectorTaskPayload) Scan(value any) error {
@@ -112,6 +113,7 @@ func convertConnectorTaskPayloadToDB(val pipelineservice.ConnectorTaskPayload) (
 
 		return result, nil
 	}
+
 	return nil, fmt.Errorf("invalid ConnectorTaskPayload value type: %T", val)
 }
 
@@ -190,6 +192,7 @@ func (c *jsonConnectorTaskResult) UnmarshalJSON(bytes []byte) error {
 		}
 		c.Val = &value.Value
 	}
+
 	return nil
 }
 func (c *jsonConnectorTaskResult) Scan(value any) error {
@@ -249,6 +252,7 @@ func convertConnectorTaskResultToDB(val pipelineservice.ConnectorTaskResult) (*j
 
 		return result, nil
 	}
+
 	return nil, fmt.Errorf("invalid ConnectorTaskResult value type: %T", val)
 }
 

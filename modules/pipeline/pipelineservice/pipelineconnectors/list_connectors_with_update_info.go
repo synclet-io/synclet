@@ -49,9 +49,10 @@ func (uc *ListConnectorsWithUpdateInfo) Execute(ctx context.Context, params List
 
 	// Collect unique repository IDs from connectors that have a repo link.
 	repoIDSet := make(map[uuid.UUID]struct{})
-	for _, mc := range connectors {
-		if mc.RepositoryID != nil {
-			repoIDSet[*mc.RepositoryID] = struct{}{}
+
+	for _, conn := range connectors {
+		if conn.RepositoryID != nil {
+			repoIDSet[*conn.RepositoryID] = struct{}{}
 		}
 	}
 
@@ -75,26 +76,26 @@ func (uc *ListConnectorsWithUpdateInfo) Execute(ctx context.Context, params List
 			return nil, fmt.Errorf("loading repository connectors: %w", findErr)
 		}
 
-		for _, rc := range repoConns {
-			repoConnMap[repoKey{RepositoryID: rc.RepositoryID, DockerRepository: rc.DockerRepository}] = rc
+		for _, repoConn := range repoConns {
+			repoConnMap[repoKey{RepositoryID: repoConn.RepositoryID, DockerRepository: repoConn.DockerRepository}] = repoConn
 		}
 	}
 
 	// Enrich each connector with update info.
 	result := make([]ManagedConnectorWithUpdateInfo, len(connectors))
-	for i, mc := range connectors {
-		result[i] = ManagedConnectorWithUpdateInfo{Connector: mc}
+	for i, connector := range connectors {
+		result[i] = ManagedConnectorWithUpdateInfo{Connector: connector}
 
-		if mc.RepositoryID == nil {
+		if connector.RepositoryID == nil {
 			continue
 		}
 
-		rc, ok := repoConnMap[repoKey{RepositoryID: *mc.RepositoryID, DockerRepository: mc.DockerImage}]
+		rc, ok := repoConnMap[repoKey{RepositoryID: *connector.RepositoryID, DockerRepository: connector.DockerImage}]
 		if !ok {
 			continue
 		}
 
-		result[i].UpdateInfo = enrichUpdateInfo(mc, rc)
+		result[i].UpdateInfo = enrichUpdateInfo(connector, rc)
 	}
 
 	return result, nil
@@ -118,7 +119,7 @@ type GetConnectorWithUpdateInfoParams struct {
 
 // Execute returns a single managed connector enriched with update info.
 func (uc *GetConnectorWithUpdateInfo) Execute(ctx context.Context, params GetConnectorWithUpdateInfoParams) (*ManagedConnectorWithUpdateInfo, error) {
-	mc, err := uc.storage.ManagedConnectors().First(ctx, &pipelineservice.ManagedConnectorFilter{
+	connector, err := uc.storage.ManagedConnectors().First(ctx, &pipelineservice.ManagedConnectorFilter{
 		ID:          filter.Equals(params.ID),
 		WorkspaceID: filter.Equals(params.WorkspaceID),
 	})
@@ -126,38 +127,38 @@ func (uc *GetConnectorWithUpdateInfo) Execute(ctx context.Context, params GetCon
 		return nil, fmt.Errorf("getting managed connector: %w", err)
 	}
 
-	result := &ManagedConnectorWithUpdateInfo{Connector: mc}
+	result := &ManagedConnectorWithUpdateInfo{Connector: connector}
 
-	if mc.RepositoryID == nil {
+	if connector.RepositoryID == nil {
 		return result, nil
 	}
 
-	rc, err := uc.storage.RepositoryConnectors().First(ctx, &pipelineservice.RepositoryConnectorFilter{
-		RepositoryID:     filter.Equals(*mc.RepositoryID),
-		DockerRepository: filter.Equals(mc.DockerImage),
+	repoConn, err := uc.storage.RepositoryConnectors().First(ctx, &pipelineservice.RepositoryConnectorFilter{
+		RepositoryID:     filter.Equals(*connector.RepositoryID),
+		DockerRepository: filter.Equals(connector.DockerImage),
 	})
 	if err != nil {
 		return result, nil //nolint:nilerr // not-found is expected, return without update info
 	}
 
-	result.UpdateInfo = enrichUpdateInfo(mc, rc)
+	result.UpdateInfo = enrichUpdateInfo(connector, repoConn)
 
 	return result, nil
 }
 
 // enrichUpdateInfo computes the ManagedConnectorUpdateInfo for a managed connector
 // given its matching repository connector.
-func enrichUpdateInfo(mc *pipelineservice.ManagedConnector, rc *pipelineservice.RepositoryConnector) *ManagedConnectorUpdateInfo {
-	hasUpdate := mc.DockerTag != rc.DockerImageTag
+func enrichUpdateInfo(connector *pipelineservice.ManagedConnector, repoConn *pipelineservice.RepositoryConnector) *ManagedConnectorUpdateInfo {
+	hasUpdate := connector.DockerTag != repoConn.DockerImageTag
 	info := &ManagedConnectorUpdateInfo{
-		AvailableVersion: rc.DockerImageTag,
+		AvailableVersion: repoConn.DockerImageTag,
 		HasUpdate:        hasUpdate,
 	}
 
 	if hasUpdate {
-		metadata, err := pipelineservice.UnmarshalMetadata(rc.Metadata)
+		metadata, err := pipelineservice.UnmarshalMetadata(repoConn.Metadata)
 		if err == nil {
-			info.BreakingChanges = DetectBreakingChanges(mc.DockerTag, rc.DockerImageTag, metadata)
+			info.BreakingChanges = DetectBreakingChanges(connector.DockerTag, repoConn.DockerImageTag, metadata)
 		}
 	}
 

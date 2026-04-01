@@ -55,8 +55,10 @@ func Run(ctx context.Context, sourceStdout io.Reader, destStdin io.WriteCloser, 
 	var destErr error
 	var wg sync.WaitGroup
 	wg.Add(1)
+
 	go func() {
 		defer wg.Done()
+
 		destErr = readDestOutput(ctx, destReader, handler, stats, logger)
 	}()
 
@@ -83,6 +85,7 @@ func Run(ctx context.Context, sourceStdout io.Reader, destStdin io.WriteCloser, 
 	if destErr != nil {
 		return stats.export(), destErr
 	}
+
 	return stats.export(), srcErr
 }
 
@@ -98,6 +101,7 @@ func routeSourceMessages(ctx context.Context, reader *protocol.MessageReader, wr
 			if errors.Is(err, io.EOF) {
 				return nil
 			}
+
 			return err
 		}
 
@@ -118,14 +122,18 @@ func routeSourceMessages(ctx context.Context, reader *protocol.MessageReader, wr
 			if !firstRecordSeen {
 				firstRecordSeen = true
 			}
+
 			lastRecordTime = time.Now()
+
 			stats.recordsRead++
 			if msg.Record != nil {
 				stats.bytesSynced += int64(len(msg.Record.Data))
 			}
+
 			if cfg.Rewriter != nil {
 				cfg.Rewriter.RewriteRecord(msg)
 			}
+
 			if err := writer.Write(msg); err != nil {
 				return err
 			}
@@ -135,6 +143,7 @@ func routeSourceMessages(ctx context.Context, reader *protocol.MessageReader, wr
 			if cfg.Rewriter != nil {
 				cfg.Rewriter.RewriteState(msg)
 			}
+
 			if err := writer.Write(msg); err != nil {
 				return err
 			}
@@ -143,6 +152,7 @@ func routeSourceMessages(ctx context.Context, reader *protocol.MessageReader, wr
 			// Log messages stay local, not forwarded to destination.
 			if msg.Log != nil {
 				logger.WithFields(map[string]interface{}{"level": msg.Log.Level, "message": msg.Log.Message}).Info(ctx, "source log")
+
 				if err := handler.OnLog(ctx, formatLogLine("[src]", msg.Log)); err != nil {
 					logger.WithError(err).Error(ctx, "failed to handle log")
 				}
@@ -164,6 +174,7 @@ func routeSourceMessages(ctx context.Context, reader *protocol.MessageReader, wr
 					if msg.Trace.Analytics != nil {
 						logger.WithFields(map[string]interface{}{"type": msg.Trace.Analytics.Type, "value": msg.Trace.Analytics.Value}).Info(ctx, "source analytics trace")
 					}
+
 					if err := handler.OnLog(ctx, formatTraceLine("[src]", msg.Trace)); err != nil {
 						logger.WithError(err).Error(ctx, "failed to handle trace log")
 					}
@@ -172,12 +183,15 @@ func routeSourceMessages(ctx context.Context, reader *protocol.MessageReader, wr
 					if err := handler.OnSourceTrace(ctx, msg.Trace); err != nil {
 						logger.WithError(err).Error(ctx, "handler OnSourceTrace error")
 					}
+
 					if err := handler.OnLog(ctx, formatTraceLine("[src]", msg.Trace)); err != nil {
 						logger.WithError(err).Error(ctx, "failed to handle trace log")
 					}
+
 					if cfg.Rewriter != nil {
 						cfg.Rewriter.RewriteTrace(msg)
 					}
+
 					if err := writer.Write(msg); err != nil {
 						return err
 					}
@@ -186,6 +200,7 @@ func routeSourceMessages(ctx context.Context, reader *protocol.MessageReader, wr
 					if cfg.Rewriter != nil {
 						cfg.Rewriter.RewriteTrace(msg)
 					}
+
 					if err := writer.Write(msg); err != nil {
 						return err
 					}
@@ -210,6 +225,7 @@ func readDestOutput(ctx context.Context, reader *protocol.MessageReader, handler
 			if errors.Is(err, io.EOF) || errors.Is(err, io.ErrClosedPipe) {
 				return nil
 			}
+
 			return err
 		}
 
@@ -233,6 +249,7 @@ func readDestOutput(ctx context.Context, reader *protocol.MessageReader, handler
 		case protocol.MessageTypeLog:
 			if msg.Log != nil {
 				logger.WithFields(map[string]interface{}{"level": msg.Log.Level, "message": msg.Log.Message}).Info(ctx, "dest log")
+
 				if err := handler.OnLog(ctx, formatLogLine("[dst]", msg.Log)); err != nil {
 					logger.WithError(err).Error(ctx, "failed to handle log")
 				}
@@ -250,6 +267,7 @@ func readDestOutput(ctx context.Context, reader *protocol.MessageReader, handler
 				if msg.Trace.Type == protocol.TraceTypeAnalytics && msg.Trace.Analytics != nil {
 					logger.WithFields(map[string]interface{}{"type": msg.Trace.Analytics.Type, "value": msg.Trace.Analytics.Value}).Info(ctx, "dest analytics trace")
 				}
+
 				if msg.Trace.Type == protocol.TraceTypeAnalytics || msg.Trace.Type == protocol.TraceTypeError {
 					if err := handler.OnLog(ctx, formatTraceLine("[dst]", msg.Trace)); err != nil {
 						logger.WithError(err).Error(ctx, "failed to handle trace log")

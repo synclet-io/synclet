@@ -24,11 +24,13 @@ func (m *mockRunner) ListByLabel(_ context.Context, _ string) ([]container.Summa
 
 func (m *mockRunner) Stop(_ context.Context, containerID string) error {
 	m.stopped = append(m.stopped, containerID)
+
 	return nil
 }
 
 func (m *mockRunner) Remove(_ context.Context, containerID string) error {
 	m.removed = append(m.removed, containerID)
+
 	return nil
 }
 
@@ -45,6 +47,7 @@ func (m *mockJobChecker) IsJobActive(_ context.Context, jobID string) (bool, err
 // Uses nil logger which is nil-safe in go-pnp logging package.
 func newTestOrphanCleaner(runner *mockRunner, checker OrphanJobChecker) *OrphanCleaner {
 	var logger *logging.Logger // nil is safe -- all methods are nil-receiver safe
+
 	return &OrphanCleaner{
 		runner:      runner,
 		checker:     checker,

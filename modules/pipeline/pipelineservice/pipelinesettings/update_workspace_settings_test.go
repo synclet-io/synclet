@@ -53,7 +53,7 @@ func TestUpdateWorkspaceSettings_RejectsNegative(t *testing.T) {
 		WorkspaceID: uuid.New(), MaxJobsPerWorkspace: &negative,
 	})
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	var validationErr *pipelineservice.ValidationError
 	assert.ErrorAs(t, err, &validationErr)
 }

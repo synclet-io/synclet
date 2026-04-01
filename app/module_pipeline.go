@@ -96,6 +96,7 @@ func newStaleJobWatchdogJob(cfg *pipelineConfig, recoverStale *pipelinejobs.Reco
 			if recovered > 0 {
 				logger.WithField("count", recovered).Info(ctx, "watchdog: recovered stale jobs")
 			}
+
 			return nil
 		},
 	})
@@ -471,6 +472,7 @@ func pipelineModule(options *RunAppOptions) fx.Option {
 							} else if recovered > 0 {
 								logger.WithField("count", recovered).Info(ctx, "startup: recovered stale jobs")
 							}
+
 							return nil
 						},
 						OnStop: func(ctx context.Context) error {
@@ -479,6 +481,7 @@ func pipelineModule(options *RunAppOptions) fx.Option {
 							}
 							// Drain background event emissions and retention cleanup goroutines.
 							reportCompletion.Wait()
+
 							return nil
 						},
 					})
@@ -492,6 +495,7 @@ func pipelineModule(options *RunAppOptions) fx.Option {
 									if err := cleaner.CleanupAll(ctx); err != nil {
 										logger.WithError(err).Error(ctx, "startup: orphan cleanup failed")
 									}
+
 									return nil
 								},
 							})
@@ -508,13 +512,16 @@ func pipelineModule(options *RunAppOptions) fx.Option {
 				pnpjobber.Module(newConnectorTaskCleanupJob),
 				fx.Invoke(func(lc fx.Lifecycle, repoSyncer *pipelinerepositories.RepositorySyncer) {
 					runCtx, cancel := context.WithCancel(context.Background())
+
 					lc.Append(fx.Hook{
 						OnStart: func(_ context.Context) error {
 							go repoSyncer.Run(runCtx)
+
 							return nil
 						},
 						OnStop: func(_ context.Context) error {
 							cancel()
+
 							return nil
 						},
 					})

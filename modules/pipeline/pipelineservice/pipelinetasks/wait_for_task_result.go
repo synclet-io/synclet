@@ -45,6 +45,7 @@ type WaitForTaskResultResult struct {
 func (uc *WaitForTaskResult) Execute(ctx context.Context, params WaitForTaskResultParams) (*WaitForTaskResultResult, error) {
 	timer := time.NewTimer(uc.timeout)
 	defer timer.Stop()
+
 	ticker := time.NewTicker(uc.pollInterval)
 	defer ticker.Stop()
 

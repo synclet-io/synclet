@@ -29,5 +29,6 @@ func IsSensitiveField(channelType ChannelType, field string) bool {
 			return true
 		}
 	}
+
 	return false
 }

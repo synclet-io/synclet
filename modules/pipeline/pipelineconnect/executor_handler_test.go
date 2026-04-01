@@ -33,17 +33,18 @@ func TestExecutorHandler_IsJobActive(t *testing.T) {
 		{name: "Not found returns not active", jobErr: fmt.Errorf("not found"), expected: false},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
 			// Simulate the IsJobActive logic inline since we can't easily inject mocks
 			// into the concrete handler (it uses *pipelinejobs.GetJob, not an interface).
 			var active bool
-			if tt.jobErr != nil {
+			if testCase.jobErr != nil {
 				active = false
 			} else {
-				active = tt.status == pipelineservice.JobStatusRunning || tt.status == pipelineservice.JobStatusStarting
+				active = testCase.status == pipelineservice.JobStatusRunning || testCase.status == pipelineservice.JobStatusStarting
 			}
-			assert.Equal(t, tt.expected, active)
+
+			assert.Equal(t, testCase.expected, active)
 		})
 	}
 }
@@ -62,16 +63,17 @@ func TestExecutorHandler_Heartbeat_Cancelled(t *testing.T) {
 		{name: "Error checking cancel returns false", cancelErr: fmt.Errorf("db error"), expected: false},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
 			// Simulate the Heartbeat cancel check logic.
 			var cancelled bool
-			if tt.cancelErr != nil {
+			if testCase.cancelErr != nil {
 				cancelled = false
 			} else {
-				cancelled = tt.cancelled
+				cancelled = testCase.cancelled
 			}
-			assert.Equal(t, tt.expected, cancelled)
+
+			assert.Equal(t, testCase.expected, cancelled)
 		})
 	}
 }
@@ -88,7 +90,7 @@ func TestExecutorHandler_IsJobActive_InvalidUUID(t *testing.T) {
 func TestExecutorHandler_ClaimJob_NoJob(t *testing.T) {
 	// When claimJobBundle returns nil, handler should return has_job=false.
 	resp := &executorv1.ClaimJobResponse{HasJob: false}
-	assert.False(t, resp.HasJob)
+	assert.False(t, resp.GetHasJob())
 }
 
 // Compile-time interface check is the most important test -- ensures all 8 RPCs are implemented.

@@ -33,6 +33,7 @@ func (a *UserLookupAdapter) GetUserByEmail(ctx context.Context, email string) (*
 	if err != nil {
 		return nil, fmt.Errorf("looking up user by email: %w", err)
 	}
+
 	if user == nil {
 		return nil, nil
 	}
@@ -50,6 +51,7 @@ func (a *UserLookupAdapter) GetUserByID(ctx context.Context, id uuid.UUID) (*wor
 	if err != nil {
 		return nil, fmt.Errorf("looking up user by ID: %w", err)
 	}
+
 	if user == nil {
 		return nil, nil
 	}

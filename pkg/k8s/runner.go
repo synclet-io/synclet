@@ -85,6 +85,7 @@ func NewSyncRunner(cfg Config) (*SyncRunner, error) {
 	} else {
 		restConfig, err = rest.InClusterConfig()
 	}
+
 	if err != nil {
 		return nil, fmt.Errorf("creating k8s config: %w", err)
 	}
@@ -94,20 +95,21 @@ func NewSyncRunner(cfg Config) (*SyncRunner, error) {
 		return nil, fmt.Errorf("creating k8s client: %w", err)
 	}
 
-	ns := cfg.Namespace
-	if ns == "" {
+	namespace := cfg.Namespace
+	if namespace == "" {
 		// When running in-cluster, use the pod's own namespace.
 		if data, err := os.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace"); err == nil {
-			ns = strings.TrimSpace(string(data))
+			namespace = strings.TrimSpace(string(data))
 		}
 	}
-	if ns == "" {
-		ns = "default"
+
+	if namespace == "" {
+		namespace = "default"
 	}
 
 	return &SyncRunner{
 		client:    clientset,
-		namespace: ns,
+		namespace: namespace,
 		config:    cfg,
 	}, nil
 }
@@ -132,6 +134,7 @@ func (r *SyncRunner) LaunchSync(ctx context.Context, opts SyncOptions) (string, 
 	if jobName == "" {
 		jobName = fmt.Sprintf("synclet-sync-%d", time.Now().UnixNano())
 	}
+
 	jobName = sanitizeK8sName(jobName)
 
 	dataDir := "/shared"
@@ -140,6 +143,7 @@ func (r *SyncRunner) LaunchSync(ctx context.Context, opts SyncOptions) (string, 
 	// Secrets keep sensitive credentials (passwords, API keys) out of CLI args
 	// which are visible in `kubectl describe pod` and K8s audit logs.
 	secretName := sanitizeK8sName(fmt.Sprintf("synclet-sync-%s", opts.JobID))
+
 	secretData := map[string][]byte{
 		"source-config": opts.SourceConfig,
 		"dest-config":   opts.DestConfig,
@@ -147,9 +151,11 @@ func (r *SyncRunner) LaunchSync(ctx context.Context, opts SyncOptions) (string, 
 	if opts.SourceCatalog != nil {
 		secretData["source-catalog"] = opts.SourceCatalog
 	}
+
 	if opts.DestCatalog != nil {
 		secretData["dest-catalog"] = opts.DestCatalog
 	}
+
 	if opts.State != nil {
 		secretData["source-state"] = opts.State
 	}
@@ -189,9 +195,11 @@ func (r *SyncRunner) LaunchSync(ctx context.Context, opts SyncOptions) (string, 
 	if opts.NamespaceDefinition != "" {
 		orchestratorArgs = append(orchestratorArgs, "--namespace-definition", opts.NamespaceDefinition)
 	}
+
 	if opts.CustomNamespaceFormat != "" {
 		orchestratorArgs = append(orchestratorArgs, "--custom-namespace-format", opts.CustomNamespaceFormat)
 	}
+
 	if opts.StreamPrefix != "" {
 		orchestratorArgs = append(orchestratorArgs, "--stream-prefix", opts.StreamPrefix)
 	}
@@ -201,6 +209,7 @@ func (r *SyncRunner) LaunchSync(ctx context.Context, opts SyncOptions) (string, 
 	if opts.State != nil {
 		sourceCmd += " --state /shared/source-state.json"
 	}
+
 	orchestratorArgs = append(orchestratorArgs, "--source-cmd", sourceCmd)
 	orchestratorArgs = append(orchestratorArgs, "--dest-cmd", "write --config /shared/dest-config.json --catalog /shared/dest-catalog.json")
 
@@ -262,6 +271,7 @@ func (r *SyncRunner) LaunchSync(ctx context.Context, opts SyncOptions) (string, 
 
 	// SubPath mounts: source container gets config/catalog/state directly from Secret.
 	sourceVolumeMounts := []corev1.VolumeMount{sharedMount}
+
 	sourceVolumeMounts = append(sourceVolumeMounts, corev1.VolumeMount{
 		Name: "sync-configs", MountPath: "/shared/source-config.json", SubPath: "source-config", ReadOnly: true,
 	})
@@ -270,6 +280,7 @@ func (r *SyncRunner) LaunchSync(ctx context.Context, opts SyncOptions) (string, 
 			Name: "sync-configs", MountPath: "/shared/source-catalog.json", SubPath: "source-catalog", ReadOnly: true,
 		})
 	}
+
 	if opts.State != nil {
 		sourceVolumeMounts = append(sourceVolumeMounts, corev1.VolumeMount{
 			Name: "sync-configs", MountPath: "/shared/source-state.json", SubPath: "source-state", ReadOnly: true,
@@ -278,6 +289,7 @@ func (r *SyncRunner) LaunchSync(ctx context.Context, opts SyncOptions) (string, 
 
 	// SubPath mounts: destination container gets config/catalog directly from Secret.
 	destVolumeMounts := []corev1.VolumeMount{sharedMount}
+
 	destVolumeMounts = append(destVolumeMounts, corev1.VolumeMount{
 		Name: "sync-configs", MountPath: "/shared/dest-config.json", SubPath: "dest-config", ReadOnly: true,
 	})
@@ -335,12 +347,15 @@ func (r *SyncRunner) LaunchSync(ctx context.Context, opts SyncOptions) (string, 
 	if len(opts.Tolerations) > 0 {
 		podSpec.Tolerations = opts.Tolerations
 	}
+
 	if len(opts.NodeSelector) > 0 {
 		podSpec.NodeSelector = opts.NodeSelector
 	}
+
 	if opts.Affinity != nil {
 		podSpec.Affinity = opts.Affinity
 	}
+
 	if opts.ServiceAccountName != "" {
 		podSpec.ServiceAccountName = opts.ServiceAccountName
 	}
@@ -376,6 +391,7 @@ func (r *SyncRunner) LaunchSync(ctx context.Context, opts SyncOptions) (string, 
 		// Clean up the Secret since the Job won't exist to use it.
 		// Use context.WithoutCancel so cleanup succeeds even if ctx was cancelled.
 		_ = r.client.CoreV1().Secrets(r.namespace).Delete(context.WithoutCancel(ctx), secretName, metav1.DeleteOptions{})
+
 		return "", fmt.Errorf("creating k8s job: %w", err)
 	}
 
@@ -395,14 +411,15 @@ type ConnectorTaskOptions struct {
 // for executing connector tasks (check/spec/discover). Returns the K8s Job name.
 // Simpler than LaunchSync: only 2 containers, shorter TTL, no FIFOs needed.
 func (r *SyncRunner) LaunchConnectorTask(ctx context.Context, opts ConnectorTaskOptions) (string, error) {
-	ts := time.Now().UnixNano()
-	jobName := sanitizeK8sName(fmt.Sprintf("synclet-task-%s-%d", strings.ToLower(opts.TaskType), ts))
+	timestamp := time.Now().UnixNano()
+	jobName := sanitizeK8sName(fmt.Sprintf("synclet-task-%s-%d", strings.ToLower(opts.TaskType), timestamp))
 	dataDir := "/shared"
 
 	// Create a K8s Secret for task config if provided.
 	var secretName string
 	if opts.Config != nil {
-		secretName = sanitizeK8sName(fmt.Sprintf("synclet-task-%s-%d-secret", strings.ToLower(opts.TaskType), ts))
+		secretName = sanitizeK8sName(fmt.Sprintf("synclet-task-%s-%d-secret", strings.ToLower(opts.TaskType), timestamp))
+
 		secret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      secretName,
@@ -448,6 +465,7 @@ func (r *SyncRunner) LaunchConnectorTask(ctx context.Context, opts ConnectorTask
 	// Secret volume for task config (only when config is provided).
 	var taskSecretVolumes []corev1.Volume
 	var connectorConfigMounts []corev1.VolumeMount
+
 	if secretName != "" {
 		taskSecretVolumes = append(taskSecretVolumes, corev1.Volume{
 			Name: "task-configs",
@@ -555,6 +573,7 @@ func (r *SyncRunner) LaunchConnectorTask(ctx context.Context, opts ConnectorTask
 			// Use context.WithoutCancel so cleanup succeeds even if ctx was cancelled.
 			_ = r.client.CoreV1().Secrets(r.namespace).Delete(context.WithoutCancel(ctx), secretName, metav1.DeleteOptions{})
 		}
+
 		return "", fmt.Errorf("creating k8s connector task job: %w", err)
 	}
 
@@ -564,6 +583,7 @@ func (r *SyncRunner) LaunchConnectorTask(ctx context.Context, opts ConnectorTask
 // StopSync deletes a K8s Job and its pods.
 func (r *SyncRunner) StopSync(ctx context.Context, jobName string) error {
 	propagation := metav1.DeletePropagationForeground
+
 	return r.client.BatchV1().Jobs(r.namespace).Delete(ctx, jobName, metav1.DeleteOptions{
 		PropagationPolicy: &propagation,
 	})
@@ -573,10 +593,12 @@ func sanitizeK8sName(name string) string {
 	name = strings.ToLower(name)
 	name = strings.ReplaceAll(name, "/", "-")
 	name = strings.ReplaceAll(name, ":", "-")
+
 	name = strings.ReplaceAll(name, "_", "-")
 	if len(name) > 63 {
 		name = name[:63]
 	}
+
 	return strings.TrimRight(name, "-")
 }
 
@@ -585,6 +607,7 @@ func sanitizeLabel(value string) string {
 	if len(value) > 63 {
 		value = value[:63]
 	}
+
 	return value
 }
 
@@ -597,9 +620,11 @@ func buildResourceRequirements(memoryLimit int64, cpuLimit float64, memoryReques
 		if memoryLimit > 0 {
 			limits[corev1.ResourceMemory] = *resource.NewQuantity(memoryLimit, resource.BinarySI)
 		}
+
 		if cpuLimit > 0 {
 			limits[corev1.ResourceCPU] = *resource.NewMilliQuantity(int64(cpuLimit*1000), resource.DecimalSI)
 		}
+
 		reqs.Limits = limits
 	}
 
@@ -608,9 +633,11 @@ func buildResourceRequirements(memoryLimit int64, cpuLimit float64, memoryReques
 		if memoryRequest > 0 {
 			requests[corev1.ResourceMemory] = *resource.NewQuantity(memoryRequest, resource.BinarySI)
 		}
+
 		if cpuRequest > 0 {
 			requests[corev1.ResourceCPU] = *resource.NewMilliQuantity(int64(cpuRequest*1000), resource.DecimalSI)
 		}
+
 		reqs.Requests = requests
 	}
 

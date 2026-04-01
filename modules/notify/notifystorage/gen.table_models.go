@@ -31,6 +31,7 @@ func convertWebhookToDB(src *notifyservice.Webhook) (*dbWebhook, error) {
 	result.Enabled = src.Enabled
 	result.CreatedAt = (src.CreatedAt).UTC()
 	result.UpdatedAt = (src.UpdatedAt).UTC()
+
 	return result, nil
 }
 
@@ -44,6 +45,7 @@ func convertWebhookFromDB(src *dbWebhook) (*notifyservice.Webhook, error) {
 	result.Enabled = src.Enabled
 	result.CreatedAt = src.CreatedAt
 	result.UpdatedAt = src.UpdatedAt
+
 	return result, nil
 }
 func (a dbWebhook) TableName() string {
@@ -75,6 +77,7 @@ func convertNotificationChannelToDB(src *notifyservice.NotificationChannel) (*db
 	result.Enabled = src.Enabled
 	result.CreatedAt = (src.CreatedAt).UTC()
 	result.UpdatedAt = (src.UpdatedAt).UTC()
+
 	return result, nil
 }
 
@@ -92,6 +95,7 @@ func convertNotificationChannelFromDB(src *dbNotificationChannel) (*notifyservic
 	result.Enabled = src.Enabled
 	result.CreatedAt = src.CreatedAt
 	result.UpdatedAt = src.UpdatedAt
+
 	return result, nil
 }
 func (a dbNotificationChannel) TableName() string {
@@ -125,6 +129,7 @@ func convertNotificationRuleToDB(src *notifyservice.NotificationRule) (*dbNotifi
 	result.Enabled = src.Enabled
 	result.CreatedAt = (src.CreatedAt).UTC()
 	result.UpdatedAt = (src.UpdatedAt).UTC()
+
 	return result, nil
 }
 
@@ -143,6 +148,7 @@ func convertNotificationRuleFromDB(src *dbNotificationRule) (*notifyservice.Noti
 	result.Enabled = src.Enabled
 	result.CreatedAt = src.CreatedAt
 	result.UpdatedAt = src.UpdatedAt
+
 	return result, nil
 }
 func (a dbNotificationRule) TableName() string {

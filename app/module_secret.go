@@ -42,6 +42,7 @@ func secretModule() fx.Option {
 				if err != nil || len(key) != 32 {
 					return nil, fmt.Errorf("ENCRYPTION_KEY must be a valid base64-encoded 32-byte key")
 				}
+
 				return key, nil
 			},
 			func(storage secretservice.Storage, key encryptionKey) *secretservice.StoreSecret {
@@ -49,11 +50,13 @@ func secretModule() fx.Option {
 			},
 			func(storage secretservice.Storage, key encryptionKey, cfg *secretConfig) *secretservice.RetrieveSecret {
 				var prevKey []byte
+
 				if cfg.EncryptionKeyPrevious != "" {
 					if decoded, err := base64.StdEncoding.DecodeString(cfg.EncryptionKeyPrevious); err == nil && len(decoded) == 32 {
 						prevKey = decoded
 					}
 				}
+
 				return secretservice.NewRetrieveSecret(storage, key, prevKey)
 			},
 			secretservice.NewDeleteSecret,

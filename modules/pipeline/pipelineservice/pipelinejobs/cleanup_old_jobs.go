@@ -48,6 +48,7 @@ func (uc *CleanupOldJobs) Execute(ctx context.Context) error {
 	// Collect unique workspace IDs.
 	seen := make(map[uuid.UUID]struct{})
 	var workspaceIDs []uuid.UUID
+
 	for _, conn := range connections {
 		if _, ok := seen[conn.WorkspaceID]; !ok {
 			seen[conn.WorkspaceID] = struct{}{}
@@ -60,6 +61,7 @@ func (uc *CleanupOldJobs) Execute(ctx context.Context) error {
 			if uc.logger != nil {
 				uc.logger.WithError(err).WithField("workspace_id", wsID.String()).Warn(ctx, "retention cleanup failed for workspace")
 			}
+
 			continue
 		}
 	}
@@ -83,8 +85,10 @@ func (uc *CleanupOldJobs) ExecuteForWorkspace(ctx context.Context, workspaceID u
 	if err != nil {
 		return fmt.Errorf("deleting old jobs: %w", err)
 	}
+
 	if deleted > 0 && uc.logger != nil {
 		uc.logger.WithFields(map[string]interface{}{"workspace_id": workspaceID.String(), "deleted": deleted}).Info(ctx, "cleaned up old jobs")
 	}
+
 	return nil
 }

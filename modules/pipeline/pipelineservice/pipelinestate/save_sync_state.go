@@ -59,10 +59,12 @@ func (uc *SaveSyncState) Execute(ctx context.Context, params SaveSyncStateParams
 		if params.StateMessage.Stream == nil {
 			return nil
 		}
+
 		blob, mergeErr := mergeStreamState(existing.StateBlob, params.StateMessage)
 		if mergeErr != nil {
 			return fmt.Errorf("merging stream state: %w", mergeErr)
 		}
+
 		existing.StateBlob = blob
 		existing.StateType = string(protocol.StateTypeStream)
 
@@ -72,6 +74,7 @@ func (uc *SaveSyncState) Execute(ctx context.Context, params SaveSyncStateParams
 		if marshalErr != nil {
 			return fmt.Errorf("marshaling global state: %w", marshalErr)
 		}
+
 		existing.StateBlob = string(data)
 		existing.StateType = string(protocol.StateTypeGlobal)
 
@@ -81,6 +84,7 @@ func (uc *SaveSyncState) Execute(ctx context.Context, params SaveSyncStateParams
 		if marshalErr != nil {
 			return fmt.Errorf("marshaling legacy state: %w", marshalErr)
 		}
+
 		existing.StateBlob = string(data)
 		existing.StateType = string(protocol.StateTypeLegacy)
 
@@ -113,15 +117,18 @@ func mergeStreamState(blobJSON string, msg *protocol.AirbyteStateMessage) (strin
 	targetName := msg.Stream.StreamDescriptor.Name
 	targetNS := msg.Stream.StreamDescriptor.Namespace
 	found := false
+
 	for i, s := range states {
 		if s.Type == protocol.StateTypeStream && s.Stream != nil &&
 			s.Stream.StreamDescriptor.Name == targetName &&
 			s.Stream.StreamDescriptor.Namespace == targetNS {
 			states[i] = msg
 			found = true
+
 			break
 		}
 	}
+
 	if !found {
 		states = append(states, msg)
 	}
@@ -130,5 +137,6 @@ func mergeStreamState(blobJSON string, msg *protocol.AirbyteStateMessage) (strin
 	if err != nil {
 		return "", err
 	}
+
 	return string(data), nil
 }

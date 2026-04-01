@@ -53,12 +53,15 @@ func (oc *OrphanCleaner) Cleanup(ctx context.Context) error {
 	}
 
 	cleaned := 0
-	for _, c := range containers {
-		removed, err := oc.processContainer(ctx, c)
+
+	for _, ctr := range containers {
+		removed, err := oc.processContainer(ctx, ctr)
 		if err != nil {
-			oc.logger.WithError(err).WithField("container_id", c.ID[:12]).Error(ctx, "orphan cleanup: failed to process container")
+			oc.logger.WithError(err).WithField("container_id", ctr.ID[:12]).Error(ctx, "orphan cleanup: failed to process container")
+
 			continue
 		}
+
 		if removed {
 			cleaned++
 		}
@@ -73,18 +76,19 @@ func (oc *OrphanCleaner) Cleanup(ctx context.Context) error {
 
 // processContainer checks a single container and removes it if orphaned.
 // Returns true if the container was removed.
-func (oc *OrphanCleaner) processContainer(ctx context.Context, c container.Summary) (bool, error) {
+func (oc *OrphanCleaner) processContainer(ctx context.Context, ctr container.Summary) (bool, error) {
 	// Grace period check: skip containers younger than 15 minutes.
-	created := time.Unix(c.Created, 0)
+	created := time.Unix(ctr.Created, 0)
 	if time.Since(created) < oc.gracePeriod {
 		return false, nil
 	}
 
-	jobID := c.Labels["synclet.io/job-id"]
+	jobID := ctr.Labels["synclet.io/job-id"]
 	if jobID == "" {
 		// Container has managed label but no job-id -- should not happen, but clean up.
-		oc.logger.WithField("container_id", c.ID[:12]).Warn(ctx, "orphan cleanup: managed container without job-id label")
-		return true, oc.stopAndRemove(ctx, c.ID)
+		oc.logger.WithField("container_id", ctr.ID[:12]).Warn(ctx, "orphan cleanup: managed container without job-id label")
+
+		return true, oc.stopAndRemove(ctx, ctr.ID)
 	}
 
 	active, err := oc.checker.IsJobActive(ctx, jobID)
@@ -93,8 +97,9 @@ func (oc *OrphanCleaner) processContainer(ctx context.Context, c container.Summa
 	}
 
 	if !active {
-		oc.logger.WithFields(map[string]interface{}{"container_id": c.ID[:12], "job_id": jobID}).Info(ctx, "orphan cleanup: removing orphaned container")
-		return true, oc.stopAndRemove(ctx, c.ID)
+		oc.logger.WithFields(map[string]interface{}{"container_id": ctr.ID[:12], "job_id": jobID}).Info(ctx, "orphan cleanup: removing orphaned container")
+
+		return true, oc.stopAndRemove(ctx, ctr.ID)
 	}
 
 	return false, nil
@@ -114,24 +119,27 @@ func (oc *OrphanCleaner) CleanupAll(ctx context.Context) error {
 	}
 
 	cleaned := 0
-	for _, c := range containers {
-		jobID := c.Labels["synclet.io/job-id"]
+
+	for _, ctr := range containers {
+		jobID := ctr.Labels["synclet.io/job-id"]
 		if jobID == "" {
-			oc.logger.WithField("container_id", c.ID[:12]).Warn(ctx, "startup cleanup: managed container without job-id label")
-			_ = oc.stopAndRemove(ctx, c.ID)
+			oc.logger.WithField("container_id", ctr.ID[:12]).Warn(ctx, "startup cleanup: managed container without job-id label")
+			_ = oc.stopAndRemove(ctx, ctr.ID)
 			cleaned++
+
 			continue
 		}
 
 		active, err := oc.checker.IsJobActive(ctx, jobID)
 		if err != nil {
 			oc.logger.WithError(err).WithField("job_id", jobID).Error(ctx, "startup cleanup: failed to check job")
+
 			continue
 		}
 
 		if !active {
-			oc.logger.WithFields(map[string]interface{}{"container_id": c.ID[:12], "job_id": jobID}).Info(ctx, "startup cleanup: removing orphaned container")
-			_ = oc.stopAndRemove(ctx, c.ID)
+			oc.logger.WithFields(map[string]interface{}{"container_id": ctr.ID[:12], "job_id": jobID}).Info(ctx, "startup cleanup: removing orphaned container")
+			_ = oc.stopAndRemove(ctx, ctr.ID)
 			cleaned++
 		}
 	}
@@ -146,5 +154,6 @@ func (oc *OrphanCleaner) CleanupAll(ctx context.Context) error {
 func (oc *OrphanCleaner) stopAndRemove(ctx context.Context, containerID string) error {
 	// Stop with default timeout (these are already orphaned).
 	_ = oc.runner.Stop(ctx, containerID)
+
 	return oc.runner.Remove(ctx, containerID)
 }

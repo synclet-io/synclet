@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestValidateBoundClaims(t *testing.T) {
@@ -26,7 +27,7 @@ func TestValidateBoundClaims(t *testing.T) {
 			"department": "engineering",
 		}
 		err := ValidateBoundClaims(bound, claims)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "team")
 	})
 
@@ -36,7 +37,7 @@ func TestValidateBoundClaims(t *testing.T) {
 			"team":       "platform",
 		}
 		err := ValidateBoundClaims(bound, claims)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "department")
 	})
 
@@ -53,7 +54,7 @@ func TestValidateEmailDomain(t *testing.T) {
 
 	t.Run("wrong domain fails", func(t *testing.T) {
 		err := ValidateEmailDomain("user@evil.com", true, []string{"mycompany.com"})
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "evil.com")
 	})
 
@@ -64,7 +65,7 @@ func TestValidateEmailDomain(t *testing.T) {
 
 	t.Run("unverified email rejected with allowed domains", func(t *testing.T) {
 		err := ValidateEmailDomain("user@mycompany.com", false, []string{"mycompany.com"})
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "not verified")
 	})
 }

@@ -101,6 +101,7 @@ func UpdateConfigSecrets(ctx context.Context, secrets pipelineservice.SecretsPro
 			if exists {
 				SetNestedField(newMap, path, existingVal)
 			}
+
 			continue
 		}
 
@@ -159,21 +160,22 @@ func DecryptConfigSecrets(ctx context.Context, secrets pipelineservice.SecretsPr
 // decryptMap recursively walks a map and replaces $secret: references with plaintext.
 func decryptMap(ctx context.Context, secrets pipelineservice.SecretsProvider, obj map[string]any) error {
 	for key, value := range obj {
-		switch v := value.(type) {
+		switch val := value.(type) {
 		case string:
-			if secretutil.IsSecretRef(v) {
-				plaintext, err := secrets.RetrieveSecret(ctx, v)
+			if secretutil.IsSecretRef(val) {
+				plaintext, err := secrets.RetrieveSecret(ctx, val)
 				if err != nil {
 					return fmt.Errorf("retrieving secret for field %q: %w", key, err)
 				}
+
 				obj[key] = plaintext
 			}
 		case map[string]any:
-			if err := decryptMap(ctx, secrets, v); err != nil {
+			if err := decryptMap(ctx, secrets, val); err != nil {
 				return err
 			}
 		case []any:
-			for _, item := range v {
+			for _, item := range val {
 				if m, ok := item.(map[string]any); ok {
 					if err := decryptMap(ctx, secrets, m); err != nil {
 						return err
@@ -182,5 +184,6 @@ func decryptMap(ctx context.Context, secrets pipelineservice.SecretsProvider, ob
 			}
 		}
 	}
+
 	return nil
 }

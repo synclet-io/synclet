@@ -50,6 +50,7 @@ func buildUserFilterExpr(filter *authservice.UserFilter, options ...func(*filter
 				}
 				exprs = append(exprs, expr)
 			}
+
 			return clause.Or(exprs...), nil
 		}),
 		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
@@ -64,6 +65,7 @@ func buildUserFilterExpr(filter *authservice.UserFilter, options ...func(*filter
 				}
 				exprs = append(exprs, expr)
 			}
+
 			return clause.And(exprs...), nil
 		}),
 	)
@@ -103,6 +105,7 @@ func buildRefreshTokenFilterExpr(filter *authservice.RefreshTokenFilter, options
 				}
 				exprs = append(exprs, expr)
 			}
+
 			return clause.Or(exprs...), nil
 		}),
 		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
@@ -117,6 +120,7 @@ func buildRefreshTokenFilterExpr(filter *authservice.RefreshTokenFilter, options
 				}
 				exprs = append(exprs, expr)
 			}
+
 			return clause.And(exprs...), nil
 		}),
 	)
@@ -160,6 +164,7 @@ func buildAPIKeyFilterExpr(filter *authservice.APIKeyFilter, options ...func(*fi
 				}
 				exprs = append(exprs, expr)
 			}
+
 			return clause.Or(exprs...), nil
 		}),
 		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
@@ -174,6 +179,7 @@ func buildAPIKeyFilterExpr(filter *authservice.APIKeyFilter, options ...func(*fi
 				}
 				exprs = append(exprs, expr)
 			}
+
 			return clause.And(exprs...), nil
 		}),
 	)
@@ -217,6 +223,7 @@ func buildOIDCIdentityFilterExpr(filter *authservice.OIDCIdentityFilter, options
 				}
 				exprs = append(exprs, expr)
 			}
+
 			return clause.Or(exprs...), nil
 		}),
 		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
@@ -231,6 +238,7 @@ func buildOIDCIdentityFilterExpr(filter *authservice.OIDCIdentityFilter, options
 				}
 				exprs = append(exprs, expr)
 			}
+
 			return clause.And(exprs...), nil
 		}),
 	)
@@ -266,6 +274,7 @@ func buildOIDCStateFilterExpr(filter *authservice.OIDCStateFilter, options ...fu
 				}
 				exprs = append(exprs, expr)
 			}
+
 			return clause.Or(exprs...), nil
 		}),
 		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
@@ -280,6 +289,7 @@ func buildOIDCStateFilterExpr(filter *authservice.OIDCStateFilter, options ...fu
 				}
 				exprs = append(exprs, expr)
 			}
+
 			return clause.And(exprs...), nil
 		}),
 	)

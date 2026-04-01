@@ -24,7 +24,7 @@ func NewAutoAssignMember(storage Storage) *AutoAssignMember {
 // The first member receives admin role; all others receive viewer role.
 func (uc *AutoAssignMember) Execute(ctx context.Context, userID uuid.UUID) error {
 	// Find default workspace by slug.
-	ws, err := uc.storage.Workspaces().First(ctx, &WorkspaceFilter{
+	workspace, err := uc.storage.Workspaces().First(ctx, &WorkspaceFilter{
 		Slug: filter.Equals("default"),
 	})
 	if err != nil {
@@ -33,7 +33,7 @@ func (uc *AutoAssignMember) Execute(ctx context.Context, userID uuid.UUID) error
 
 	// Determine role: first member is admin, rest are viewers.
 	memberCount, err := uc.storage.WorkspaceMembers().Count(ctx, &WorkspaceMemberFilter{
-		WorkspaceID: filter.Equals(ws.ID),
+		WorkspaceID: filter.Equals(workspace.ID),
 	})
 	if err != nil {
 		return fmt.Errorf("counting workspace members: %w", err)
@@ -46,7 +46,7 @@ func (uc *AutoAssignMember) Execute(ctx context.Context, userID uuid.UUID) error
 
 	member := &WorkspaceMember{
 		ID:          uuid.New(),
-		WorkspaceID: ws.ID,
+		WorkspaceID: workspace.ID,
 		UserID:      userID,
 		Role:        role,
 		JoinedAt:    time.Now(),

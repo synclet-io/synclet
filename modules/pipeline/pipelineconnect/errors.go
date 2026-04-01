@@ -15,13 +15,16 @@ func mapError(err error) error {
 	if errors.As(err, &notFound) {
 		return connect.NewError(connect.CodeNotFound, err)
 	}
+
 	var alreadyExists pipelineservice.AlreadyExistsError
 	if errors.As(err, &alreadyExists) {
 		return connect.NewError(connect.CodeAlreadyExists, err)
 	}
+
 	var validation *pipelineservice.ValidationError
 	if errors.As(err, &validation) {
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	}
+
 	return err
 }

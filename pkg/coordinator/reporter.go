@@ -54,26 +54,34 @@ func NewReporter(serverAddr, jobID, connectionID string) *Reporter {
 // Start begins the background goroutines for draining state and completion buffers.
 func (r *Reporter) Start(ctx context.Context) {
 	r.wg.Add(1)
+
 	go func() {
 		defer r.wg.Done()
+
 		r.drainStates(ctx)
 	}()
 
 	r.wg.Add(1)
+
 	go func() {
 		defer r.wg.Done()
+
 		r.drainCompletions(ctx)
 	}()
 
 	r.wg.Add(1)
+
 	go func() {
 		defer r.wg.Done()
+
 		r.drainConfigUpdates(ctx)
 	}()
 
 	r.wg.Add(1)
+
 	go func() {
 		defer r.wg.Done()
+
 		r.drainLogs(ctx)
 	}()
 }
@@ -83,6 +91,7 @@ func (r *Reporter) Stop() {
 	close(r.done)
 
 	ch := make(chan struct{})
+
 	go func() {
 		r.wg.Wait()
 		close(ch)
@@ -114,6 +123,7 @@ func (r *Reporter) QueueState(msg *protocol.AirbyteStateMessage) {
 	stateData, err := json.Marshal(msg)
 	if err != nil {
 		slog.Error("reporter: failed to marshal state message", "error", err)
+
 		return
 	}
 
@@ -176,8 +186,10 @@ func (r *Reporter) drainStates(ctx context.Context) {
 			if !ok {
 				return
 			}
-			r.sendWithRetry(ctx, "state", 10, func(ctx context.Context) error {
+
+			r.sendWithRetry(ctx, "state", func(ctx context.Context) error {
 				_, err := r.client.ReportState(ctx, connect.NewRequest(req))
+
 				return err
 			})
 		case <-r.done:
@@ -186,8 +198,9 @@ func (r *Reporter) drainStates(ctx context.Context) {
 				select {
 				case req := <-r.stateCh:
 					flushCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-					r.sendWithRetry(flushCtx, "state", 10, func(ctx context.Context) error {
+					r.sendWithRetry(flushCtx, "state", func(ctx context.Context) error {
 						_, err := r.client.ReportState(ctx, connect.NewRequest(req))
+
 						return err
 					})
 					cancel()
@@ -206,8 +219,10 @@ func (r *Reporter) drainCompletions(ctx context.Context) {
 			if !ok {
 				return
 			}
-			r.sendWithRetry(ctx, "completion", 10, func(ctx context.Context) error {
+
+			r.sendWithRetry(ctx, "completion", func(ctx context.Context) error {
 				_, err := r.client.ReportCompletion(ctx, connect.NewRequest(req))
+
 				return err
 			})
 		case <-r.done:
@@ -216,8 +231,9 @@ func (r *Reporter) drainCompletions(ctx context.Context) {
 				select {
 				case req := <-r.completionCh:
 					flushCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-					r.sendWithRetry(flushCtx, "completion", 10, func(ctx context.Context) error {
+					r.sendWithRetry(flushCtx, "completion", func(ctx context.Context) error {
 						_, err := r.client.ReportCompletion(ctx, connect.NewRequest(req))
+
 						return err
 					})
 					cancel()
@@ -236,8 +252,10 @@ func (r *Reporter) drainConfigUpdates(ctx context.Context) {
 			if !ok {
 				return
 			}
-			r.sendWithRetry(ctx, "config_update", 10, func(ctx context.Context) error {
+
+			r.sendWithRetry(ctx, "config_update", func(ctx context.Context) error {
 				_, err := r.client.ReportConfigUpdate(ctx, connect.NewRequest(req))
+
 				return err
 			})
 		case <-r.done:
@@ -246,8 +264,9 @@ func (r *Reporter) drainConfigUpdates(ctx context.Context) {
 				select {
 				case req := <-r.configUpdateCh:
 					flushCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-					r.sendWithRetry(flushCtx, "config_update", 10, func(ctx context.Context) error {
+					r.sendWithRetry(flushCtx, "config_update", func(ctx context.Context) error {
 						_, err := r.client.ReportConfigUpdate(ctx, connect.NewRequest(req))
+
 						return err
 					})
 					cancel()
@@ -267,6 +286,7 @@ func (r *Reporter) drainLogs(ctx context.Context) {
 		if len(batch) == 0 {
 			return
 		}
+
 		_, err := r.client.ReportLog(ctx, connect.NewRequest(&executorv1.ReportLogRequest{
 			JobId:    r.jobID,
 			LogLines: batch,
@@ -274,8 +294,10 @@ func (r *Reporter) drainLogs(ctx context.Context) {
 		if err != nil {
 			slog.Error("reporter: failed to report logs", "error", err)
 		}
+
 		batch = batch[:0]
 	}
+
 	for {
 		select {
 		case line := <-r.logCh:
@@ -295,6 +317,7 @@ func (r *Reporter) drainLogs(ctx context.Context) {
 					// Use a background context for the final flush since the outer ctx may be cancelled.
 					if len(batch) > 0 {
 						flushCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+
 						_, err := r.client.ReportLog(flushCtx, connect.NewRequest(&executorv1.ReportLogRequest{
 							JobId:    r.jobID,
 							LogLines: batch,
@@ -302,8 +325,10 @@ func (r *Reporter) drainLogs(ctx context.Context) {
 						if err != nil {
 							slog.Error("reporter: failed to report logs during drain", "error", err)
 						}
+
 						cancel()
 					}
+
 					return
 				}
 			}
@@ -311,18 +336,21 @@ func (r *Reporter) drainLogs(ctx context.Context) {
 	}
 }
 
-func (r *Reporter) sendWithRetry(ctx context.Context, name string, maxRetries int, fn func(ctx context.Context) error) {
+func (r *Reporter) sendWithRetry(ctx context.Context, name string, sendFunc func(ctx context.Context) error) {
+	const maxRetries = 10
+
 	backoff := time.Second
 	maxBackoff := 30 * time.Second
 
 	for attempt := 1; ; attempt++ {
-		err := fn(ctx)
+		err := sendFunc(ctx)
 		if err == nil {
 			return
 		}
 
 		if attempt >= maxRetries {
 			slog.Error("reporter: send failed after max retries, giving up", "type", name, "error", err, "attempts", attempt)
+
 			return
 		}
 
@@ -331,6 +359,7 @@ func (r *Reporter) sendWithRetry(ctx context.Context, name string, maxRetries in
 		select {
 		case <-ctx.Done():
 			slog.Warn("reporter: send cancelled", "type", name)
+
 			return
 		case <-time.After(backoff):
 		}

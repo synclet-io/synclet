@@ -91,6 +91,7 @@ func conditionalFxOption(condition bool, fn func() fx.Option) fx.Option {
 	if !condition {
 		return fx.Options()
 	}
+
 	return fn()
 }
 

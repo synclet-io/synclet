@@ -83,6 +83,7 @@ func k8sSyncWorkerModule() fx.Option {
 				logger *logging.Logger,
 			) *pipelinesync.K8sSyncWorker {
 				workerID := uuid.New().String()[:8]
+
 				return pipelinesync.NewK8sSyncWorker(
 					backend, setK8sJobName, k8sRunner,
 					k8sCfg.ServerAddr, workerID, logger,
@@ -151,6 +152,7 @@ func k8sConnectorTaskWorkerModule() fx.Option {
 				logger *logging.Logger,
 			) *pipelinesync.K8sConnectorTaskWorker {
 				workerID := uuid.New().String()[:8]
+
 				return pipelinesync.NewK8sConnectorTaskWorker(
 					backend, k8sRunner,
 					k8sCfg.ServerAddr, workerID, logger,
@@ -228,6 +230,7 @@ func NewFxAppOptions(options *RunAppOptions) fx.Option {
 						if err := cleanup.Execute(ctx); err != nil {
 							logger.WithError(err).Error(ctx, "auth token cleanup failed")
 						}
+
 						return nil
 					},
 				})

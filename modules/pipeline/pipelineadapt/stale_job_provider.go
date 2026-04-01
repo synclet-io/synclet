@@ -44,6 +44,7 @@ func (a *StaleJobProviderAdapter) GetStaleJobs(ctx context.Context, timeout time
 	}
 
 	var result []k8s.StaleJob
+
 	for _, job := range jobs {
 		if job.HeartbeatAt != nil && job.HeartbeatAt.Before(cutoff) && job.K8sJobName != nil {
 			result = append(result, k8s.StaleJob{

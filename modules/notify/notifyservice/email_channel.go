@@ -48,17 +48,22 @@ func (e *EmailChannel) Deliver(ctx context.Context, channel *NotificationChannel
 }
 
 func formatEmailBody(event WebhookEvent) string {
-	var sb strings.Builder
-	fmt.Fprintf(&sb, "<h2>Sync Event: %s</h2>", event.Event)
+	var builder strings.Builder
+	fmt.Fprintf(&builder, "<h2>Sync Event: %s</h2>", event.Event)
+
 	if event.ConnectionID != "" {
-		fmt.Fprintf(&sb, "<p><strong>Connection:</strong> %s</p>", event.ConnectionID)
+		fmt.Fprintf(&builder, "<p><strong>Connection:</strong> %s</p>", event.ConnectionID)
 	}
+
 	if event.JobID != "" {
-		fmt.Fprintf(&sb, "<p><strong>Job:</strong> %s</p>", event.JobID)
+		fmt.Fprintf(&builder, "<p><strong>Job:</strong> %s</p>", event.JobID)
 	}
+
 	if event.Error != "" {
-		fmt.Fprintf(&sb, "<p><strong>Error:</strong> %s</p>", event.Error)
+		fmt.Fprintf(&builder, "<p><strong>Error:</strong> %s</p>", event.Error)
 	}
-	fmt.Fprintf(&sb, "<p><strong>Time:</strong> %s</p>", event.Timestamp.Format("2006-01-02 15:04:05 UTC"))
-	return sb.String()
+
+	fmt.Fprintf(&builder, "<p><strong>Time:</strong> %s</p>", event.Timestamp.Format("2006-01-02 15:04:05 UTC"))
+
+	return builder.String()
 }

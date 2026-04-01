@@ -49,6 +49,7 @@ func (uc *ResendInvite) Execute(ctx context.Context, inviteID, workspaceID uuid.
 	if err != nil {
 		return fmt.Errorf("finding invite: %w", err)
 	}
+
 	if invite == nil {
 		return ErrWorkspaceInviteNotFound
 	}
@@ -68,13 +69,14 @@ func (uc *ResendInvite) Execute(ctx context.Context, inviteID, workspaceID uuid.
 	}
 
 	// Send email asynchronously.
-	ws, err := uc.storage.Workspaces().First(ctx, &WorkspaceFilter{
+	workspace, err := uc.storage.Workspaces().First(ctx, &WorkspaceFilter{
 		ID: filter.Equals(invite.WorkspaceID),
 	})
 	if err != nil {
 		return fmt.Errorf("loading workspace for resend email: %w", err)
 	}
-	if ws == nil {
+
+	if workspace == nil {
 		return fmt.Errorf("workspace %s not found for resend email", invite.WorkspaceID)
 	}
 
@@ -82,6 +84,7 @@ func (uc *ResendInvite) Execute(ctx context.Context, inviteID, workspaceID uuid.
 	if err != nil {
 		return fmt.Errorf("loading inviter for resend email: %w", err)
 	}
+
 	if inviter == nil {
 		return fmt.Errorf("inviter %s not found for resend email", invite.InviterUserID)
 	}
@@ -91,9 +94,10 @@ func (uc *ResendInvite) Execute(ctx context.Context, inviteID, workspaceID uuid.
 	go func() {
 		sendCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
+
 		sendErr := uc.emailSender.SendInviteEmail(sendCtx, SendInviteEmailParams{
 			To:            invite.Email,
-			WorkspaceName: ws.Name,
+			WorkspaceName: workspace.Name,
 			InviterName:   inviter.Name,
 			Role:          invite.Role.String(),
 			AcceptURL:     acceptURL,

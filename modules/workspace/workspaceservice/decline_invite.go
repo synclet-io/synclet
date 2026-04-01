@@ -26,6 +26,7 @@ func (uc *DeclineInvite) Execute(ctx context.Context, token string) error {
 	if err != nil {
 		return fmt.Errorf("finding invite by token: %w", err)
 	}
+
 	if invite == nil {
 		return ErrWorkspaceInviteNotFound
 	}

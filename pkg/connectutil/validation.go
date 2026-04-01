@@ -14,6 +14,7 @@ func ValidateStringLength(field, value string, maxLen int) error {
 	if len(value) > maxLen {
 		return fmt.Errorf("%s exceeds maximum length of %d characters", field, maxLen)
 	}
+
 	return nil
 }
 
@@ -31,5 +32,6 @@ func ValidateStringLengths(validations ...StringValidation) error {
 			return err
 		}
 	}
+
 	return nil
 }

@@ -37,7 +37,7 @@ func (uc *CreateWebhook) Execute(ctx context.Context, params CreateWebhookParams
 		return nil, fmt.Errorf("marshaling events: %w", err)
 	}
 
-	wh := &Webhook{
+	webhook := &Webhook{
 		ID:          uuid.New(),
 		WorkspaceID: params.WorkspaceID,
 		URL:         params.URL,
@@ -50,14 +50,15 @@ func (uc *CreateWebhook) Execute(ctx context.Context, params CreateWebhookParams
 
 	// Encrypt webhook secret if provided.
 	if params.Secret != "" {
-		ref, err := uc.secrets.StoreSecret(ctx, "webhook", wh.ID, params.Secret)
+		ref, err := uc.secrets.StoreSecret(ctx, "webhook", webhook.ID, params.Secret)
 		if err != nil {
 			return nil, fmt.Errorf("encrypting webhook secret: %w", err)
 		}
-		wh.Secret = ref
+
+		webhook.Secret = ref
 	}
 
-	created, err := uc.storage.Webhooks().Create(ctx, wh)
+	created, err := uc.storage.Webhooks().Create(ctx, webhook)
 	if err != nil {
 		return nil, fmt.Errorf("creating webhook: %w", err)
 	}

@@ -116,5 +116,6 @@ func (h *DockerHandler) OnLog(ctx context.Context, line string) error {
 	}); err != nil {
 		h.logger.WithError(err).Error(ctx, "failed to append log")
 	}
+
 	return nil // non-fatal
 }

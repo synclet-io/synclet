@@ -42,16 +42,18 @@ func (uc *HandleOIDCCallback) Execute(ctx context.Context, providerSlug, code, s
 	if !ok {
 		return nil, fmt.Errorf("invalid or expired state")
 	}
+
 	if storedProvider != providerSlug {
 		return nil, fmt.Errorf("state provider mismatch")
 	}
-	p, ok := uc.providers[providerSlug]
+
+	provider, ok := uc.providers[providerSlug]
 	if !ok {
 		return nil, fmt.Errorf("unknown OIDC provider: %s", providerSlug)
 	}
 
 	// Exchange authorization code for tokens with PKCE verifier.
-	oauth2Token, err := p.oauth2Config.Exchange(ctx, code, oauth2.VerifierOption(verifier))
+	oauth2Token, err := provider.oauth2Config.Exchange(ctx, code, oauth2.VerifierOption(verifier))
 	if err != nil {
 		return nil, fmt.Errorf("token exchange: %w", err)
 	}
@@ -61,7 +63,8 @@ func (uc *HandleOIDCCallback) Execute(ctx context.Context, providerSlug, code, s
 	if !ok {
 		return nil, fmt.Errorf("missing id_token in token response")
 	}
-	idToken, err := p.verifier.Verify(ctx, rawIDToken)
+
+	idToken, err := provider.verifier.Verify(ctx, rawIDToken)
 	if err != nil {
 		return nil, fmt.Errorf("verifying id_token: %w", err)
 	}
@@ -79,21 +82,21 @@ func (uc *HandleOIDCCallback) Execute(ctx context.Context, providerSlug, code, s
 	sub := idToken.Subject
 
 	// Validate bound claims.
-	if err := ValidateBoundClaims(p.Config.BoundClaims, allClaims); err != nil {
+	if err := ValidateBoundClaims(provider.Config.BoundClaims, allClaims); err != nil {
 		return nil, fmt.Errorf("bound claims validation: %w", err)
 	}
 
 	// Validate email domain.
-	if err := ValidateEmailDomain(email, emailVerified, p.Config.AllowedDomains); err != nil {
+	if err := ValidateEmailDomain(email, emailVerified, provider.Config.AllowedDomains); err != nil {
 		return nil, fmt.Errorf("email domain validation: %w", err)
 	}
 
 	// Map role from claims.
-	role := MapRole(p.Config.RoleClaim, p.Config.RoleMapping, p.Config.DefaultRole, allClaims)
+	role := MapRole(provider.Config.RoleClaim, provider.Config.RoleMapping, provider.Config.DefaultRole, allClaims)
 	_ = role // Role will be used for workspace membership in future; stored for now.
 
 	// Find or create user and OIDC identity link.
-	user, err := uc.findOrCreateUser(ctx, p.Config, sub, email, name)
+	user, err := uc.findOrCreateUser(ctx, provider.Config, sub, email, name)
 	if err != nil {
 		return nil, fmt.Errorf("find or create user: %w", err)
 	}
@@ -124,6 +127,7 @@ func (uc *HandleOIDCCallback) findOrCreateUser(ctx context.Context, cfg OIDCProv
 		if err != nil {
 			return nil, fmt.Errorf("loading linked user: %w", err)
 		}
+
 		return user, nil
 	}
 
@@ -141,9 +145,11 @@ func (uc *HandleOIDCCallback) findOrCreateUser(ctx context.Context, cfg OIDCProv
 		if !cfg.AutoCreateUser {
 			return nil, fmt.Errorf("user not found and auto-creation disabled for provider %s", cfg.Slug)
 		}
+
 		if name == "" {
 			name = email
 		}
+
 		user = &User{
 			ID:           uuid.New(),
 			Email:        email,
@@ -151,6 +157,7 @@ func (uc *HandleOIDCCallback) findOrCreateUser(ctx context.Context, cfg OIDCProv
 			Name:         name,
 			CreatedAt:    time.Now(),
 		}
+
 		user, err = uc.storage.Users().Create(ctx, user)
 		if err != nil {
 			return nil, fmt.Errorf("creating user: %w", err)

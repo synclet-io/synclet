@@ -202,27 +202,27 @@ func sourceTypeToProto(st pipelineservice.SourceType) registryv1.SourceType {
 
 // Repository converters
 
-func repositoryToProto(r *pipelineservice.Repository) *registryv1.Repository {
+func repositoryToProto(repo *pipelineservice.Repository) *registryv1.Repository {
 	lastSyncedAt := ""
-	if r.LastSyncedAt != nil {
-		lastSyncedAt = r.LastSyncedAt.Format(time.RFC3339)
+	if repo.LastSyncedAt != nil {
+		lastSyncedAt = repo.LastSyncedAt.Format(time.RFC3339)
 	}
 
 	lastError := ""
-	if r.LastError != nil {
-		lastError = *r.LastError
+	if repo.LastError != nil {
+		lastError = *repo.LastError
 	}
 
-	hasAuth := r.AuthHeader != nil && *r.AuthHeader != ""
+	hasAuth := repo.AuthHeader != nil && *repo.AuthHeader != ""
 
 	return &registryv1.Repository{
-		Id:             r.ID.String(),
-		Name:           r.Name,
-		Url:            r.URL,
+		Id:             repo.ID.String(),
+		Name:           repo.Name,
+		Url:            repo.URL,
 		HasAuth:        hasAuth,
-		Status:         repositoryStatusToProto(r.Status),
+		Status:         repositoryStatusToProto(repo.Status),
 		LastSyncedAt:   lastSyncedAt,
-		ConnectorCount: int32(r.ConnectorCount),
+		ConnectorCount: int32(repo.ConnectorCount),
 		LastError:      lastError,
 	}
 }
@@ -241,14 +241,14 @@ func repositoryStatusToProto(s pipelineservice.RepositoryStatus) registryv1.Repo
 }
 
 // managedConnectorToProto converts a domain ManagedConnector to its proto representation.
-func managedConnectorToProto(mc *pipelineservice.ManagedConnector) *registryv1.ManagedConnectorInfo {
+func managedConnectorToProto(connector *pipelineservice.ManagedConnector) *registryv1.ManagedConnectorInfo {
 	return &registryv1.ManagedConnectorInfo{
-		Id:            mc.ID.String(),
-		DockerImage:   mc.DockerImage,
-		DockerTag:     mc.DockerTag,
-		Name:          mc.Name,
-		ConnectorType: managedConnectorTypeToProto(mc.ConnectorType),
-		RepositoryId:  uuidPtrToString(mc.RepositoryID),
+		Id:            connector.ID.String(),
+		DockerImage:   connector.DockerImage,
+		DockerTag:     connector.DockerTag,
+		Name:          connector.Name,
+		ConnectorType: managedConnectorTypeToProto(connector.ConnectorType),
+		RepositoryId:  uuidPtrToString(connector.RepositoryID),
 	}
 }
 
@@ -281,6 +281,7 @@ func uuidPtrToString(id *uuid.UUID) string {
 	if id == nil {
 		return ""
 	}
+
 	return id.String()
 }
 

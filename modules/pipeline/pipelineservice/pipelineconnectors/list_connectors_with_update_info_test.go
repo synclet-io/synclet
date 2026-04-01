@@ -14,7 +14,7 @@ import (
 
 func TestListConnectorsWithUpdateInfo_NoRepoID(t *testing.T) {
 	store := newMockStorage()
-	uc := pipelineconnectors.NewListConnectorsWithUpdateInfo(store)
+	useCase := pipelineconnectors.NewListConnectorsWithUpdateInfo(store)
 
 	workspaceID := uuid.New()
 	customID := uuid.New()
@@ -30,7 +30,7 @@ func TestListConnectorsWithUpdateInfo_NoRepoID(t *testing.T) {
 		RepositoryID: nil,
 	}
 
-	result, err := uc.Execute(context.Background(), pipelineconnectors.ListConnectorsWithUpdateInfoParams{
+	result, err := useCase.Execute(context.Background(), pipelineconnectors.ListConnectorsWithUpdateInfoParams{
 		WorkspaceID: workspaceID,
 	})
 
@@ -42,7 +42,7 @@ func TestListConnectorsWithUpdateInfo_NoRepoID(t *testing.T) {
 
 func TestListConnectorsWithUpdateInfo_UpToDate(t *testing.T) {
 	store := newMockStorage()
-	uc := pipelineconnectors.NewListConnectorsWithUpdateInfo(store)
+	useCase := pipelineconnectors.NewListConnectorsWithUpdateInfo(store)
 
 	workspaceID := uuid.New()
 	repoID := uuid.New()
@@ -70,7 +70,7 @@ func TestListConnectorsWithUpdateInfo_UpToDate(t *testing.T) {
 		ConnectorType:    pipelineservice.ConnectorTypeSource,
 	}
 
-	result, err := uc.Execute(context.Background(), pipelineconnectors.ListConnectorsWithUpdateInfoParams{
+	result, err := useCase.Execute(context.Background(), pipelineconnectors.ListConnectorsWithUpdateInfoParams{
 		WorkspaceID: workspaceID,
 	})
 
@@ -84,7 +84,7 @@ func TestListConnectorsWithUpdateInfo_UpToDate(t *testing.T) {
 
 func TestListConnectorsWithUpdateInfo_HasUpdate(t *testing.T) {
 	store := newMockStorage()
-	uc := pipelineconnectors.NewListConnectorsWithUpdateInfo(store)
+	useCase := pipelineconnectors.NewListConnectorsWithUpdateInfo(store)
 
 	workspaceID := uuid.New()
 	repoID := uuid.New()
@@ -113,7 +113,7 @@ func TestListConnectorsWithUpdateInfo_HasUpdate(t *testing.T) {
 		Metadata:         "{}",
 	}
 
-	result, err := uc.Execute(context.Background(), pipelineconnectors.ListConnectorsWithUpdateInfoParams{
+	result, err := useCase.Execute(context.Background(), pipelineconnectors.ListConnectorsWithUpdateInfoParams{
 		WorkspaceID: workspaceID,
 	})
 
@@ -126,7 +126,7 @@ func TestListConnectorsWithUpdateInfo_HasUpdate(t *testing.T) {
 
 func TestListConnectorsWithUpdateInfo_WithBreakingChanges(t *testing.T) {
 	store := newMockStorage()
-	uc := pipelineconnectors.NewListConnectorsWithUpdateInfo(store)
+	useCase := pipelineconnectors.NewListConnectorsWithUpdateInfo(store)
 
 	workspaceID := uuid.New()
 	repoID := uuid.New()
@@ -155,7 +155,7 @@ func TestListConnectorsWithUpdateInfo_WithBreakingChanges(t *testing.T) {
 		Metadata:         `{"breakingChanges":{"0.2.0":{"message":"Schema changed","migrationDocumentationUrl":"https://docs.example.com/migrate"},"0.5.0":{"message":"Auth changed","upgradeDeadline":"2025-01-01"}}}`,
 	}
 
-	result, err := uc.Execute(context.Background(), pipelineconnectors.ListConnectorsWithUpdateInfoParams{
+	result, err := useCase.Execute(context.Background(), pipelineconnectors.ListConnectorsWithUpdateInfoParams{
 		WorkspaceID: workspaceID,
 	})
 
@@ -173,7 +173,7 @@ func TestListConnectorsWithUpdateInfo_WithBreakingChanges(t *testing.T) {
 
 func TestGetConnectorWithUpdateInfo(t *testing.T) {
 	store := newMockStorage()
-	uc := pipelineconnectors.NewGetConnectorWithUpdateInfo(store)
+	useCase := pipelineconnectors.NewGetConnectorWithUpdateInfo(store)
 
 	workspaceID := uuid.New()
 	repoID := uuid.New()
@@ -202,7 +202,7 @@ func TestGetConnectorWithUpdateInfo(t *testing.T) {
 		Metadata:         "{}",
 	}
 
-	result, err := uc.Execute(context.Background(), pipelineconnectors.GetConnectorWithUpdateInfoParams{
+	result, err := useCase.Execute(context.Background(), pipelineconnectors.GetConnectorWithUpdateInfoParams{
 		ID:          connID,
 		WorkspaceID: workspaceID,
 	})

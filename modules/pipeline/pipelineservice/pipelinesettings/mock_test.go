@@ -31,14 +31,14 @@ func (m *mockStorage) CatalogDiscoverys() pipelineservice.CatalogDiscoverysStora
 func (m *mockStorage) ConfiguredCatalogs() pipelineservice.ConfiguredCatalogsStorage {
 	return nil
 }
-func (m *mockStorage) JobLogs() pipelineservice.JobLogsStorage               { return nil }
+func (m *mockStorage) JobLogs() pipelineservice.JobLogsStorage                   { return nil }
 func (m *mockStorage) ConnectionStates() pipelineservice.ConnectionStatesStorage { return nil }
 func (m *mockStorage) WorkspaceSettingss() pipelineservice.WorkspaceSettingssStorage {
 	return m.workspaceSettings
 }
-func (m *mockStorage) ConnectorTasks() pipelineservice.ConnectorTasksStorage   { return nil }
+func (m *mockStorage) ConnectorTasks() pipelineservice.ConnectorTasksStorage       { return nil }
 func (m *mockStorage) StreamGenerations() pipelineservice.StreamGenerationsStorage { return nil }
-func (m *mockStorage) IdempotencyKeys() idempotency.Storage                 { return nil }
+func (m *mockStorage) IdempotencyKeys() idempotency.Storage                        { return nil }
 func (m *mockStorage) ExecuteInTransaction(ctx context.Context, cb func(ctx context.Context, tx pipelineservice.Storage) error) error {
 	return cb(ctx, m)
 }

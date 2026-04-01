@@ -42,11 +42,14 @@ func (uc *UpdateNotificationRule) Execute(ctx context.Context, params UpdateNoti
 		if !params.Condition.IsValid() {
 			return nil, fmt.Errorf("invalid condition: must be one of on_failure, on_consecutive_failures, on_zero_records")
 		}
+
 		rule.Condition = *params.Condition
 	}
+
 	if params.ConditionValue != nil {
 		rule.ConditionValue = *params.ConditionValue
 	}
+
 	if params.Enabled != nil {
 		rule.Enabled = *params.Enabled
 	}

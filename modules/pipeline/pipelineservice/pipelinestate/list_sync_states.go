@@ -66,14 +66,15 @@ func (uc *ListSyncStates) Execute(ctx context.Context, params ListSyncStatesPara
 
 	switch protocol.AirbyteStateType(state.StateType) {
 	case protocol.StateTypeStream:
-		for _, m := range msgs {
-			if m.Stream == nil {
+		for _, msg := range msgs {
+			if msg.Stream == nil {
 				continue
 			}
+
 			result.StreamStates = append(result.StreamStates, StreamStateEntry{
-				StreamNamespace: m.Stream.StreamDescriptor.Namespace,
-				StreamName:      m.Stream.StreamDescriptor.Name,
-				StateData:       m.Stream.StreamState,
+				StreamNamespace: msg.Stream.StreamDescriptor.Namespace,
+				StreamName:      msg.Stream.StreamDescriptor.Name,
+				StateData:       msg.Stream.StreamState,
 			})
 		}
 

@@ -17,8 +17,20 @@ linters:
     - unconvert
     - unparam
     - whitespace
+    - varnamelen
+    - nlreturn
+    - revive
+    - intrange
+    - testifylint
+    - protogetter
+    - dupword
+    - thelper
+    - wsl_v5
 
   settings:
+    wsl_v5:
+      disable:
+        - decl
     gocritic:
       enabled-tags:
         - diagnostic
@@ -36,6 +48,34 @@ linters:
     errorlint:
       asserts: false
 
+    varnamelen:
+      min-name-length: 3
+      ignore-names:
+        - id
+        - ok
+        - tx
+        - wg
+        - mu
+        - ch
+        - to
+      ignore-decls:
+        - w http.ResponseWriter
+        - r *http.Request
+        - r http.Request
+        - lc fx.Lifecycle
+        - i int
+        - j int
+        - n int
+        - t testing.T
+        - b testing.B
+
+    revive:
+      rules:
+        - name: exported
+          disabled: true
+        - name: package-comments
+          disabled: true
+
   exclusions:
     generated: strict
     paths:
@@ -45,7 +85,7 @@ linters:
       - node_modules
     rules:
       - path: "gen\\."
-        linters: [unused, unparam, gocritic, whitespace, staticcheck, govet, unconvert]
+        linters: [unused, unparam, gocritic, whitespace, staticcheck, govet, unconvert, varnamelen, revive, wsl_v5]
 
 formatters:
   enable:

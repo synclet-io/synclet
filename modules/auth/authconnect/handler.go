@@ -22,14 +22,17 @@ func mapError(err error) error {
 	if errors.As(err, &notFound) {
 		return connect.NewError(connect.CodeNotFound, err)
 	}
+
 	var alreadyExists authservice.AlreadyExistsError
 	if errors.As(err, &alreadyExists) {
 		return connect.NewError(connect.CodeAlreadyExists, err)
 	}
+
 	var validation *authservice.ValidationError
 	if errors.As(err, &validation) {
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	}
+
 	return err
 }
 
@@ -92,21 +95,21 @@ func (h *Handler) Register(ctx context.Context, req *connect.Request[authv1.Regi
 		return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("registration is disabled"))
 	}
 
-	if req.Msg.Email == "" || req.Msg.Password == "" || req.Msg.Name == "" {
+	if req.Msg.GetEmail() == "" || req.Msg.GetPassword() == "" || req.Msg.GetName() == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("email, password, and name are required"))
 	}
 
 	if err := connectutil.ValidateStringLengths(
-		connectutil.StringValidation{Field: "email", Value: req.Msg.Email, MaxLen: connectutil.MaxNameLength},
-		connectutil.StringValidation{Field: "name", Value: req.Msg.Name, MaxLen: connectutil.MaxNameLength},
+		connectutil.StringValidation{Field: "email", Value: req.Msg.GetEmail(), MaxLen: connectutil.MaxNameLength},
+		connectutil.StringValidation{Field: "name", Value: req.Msg.GetName(), MaxLen: connectutil.MaxNameLength},
 	); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
 	result, err := h.registerAndLogin.Execute(ctx, authservice.RegisterAndLoginParams{
-		Email:    req.Msg.Email,
-		Password: req.Msg.Password,
-		Name:     req.Msg.Name,
+		Email:    req.Msg.GetEmail(),
+		Password: req.Msg.GetPassword(),
+		Name:     req.Msg.GetName(),
 	})
 	if err != nil {
 		return nil, mapError(err)
@@ -118,17 +121,18 @@ func (h *Handler) Register(ctx context.Context, req *connect.Request[authv1.Regi
 		RefreshTokenExpiresAt: timestamppb.New(result.Tokens.RefreshExpiresAt),
 	})
 	connectutil.SetAuthCookies(resp.Header(), toAuthTokens(result.Tokens), h.cookieConfig)
+
 	return resp, nil
 }
 
 func (h *Handler) Login(ctx context.Context, req *connect.Request[authv1.LoginRequest]) (*connect.Response[authv1.LoginResponse], error) {
-	if req.Msg.Email == "" || req.Msg.Password == "" {
+	if req.Msg.GetEmail() == "" || req.Msg.GetPassword() == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("email and password are required"))
 	}
 
 	result, err := h.loginWithUserInfo.Execute(ctx, authservice.LoginWithUserInfoParams{
-		Email:    req.Msg.Email,
-		Password: req.Msg.Password,
+		Email:    req.Msg.GetEmail(),
+		Password: req.Msg.GetPassword(),
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeUnauthenticated, fmt.Errorf("invalid credentials"))
@@ -140,6 +144,7 @@ func (h *Handler) Login(ctx context.Context, req *connect.Request[authv1.LoginRe
 		RefreshTokenExpiresAt: timestamppb.New(result.Tokens.RefreshExpiresAt),
 	})
 	connectutil.SetAuthCookies(resp.Header(), toAuthTokens(result.Tokens), h.cookieConfig)
+
 	return resp, nil
 }
 
@@ -159,6 +164,7 @@ func (h *Handler) RefreshToken(ctx context.Context, req *connect.Request[authv1.
 		RefreshTokenExpiresAt: timestamppb.New(tokens.RefreshExpiresAt),
 	})
 	connectutil.SetAuthCookies(resp.Header(), toAuthTokens(tokens), h.cookieConfig)
+
 	return resp, nil
 }
 
@@ -171,6 +177,7 @@ func (h *Handler) Logout(ctx context.Context, req *connect.Request[authv1.Logout
 
 	resp := connect.NewResponse(&authv1.LogoutResponse{})
 	connectutil.ClearAuthCookies(resp.Header(), h.cookieConfig)
+
 	return resp, nil
 }
 
@@ -196,17 +203,17 @@ func (h *Handler) UpdateProfile(ctx context.Context, req *connect.Request[authv1
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	if req.Msg.Name == "" {
+	if req.Msg.GetName() == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("name is required"))
 	}
 
 	if err := connectutil.ValidateStringLengths(
-		connectutil.StringValidation{Field: "name", Value: req.Msg.Name, MaxLen: connectutil.MaxNameLength},
+		connectutil.StringValidation{Field: "name", Value: req.Msg.GetName(), MaxLen: connectutil.MaxNameLength},
 	); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	user, err := h.updateProfile.Execute(ctx, userID, req.Msg.Name)
+	user, err := h.updateProfile.Execute(ctx, userID, req.Msg.GetName())
 	if err != nil {
 		return nil, mapError(fmt.Errorf("updating profile: %w", err))
 	}
@@ -222,11 +229,11 @@ func (h *Handler) ChangePassword(ctx context.Context, req *connect.Request[authv
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	if req.Msg.CurrentPassword == "" || req.Msg.NewPassword == "" {
+	if req.Msg.GetCurrentPassword() == "" || req.Msg.GetNewPassword() == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("current_password and new_password are required"))
 	}
 
-	if err := h.changePassword.Execute(ctx, userID, req.Msg.CurrentPassword, req.Msg.NewPassword); err != nil {
+	if err := h.changePassword.Execute(ctx, userID, req.Msg.GetCurrentPassword(), req.Msg.GetNewPassword()); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("changing password: %w", err))
 	}
 
@@ -244,23 +251,24 @@ func (h *Handler) CreateAPIKey(ctx context.Context, req *connect.Request[authv1.
 		return nil, connect.NewError(connect.CodePermissionDenied, err)
 	}
 
-	if req.Msg.Name == "" {
+	if req.Msg.GetName() == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("name is required"))
 	}
 
 	if err := connectutil.ValidateStringLengths(
-		connectutil.StringValidation{Field: "name", Value: req.Msg.Name, MaxLen: connectutil.MaxNameLength},
+		connectutil.StringValidation{Field: "name", Value: req.Msg.GetName(), MaxLen: connectutil.MaxNameLength},
 	); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
 	var expiresAt *time.Time
-	if req.Msg.ExpiresAt != nil {
-		t := req.Msg.ExpiresAt.AsTime()
+
+	if req.Msg.GetExpiresAt() != nil {
+		t := req.Msg.GetExpiresAt().AsTime()
 		expiresAt = &t
 	}
 
-	rawKey, apiKey, err := h.createAPIKey.Execute(ctx, wsID, userID, req.Msg.Name, expiresAt)
+	rawKey, apiKey, err := h.createAPIKey.Execute(ctx, wsID, userID, req.Msg.GetName(), expiresAt)
 	if err != nil {
 		return nil, mapError(fmt.Errorf("creating API key: %w", err))
 	}
@@ -277,11 +285,11 @@ func (h *Handler) RevokeAPIKey(ctx context.Context, req *connect.Request[authv1.
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	if req.Msg.Id == "" {
+	if req.Msg.GetId() == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("id is required"))
 	}
 
-	id, err := uuid.Parse(req.Msg.Id)
+	id, err := uuid.Parse(req.Msg.GetId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid id"))
 	}
@@ -305,8 +313,8 @@ func (h *Handler) ListAPIKeys(ctx context.Context, _ *connect.Request[authv1.Lis
 	}
 
 	protoKeys := make([]*authv1.APIKeyInfo, len(keys))
-	for i, k := range keys {
-		protoKeys[i] = apiKeyToProto(k)
+	for i, apiKey := range keys {
+		protoKeys[i] = apiKeyToProto(apiKey)
 	}
 
 	return connect.NewResponse(&authv1.ListAPIKeysResponse{
@@ -314,19 +322,21 @@ func (h *Handler) ListAPIKeys(ctx context.Context, _ *connect.Request[authv1.Lis
 	}), nil
 }
 
-func apiKeyToProto(k *authservice.APIKey) *authv1.APIKeyInfo {
+func apiKeyToProto(apiKey *authservice.APIKey) *authv1.APIKeyInfo {
 	info := &authv1.APIKeyInfo{
-		Id:          k.ID.String(),
-		WorkspaceId: k.WorkspaceID.String(),
-		Name:        k.Name,
-		CreatedAt:   timestamppb.New(k.CreatedAt),
+		Id:          apiKey.ID.String(),
+		WorkspaceId: apiKey.WorkspaceID.String(),
+		Name:        apiKey.Name,
+		CreatedAt:   timestamppb.New(apiKey.CreatedAt),
 	}
-	if k.ExpiresAt != nil {
-		info.ExpiresAt = timestamppb.New(*k.ExpiresAt)
+	if apiKey.ExpiresAt != nil {
+		info.ExpiresAt = timestamppb.New(*apiKey.ExpiresAt)
 	}
-	if k.LastUsedAt != nil {
-		info.LastUsedAt = timestamppb.New(*k.LastUsedAt)
+
+	if apiKey.LastUsedAt != nil {
+		info.LastUsedAt = timestamppb.New(*apiKey.LastUsedAt)
 	}
+
 	return info
 }
 
@@ -352,7 +362,9 @@ func (h *Handler) GetOIDCProviders(ctx context.Context, _ *connect.Request[authv
 	if h.getOIDCProviders == nil {
 		return connect.NewResponse(&authv1.GetOIDCProvidersResponse{}), nil
 	}
+
 	providers := h.getOIDCProviders.Execute()
+
 	protoProviders := make([]*authv1.OIDCProviderInfo, len(providers))
 	for i, p := range providers {
 		protoProviders[i] = &authv1.OIDCProviderInfo{
@@ -360,6 +372,7 @@ func (h *Handler) GetOIDCProviders(ctx context.Context, _ *connect.Request[authv
 			DisplayName: p.DisplayName,
 		}
 	}
+
 	return connect.NewResponse(&authv1.GetOIDCProvidersResponse{
 		Providers: protoProviders,
 	}), nil

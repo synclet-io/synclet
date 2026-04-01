@@ -26,17 +26,18 @@ const (
 )
 
 // SetAuthCookies sets the three auth cookies (access token, refresh token, metadata) on the response.
-func SetAuthCookies(h http.Header, tokens *AuthTokens, cfg CookieConfig) {
+func SetAuthCookies(header http.Header, tokens *AuthTokens, cfg CookieConfig) {
 	accessMaxAge := int(time.Until(tokens.ExpiresAt).Seconds())
 	if accessMaxAge < 0 {
 		accessMaxAge = 0
 	}
+
 	refreshMaxAge := int(time.Until(tokens.RefreshExpiresAt).Seconds())
 	if refreshMaxAge < 0 {
 		refreshMaxAge = 0
 	}
 
-	setCookie(h, &http.Cookie{
+	setCookie(header, &http.Cookie{
 		Name:     accessTokenCookie,
 		Value:    tokens.AccessToken,
 		Path:     "/",
@@ -46,7 +47,7 @@ func SetAuthCookies(h http.Header, tokens *AuthTokens, cfg CookieConfig) {
 		SameSite: http.SameSiteLaxMode,
 	})
 
-	setCookie(h, &http.Cookie{
+	setCookie(header, &http.Cookie{
 		Name:     refreshTokenCookie,
 		Value:    tokens.RefreshToken,
 		Path:     "/",
@@ -58,7 +59,7 @@ func SetAuthCookies(h http.Header, tokens *AuthTokens, cfg CookieConfig) {
 
 	metaValue := fmt.Sprintf("access_expires=%d&refresh_expires=%d",
 		tokens.ExpiresAt.Unix(), tokens.RefreshExpiresAt.Unix())
-	setCookie(h, &http.Cookie{
+	setCookie(header, &http.Cookie{
 		Name:     authMetaCookie,
 		Value:    metaValue,
 		Path:     "/",
@@ -70,9 +71,9 @@ func SetAuthCookies(h http.Header, tokens *AuthTokens, cfg CookieConfig) {
 }
 
 // ClearAuthCookies expires all three auth cookies.
-func ClearAuthCookies(h http.Header, cfg CookieConfig) {
+func ClearAuthCookies(header http.Header, cfg CookieConfig) {
 	for _, name := range []string{accessTokenCookie, refreshTokenCookie, authMetaCookie} {
-		setCookie(h, &http.Cookie{
+		setCookie(header, &http.Cookie{
 			Name:     name,
 			Value:    "",
 			Path:     "/",
@@ -87,10 +88,12 @@ func ClearAuthCookies(h http.Header, cfg CookieConfig) {
 // ReadCookieFromHeaders extracts a cookie value from HTTP headers.
 func ReadCookieFromHeaders(h http.Header, name string) string {
 	r := &http.Request{Header: h}
+
 	c, err := r.Cookie(name)
 	if err != nil {
 		return ""
 	}
+
 	return c.Value
 }
 

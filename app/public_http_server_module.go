@@ -51,20 +51,23 @@ func publicHTTPServerModule(options *RunAppOptions) fx.Option {
 
 			// Rate limiting interceptor (before auth, ordering -1).
 			pnpconnectrpchandling.InterceptorProvider(func(lc fx.Lifecycle) ordering.OrderedItem[connect.Interceptor] {
-				rl := connectutil.NewRateLimitInterceptor(
+				rateLimiter := connectutil.NewRateLimitInterceptor(
 					map[string]connectutil.RateLimitConfig{
 						"/synclet.publicapi.auth.v1.AuthService/Login":        {Rate: rate.Every(6 * time.Second), Burst: 10}, // ~10/min
 						"/synclet.publicapi.auth.v1.AuthService/Register":     {Rate: rate.Every(20 * time.Second), Burst: 3}, // ~3/min
 						"/synclet.publicapi.auth.v1.AuthService/RefreshToken": {Rate: rate.Every(3 * time.Second), Burst: 20}, // ~20/min
 					},
 				)
+
 				lc.Append(fx.Hook{
 					OnStop: func(ctx context.Context) error {
-						rl.Stop()
+						rateLimiter.Stop()
+
 						return nil
 					},
 				})
-				return ordering.Ordered[connect.Interceptor](-1, rl)
+
+				return ordering.Ordered[connect.Interceptor](-1, rateLimiter)
 			}),
 
 			// Auth interceptor (validates tokens, populates user/workspace context).

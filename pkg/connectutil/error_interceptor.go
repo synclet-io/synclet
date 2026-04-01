@@ -39,6 +39,7 @@ func (e *errorClassifier) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
 			"procedure", req.Spec().Procedure,
 			"error", err,
 		)
+
 		return resp, connect.NewError(connect.CodeInternal, fmt.Errorf("internal error"))
 	}
 }

@@ -47,28 +47,35 @@ func (uc *UpdateConnection) Execute(ctx context.Context, params UpdateConnection
 	if params.Name != nil {
 		conn.Name = *params.Name
 	}
+
 	if params.Schedule != nil {
 		if *params.Schedule != nil && **params.Schedule != "" {
 			if _, err := pipelineservice.CronParser.Parse(**params.Schedule); err != nil {
 				return nil, fmt.Errorf("invalid cron expression %q: %w", **params.Schedule, err)
 			}
 		}
+
 		conn.Schedule = *params.Schedule
 		// Recompute next_scheduled_at when schedule changes
 		pipelineservice.RecomputeNextScheduledAt(conn, time.Now())
 	}
+
 	if params.SchemaChangePolicy != nil {
 		conn.SchemaChangePolicy = *params.SchemaChangePolicy
 	}
+
 	if params.MaxAttempts != nil {
 		conn.MaxAttempts = *params.MaxAttempts
 	}
+
 	if params.NamespaceDefinition != nil {
 		conn.NamespaceDefinition = *params.NamespaceDefinition
 	}
+
 	if params.CustomNamespaceFormat != nil {
 		conn.CustomNamespaceFormat = *params.CustomNamespaceFormat
 	}
+
 	if params.StreamPrefix != nil {
 		conn.StreamPrefix = *params.StreamPrefix
 	}

@@ -50,19 +50,21 @@ func (uc *BatchUpdateConnectors) Execute(ctx context.Context, params BatchUpdate
 	}
 
 	var updated []*pipelineservice.ManagedConnector
-	for _, mc := range connectors {
-		if mc.RepositoryID == nil {
+
+	for _, connector := range connectors {
+		if connector.RepositoryID == nil {
 			continue // Skip custom connectors.
 		}
 
 		// Update via the single update use case.
 		result, err := uc.updateConnector.Execute(ctx, UpdateManagedConnectorParams{
-			ConnectorID: mc.ID,
+			ConnectorID: connector.ID,
 			WorkspaceID: params.WorkspaceID,
 		})
 		if err != nil {
 			continue // Skip failures, continue with others.
 		}
+
 		updated = append(updated, result)
 	}
 

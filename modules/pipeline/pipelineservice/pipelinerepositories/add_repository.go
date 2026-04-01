@@ -52,6 +52,7 @@ func (uc *AddRepository) Execute(ctx context.Context, params AddRepositoryParams
 		if err != nil {
 			return nil, fmt.Errorf("encrypting auth header: %w", err)
 		}
+
 		repo.AuthHeader = &secretRef
 	}
 
@@ -69,6 +70,7 @@ func (uc *AddRepository) Execute(ctx context.Context, params AddRepositoryParams
 		_ = uc.storage.Repositorys().Delete(ctx, &pipelineservice.RepositoryFilter{
 			ID: filter.Equals(created.ID),
 		})
+
 		return nil, fmt.Errorf("initial sync failed: %w", err)
 	}
 

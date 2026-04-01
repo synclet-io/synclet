@@ -41,22 +41,24 @@ type CreateSourceParams struct {
 // Execute creates a new source.
 func (uc *CreateSource) Execute(ctx context.Context, params CreateSourceParams) (*pipelineservice.Source, error) {
 	// Verify managed connector exists and is ready.
-	mc, err := uc.storage.ManagedConnectors().First(ctx, &pipelineservice.ManagedConnectorFilter{
+	connector, err := uc.storage.ManagedConnectors().First(ctx, &pipelineservice.ManagedConnectorFilter{
 		ID:          filter.Equals(params.ManagedConnectorID),
 		WorkspaceID: filter.Equals(params.WorkspaceID),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("managed connector not found: %w", err)
 	}
+
 	now := time.Now()
 	srcID := uuid.New()
 	config := string(params.Config)
 
 	// Encrypt secret fields using the managed connector's spec.
-	encryptedConfig, encErr := pipelinesecrets.EncryptConfigSecrets(ctx, uc.secrets, "source", srcID, config, mc.Spec)
+	encryptedConfig, encErr := pipelinesecrets.EncryptConfigSecrets(ctx, uc.secrets, "source", srcID, config, connector.Spec)
 	if encErr != nil {
 		return nil, fmt.Errorf("encrypting source config secrets: %w", encErr)
 	}
+
 	config = encryptedConfig
 
 	src := &pipelineservice.Source{

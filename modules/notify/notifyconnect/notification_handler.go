@@ -21,10 +21,12 @@ func notificationMapError(err error) error {
 	if errors.As(err, &notFound) {
 		return connect.NewError(connect.CodeNotFound, err)
 	}
+
 	var alreadyExists notifyservice.AlreadyExistsError
 	if errors.As(err, &alreadyExists) {
 		return connect.NewError(connect.CodeAlreadyExists, err)
 	}
+
 	var validationErr *notifyservice.ValidationError
 	if errors.As(err, &validationErr) {
 		return connect.NewError(connect.CodeInvalidArgument, err)
@@ -103,32 +105,33 @@ func (h *NotificationHandler) CreateNotificationChannel(ctx context.Context, req
 	}
 
 	if err := connectutil.ValidateStringLengths(
-		connectutil.StringValidation{Field: "name", Value: req.Msg.Name, MaxLen: connectutil.MaxNameLength},
+		connectutil.StringValidation{Field: "name", Value: req.Msg.GetName(), MaxLen: connectutil.MaxNameLength},
 	); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	if req.Msg.ChannelType == notifyv1.NotificationChannelType_NOTIFICATION_CHANNEL_TYPE_UNSPECIFIED {
+	if req.Msg.GetChannelType() == notifyv1.NotificationChannelType_NOTIFICATION_CHANNEL_TYPE_UNSPECIFIED {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid channel_type: must be one of slack, email, telegram"))
 	}
-	ct, ok := channelTypeFromProto[req.Msg.ChannelType]
+
+	channelType, ok := channelTypeFromProto[req.Msg.GetChannelType()]
 	if !ok {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid channel_type: must be one of slack, email, telegram"))
 	}
 
 	var config map[string]string
-	if req.Msg.Config != "" {
-		if err := json.Unmarshal([]byte(req.Msg.Config), &config); err != nil {
+	if req.Msg.GetConfig() != "" {
+		if err := json.Unmarshal([]byte(req.Msg.GetConfig()), &config); err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("config must be valid JSON: %w", err))
 		}
 	}
 
 	channel, err := h.createChannel.Execute(ctx, notifyservice.CreateChannelParams{
 		WorkspaceID: workspaceID,
-		Name:        req.Msg.Name,
-		ChannelType: ct,
+		Name:        req.Msg.GetName(),
+		ChannelType: channelType,
 		Config:      config,
-		Enabled:     req.Msg.Enabled,
+		Enabled:     req.Msg.GetEnabled(),
 	})
 	if err != nil {
 		return nil, notificationMapError(err)
@@ -145,7 +148,7 @@ func (h *NotificationHandler) UpdateNotificationChannel(ctx context.Context, req
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	id, err := uuid.Parse(req.Msg.Id)
+	id, err := uuid.Parse(req.Msg.GetId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -157,13 +160,16 @@ func (h *NotificationHandler) UpdateNotificationChannel(ctx context.Context, req
 	if req.Msg.Name != nil {
 		params.Name = req.Msg.Name
 	}
+
 	if req.Msg.Config != nil {
 		var config map[string]string
-		if err := json.Unmarshal([]byte(*req.Msg.Config), &config); err != nil {
+		if err := json.Unmarshal([]byte(req.Msg.GetConfig()), &config); err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("config must be valid JSON: %w", err))
 		}
+
 		params.Config = config
 	}
+
 	if req.Msg.Enabled != nil {
 		params.Enabled = req.Msg.Enabled
 	}
@@ -184,7 +190,7 @@ func (h *NotificationHandler) DeleteNotificationChannel(ctx context.Context, req
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	id, err := uuid.Parse(req.Msg.Id)
+	id, err := uuid.Parse(req.Msg.GetId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -208,11 +214,13 @@ func (h *NotificationHandler) ListNotificationChannels(ctx context.Context, req 
 	params := notifyservice.ListChannelsParams{
 		WorkspaceID: workspaceID,
 	}
-	if req.Msg.ChannelType != nil && *req.Msg.ChannelType != notifyv1.NotificationChannelType_NOTIFICATION_CHANNEL_TYPE_UNSPECIFIED {
-		ct, ok := channelTypeFromProto[*req.Msg.ChannelType]
+
+	if req.Msg.ChannelType != nil && req.Msg.GetChannelType() != notifyv1.NotificationChannelType_NOTIFICATION_CHANNEL_TYPE_UNSPECIFIED {
+		ct, ok := channelTypeFromProto[req.Msg.GetChannelType()]
 		if !ok {
 			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid channel_type"))
 		}
+
 		params.ChannelType = &ct
 	}
 
@@ -238,7 +246,7 @@ func (h *NotificationHandler) TestNotificationChannel(ctx context.Context, req *
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	id, err := uuid.Parse(req.Msg.Id)
+	id, err := uuid.Parse(req.Msg.GetId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -259,23 +267,24 @@ func (h *NotificationHandler) CreateNotificationRule(ctx context.Context, req *c
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	channelID, err := uuid.Parse(req.Msg.ChannelId)
+	channelID, err := uuid.Parse(req.Msg.GetChannelId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid channel_id: %w", err))
 	}
 
 	var connectionID uuid.UUID
 	if req.Msg.ConnectionId != nil {
-		connectionID, err = uuid.Parse(*req.Msg.ConnectionId)
+		connectionID, err = uuid.Parse(req.Msg.GetConnectionId())
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid connection_id: %w", err))
 		}
 	}
 
-	if req.Msg.Condition == notifyv1.NotificationCondition_NOTIFICATION_CONDITION_UNSPECIFIED {
+	if req.Msg.GetCondition() == notifyv1.NotificationCondition_NOTIFICATION_CONDITION_UNSPECIFIED {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid condition: must be one of on_failure, on_consecutive_failures, on_zero_records"))
 	}
-	cond, ok := conditionFromProto[req.Msg.Condition]
+
+	cond, ok := conditionFromProto[req.Msg.GetCondition()]
 	if !ok {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid condition: must be one of on_failure, on_consecutive_failures, on_zero_records"))
 	}
@@ -285,8 +294,8 @@ func (h *NotificationHandler) CreateNotificationRule(ctx context.Context, req *c
 		ChannelID:      channelID,
 		ConnectionID:   connectionID,
 		Condition:      cond,
-		ConditionValue: int(req.Msg.ConditionValue),
-		Enabled:        req.Msg.Enabled,
+		ConditionValue: int(req.Msg.GetConditionValue()),
+		Enabled:        req.Msg.GetEnabled(),
 	})
 	if err != nil {
 		return nil, notificationMapError(err)
@@ -303,7 +312,7 @@ func (h *NotificationHandler) UpdateNotificationRule(ctx context.Context, req *c
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	id, err := uuid.Parse(req.Msg.Id)
+	id, err := uuid.Parse(req.Msg.GetId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -312,17 +321,21 @@ func (h *NotificationHandler) UpdateNotificationRule(ctx context.Context, req *c
 		ID:          id,
 		WorkspaceID: workspaceID,
 	}
-	if req.Msg.Condition != nil && *req.Msg.Condition != notifyv1.NotificationCondition_NOTIFICATION_CONDITION_UNSPECIFIED {
-		cond, ok := conditionFromProto[*req.Msg.Condition]
+
+	if req.Msg.Condition != nil && req.Msg.GetCondition() != notifyv1.NotificationCondition_NOTIFICATION_CONDITION_UNSPECIFIED {
+		cond, ok := conditionFromProto[req.Msg.GetCondition()]
 		if !ok {
 			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid condition"))
 		}
+
 		params.Condition = &cond
 	}
+
 	if req.Msg.ConditionValue != nil {
-		val := int(*req.Msg.ConditionValue)
+		val := int(req.Msg.GetConditionValue())
 		params.ConditionValue = &val
 	}
+
 	if req.Msg.Enabled != nil {
 		params.Enabled = req.Msg.Enabled
 	}
@@ -343,7 +356,7 @@ func (h *NotificationHandler) DeleteNotificationRule(ctx context.Context, req *c
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	id, err := uuid.Parse(req.Msg.Id)
+	id, err := uuid.Parse(req.Msg.GetId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -367,18 +380,22 @@ func (h *NotificationHandler) ListNotificationRules(ctx context.Context, req *co
 	params := notifyservice.ListNotificationRulesParams{
 		WorkspaceID: workspaceID,
 	}
+
 	if req.Msg.ChannelId != nil {
-		channelID, err := uuid.Parse(*req.Msg.ChannelId)
+		channelID, err := uuid.Parse(req.Msg.GetChannelId())
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid channel_id: %w", err))
 		}
+
 		params.ChannelID = &channelID
 	}
+
 	if req.Msg.ConnectionId != nil {
-		connectionID, err := uuid.Parse(*req.Msg.ConnectionId)
+		connectionID, err := uuid.Parse(req.Msg.GetConnectionId())
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid connection_id: %w", err))
 		}
+
 		params.ConnectionID = &connectionID
 	}
 
@@ -388,8 +405,8 @@ func (h *NotificationHandler) ListNotificationRules(ctx context.Context, req *co
 	}
 
 	result := make([]*notifyv1.NotificationRule, len(rules))
-	for i, r := range rules {
-		result[i] = ruleToProto(r)
+	for i, rule := range rules {
+		result[i] = ruleToProto(rule)
 	}
 
 	return connect.NewResponse(&notifyv1.ListNotificationRulesResponse{
@@ -411,22 +428,22 @@ func channelToProto(ch *notifyservice.NotificationChannel) *notifyv1.Notificatio
 	}
 }
 
-func ruleToProto(r *notifyservice.NotificationRule) *notifyv1.NotificationRule {
-	rule := &notifyv1.NotificationRule{
-		Id:             r.ID.String(),
-		WorkspaceId:    r.WorkspaceID.String(),
-		ChannelId:      r.ChannelID.String(),
-		Condition:      conditionToProto[r.Condition],
-		ConditionValue: int32(r.ConditionValue),
-		Enabled:        r.Enabled,
-		CreatedAt:      timestamppb.New(r.CreatedAt),
-		UpdatedAt:      timestamppb.New(r.UpdatedAt),
+func ruleToProto(rule *notifyservice.NotificationRule) *notifyv1.NotificationRule {
+	proto := &notifyv1.NotificationRule{
+		Id:             rule.ID.String(),
+		WorkspaceId:    rule.WorkspaceID.String(),
+		ChannelId:      rule.ChannelID.String(),
+		Condition:      conditionToProto[rule.Condition],
+		ConditionValue: int32(rule.ConditionValue),
+		Enabled:        rule.Enabled,
+		CreatedAt:      timestamppb.New(rule.CreatedAt),
+		UpdatedAt:      timestamppb.New(rule.UpdatedAt),
 	}
 
-	if r.ConnectionID != uuid.Nil {
-		connID := r.ConnectionID.String()
-		rule.ConnectionId = &connID
+	if rule.ConnectionID != uuid.Nil {
+		connID := rule.ConnectionID.String()
+		proto.ConnectionId = &connID
 	}
 
-	return rule
+	return proto
 }

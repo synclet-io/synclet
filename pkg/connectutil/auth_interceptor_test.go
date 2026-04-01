@@ -36,6 +36,7 @@ func makeHeaders(authHeader string) http.Header {
 	if authHeader != "" {
 		h.Set("Authorization", authHeader)
 	}
+
 	return h
 }
 
@@ -102,7 +103,7 @@ func TestAuthInterceptor_authenticate(t *testing.T) {
 		_, err := interceptor.authenticate(context.Background(), makeHeaders("Bearer valid-token"), "not-a-uuid")
 		require.Error(t, err)
 		var connectErr *connect.Error
-		require.True(t, errors.As(err, &connectErr))
+		require.ErrorAs(t, err, &connectErr)
 		assert.Equal(t, connect.CodeInvalidArgument, connectErr.Code())
 	})
 
@@ -113,7 +114,7 @@ func TestAuthInterceptor_authenticate(t *testing.T) {
 		_, err := interceptor.authenticate(context.Background(), makeHeaders(""), "")
 		require.Error(t, err)
 		var connectErr *connect.Error
-		require.True(t, errors.As(err, &connectErr))
+		require.ErrorAs(t, err, &connectErr)
 		assert.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
 	})
 
@@ -124,7 +125,7 @@ func TestAuthInterceptor_authenticate(t *testing.T) {
 		_, err := interceptor.authenticate(context.Background(), makeHeaders("Bearer bad-token"), "")
 		require.Error(t, err)
 		var connectErr *connect.Error
-		require.True(t, errors.As(err, &connectErr))
+		require.ErrorAs(t, err, &connectErr)
 		assert.Equal(t, connect.CodeUnauthenticated, connectErr.Code())
 	})
 

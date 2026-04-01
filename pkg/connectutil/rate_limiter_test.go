@@ -15,38 +15,38 @@ func TestRateLimitInterceptor(t *testing.T) {
 	}
 
 	t.Run("non-rate-limited procedure passes through", func(t *testing.T) {
-		rl := NewRateLimitInterceptor(configs)
-		defer rl.Stop()
+		rateLimiter := NewRateLimitInterceptor(configs)
+		defer rateLimiter.Stop()
 
 		// Non-rate-limited: should always pass
-		for i := 0; i < 20; i++ {
+		for i := range 20 {
 			ip := "1.2.3.4:5000"
-			limiter := rl.getLimiter(extractIP(ip), RateLimitConfig{Rate: rate.Every(time.Second), Burst: 100})
+			limiter := rateLimiter.getLimiter(extractIP(ip), RateLimitConfig{Rate: rate.Every(time.Second), Burst: 100})
 			assert.True(t, limiter.Allow(), "request %d should pass", i)
 		}
 	})
 
 	t.Run("rate-limited procedure allows requests within limit", func(t *testing.T) {
-		rl := NewRateLimitInterceptor(configs)
-		defer rl.Stop()
+		rateLimiter := NewRateLimitInterceptor(configs)
+		defer rateLimiter.Stop()
 
 		ip := extractIP("1.2.3.4:5000")
 		cfg := configs["/test.Service/Login"] // Burst: 2
 
-		for i := 0; i < 2; i++ {
-			limiter := rl.getLimiter(ip, cfg)
+		for i := range 2 {
+			limiter := rateLimiter.getLimiter(ip, cfg)
 			assert.True(t, limiter.Allow(), "request %d should pass within burst", i)
 		}
 	})
 
 	t.Run("rate-limited procedure rejects requests exceeding limit", func(t *testing.T) {
-		rl := NewRateLimitInterceptor(configs)
-		defer rl.Stop()
+		rateLimiter := NewRateLimitInterceptor(configs)
+		defer rateLimiter.Stop()
 
 		ip := extractIP("1.2.3.4:5000")
 		cfg := configs["/test.Service/Register"] // Burst: 1
 
-		limiter := rl.getLimiter(ip, cfg)
+		limiter := rateLimiter.getLimiter(ip, cfg)
 		// First request should succeed
 		assert.True(t, limiter.Allow())
 		// Second request should be rejected
@@ -54,13 +54,13 @@ func TestRateLimitInterceptor(t *testing.T) {
 	})
 
 	t.Run("different IPs have independent rate limits", func(t *testing.T) {
-		rl := NewRateLimitInterceptor(configs)
-		defer rl.Stop()
+		rateLimiter := NewRateLimitInterceptor(configs)
+		defer rateLimiter.Stop()
 
 		cfg := configs["/test.Service/Register"] // Burst: 1
 
-		limiter1 := rl.getLimiter("1.1.1.1", cfg)
-		limiter2 := rl.getLimiter("2.2.2.2", cfg)
+		limiter1 := rateLimiter.getLimiter("1.1.1.1", cfg)
+		limiter2 := rateLimiter.getLimiter("2.2.2.2", cfg)
 
 		// IP 1 uses its burst
 		assert.True(t, limiter1.Allow())
@@ -71,27 +71,29 @@ func TestRateLimitInterceptor(t *testing.T) {
 	})
 
 	t.Run("cleanup removes stale entries", func(t *testing.T) {
-		rl := NewRateLimitInterceptor(configs)
-		defer rl.Stop()
+		rateLimiter := NewRateLimitInterceptor(configs)
+		defer rateLimiter.Stop()
 
 		// Manually add a stale entry
-		rl.mu.Lock()
-		rl.limiters["stale-ip"] = &ipLimiter{
+		rateLimiter.mu.Lock()
+		rateLimiter.limiters["stale-ip"] = &ipLimiter{
 			limiter:  rate.NewLimiter(1, 1),
 			lastSeen: time.Now().Add(-15 * time.Minute),
 		}
-		rl.limiters["fresh-ip"] = &ipLimiter{
+		rateLimiter.limiters["fresh-ip"] = &ipLimiter{
 			limiter:  rate.NewLimiter(1, 1),
 			lastSeen: time.Now(),
 		}
-		rl.mu.Unlock()
+		rateLimiter.mu.Unlock()
 
-		rl.cleanup()
+		rateLimiter.cleanup()
 
-		rl.mu.Lock()
-		defer rl.mu.Unlock()
-		_, staleExists := rl.limiters["stale-ip"]
-		_, freshExists := rl.limiters["fresh-ip"]
+		rateLimiter.mu.Lock()
+		defer rateLimiter.mu.Unlock()
+
+		_, staleExists := rateLimiter.limiters["stale-ip"]
+		_, freshExists := rateLimiter.limiters["fresh-ip"]
+
 		assert.False(t, staleExists, "stale entry should be removed")
 		assert.True(t, freshExists, "fresh entry should remain")
 	})
