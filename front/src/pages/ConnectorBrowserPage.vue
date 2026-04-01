@@ -7,9 +7,8 @@ import { useAddRepository, useDeleteRepository, useRepositories, useSyncReposito
 import { BreakingChangeDialog } from '@features/connector-update'
 import { getErrorMessage } from '@shared/lib/errorUtils'
 import { SAlert, SBadge, SButton, SConfirmDialog, SEmptyState, SInput, SModal, SPagination, SSelect, SSkeleton, STable, STabs, useToast } from '@shared/ui'
-import { ArrowUpCircle, Container, Globe, RefreshCw, Trash2 } from 'lucide-vue-next'
-
 import { refDebounced } from '@vueuse/core'
+import { ArrowUpCircle, Container, Globe, RefreshCw, Trash2 } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
 
 const toast = useToast()
@@ -20,8 +19,10 @@ const searchQuery = ref('')
 const debouncedSearch = refDebounced(searchQuery, 300)
 
 const mappedRepositoryId = computed(() => {
-  if (repositoryFilter.value === '') return undefined
-  if (repositoryFilter.value === 'custom') return null
+  if (repositoryFilter.value === '')
+    return undefined
+  if (repositoryFilter.value === 'custom')
+    return null
   return repositoryFilter.value
 })
 

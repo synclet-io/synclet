@@ -16,8 +16,8 @@ func TestValidatePassword(t *testing.T) {
 	}{
 		{"empty password", "", true},
 		{"too short - 1 char", "a", true},
-		{"too short - 11 chars", strings.Repeat("a", 11), true},
-		{"exactly 12 chars", strings.Repeat("a", 12), false},
+		{"too short - 7 chars", strings.Repeat("a", 7), true},
+		{"exactly 8 chars", strings.Repeat("a", 8), false},
 		{"long password - 100 chars", strings.Repeat("a", 100), false},
 	}
 	for _, tt := range tests {
@@ -25,7 +25,7 @@ func TestValidatePassword(t *testing.T) {
 			err := ValidatePassword(tt.password)
 			if tt.wantErr {
 				require.Error(t, err)
-				assert.Contains(t, err.Error(), "at least 12 characters")
+				assert.Contains(t, err.Error(), "at least 8 characters")
 			} else {
 				assert.NoError(t, err)
 			}

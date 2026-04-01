@@ -192,7 +192,7 @@ func TestIsImageNotFoundError(t *testing.T) {
 		expected bool
 	}{
 		{"No such image error", errors.New("No such image: foo:latest"), true},
-		{"not found error", errors.New("image not found"), true},
+		{"not found error", errors.New("reference does not exist"), true},
 		{"permission denied", errors.New("permission denied"), false},
 		{"connection refused", errors.New("connection refused"), false},
 		{"wrapped not found", errors.New("creating container: No such image: bar:v1"), true},
