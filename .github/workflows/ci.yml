@@ -94,6 +94,32 @@ jobs:
         with:
           go-version-file: connectors/${{ matrix.connector }}/go.mod
 
+      - name: Validate meta.json
+        run: |
+          META="connectors/${{ matrix.connector }}/meta.json"
+          if [ ! -f "$META" ]; then
+            echo "::error::meta.json not found at $META"
+            exit 1
+          fi
+          # Validate JSON and required fields
+          jq -e '.name and .connector_type and .release_stage and .support_level and .license' "$META" > /dev/null
+          # Validate enum values
+          CT=$(jq -r '.connector_type' "$META")
+          RS=$(jq -r '.release_stage' "$META")
+          SL=$(jq -r '.support_level' "$META")
+          if [[ "$CT" != "source" && "$CT" != "destination" ]]; then
+            echo "::error::Invalid connector_type: $CT (must be source or destination)"
+            exit 1
+          fi
+          if [[ "$RS" != "generally_available" && "$RS" != "beta" && "$RS" != "alpha" && "$RS" != "custom" ]]; then
+            echo "::error::Invalid release_stage: $RS"
+            exit 1
+          fi
+          if [[ "$SL" != "community" && "$SL" != "certified" ]]; then
+            echo "::error::Invalid support_level: $SL"
+            exit 1
+          fi
+
       - name: Lint connector
         uses: golangci/golangci-lint-action@v6
         with:

@@ -16,6 +16,7 @@ jobs:
       connector-name: ${{ steps.tag.outputs.connector-name }}
       version: ${{ steps.tag.outputs.version }}
       metadata: ${{ steps.connector-meta.outputs.json }}
+      spec: ${{ steps.spec.outputs.json }}
     steps:
       - name: Determine connector from tag
         id: tag
@@ -70,10 +71,23 @@ jobs:
         with:
           context: connectors/${{ env.CONNECTOR_NAME }}
           push: true
+          load: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=connector-${{ env.CONNECTOR_NAME }}
           cache-to: type=gha,mode=max,scope=connector-${{ env.CONNECTOR_NAME }}
+
+      - name: Extract spec from connector image
+        id: spec
+        run: |
+          IMAGE="ghcr.io/${{ github.repository }}/${{ env.CONNECTOR_NAME }}:${{ steps.tag.outputs.version }}"
+          SPEC_OUTPUT=$(docker run --rm --network none "$IMAGE" spec 2>/dev/null || echo '{}')
+          SPEC_JSON=$(echo "$SPEC_OUTPUT" | jq -c 'select(.type == "SPEC") | .spec // empty' 2>/dev/null || echo '')
+          if [ -z "$SPEC_JSON" ]; then
+            echo "::warning::Could not extract spec from connector, using null"
+            SPEC_JSON='null'
+          fi
+          echo "json=$SPEC_JSON" >> "$GITHUB_OUTPUT"
 
   update-registry:
     needs: build-connector
@@ -97,5 +111,6 @@ jobs:
               "connector": "${{ needs.build-connector.outputs.connector-name }}",
               "version": "${{ needs.build-connector.outputs.version }}",
               "image": "ghcr.io/${{ github.repository }}/${{ needs.build-connector.outputs.connector-name }}",
-              "metadata": ${{ needs.build-connector.outputs.metadata }}
+              "metadata": ${{ needs.build-connector.outputs.metadata }},
+              "spec": ${{ needs.build-connector.outputs.spec }}
             }
