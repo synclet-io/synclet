@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.3](https://github.com/synclet-io/synclet/compare/synclet-helm-v0.1.2...synclet-helm-v0.1.3) (2026-04-01)
+
+
+### Dependencies
+
+* **chart:** bump synclet version to 0.3.2 ([61c1b1b](https://github.com/synclet-io/synclet/commit/61c1b1b1475f03d844656ced456411c4b9548b22))
+
 ## [0.1.2](https://github.com/synclet-io/synclet/compare/synclet-helm-v0.1.1...synclet-helm-v0.1.2) (2026-04-01)
 
 
