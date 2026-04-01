@@ -1,6 +1,6 @@
 import type { Connector, ConnectorSourceType, ConnectorSpecResult, ConnectorType, ConnectorVersionInfo, ExternalDocumentationUrl, LicenseType, ManagedConnector, ReleaseStage, SupportLevel, UpdateInfo } from './types'
-import { registryClient } from '@shared/api/services'
 import type { BreakingChange as ProtoBreakingChange, ConnectorInfo as ProtoConnectorInfo, ExternalDocumentationUrl as ProtoExternalDocumentationUrl, ManagedConnectorInfo as ProtoManagedConnectorInfo } from '@/gen/synclet/publicapi/registry/v1/registry_pb'
+import { registryClient } from '@shared/api/services'
 import {
   ConnectorType as ProtoConnectorType,
   License as ProtoLicense,
@@ -150,7 +150,8 @@ export async function getConnectorVersions(connectorImage: string): Promise<Conn
 
 export async function updateManagedConnector(id: string): Promise<ManagedConnector> {
   const res = await registryClient.updateManagedConnector({ id })
-  if (!res.connector) throw new Error('connector not found in response')
+  if (!res.connector)
+    throw new Error('connector not found in response')
   return mapManagedConnector(res.connector)
 }
 

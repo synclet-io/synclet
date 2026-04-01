@@ -17,6 +17,7 @@ const error = ref('')
 const loading = ref(false)
 const oidcProviders = ref<OIDCProvider[]>([])
 const { data: systemInfo } = useSystemInfo()
+const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 onMounted(async () => {
   try {
@@ -34,7 +35,6 @@ async function handleLogin() {
     await auth.login(email.value, password.value)
     const pendingInviteToken = localStorage.getItem('pendingInviteToken')
     localStorage.removeItem('pendingInviteToken')
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
     if (pendingInviteToken && uuidRegex.test(pendingInviteToken)) {
       router.push(`/invite/${pendingInviteToken}`)
     }

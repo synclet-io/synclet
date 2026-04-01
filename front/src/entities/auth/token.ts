@@ -9,12 +9,14 @@ export function getAuthMeta(): AuthMeta | null {
   const cookie = document.cookie
     .split('; ')
     .find(c => c.startsWith('synclet_auth='))
-  if (!cookie) return null
+  if (!cookie)
+    return null
 
   const params = new URLSearchParams(cookie.substring(cookie.indexOf('=') + 1))
   const accessExpires = params.get('access_expires')
   const refreshExpires = params.get('refresh_expires')
-  if (!accessExpires || !refreshExpires) return null
+  if (!accessExpires || !refreshExpires)
+    return null
 
   return {
     accessExpiresAt: Number(accessExpires),

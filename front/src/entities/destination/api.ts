@@ -1,8 +1,8 @@
 import type { JsonObject } from '@bufbuild/protobuf'
 import type { Destination } from './types'
+import type { Destination as ProtoDestination } from '@/gen/synclet/publicapi/pipeline/v1/pipeline_pb'
 import { destinationClient } from '@shared/api/services'
 import { tsToDate } from '@shared/lib/formatting'
-import type { Destination as ProtoDestination } from '@/gen/synclet/publicapi/pipeline/v1/pipeline_pb'
 
 function mapDestination(proto: ProtoDestination): Destination {
   return {

@@ -2,6 +2,7 @@
 import type { NamespaceDefinition, SchemaChangePolicy } from '@entities/connection'
 import { SInput, SSelect } from '@shared/ui'
 import SCronEditor from '@shared/ui/SCronEditor.vue'
+
 defineProps<{
   name: string
   schedule: string

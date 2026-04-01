@@ -1,7 +1,7 @@
 import type { Job, JobStatus, JobType, SyncStats } from './types'
+import type { Job as ProtoJob, JobAttempt as ProtoJobAttempt, SyncStats as ProtoSyncStats } from '@/gen/synclet/publicapi/pipeline/v1/pipeline_pb'
 import { jobClient } from '@shared/api/services'
 import { tsToDate } from '@shared/lib/formatting'
-import type { Job as ProtoJob, JobAttempt as ProtoJobAttempt, SyncStats as ProtoSyncStats } from '@/gen/synclet/publicapi/pipeline/v1/pipeline_pb'
 import {
   JobStatus as ProtoJobStatus,
   JobType as ProtoJobType,

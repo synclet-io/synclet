@@ -1,8 +1,8 @@
 import { createClient } from '@connectrpc/connect'
 import { AuthService } from '@/gen/synclet/publicapi/auth/v1/auth_pb'
 
-import { ConfiguredStreamSchema, ConnectionService, ConnectorTaskService, DestinationService, JobService, SourceService } from '@/gen/synclet/publicapi/pipeline/v1/pipeline_pb'
 import { NotificationService } from '@/gen/synclet/publicapi/notify/v1/notify_pb'
+import { ConfiguredStreamSchema, ConnectionService, ConnectorTaskService, DestinationService, JobService, SourceService } from '@/gen/synclet/publicapi/pipeline/v1/pipeline_pb'
 import { ConnectorRegistryService } from '@/gen/synclet/publicapi/registry/v1/registry_pb'
 import { WorkspaceService } from '@/gen/synclet/publicapi/workspace/v1/workspace_pb'
 import { transport } from './transport'

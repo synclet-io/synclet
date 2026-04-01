@@ -44,8 +44,12 @@ function trendColorClass(color: 'green' | 'red' | 'gray') {
       <div class="flex items-center gap-3">
         <XCircle class="h-5 w-5 text-red-500 shrink-0" />
         <div>
-          <p class="font-medium text-red-800">Failed to load dashboard data</p>
-          <p class="text-sm text-red-600 mt-1">Please try refreshing the page. If the problem persists, check your connection.</p>
+          <p class="font-medium text-red-800">
+            Failed to load dashboard data
+          </p>
+          <p class="text-sm text-red-600 mt-1">
+            Please try refreshing the page. If the problem persists, check your connection.
+          </p>
         </div>
       </div>
     </div>

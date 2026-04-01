@@ -12,10 +12,10 @@ import type {
   TopConnection,
   WorkspaceStats,
 } from './types'
+import type { ConnectionHealth as ProtoConnectionHealth, TopConnection as ProtoTopConnection } from '@/gen/synclet/publicapi/stats/v1/stats_pb'
 import { createClient } from '@connectrpc/connect'
 import { transport } from '@shared/api/transport'
 import { tsToDate } from '@shared/lib/formatting'
-import type { ConnectionHealth as ProtoConnectionHealth, TopConnection as ProtoTopConnection } from '@/gen/synclet/publicapi/stats/v1/stats_pb'
 import { FailureCategoryType as ProtoFailureCategoryType, HealthStatus as ProtoHealthStatus, SyncStatus as ProtoSyncStatus, TimeRange as ProtoTimeRange, StatsService } from '@/gen/synclet/publicapi/stats/v1/stats_pb'
 
 const statsClient = createClient(StatsService, transport)

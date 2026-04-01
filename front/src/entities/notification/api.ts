@@ -1,8 +1,8 @@
 import type { ChannelType, NotificationChannel, NotificationCondition, NotificationRule } from './types'
 import type { NotificationChannel as ProtoNotificationChannel, NotificationRule as ProtoNotificationRule } from '@/gen/synclet/publicapi/notify/v1/notify_pb'
-import { NotificationChannelType, NotificationCondition as ProtoNotificationCondition } from '@/gen/synclet/publicapi/notify/v1/notify_pb'
 import { notificationClient } from '@shared/api/services'
 import { tsToDate } from '@shared/lib/formatting'
+import { NotificationChannelType, NotificationCondition as ProtoNotificationCondition } from '@/gen/synclet/publicapi/notify/v1/notify_pb'
 
 const channelTypeFromProto: Record<number, ChannelType> = {
   [NotificationChannelType.SLACK]: 'slack',

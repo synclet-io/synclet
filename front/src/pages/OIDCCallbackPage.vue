@@ -7,6 +7,7 @@ import { useRouter } from 'vue-router'
 const router = useRouter()
 const auth = useAuth()
 const error = ref('')
+const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 onMounted(async () => {
   // Backend set cookies via the redirect — check they exist.
@@ -24,7 +25,6 @@ onMounted(async () => {
 
   const pendingInviteToken = localStorage.getItem('pendingInviteToken')
   localStorage.removeItem('pendingInviteToken')
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
   if (pendingInviteToken && uuidRegex.test(pendingInviteToken)) {
     router.replace(`/invite/${pendingInviteToken}`)
   }

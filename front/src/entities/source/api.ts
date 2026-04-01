@@ -1,8 +1,8 @@
 import type { JsonObject } from '@bufbuild/protobuf'
 import type { Source, SourceCatalog } from './types'
+import type { Source as ProtoSource } from '@/gen/synclet/publicapi/pipeline/v1/pipeline_pb'
 import { sourceClient } from '@shared/api/services'
 import { tsToDate } from '@shared/lib/formatting'
-import type { Source as ProtoSource } from '@/gen/synclet/publicapi/pipeline/v1/pipeline_pb'
 
 function mapSource(proto: ProtoSource): Source {
   return {

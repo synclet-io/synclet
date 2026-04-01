@@ -1,8 +1,8 @@
 import type { MemberRole } from '@entities/workspace'
 import type { OIDCProvider, User, WorkspaceMembership } from './types'
+import type { APIKeyInfo as ProtoAPIKeyInfo, UserInfo as ProtoUserInfo, WorkspaceMembership as ProtoWorkspaceMembership } from '@/gen/synclet/publicapi/auth/v1/auth_pb'
 import { authClient } from '@shared/api/services'
 import { tsToDate } from '@shared/lib/formatting'
-import type { APIKeyInfo as ProtoAPIKeyInfo, UserInfo as ProtoUserInfo, WorkspaceMembership as ProtoWorkspaceMembership } from '@/gen/synclet/publicapi/auth/v1/auth_pb'
 import { MemberRole as ProtoMemberRole } from '@/gen/synclet/publicapi/workspace/v1/workspace_pb'
 
 function mapMemberRole(proto: ProtoMemberRole): MemberRole {

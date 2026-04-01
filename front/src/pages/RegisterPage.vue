@@ -16,6 +16,7 @@ const email = ref((route.query.email as string) || '')
 const password = ref('')
 const error = ref('')
 const loading = ref(false)
+const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 // Redirect to login if registration is disabled.
 watch(systemInfo, (info) => {
@@ -31,7 +32,6 @@ async function handleRegister() {
     await auth.register(email.value, password.value, name.value)
     const pendingInviteToken = localStorage.getItem('pendingInviteToken')
     localStorage.removeItem('pendingInviteToken')
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
     if (pendingInviteToken && uuidRegex.test(pendingInviteToken)) {
       router.push(`/invite/${pendingInviteToken}`)
     }

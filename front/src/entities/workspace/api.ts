@@ -1,9 +1,9 @@
 import type { InviteStatus, MemberRole, Workspace, WorkspaceInvite, WorkspaceMember } from './types'
+import type { WorkspaceInfo as ProtoWorkspaceInfo, WorkspaceInviteInfo as ProtoWorkspaceInviteInfo, WorkspaceMemberInfo as ProtoWorkspaceMemberInfo } from '@/gen/synclet/publicapi/workspace/v1/workspace_pb'
 import { createClient } from '@connectrpc/connect'
 import { createConnectTransport } from '@connectrpc/connect-web'
 import { connectionClient, workspaceClient } from '@shared/api/services'
 import { tsToDate } from '@shared/lib/formatting'
-import type { WorkspaceInfo as ProtoWorkspaceInfo, WorkspaceInviteInfo as ProtoWorkspaceInviteInfo, WorkspaceMemberInfo as ProtoWorkspaceMemberInfo } from '@/gen/synclet/publicapi/workspace/v1/workspace_pb'
 import {
   InviteStatus as ProtoInviteStatus,
   MemberRole as ProtoMemberRole,

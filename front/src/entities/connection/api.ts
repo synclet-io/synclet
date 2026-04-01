@@ -1,7 +1,7 @@
 import type { ConfiguredStream, Connection, ConnectionStatus, DestinationSyncMode, NamespaceDefinition, SchemaChangePolicy, StateType, StreamStatesResult, SyncMode } from './types'
+import type { Connection as ProtoConnection } from '@/gen/synclet/publicapi/pipeline/v1/pipeline_pb'
 import { ConfiguredStreamSchema, connectionClient, create } from '@shared/api/services'
 import { tsToDate } from '@shared/lib/formatting'
-import type { Connection as ProtoConnection } from '@/gen/synclet/publicapi/pipeline/v1/pipeline_pb'
 import {
   CompositeKeySchema,
   ConnectionStatus as ProtoConnectionStatus,

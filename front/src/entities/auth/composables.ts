@@ -73,7 +73,8 @@ function clearState() {
 
 async function init() {
   const meta = getAuthMeta()
-  if (!meta) return
+  if (!meta)
+    return
 
   try {
     await fetchCurrentUser()
