@@ -37,7 +37,7 @@ func (uc *Register) Execute(ctx context.Context, email, password, name string) (
 	user := &User{
 		ID:           uuid.New(),
 		Email:        email,
-		PasswordHash: string(hash),
+		PasswordHash: hash,
 		Name:         name,
 		CreatedAt:    time.Now(),
 	}

@@ -43,35 +43,40 @@ type ListConnectorsWithUpdateInfoParams struct {
 
 // Execute returns all managed connectors for a workspace, each enriched with update info.
 func (uc *ListConnectorsWithUpdateInfo) Execute(ctx context.Context, params ListConnectorsWithUpdateInfoParams) ([]ManagedConnectorWithUpdateInfo, error) {
-	f := &pipelineservice.ManagedConnectorFilter{
+	connectorFilter := &pipelineservice.ManagedConnectorFilter{
 		WorkspaceID: filter.Equals(params.WorkspaceID),
 	}
+
 	if params.FilterRepositoryID != nil {
 		if *params.FilterRepositoryID == "" {
-			f.RepositoryID = filter.Equals((*uuid.UUID)(nil))
+			connectorFilter.RepositoryID = filter.Equals((*uuid.UUID)(nil))
 		} else {
 			repoID, err := uuid.Parse(*params.FilterRepositoryID)
 			if err != nil {
 				return nil, fmt.Errorf("invalid repository_id: %w", err)
 			}
-			f.RepositoryID = filter.Equals(&repoID)
+
+			connectorFilter.RepositoryID = filter.Equals(&repoID)
 		}
 	}
 
-	connectors, err := uc.storage.ManagedConnectors().Find(ctx, f)
+	connectors, err := uc.storage.ManagedConnectors().Find(ctx, connectorFilter)
 	if err != nil {
 		return nil, fmt.Errorf("listing managed connectors: %w", err)
 	}
 
 	if params.Search != "" {
 		search := strings.ToLower(params.Search)
+
 		var filtered []*pipelineservice.ManagedConnector
+
 		for _, c := range connectors {
 			if strings.Contains(strings.ToLower(c.Name), search) ||
 				strings.Contains(strings.ToLower(c.DockerImage), search) {
 				filtered = append(filtered, c)
 			}
 		}
+
 		connectors = filtered
 	}
 

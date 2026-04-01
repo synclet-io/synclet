@@ -325,6 +325,7 @@ encryption:
   existingSecretKeyKey: "encryption-key"
   existingSecretKeyPreviousKey: "encryption-key-previous"
 
+# Secret for coordinator -> synclet communication
 internalApi:
   secret: ""
   existingSecret: ""

@@ -248,9 +248,9 @@ func (h *RegistryHandler) ListManagedConnectors(ctx context.Context, req *connec
 
 	params := pipelineconnectors.ListConnectorsWithUpdateInfoParams{
 		WorkspaceID: workspaceID,
-		Search:      req.Msg.Search,
+		Search:      req.Msg.GetSearch(),
 	}
-	if f := req.Msg.Filter; f != nil && f.RepositoryId != nil {
+	if f := req.Msg.GetFilter(); f != nil && f.RepositoryId != nil {
 		params.FilterRepositoryID = f.RepositoryId
 	}
 
