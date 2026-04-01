@@ -3,6 +3,7 @@ package pipelineconnectors
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/saturn4er/boilerplate-go/lib/filter"
@@ -35,16 +36,43 @@ func NewListConnectorsWithUpdateInfo(storage pipelineservice.Storage) *ListConne
 
 // ListConnectorsWithUpdateInfoParams holds parameters for listing connectors with update info.
 type ListConnectorsWithUpdateInfoParams struct {
-	WorkspaceID uuid.UUID
+	WorkspaceID        uuid.UUID
+	FilterRepositoryID *string // nil = no filter, pointer to "" = NULL repo, pointer to UUID = specific repo
+	Search             string  // "" = no filter
 }
 
 // Execute returns all managed connectors for a workspace, each enriched with update info.
 func (uc *ListConnectorsWithUpdateInfo) Execute(ctx context.Context, params ListConnectorsWithUpdateInfoParams) ([]ManagedConnectorWithUpdateInfo, error) {
-	connectors, err := uc.storage.ManagedConnectors().Find(ctx, &pipelineservice.ManagedConnectorFilter{
+	f := &pipelineservice.ManagedConnectorFilter{
 		WorkspaceID: filter.Equals(params.WorkspaceID),
-	})
+	}
+	if params.FilterRepositoryID != nil {
+		if *params.FilterRepositoryID == "" {
+			f.RepositoryID = filter.Equals((*uuid.UUID)(nil))
+		} else {
+			repoID, err := uuid.Parse(*params.FilterRepositoryID)
+			if err != nil {
+				return nil, fmt.Errorf("invalid repository_id: %w", err)
+			}
+			f.RepositoryID = filter.Equals(&repoID)
+		}
+	}
+
+	connectors, err := uc.storage.ManagedConnectors().Find(ctx, f)
 	if err != nil {
 		return nil, fmt.Errorf("listing managed connectors: %w", err)
+	}
+
+	if params.Search != "" {
+		search := strings.ToLower(params.Search)
+		var filtered []*pipelineservice.ManagedConnector
+		for _, c := range connectors {
+			if strings.Contains(strings.ToLower(c.Name), search) ||
+				strings.Contains(strings.ToLower(c.DockerImage), search) {
+				filtered = append(filtered, c)
+			}
+		}
+		connectors = filtered
 	}
 
 	// Collect unique repository IDs from connectors that have a repo link.
