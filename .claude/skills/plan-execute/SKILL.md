@@ -31,8 +31,12 @@ Execute the approved plan:
 ## Execution Strategy
 
 Analyze the plan's tasks and waves:
+- **Create a plan branch** from `main` before starting execution: `git checkout -b plan/{slug} main`
 - Tasks within the same wave run in parallel via team agents
+- Each agent works in an **isolated git worktree** (`isolation: "worktree"` on the Task tool) to avoid file conflicts
 - Waves execute sequentially (wave 2 starts after wave 1 completes)
+- After all agents in a wave finish, **merge all worktree branches** into the plan branch (not main) before starting the next wave
+- The plan branch accumulates all changes; main stays clean until the user decides to merge
 
 ## Team Setup
 
@@ -46,7 +50,8 @@ Analyze the plan's tasks and waves:
    - Set up `blockedBy` dependencies between tasks based on wave structure
 
 3. **Execute wave by wave** — For each wave, spawn implementer agents (max 3 concurrent):
-   - Use `Task` tool with `subagent_type: "general-purpose"` and `team_name`
+   - Use `Task` tool with `subagent_type: "general-purpose"`, `team_name`, and `isolation: "worktree"`
+   - Each agent works in its own worktree branch, committing changes there
    - Each agent gets a focused prompt including the task file path and summary file path:
 
 ```
@@ -67,8 +72,9 @@ You are implementing a task from a plan.
 2. Only modify files listed in your task (read others as needed)
 3. Verify your changes compile/build after making them
 4. Run relevant tests if they exist
-5. When done, mark your task as completed via TaskUpdate
-6. Report what you did via SendMessage to the team lead
+5. Commit your changes in the worktree with a conventional commit message
+6. When done, mark your task as completed via TaskUpdate
+7. Report what you did via SendMessage to the team lead
 
 ## Task Summary
 After completing your work, write a summary file at `{planDir}/wave_{W}/SUMMARY_{T}.md` with:
@@ -82,12 +88,15 @@ Also send a brief summary via SendMessage.
 
 4. **Coordinate execution**:
    - Monitor task completion via `TaskList`
-   - When a wave completes, unblock and assign next wave's tasks
    - If an agent reports issues, help resolve or reassign
 
-5. **Handle conflicts**:
-   - If agents modify overlapping files, review changes sequentially
-   - Resolve any merge conflicts before proceeding
+5. **Merge wave branches** — After all agents in a wave complete:
+   - Ensure you are on the plan branch: `git checkout plan/{slug}`
+   - Each worktree agent produces a branch with its changes
+   - Merge each worktree branch into the plan branch sequentially: `git merge <worktree-branch> --no-edit`
+   - If merge conflicts occur, resolve them before merging the next branch
+   - After all branches are merged, clean up: remove worktree directories first (`git worktree remove <path>`), then delete branches (`git branch -d <branch>`)
+   - Verify the merged result builds/compiles before starting the next wave
 
 ## Progress Tracking
 
@@ -158,4 +167,7 @@ If any check fails:
 {Key highlights from task summaries}
 ```
 
-7. Ask user if they want to commit the changes.
+7. Ask user how they want to handle the plan branch:
+   - **Squash merge** into main (`git checkout main && git merge --squash plan/{slug} && git commit -m "feat: {plan title}"`) — single clean commit
+   - **Regular merge** into main (`git checkout main && git merge plan/{slug} --no-edit`) — preserves full history
+   - **Keep branch** — leave `plan/{slug}` as-is for manual review

@@ -36,10 +36,13 @@ Scope estimates:
 
 ### Wave Organization Rules
 
-- Group tasks into waves where all tasks within a wave have **no interdependencies**
-- Tasks in later waves explicitly list which earlier tasks they depend on
-- Wave 1 should contain foundational work (schemas, types, interfaces)
-- Later waves build on earlier foundations (implementations, integrations, tests)
+- **Waves represent dependency layers** — ALL tasks in wave N depend on wave N-1 being complete
+- Tasks within the same wave have **no interdependencies** and can run in parallel
+- **File conflict rule**: Tasks that modify the same file MUST be in different waves — parallel agents would overwrite each other's changes
+- Wave 1 has no dependencies (foundational work: schemas, types, interfaces, config fixes)
+- Wave 2 tasks depend on wave 1, wave 3 tasks depend on wave 2, etc.
+- If a task has no dependency on any wave 1 task and doesn't conflict with another wave 1 task's files, it belongs in wave 1
+- If a task depends on a specific task in wave N (logically or by file conflict), it goes in wave N+1 (or later)
 
 ## Phase 2: Write Task Files
 
@@ -55,6 +58,7 @@ Scope estimates:
 task: {T}
 wave: {W}
 scope: S | M
+deps: [{list of task numbers this depends on, e.g. 1, 3}]
 status: pending
 ---
 
@@ -67,7 +71,7 @@ status: pending
 
 ## Depends On
 
-- {Task N: description} (or "None")
+- {Task N: description} (or "None" — derived from `deps` frontmatter for readability)
 
 ## Details
 
