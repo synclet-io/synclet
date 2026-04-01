@@ -3,7 +3,8 @@ name: Connector Release
 on:
   push:
     tags:
-      - '*-v*'
+      - 'source-*-v*'
+      - 'destination-*-v*'
 
 permissions:
   contents: read

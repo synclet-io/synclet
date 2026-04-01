@@ -83,7 +83,7 @@ func notifyModule() fx.Option {
 			fx.Annotate(
 				func(cfg *smtpConfig, logger *logging.Logger) notifyservice.EmailSender {
 					if cfg.SMTPHost == "" {
-						logger.Named("notify").Warn(context.Background(), "SMTP not configured: email delivery disabled. Set SMTP_HOST to enable.")
+						logger.Named("notify").Info(context.Background(), "SMTP not configured: email delivery disabled. Set SMTP_HOST to enable.")
 
 						return notifyservice.NewNoOpEmailSender()
 					}

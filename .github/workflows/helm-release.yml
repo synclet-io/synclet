@@ -1,0 +1,27 @@
+name: Helm Release
+
+on:
+  push:
+    tags:
+      - 'synclet-helm-v*'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Determine version from tag
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/synclet-helm-v}" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io --username ${{ github.actor }} --password-stdin
+
+      - name: Package and push Helm chart
+        run: |
+          helm package deploy/helm/synclet
+          helm push synclet-${{ steps.version.outputs.version }}.tgz oci://ghcr.io/${{ github.repository_owner }}/charts

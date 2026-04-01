@@ -6,7 +6,14 @@
     ".": {
       "release-type": "go",
       "component": "synclet",
-      "changelog-path": "CHANGELOG.md"
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "yaml",
+          "path": "deploy/helm/synclet/Chart.yaml",
+          "jsonpath": "$.appVersion"
+        }
+      ]
     },
     "connectors/source-google-sheets": {
       "release-type": "go",
@@ -26,6 +33,11 @@
     "connectors/destination-bigquery": {
       "release-type": "go",
       "component": "destination-bigquery",
+      "changelog-path": "CHANGELOG.md"
+    },
+    "deploy/helm/synclet": {
+      "release-type": "helm",
+      "component": "synclet-helm",
       "changelog-path": "CHANGELOG.md"
     }
   }
