@@ -871,7 +871,9 @@ func (x *GetManagedConnectorRequest) GetId() string {
 }
 
 type ListManagedConnectorsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
+	state         protoimpl.MessageState               `protogen:"open.v1"`
+	Search        string                               `protobuf:"bytes,1,opt,name=search,proto3" json:"search,omitempty"`
+	Filter        *ListManagedConnectorsRequest_Filter `protobuf:"bytes,2,opt,name=filter,proto3" json:"filter,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -904,6 +906,20 @@ func (x *ListManagedConnectorsRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use ListManagedConnectorsRequest.ProtoReflect.Descriptor instead.
 func (*ListManagedConnectorsRequest) Descriptor() ([]byte, []int) {
 	return file_synclet_publicapi_registry_v1_registry_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *ListManagedConnectorsRequest) GetSearch() string {
+	if x != nil {
+		return x.Search
+	}
+	return ""
+}
+
+func (x *ListManagedConnectorsRequest) GetFilter() *ListManagedConnectorsRequest_Filter {
+	if x != nil {
+		return x.Filter
+	}
+	return nil
 }
 
 type ListManagedConnectorsResponse struct {
@@ -2102,6 +2118,50 @@ func (x *BatchUpdateConnectorsResponse) GetUpdatedConnectors() []*ManagedConnect
 	return nil
 }
 
+type ListManagedConnectorsRequest_Filter struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RepositoryId  *string                `protobuf:"bytes,1,opt,name=repository_id,json=repositoryId,proto3,oneof" json:"repository_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListManagedConnectorsRequest_Filter) Reset() {
+	*x = ListManagedConnectorsRequest_Filter{}
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListManagedConnectorsRequest_Filter) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListManagedConnectorsRequest_Filter) ProtoMessage() {}
+
+func (x *ListManagedConnectorsRequest_Filter) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListManagedConnectorsRequest_Filter.ProtoReflect.Descriptor instead.
+func (*ListManagedConnectorsRequest_Filter) Descriptor() ([]byte, []int) {
+	return file_synclet_publicapi_registry_v1_registry_proto_rawDescGZIP(), []int{9, 0}
+}
+
+func (x *ListManagedConnectorsRequest_Filter) GetRepositoryId() string {
+	if x != nil && x.RepositoryId != nil {
+		return *x.RepositoryId
+	}
+	return ""
+}
+
 type ListRepositoryConnectorsRequest_Filter struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	SupportLevel  SupportLevel           `protobuf:"varint,1,opt,name=support_level,json=supportLevel,proto3,enum=synclet.publicapi.registry.v1.SupportLevel" json:"support_level,omitempty"`
@@ -2113,7 +2173,7 @@ type ListRepositoryConnectorsRequest_Filter struct {
 
 func (x *ListRepositoryConnectorsRequest_Filter) Reset() {
 	*x = ListRepositoryConnectorsRequest_Filter{}
-	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[33]
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2125,7 +2185,7 @@ func (x *ListRepositoryConnectorsRequest_Filter) String() string {
 func (*ListRepositoryConnectorsRequest_Filter) ProtoMessage() {}
 
 func (x *ListRepositoryConnectorsRequest_Filter) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[33]
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2207,8 +2267,13 @@ const file_synclet_publicapi_registry_v1_registry_proto_rawDesc = "" +
 	"\x14AddConnectorResponse\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\",\n" +
 	"\x1aGetManagedConnectorRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\x1e\n" +
-	"\x1cListManagedConnectorsRequest\"t\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\xd8\x01\n" +
+	"\x1cListManagedConnectorsRequest\x12\x16\n" +
+	"\x06search\x18\x01 \x01(\tR\x06search\x12Z\n" +
+	"\x06filter\x18\x02 \x01(\v2B.synclet.publicapi.registry.v1.ListManagedConnectorsRequest.FilterR\x06filter\x1aD\n" +
+	"\x06Filter\x12(\n" +
+	"\rrepository_id\x18\x01 \x01(\tH\x00R\frepositoryId\x88\x01\x01B\x10\n" +
+	"\x0e_repository_id\"t\n" +
 	"\x1dListManagedConnectorsResponse\x12S\n" +
 	"\n" +
 	"connectors\x18\x01 \x03(\v23.synclet.publicapi.registry.v1.ManagedConnectorInfoR\n" +
@@ -2357,7 +2422,7 @@ func file_synclet_publicapi_registry_v1_registry_proto_rawDescGZIP() []byte {
 }
 
 var file_synclet_publicapi_registry_v1_registry_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
-var file_synclet_publicapi_registry_v1_registry_proto_msgTypes = make([]protoimpl.MessageInfo, 34)
+var file_synclet_publicapi_registry_v1_registry_proto_msgTypes = make([]protoimpl.MessageInfo, 35)
 var file_synclet_publicapi_registry_v1_registry_proto_goTypes = []any{
 	(ConnectorType)(0),                             // 0: synclet.publicapi.registry.v1.ConnectorType
 	(RepositoryStatus)(0),                          // 1: synclet.publicapi.registry.v1.RepositoryStatus
@@ -2398,8 +2463,9 @@ var file_synclet_publicapi_registry_v1_registry_proto_goTypes = []any{
 	(*UpdateManagedConnectorResponse)(nil),         // 36: synclet.publicapi.registry.v1.UpdateManagedConnectorResponse
 	(*BatchUpdateConnectorsRequest)(nil),           // 37: synclet.publicapi.registry.v1.BatchUpdateConnectorsRequest
 	(*BatchUpdateConnectorsResponse)(nil),          // 38: synclet.publicapi.registry.v1.BatchUpdateConnectorsResponse
-	(*ListRepositoryConnectorsRequest_Filter)(nil), // 39: synclet.publicapi.registry.v1.ListRepositoryConnectorsRequest.Filter
-	(*v1.ConnectorSpecification)(nil),              // 40: synclet.protocol.v1.ConnectorSpecification
+	(*ListManagedConnectorsRequest_Filter)(nil),    // 39: synclet.publicapi.registry.v1.ListManagedConnectorsRequest.Filter
+	(*ListRepositoryConnectorsRequest_Filter)(nil), // 40: synclet.publicapi.registry.v1.ListRepositoryConnectorsRequest.Filter
+	(*v1.ConnectorSpecification)(nil),              // 41: synclet.protocol.v1.ConnectorSpecification
 }
 var file_synclet_publicapi_registry_v1_registry_proto_depIdxs = []int32{
 	5,  // 0: synclet.publicapi.registry.v1.ConnectorInfo.release_stage:type_name -> synclet.publicapi.registry.v1.ReleaseStage
@@ -2410,58 +2476,59 @@ var file_synclet_publicapi_registry_v1_registry_proto_depIdxs = []int32{
 	0,  // 5: synclet.publicapi.registry.v1.ListConnectorsRequest.type:type_name -> synclet.publicapi.registry.v1.ConnectorType
 	5,  // 6: synclet.publicapi.registry.v1.ListConnectorsRequest.release_stage:type_name -> synclet.publicapi.registry.v1.ReleaseStage
 	6,  // 7: synclet.publicapi.registry.v1.ListConnectorsResponse.connectors:type_name -> synclet.publicapi.registry.v1.ConnectorInfo
-	40, // 8: synclet.publicapi.registry.v1.GetConnectorSpecResponse.spec:type_name -> synclet.protocol.v1.ConnectorSpecification
+	41, // 8: synclet.publicapi.registry.v1.GetConnectorSpecResponse.spec:type_name -> synclet.protocol.v1.ConnectorSpecification
 	11, // 9: synclet.publicapi.registry.v1.GetConnectorSpecResponse.external_documentation_urls:type_name -> synclet.publicapi.registry.v1.ExternalDocumentationUrl
 	0,  // 10: synclet.publicapi.registry.v1.AddConnectorRequest.connector_type:type_name -> synclet.publicapi.registry.v1.ConnectorType
-	19, // 11: synclet.publicapi.registry.v1.ListManagedConnectorsResponse.connectors:type_name -> synclet.publicapi.registry.v1.ManagedConnectorInfo
-	17, // 12: synclet.publicapi.registry.v1.UpdateInfo.breaking_changes:type_name -> synclet.publicapi.registry.v1.BreakingChange
-	0,  // 13: synclet.publicapi.registry.v1.ManagedConnectorInfo.connector_type:type_name -> synclet.publicapi.registry.v1.ConnectorType
-	18, // 14: synclet.publicapi.registry.v1.ManagedConnectorInfo.update_info:type_name -> synclet.publicapi.registry.v1.UpdateInfo
-	1,  // 15: synclet.publicapi.registry.v1.Repository.status:type_name -> synclet.publicapi.registry.v1.RepositoryStatus
-	22, // 16: synclet.publicapi.registry.v1.AddRepositoryResponse.repository:type_name -> synclet.publicapi.registry.v1.Repository
-	22, // 17: synclet.publicapi.registry.v1.ListRepositoriesResponse.repositories:type_name -> synclet.publicapi.registry.v1.Repository
-	22, // 18: synclet.publicapi.registry.v1.SyncRepositoryResponse.repository:type_name -> synclet.publicapi.registry.v1.Repository
-	0,  // 19: synclet.publicapi.registry.v1.ListRepositoryConnectorsRequest.type:type_name -> synclet.publicapi.registry.v1.ConnectorType
-	39, // 20: synclet.publicapi.registry.v1.ListRepositoryConnectorsRequest.filter:type_name -> synclet.publicapi.registry.v1.ListRepositoryConnectorsRequest.Filter
-	6,  // 21: synclet.publicapi.registry.v1.ListRepositoryConnectorsResponse.connectors:type_name -> synclet.publicapi.registry.v1.ConnectorInfo
-	19, // 22: synclet.publicapi.registry.v1.UpdateManagedConnectorResponse.connector:type_name -> synclet.publicapi.registry.v1.ManagedConnectorInfo
-	19, // 23: synclet.publicapi.registry.v1.BatchUpdateConnectorsResponse.updated_connectors:type_name -> synclet.publicapi.registry.v1.ManagedConnectorInfo
-	2,  // 24: synclet.publicapi.registry.v1.ListRepositoryConnectorsRequest.Filter.support_level:type_name -> synclet.publicapi.registry.v1.SupportLevel
-	3,  // 25: synclet.publicapi.registry.v1.ListRepositoryConnectorsRequest.Filter.license:type_name -> synclet.publicapi.registry.v1.License
-	4,  // 26: synclet.publicapi.registry.v1.ListRepositoryConnectorsRequest.Filter.source_type:type_name -> synclet.publicapi.registry.v1.SourceType
-	7,  // 27: synclet.publicapi.registry.v1.ConnectorRegistryService.ListConnectors:input_type -> synclet.publicapi.registry.v1.ListConnectorsRequest
-	9,  // 28: synclet.publicapi.registry.v1.ConnectorRegistryService.GetConnectorSpec:input_type -> synclet.publicapi.registry.v1.GetConnectorSpecRequest
-	12, // 29: synclet.publicapi.registry.v1.ConnectorRegistryService.AddConnector:input_type -> synclet.publicapi.registry.v1.AddConnectorRequest
-	14, // 30: synclet.publicapi.registry.v1.ConnectorRegistryService.GetManagedConnector:input_type -> synclet.publicapi.registry.v1.GetManagedConnectorRequest
-	15, // 31: synclet.publicapi.registry.v1.ConnectorRegistryService.ListManagedConnectors:input_type -> synclet.publicapi.registry.v1.ListManagedConnectorsRequest
-	20, // 32: synclet.publicapi.registry.v1.ConnectorRegistryService.DeleteManagedConnector:input_type -> synclet.publicapi.registry.v1.DeleteManagedConnectorRequest
-	23, // 33: synclet.publicapi.registry.v1.ConnectorRegistryService.AddRepository:input_type -> synclet.publicapi.registry.v1.AddRepositoryRequest
-	25, // 34: synclet.publicapi.registry.v1.ConnectorRegistryService.ListRepositories:input_type -> synclet.publicapi.registry.v1.ListRepositoriesRequest
-	27, // 35: synclet.publicapi.registry.v1.ConnectorRegistryService.DeleteRepository:input_type -> synclet.publicapi.registry.v1.DeleteRepositoryRequest
-	29, // 36: synclet.publicapi.registry.v1.ConnectorRegistryService.SyncRepository:input_type -> synclet.publicapi.registry.v1.SyncRepositoryRequest
-	31, // 37: synclet.publicapi.registry.v1.ConnectorRegistryService.ListRepositoryConnectors:input_type -> synclet.publicapi.registry.v1.ListRepositoryConnectorsRequest
-	33, // 38: synclet.publicapi.registry.v1.ConnectorRegistryService.GetConnectorVersions:input_type -> synclet.publicapi.registry.v1.GetConnectorVersionsRequest
-	35, // 39: synclet.publicapi.registry.v1.ConnectorRegistryService.UpdateManagedConnector:input_type -> synclet.publicapi.registry.v1.UpdateManagedConnectorRequest
-	37, // 40: synclet.publicapi.registry.v1.ConnectorRegistryService.BatchUpdateConnectors:input_type -> synclet.publicapi.registry.v1.BatchUpdateConnectorsRequest
-	8,  // 41: synclet.publicapi.registry.v1.ConnectorRegistryService.ListConnectors:output_type -> synclet.publicapi.registry.v1.ListConnectorsResponse
-	10, // 42: synclet.publicapi.registry.v1.ConnectorRegistryService.GetConnectorSpec:output_type -> synclet.publicapi.registry.v1.GetConnectorSpecResponse
-	13, // 43: synclet.publicapi.registry.v1.ConnectorRegistryService.AddConnector:output_type -> synclet.publicapi.registry.v1.AddConnectorResponse
-	19, // 44: synclet.publicapi.registry.v1.ConnectorRegistryService.GetManagedConnector:output_type -> synclet.publicapi.registry.v1.ManagedConnectorInfo
-	16, // 45: synclet.publicapi.registry.v1.ConnectorRegistryService.ListManagedConnectors:output_type -> synclet.publicapi.registry.v1.ListManagedConnectorsResponse
-	21, // 46: synclet.publicapi.registry.v1.ConnectorRegistryService.DeleteManagedConnector:output_type -> synclet.publicapi.registry.v1.DeleteManagedConnectorResponse
-	24, // 47: synclet.publicapi.registry.v1.ConnectorRegistryService.AddRepository:output_type -> synclet.publicapi.registry.v1.AddRepositoryResponse
-	26, // 48: synclet.publicapi.registry.v1.ConnectorRegistryService.ListRepositories:output_type -> synclet.publicapi.registry.v1.ListRepositoriesResponse
-	28, // 49: synclet.publicapi.registry.v1.ConnectorRegistryService.DeleteRepository:output_type -> synclet.publicapi.registry.v1.DeleteRepositoryResponse
-	30, // 50: synclet.publicapi.registry.v1.ConnectorRegistryService.SyncRepository:output_type -> synclet.publicapi.registry.v1.SyncRepositoryResponse
-	32, // 51: synclet.publicapi.registry.v1.ConnectorRegistryService.ListRepositoryConnectors:output_type -> synclet.publicapi.registry.v1.ListRepositoryConnectorsResponse
-	34, // 52: synclet.publicapi.registry.v1.ConnectorRegistryService.GetConnectorVersions:output_type -> synclet.publicapi.registry.v1.GetConnectorVersionsResponse
-	36, // 53: synclet.publicapi.registry.v1.ConnectorRegistryService.UpdateManagedConnector:output_type -> synclet.publicapi.registry.v1.UpdateManagedConnectorResponse
-	38, // 54: synclet.publicapi.registry.v1.ConnectorRegistryService.BatchUpdateConnectors:output_type -> synclet.publicapi.registry.v1.BatchUpdateConnectorsResponse
-	41, // [41:55] is the sub-list for method output_type
-	27, // [27:41] is the sub-list for method input_type
-	27, // [27:27] is the sub-list for extension type_name
-	27, // [27:27] is the sub-list for extension extendee
-	0,  // [0:27] is the sub-list for field type_name
+	39, // 11: synclet.publicapi.registry.v1.ListManagedConnectorsRequest.filter:type_name -> synclet.publicapi.registry.v1.ListManagedConnectorsRequest.Filter
+	19, // 12: synclet.publicapi.registry.v1.ListManagedConnectorsResponse.connectors:type_name -> synclet.publicapi.registry.v1.ManagedConnectorInfo
+	17, // 13: synclet.publicapi.registry.v1.UpdateInfo.breaking_changes:type_name -> synclet.publicapi.registry.v1.BreakingChange
+	0,  // 14: synclet.publicapi.registry.v1.ManagedConnectorInfo.connector_type:type_name -> synclet.publicapi.registry.v1.ConnectorType
+	18, // 15: synclet.publicapi.registry.v1.ManagedConnectorInfo.update_info:type_name -> synclet.publicapi.registry.v1.UpdateInfo
+	1,  // 16: synclet.publicapi.registry.v1.Repository.status:type_name -> synclet.publicapi.registry.v1.RepositoryStatus
+	22, // 17: synclet.publicapi.registry.v1.AddRepositoryResponse.repository:type_name -> synclet.publicapi.registry.v1.Repository
+	22, // 18: synclet.publicapi.registry.v1.ListRepositoriesResponse.repositories:type_name -> synclet.publicapi.registry.v1.Repository
+	22, // 19: synclet.publicapi.registry.v1.SyncRepositoryResponse.repository:type_name -> synclet.publicapi.registry.v1.Repository
+	0,  // 20: synclet.publicapi.registry.v1.ListRepositoryConnectorsRequest.type:type_name -> synclet.publicapi.registry.v1.ConnectorType
+	40, // 21: synclet.publicapi.registry.v1.ListRepositoryConnectorsRequest.filter:type_name -> synclet.publicapi.registry.v1.ListRepositoryConnectorsRequest.Filter
+	6,  // 22: synclet.publicapi.registry.v1.ListRepositoryConnectorsResponse.connectors:type_name -> synclet.publicapi.registry.v1.ConnectorInfo
+	19, // 23: synclet.publicapi.registry.v1.UpdateManagedConnectorResponse.connector:type_name -> synclet.publicapi.registry.v1.ManagedConnectorInfo
+	19, // 24: synclet.publicapi.registry.v1.BatchUpdateConnectorsResponse.updated_connectors:type_name -> synclet.publicapi.registry.v1.ManagedConnectorInfo
+	2,  // 25: synclet.publicapi.registry.v1.ListRepositoryConnectorsRequest.Filter.support_level:type_name -> synclet.publicapi.registry.v1.SupportLevel
+	3,  // 26: synclet.publicapi.registry.v1.ListRepositoryConnectorsRequest.Filter.license:type_name -> synclet.publicapi.registry.v1.License
+	4,  // 27: synclet.publicapi.registry.v1.ListRepositoryConnectorsRequest.Filter.source_type:type_name -> synclet.publicapi.registry.v1.SourceType
+	7,  // 28: synclet.publicapi.registry.v1.ConnectorRegistryService.ListConnectors:input_type -> synclet.publicapi.registry.v1.ListConnectorsRequest
+	9,  // 29: synclet.publicapi.registry.v1.ConnectorRegistryService.GetConnectorSpec:input_type -> synclet.publicapi.registry.v1.GetConnectorSpecRequest
+	12, // 30: synclet.publicapi.registry.v1.ConnectorRegistryService.AddConnector:input_type -> synclet.publicapi.registry.v1.AddConnectorRequest
+	14, // 31: synclet.publicapi.registry.v1.ConnectorRegistryService.GetManagedConnector:input_type -> synclet.publicapi.registry.v1.GetManagedConnectorRequest
+	15, // 32: synclet.publicapi.registry.v1.ConnectorRegistryService.ListManagedConnectors:input_type -> synclet.publicapi.registry.v1.ListManagedConnectorsRequest
+	20, // 33: synclet.publicapi.registry.v1.ConnectorRegistryService.DeleteManagedConnector:input_type -> synclet.publicapi.registry.v1.DeleteManagedConnectorRequest
+	23, // 34: synclet.publicapi.registry.v1.ConnectorRegistryService.AddRepository:input_type -> synclet.publicapi.registry.v1.AddRepositoryRequest
+	25, // 35: synclet.publicapi.registry.v1.ConnectorRegistryService.ListRepositories:input_type -> synclet.publicapi.registry.v1.ListRepositoriesRequest
+	27, // 36: synclet.publicapi.registry.v1.ConnectorRegistryService.DeleteRepository:input_type -> synclet.publicapi.registry.v1.DeleteRepositoryRequest
+	29, // 37: synclet.publicapi.registry.v1.ConnectorRegistryService.SyncRepository:input_type -> synclet.publicapi.registry.v1.SyncRepositoryRequest
+	31, // 38: synclet.publicapi.registry.v1.ConnectorRegistryService.ListRepositoryConnectors:input_type -> synclet.publicapi.registry.v1.ListRepositoryConnectorsRequest
+	33, // 39: synclet.publicapi.registry.v1.ConnectorRegistryService.GetConnectorVersions:input_type -> synclet.publicapi.registry.v1.GetConnectorVersionsRequest
+	35, // 40: synclet.publicapi.registry.v1.ConnectorRegistryService.UpdateManagedConnector:input_type -> synclet.publicapi.registry.v1.UpdateManagedConnectorRequest
+	37, // 41: synclet.publicapi.registry.v1.ConnectorRegistryService.BatchUpdateConnectors:input_type -> synclet.publicapi.registry.v1.BatchUpdateConnectorsRequest
+	8,  // 42: synclet.publicapi.registry.v1.ConnectorRegistryService.ListConnectors:output_type -> synclet.publicapi.registry.v1.ListConnectorsResponse
+	10, // 43: synclet.publicapi.registry.v1.ConnectorRegistryService.GetConnectorSpec:output_type -> synclet.publicapi.registry.v1.GetConnectorSpecResponse
+	13, // 44: synclet.publicapi.registry.v1.ConnectorRegistryService.AddConnector:output_type -> synclet.publicapi.registry.v1.AddConnectorResponse
+	19, // 45: synclet.publicapi.registry.v1.ConnectorRegistryService.GetManagedConnector:output_type -> synclet.publicapi.registry.v1.ManagedConnectorInfo
+	16, // 46: synclet.publicapi.registry.v1.ConnectorRegistryService.ListManagedConnectors:output_type -> synclet.publicapi.registry.v1.ListManagedConnectorsResponse
+	21, // 47: synclet.publicapi.registry.v1.ConnectorRegistryService.DeleteManagedConnector:output_type -> synclet.publicapi.registry.v1.DeleteManagedConnectorResponse
+	24, // 48: synclet.publicapi.registry.v1.ConnectorRegistryService.AddRepository:output_type -> synclet.publicapi.registry.v1.AddRepositoryResponse
+	26, // 49: synclet.publicapi.registry.v1.ConnectorRegistryService.ListRepositories:output_type -> synclet.publicapi.registry.v1.ListRepositoriesResponse
+	28, // 50: synclet.publicapi.registry.v1.ConnectorRegistryService.DeleteRepository:output_type -> synclet.publicapi.registry.v1.DeleteRepositoryResponse
+	30, // 51: synclet.publicapi.registry.v1.ConnectorRegistryService.SyncRepository:output_type -> synclet.publicapi.registry.v1.SyncRepositoryResponse
+	32, // 52: synclet.publicapi.registry.v1.ConnectorRegistryService.ListRepositoryConnectors:output_type -> synclet.publicapi.registry.v1.ListRepositoryConnectorsResponse
+	34, // 53: synclet.publicapi.registry.v1.ConnectorRegistryService.GetConnectorVersions:output_type -> synclet.publicapi.registry.v1.GetConnectorVersionsResponse
+	36, // 54: synclet.publicapi.registry.v1.ConnectorRegistryService.UpdateManagedConnector:output_type -> synclet.publicapi.registry.v1.UpdateManagedConnectorResponse
+	38, // 55: synclet.publicapi.registry.v1.ConnectorRegistryService.BatchUpdateConnectors:output_type -> synclet.publicapi.registry.v1.BatchUpdateConnectorsResponse
+	42, // [42:56] is the sub-list for method output_type
+	28, // [28:42] is the sub-list for method input_type
+	28, // [28:28] is the sub-list for extension type_name
+	28, // [28:28] is the sub-list for extension extendee
+	0,  // [0:28] is the sub-list for field type_name
 }
 
 func init() { file_synclet_publicapi_registry_v1_registry_proto_init() }
@@ -2469,13 +2536,14 @@ func file_synclet_publicapi_registry_v1_registry_proto_init() {
 	if File_synclet_publicapi_registry_v1_registry_proto != nil {
 		return
 	}
+	file_synclet_publicapi_registry_v1_registry_proto_msgTypes[33].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_synclet_publicapi_registry_v1_registry_proto_rawDesc), len(file_synclet_publicapi_registry_v1_registry_proto_rawDesc)),
 			NumEnums:      6,
-			NumMessages:   34,
+			NumMessages:   35,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

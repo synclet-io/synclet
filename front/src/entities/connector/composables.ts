@@ -23,11 +23,21 @@ export function useManagedConnector(id: MaybeRef<string>) {
   })
 }
 
-export function useManagedConnectors() {
+export function useManagedConnectors(params?: {
+  repositoryId?: Ref<string | null | undefined>
+  search?: Ref<string | undefined>
+}) {
   const { currentWorkspaceId } = useAuth()
   return useQuery({
-    queryKey: computed(() => connectorKeys.managed(currentWorkspaceId.value ?? '')),
-    queryFn: () => connectorApi.listManagedConnectors(),
+    queryKey: computed(() => connectorKeys.managed(
+      currentWorkspaceId.value ?? '',
+      params?.repositoryId?.value,
+      params?.search?.value,
+    )),
+    queryFn: () => connectorApi.listManagedConnectors({
+      repositoryId: params?.repositoryId?.value,
+      search: params?.search?.value,
+    }),
     enabled: computed(() => !!currentWorkspaceId.value),
   })
 }

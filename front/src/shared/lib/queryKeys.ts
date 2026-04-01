@@ -1,7 +1,8 @@
 export const connectorKeys = {
   all: (workspaceId: string) => ['connectors', workspaceId] as const,
   list: (workspaceId: string) => [...connectorKeys.all(workspaceId), 'list'] as const,
-  managed: (workspaceId: string) => [...connectorKeys.all(workspaceId), 'managed'] as const,
+  managed: (workspaceId: string, repositoryId?: string | null, search?: string) =>
+    [...connectorKeys.all(workspaceId), 'managed', repositoryId ?? '', search ?? ''] as const,
   spec: (workspaceId: string, name: string) => [...connectorKeys.all(workspaceId), 'spec', name] as const,
 } as const
 

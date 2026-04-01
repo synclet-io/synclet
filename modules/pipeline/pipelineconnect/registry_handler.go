@@ -246,9 +246,15 @@ func (h *RegistryHandler) ListManagedConnectors(ctx context.Context, req *connec
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	items, err := h.listConnectorsWithUpdateInfo.Execute(ctx, pipelineconnectors.ListConnectorsWithUpdateInfoParams{
+	params := pipelineconnectors.ListConnectorsWithUpdateInfoParams{
 		WorkspaceID: workspaceID,
-	})
+		Search:      req.Msg.Search,
+	}
+	if f := req.Msg.Filter; f != nil && f.RepositoryId != nil {
+		params.FilterRepositoryID = f.RepositoryId
+	}
+
+	items, err := h.listConnectorsWithUpdateInfo.Execute(ctx, params)
 	if err != nil {
 		return nil, mapError(err)
 	}

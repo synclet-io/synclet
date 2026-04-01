@@ -9,12 +9,27 @@ import { getErrorMessage } from '@shared/lib/errorUtils'
 import { SAlert, SBadge, SButton, SConfirmDialog, SEmptyState, SInput, SModal, SPagination, SSelect, SSkeleton, STable, STabs, useToast } from '@shared/ui'
 import { ArrowUpCircle, Container, Globe, RefreshCw, Trash2 } from 'lucide-vue-next'
 
+import { refDebounced } from '@vueuse/core'
 import { computed, ref, watch } from 'vue'
 
 const toast = useToast()
 
+// Filter state
+const repositoryFilter = ref('')
+const searchQuery = ref('')
+const debouncedSearch = refDebounced(searchQuery, 300)
+
+const mappedRepositoryId = computed(() => {
+  if (repositoryFilter.value === '') return undefined
+  if (repositoryFilter.value === 'custom') return null
+  return repositoryFilter.value
+})
+
 // Installed connectors
-const { data: managed, isLoading: managedLoading } = useManagedConnectors()
+const { data: managed, isLoading: managedLoading } = useManagedConnectors({
+  repositoryId: mappedRepositoryId,
+  search: debouncedSearch,
+})
 const deleteConnector = useDeleteManagedConnector()
 const updateConnector = useUpdateManagedConnector()
 const batchUpdate = useBatchUpdateConnectors()
@@ -31,9 +46,10 @@ const connectorTab = computed(() => activeTab.value as ConnectorType)
 const currentPage = ref(1)
 const PAGE_SIZE = 20
 
-// Reset page when tab changes
+// Reset page and search when tab changes
 watch(connectorTab, () => {
   currentPage.value = 1
+  searchQuery.value = ''
 })
 
 const filteredManaged = computed(() =>
@@ -467,23 +483,42 @@ async function handleSyncRepo(repo: Repository) {
 
   <!-- Connectors tab (Sources / Destinations) -->
   <template v-else>
-    <div class="flex justify-end gap-2 mb-4">
-      <SButton
-        v-if="connectorsWithUpdates.length > 0"
-        variant="secondary"
-        :loading="updateAllLoading"
-        @click="handleUpdateAll"
-      >
-        <ArrowUpCircle class="w-4 h-4" /> Update All ({{ connectorsWithUpdates.length }})
-      </SButton>
-      <SButton @click="openAddModal">
-        <Container class="w-4 h-4" /> Add Custom
-      </SButton>
+    <div class="flex items-end gap-3 mb-4">
+      <SSelect
+        v-model="repositoryFilter"
+        size="sm"
+        class="w-48"
+        :options="[
+          { label: 'All repositories', value: '' },
+          ...(repositories ?? []).map(r => ({ label: r.name, value: r.id })),
+          { label: 'Custom', value: 'custom' },
+        ]"
+      />
+      <SInput
+        v-model="searchQuery"
+        class="w-64"
+        placeholder="Search connectors..."
+      />
+      <div class="ml-auto flex gap-2">
+        <SButton
+          v-if="connectorsWithUpdates.length > 0"
+          variant="secondary"
+          :loading="updateAllLoading"
+          @click="handleUpdateAll"
+        >
+          <ArrowUpCircle class="w-4 h-4" /> Update All ({{ connectorsWithUpdates.length }})
+        </SButton>
+        <SButton @click="openAddModal">
+          <Container class="w-4 h-4" /> Add Custom
+        </SButton>
+      </div>
     </div>
 
     <div v-if="managedLoading" class="space-y-3">
       <SSkeleton v-for="i in 4" :key="i" variant="rect" height="48px" />
     </div>
+
+    <SEmptyState v-else-if="!pagedManaged.length" title="No connectors found" description="Try adjusting your filters or search query." />
 
     <STable v-else :columns="columns" :data="pagedManaged">
       <template #cell-name="{ row }">

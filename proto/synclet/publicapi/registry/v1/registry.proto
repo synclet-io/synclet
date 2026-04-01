@@ -147,7 +147,14 @@ message GetManagedConnectorRequest {
   string id = 1;
 }
 
-message ListManagedConnectorsRequest {}
+message ListManagedConnectorsRequest {
+  string search = 1;
+  Filter filter = 2;
+
+  message Filter {
+    optional string repository_id = 1;
+  }
+}
 
 message ListManagedConnectorsResponse {
   repeated ManagedConnectorInfo connectors = 1;
