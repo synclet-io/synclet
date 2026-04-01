@@ -9,9 +9,9 @@
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
         {
-          "type": "yaml",
+          "type": "generic",
           "path": "deploy/helm/synclet/Chart.yaml",
-          "jsonpath": "$.appVersion"
+          "glob": false
         }
       ]
     },
