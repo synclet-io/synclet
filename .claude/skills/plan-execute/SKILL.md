@@ -28,15 +28,49 @@ Execute the approved plan:
 
 5. **Read task files** — Read all `TASK_*.md` files from the plan's wave subdirectories (`wave_*/TASK_*.md`). These contain the detailed task specifications.
 
-## Execution Strategy
+## Execution Strategy — Worktree Isolation
 
-Analyze the plan's tasks and waves:
-- **Create a plan branch** from `main` before starting execution: `git checkout -b plan/{slug} main`
-- Tasks within the same wave run in parallel via team agents
-- Each agent works in an **isolated git worktree** (`isolation: "worktree"` on the Task tool) to avoid file conflicts
-- Waves execute sequentially (wave 2 starts after wave 1 completes)
-- After all agents in a wave finish, **merge all worktree branches** into the plan branch (not main) before starting the next wave
-- The plan branch accumulates all changes; main stays clean until the user decides to merge
+**CRITICAL: The main repo working directory must NEVER be modified.** All work happens in git worktrees under `.claude/worktrees/`.
+
+### Setup
+
+1. **Create plan branch** (without checkout): `git branch plan/{slug} main`
+2. **Create plan worktree**: `git worktree add .claude/worktrees/plan-{slug} plan/{slug}`
+   - This worktree is where wave merges happen and verification runs
+   - Store this path as `{planWorktree}` (absolute path)
+
+### Per-Wave Execution
+
+For each wave:
+
+1. **Create agent worktrees** — For each task in the wave:
+   ```
+   git worktree add .claude/worktrees/plan-{slug}-task-{T} -b worktree-plan-{slug}-task-{T} plan/{slug}
+   ```
+   - Each agent gets its own worktree branched from the current state of `plan/{slug}`
+   - Store the absolute path as `{agentWorktree}`
+
+2. **Spawn agents** — Use `Task` tool with `subagent_type: "general-purpose"` and `team_name`. Do **NOT** use `isolation: "worktree"` — worktrees are pre-created above.
+
+3. **Agent prompt** must instruct the agent to work exclusively in its worktree path (see Agent Prompt below).
+
+4. **After wave completes** — Merge agent branches into the plan branch:
+   ```bash
+   cd {planWorktree}
+   git merge worktree-plan-{slug}-task-{T} --no-edit
+   ```
+   - Merge each agent branch sequentially
+   - If merge conflicts occur, resolve them in `{planWorktree}` before merging the next branch
+
+5. **Clean up agent worktrees**:
+   ```bash
+   git worktree remove .claude/worktrees/plan-{slug}-task-{T}
+   git branch -d worktree-plan-{slug}-task-{T}
+   ```
+
+6. **Verify build** in `{planWorktree}` before starting the next wave
+
+### Waves execute sequentially — wave 2 starts only after wave 1 is fully merged.
 
 ## Team Setup
 
@@ -50,12 +84,23 @@ Analyze the plan's tasks and waves:
    - Set up `blockedBy` dependencies between tasks based on wave structure
 
 3. **Execute wave by wave** — For each wave, spawn implementer agents (max 3 concurrent):
-   - Use `Task` tool with `subagent_type: "general-purpose"`, `team_name`, and `isolation: "worktree"`
-   - Each agent works in its own worktree branch, committing changes there
-   - Each agent gets a focused prompt including the task file path and summary file path:
+   - Use `Task` tool with `subagent_type: "general-purpose"` and `team_name`
+   - Do **NOT** use `isolation: "worktree"` — agent worktrees are pre-created
+   - Each agent gets a focused prompt:
+
+## Agent Prompt
 
 ```
 You are implementing a task from a plan.
+
+## CRITICAL: Working Directory
+
+Your worktree is at: {agentWorktree}
+You MUST use this path as the base for ALL file operations:
+- Read/Write/Edit: use absolute paths under {agentWorktree}/
+- Bash commands: always cd to {agentWorktree} first, or use absolute paths
+- Glob/Grep: set path to {agentWorktree} or subdirectories within it
+- NEVER modify files outside {agentWorktree}
 
 ## Project Conventions
 {conventions summary from prerequisites}
@@ -63,21 +108,22 @@ You are implementing a task from a plan.
 ## Your Task
 - Task: {task subject}
 - Task file: {planDir}/wave_{W}/TASK_{T}.md
-- Files: {file list}
+- Files: {file list} (these are relative paths — prefix with {agentWorktree}/)
 - Details: {full task details}
 - Acceptance criteria: {criteria list}
 
 ## Rules
 1. Follow project conventions strictly
-2. Only modify files listed in your task (read others as needed)
-3. Verify your changes compile/build after making them
-4. Run relevant tests if they exist
-5. Commit your changes in the worktree with a conventional commit message
+2. Only modify files listed in your task (read others as needed — still within {agentWorktree})
+3. Verify your changes compile/build: run build commands from {agentWorktree}
+4. Run relevant tests if they exist (from {agentWorktree})
+5. Commit your changes with a conventional commit message:
+   cd {agentWorktree} && git add -A && git commit -m "feat(scope): description"
 6. When done, mark your task as completed via TaskUpdate
 7. Report what you did via SendMessage to the team lead
 
 ## Task Summary
-After completing your work, write a summary file at `{planDir}/wave_{W}/SUMMARY_{T}.md` with:
+After completing your work, write a summary file at {planDir}/wave_{W}/SUMMARY_{T}.md with:
 - What was changed and why
 - Key decisions made
 - Any deviations from the plan
@@ -90,14 +136,6 @@ Also send a brief summary via SendMessage.
    - Monitor task completion via `TaskList`
    - If an agent reports issues, help resolve or reassign
 
-5. **Merge wave branches** — After all agents in a wave complete:
-   - Ensure you are on the plan branch: `git checkout plan/{slug}`
-   - Each worktree agent produces a branch with its changes
-   - Merge each worktree branch into the plan branch sequentially: `git merge <worktree-branch> --no-edit`
-   - If merge conflicts occur, resolve them before merging the next branch
-   - After all branches are merged, clean up: remove worktree directories first (`git worktree remove <path>`), then delete branches (`git branch -d <branch>`)
-   - Verify the merged result builds/compiles before starting the next wave
-
 ## Progress Tracking
 
 Update the plan file as tasks complete:
@@ -106,15 +144,15 @@ Update the plan file as tasks complete:
 
 ## Verification
 
-After all tasks complete:
+After all tasks complete, run checks **inside the plan worktree**:
 
-1. **Build check**: Run the project's build command (check `CLAUDE.md` for the correct command)
-2. **Test check**: Run the project's test command
-3. **Lint check**: Run the project's lint command (if available)
+1. **Build check**: `cd {planWorktree} && <build command from CLAUDE.md>`
+2. **Test check**: `cd {planWorktree} && <test command>`
+3. **Lint check**: `cd {planWorktree} && <lint command>` (if available)
 
 If any check fails:
 - Identify which task's changes caused the issue
-- Fix directly or spawn a targeted agent to fix
+- Fix directly in `{planWorktree}` or spawn a targeted agent (with its own worktree from `plan/{slug}`)
 
 ## Completion
 
@@ -164,10 +202,35 @@ If any check fails:
 **Build:** pass/fail
 **Tests:** pass/fail
 
+**Plan branch:** plan/{slug}
+**Plan worktree:** {planWorktree}
+
 {Key highlights from task summaries}
 ```
 
 7. Ask user how they want to handle the plan branch:
-   - **Squash merge** into main (`git checkout main && git merge --squash plan/{slug} && git commit -m "feat: {plan title}"`) — single clean commit
-   - **Regular merge** into main (`git checkout main && git merge plan/{slug} --no-edit`) — preserves full history
-   - **Keep branch** — leave `plan/{slug}` as-is for manual review
+   - **Create PR** — push the branch and create a pull request:
+     ```bash
+     git push -u origin plan/{slug}
+     gh pr create --base main --head plan/{slug} --title "feat: {plan title}" --body "$(cat <<'EOF'
+     ## Summary
+     {2-3 bullet points from execution summary}
+
+     ## Changes
+     {Per-task summary of what was done}
+
+     ## Test plan
+     - [ ] Build passes
+     - [ ] Tests pass
+     - [ ] Lint passes
+     {Additional verification items from task acceptance criteria}
+
+     🤖 Generated with [Claude Code](https://claude.com/claude-code)
+     EOF
+     )"
+     ```
+     Then clean up the worktree (keep the branch): `git worktree remove {planWorktree}`
+     Return the PR URL to the user.
+   - **Squash merge** into main — from the main repo (which is still on main): `git merge --squash plan/{slug} && git commit -m "feat: {plan title}"`, then clean up: `git worktree remove {planWorktree} && git branch -d plan/{slug}`
+   - **Regular merge** into main — `git merge plan/{slug} --no-edit`, then clean up: `git worktree remove {planWorktree} && git branch -d plan/{slug}`
+   - **Keep branch** — leave `plan/{slug}` worktree as-is for manual review. User can clean up later with `git worktree remove {planWorktree}`
