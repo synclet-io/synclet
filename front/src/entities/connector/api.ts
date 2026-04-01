@@ -111,9 +111,32 @@ export async function getManagedConnector(id: string): Promise<ManagedConnector>
   return mapManagedConnector(res)
 }
 
-export async function listManagedConnectors(): Promise<ManagedConnector[]> {
+export async function listManagedConnectors(params?: {
+  repositoryId?: string | null
+  search?: string
+}): Promise<ManagedConnector[]> {
   const res = await registryClient.listManagedConnectors({})
-  return (res.connectors || []).map(mapManagedConnector)
+  let connectors = (res.connectors || []).map(mapManagedConnector)
+
+  // Client-side filtering until backend supports filter params
+  if (params?.repositoryId !== undefined) {
+    const filterRepoId = params.repositoryId
+    if (filterRepoId === null) {
+      connectors = connectors.filter(c => !c.repositoryId)
+    }
+    else {
+      connectors = connectors.filter(c => c.repositoryId === filterRepoId)
+    }
+  }
+  if (params?.search) {
+    const q = params.search.toLowerCase()
+    connectors = connectors.filter(c =>
+      c.name.toLowerCase().includes(q)
+      || c.dockerImage.toLowerCase().includes(q),
+    )
+  }
+
+  return connectors
 }
 
 export async function addConnector(params: { dockerImage: string, dockerTag: string, name: string, connectorType: ConnectorType, repositoryId?: string }): Promise<{ id: string }> {
