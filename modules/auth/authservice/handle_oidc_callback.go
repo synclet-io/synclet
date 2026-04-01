@@ -2,7 +2,6 @@ package authservice
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -41,11 +40,11 @@ func NewHandleOIDCCallback(providers map[string]*OIDCProvider, stateStore *State
 func (uc *HandleOIDCCallback) Execute(ctx context.Context, providerSlug, code, state string) (*TokenPair, error) {
 	verifier, storedProvider, ok := uc.stateStore.Get(ctx, state)
 	if !ok {
-		return nil, errors.New("invalid or expired state")
+		return nil, ErrInvalidOrExpiredState
 	}
 
 	if storedProvider != providerSlug {
-		return nil, errors.New("state provider mismatch")
+		return nil, ErrStateProviderMismatch
 	}
 
 	provider, ok := uc.providers[providerSlug]
@@ -62,7 +61,7 @@ func (uc *HandleOIDCCallback) Execute(ctx context.Context, providerSlug, code, s
 	// Extract and verify ID token.
 	rawIDToken, ok := oauth2Token.Extra("id_token").(string)
 	if !ok {
-		return nil, errors.New("missing id_token in token response")
+		return nil, ErrMissingIDToken
 	}
 
 	idToken, err := provider.verifier.Verify(ctx, rawIDToken)

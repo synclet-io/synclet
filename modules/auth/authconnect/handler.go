@@ -33,6 +33,34 @@ func mapError(err error) error {
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
+	if errors.Is(err, authservice.ErrInvalidCredentials) {
+		return connect.NewError(connect.CodeUnauthenticated, err)
+	}
+
+	if errors.Is(err, authservice.ErrInvalidCurrentPassword) {
+		return connect.NewError(connect.CodePermissionDenied, err)
+	}
+
+	if errors.Is(err, authservice.ErrInvalidRefreshToken) || errors.Is(err, authservice.ErrRefreshTokenExpired) {
+		return connect.NewError(connect.CodeUnauthenticated, err)
+	}
+
+	if errors.Is(err, authservice.ErrInvalidToken) || errors.Is(err, authservice.ErrUnexpectedSigningMethod) {
+		return connect.NewError(connect.CodeUnauthenticated, err)
+	}
+
+	if errors.Is(err, authservice.ErrInvalidAPIKey) || errors.Is(err, authservice.ErrAPIKeyExpired) {
+		return connect.NewError(connect.CodeUnauthenticated, err)
+	}
+
+	if errors.Is(err, authservice.ErrInvalidOrExpiredState) || errors.Is(err, authservice.ErrStateProviderMismatch) || errors.Is(err, authservice.ErrMissingIDToken) {
+		return connect.NewError(connect.CodeUnauthenticated, err)
+	}
+
+	if errors.Is(err, authservice.ErrEmailNotVerified) || errors.Is(err, authservice.ErrInvalidEmailFormat) {
+		return connect.NewError(connect.CodePermissionDenied, err)
+	}
+
 	return err
 }
 

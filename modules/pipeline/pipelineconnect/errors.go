@@ -26,5 +26,15 @@ func mapError(err error) error {
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
+	if errors.Is(err, pipelineservice.ErrStateDataInvalidJSON) ||
+		errors.Is(err, pipelineservice.ErrMissingCheckTaskParams) ||
+		errors.Is(err, pipelineservice.ErrEmptyFieldPath) {
+		return connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	if errors.Is(err, pipelineservice.ErrConnectorNotLinked) {
+		return connect.NewError(connect.CodeFailedPrecondition, err)
+	}
+
 	return err
 }

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -37,7 +36,7 @@ func (s *SlackChannel) Deliver(ctx context.Context, channel *NotificationChannel
 
 	webhookURL, ok := config["webhook_url"]
 	if !ok || webhookURL == "" {
-		return errors.New("webhook_url missing from channel config")
+		return ErrWebhookURLMissing
 	}
 
 	// Decrypt webhook URL if it's a secret reference.

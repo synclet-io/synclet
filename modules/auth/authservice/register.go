@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"golang.org/x/crypto/bcrypt"
 )
 
 // Register creates a new user account.
@@ -30,7 +29,7 @@ func (uc *Register) Execute(ctx context.Context, email, password, name string) (
 		return nil, err
 	}
 
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	hash, err := hashPassword(password)
 	if err != nil {
 		return nil, fmt.Errorf("hashing password: %w", err)
 	}

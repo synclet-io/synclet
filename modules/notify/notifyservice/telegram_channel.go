@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -39,7 +38,7 @@ func (t *TelegramChannel) Deliver(ctx context.Context, channel *NotificationChan
 
 	botToken, ok := config["bot_token"]
 	if !ok || botToken == "" {
-		return errors.New("bot_token missing from channel config")
+		return ErrBotTokenMissing
 	}
 
 	// Decrypt bot token if it's a secret reference.
@@ -54,7 +53,7 @@ func (t *TelegramChannel) Deliver(ctx context.Context, channel *NotificationChan
 
 	chatID, ok := config["chat_id"]
 	if !ok || chatID == "" {
-		return errors.New("chat_id missing from channel config")
+		return ErrChatIDMissing
 	}
 
 	text := formatTelegramMessage(event)

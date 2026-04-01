@@ -31,6 +31,17 @@ func mapError(err error) error {
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
+	if errors.Is(err, notifyservice.ErrNameRequired) ||
+		errors.Is(err, notifyservice.ErrInvalidChannelType) ||
+		errors.Is(err, notifyservice.ErrWebhookURLRequired) ||
+		errors.Is(err, notifyservice.ErrRecipientsRequired) ||
+		errors.Is(err, notifyservice.ErrBotTokenRequired) ||
+		errors.Is(err, notifyservice.ErrChatIDRequired) ||
+		errors.Is(err, notifyservice.ErrInvalidCondition) ||
+		errors.Is(err, notifyservice.ErrConditionValueRequired) {
+		return connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
 	return err
 }
 

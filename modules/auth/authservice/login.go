@@ -3,9 +3,9 @@ package authservice
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/saturn4er/boilerplate-go/lib/filter"
-	"golang.org/x/crypto/bcrypt"
 )
 
 // Login authenticates a user and returns a token pair.
@@ -25,11 +25,22 @@ func (uc *Login) Execute(ctx context.Context, email, password string) (*TokenPai
 		Email: filter.Equals(email),
 	})
 	if err != nil {
-		return nil, errors.New("invalid credentials")
+		if errors.Is(err, ErrUserNotFound) {
+			_, _ = comparePasswordWithHash(password, randomPasswordHash) // prevent timing attacks
+
+			return nil, ErrInvalidCredentials
+		}
+
+		return nil, fmt.Errorf("get user: %w", err)
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
-		return nil, errors.New("invalid credentials")
+	ok, err := comparePasswordWithHash(password, user.PasswordHash)
+	if err != nil {
+		return nil, fmt.Errorf("compare password: %w", err)
+	}
+
+	if !ok {
+		return nil, ErrInvalidCredentials
 	}
 
 	return generateTokenPair(ctx, uc.storage, uc.config, user)

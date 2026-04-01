@@ -2,7 +2,6 @@ package notifyservice
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -32,11 +31,11 @@ func NewCreateNotificationRule(storage Storage) *CreateNotificationRule {
 // Execute creates a notification rule with the given parameters.
 func (uc *CreateNotificationRule) Execute(ctx context.Context, params CreateNotificationRuleParams) (*NotificationRule, error) {
 	if !params.Condition.IsValid() {
-		return nil, errors.New("invalid condition: must be one of on_failure, on_consecutive_failures, on_zero_records")
+		return nil, ErrInvalidCondition
 	}
 
 	if params.Condition == NotificationConditionOnConsecutiveFailures && params.ConditionValue < 1 {
-		return nil, errors.New("condition_value must be >= 1 for on_consecutive_failures")
+		return nil, ErrConditionValueRequired
 	}
 
 	now := time.Now()

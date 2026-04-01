@@ -3,7 +3,6 @@ package pipelinetasks
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -43,7 +42,7 @@ func (uc *CreateCheckTask) Execute(ctx context.Context, params CreateCheckTaskPa
 	hasDirectConfig := params.ManagedConnectorID != nil && len(params.Config) > 0
 
 	if !hasEntityRef && !hasDirectConfig {
-		return nil, errors.New("either source_id/destination_id or managed_connector_id+config must be provided")
+		return nil, pipelineservice.ErrMissingCheckTaskParams
 	}
 
 	taskID := uuid.New()

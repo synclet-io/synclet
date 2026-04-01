@@ -2,10 +2,10 @@ package pipelinecatalog
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"slices"
 
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
 	"github.com/synclet-io/synclet/pkg/protocol"
 )
 
@@ -19,7 +19,7 @@ func ValidateSelectedFields(selectedFields []protocol.SelectedField, jsonSchema 
 
 	for _, selectedField := range selectedFields {
 		if len(selectedField.FieldPath) == 0 {
-			return errors.New("empty field path in selected fields")
+			return pipelineservice.ErrEmptyFieldPath
 		}
 
 		if !fieldPathExists(schema, selectedField.FieldPath) {

@@ -2,12 +2,10 @@ package authservice
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/saturn4er/boilerplate-go/lib/filter"
-	"golang.org/x/crypto/bcrypt"
 )
 
 // ChangePassword changes a user's password after verifying the current one.
@@ -29,20 +27,25 @@ func (uc *ChangePassword) Execute(ctx context.Context, userID uuid.UUID, current
 		return fmt.Errorf("fetching user: %w", err)
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(currentPassword)); err != nil {
-		return errors.New("invalid current password")
+	validCurrentPassword, err := comparePasswordWithHash(currentPassword, user.PasswordHash)
+	if err != nil {
+		return fmt.Errorf("comparing current password: %w", err)
+	}
+
+	if !validCurrentPassword {
+		return ErrInvalidCurrentPassword
 	}
 
 	if err := ValidatePassword(newPassword); err != nil {
 		return err
 	}
 
-	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	hash, err := hashPassword(newPassword)
 	if err != nil {
 		return fmt.Errorf("hashing password: %w", err)
 	}
 
-	user.PasswordHash = string(hash)
+	user.PasswordHash = hash
 
 	if _, err := uc.storage.Users().Update(ctx, user); err != nil {
 		return fmt.Errorf("updating password: %w", err)

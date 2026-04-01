@@ -3,11 +3,11 @@ package pipelinestate
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
 
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelineconnections"
 	"github.com/synclet-io/synclet/pkg/protocol"
 )
@@ -45,7 +45,7 @@ func (uc *UpdateStreamState) Execute(ctx context.Context, params UpdateStreamSta
 	}
 
 	if !json.Valid([]byte(params.StateData)) {
-		return errors.New("state_data must be valid JSON")
+		return pipelineservice.ErrStateDataInvalidJSON
 	}
 
 	msg := &protocol.AirbyteStateMessage{

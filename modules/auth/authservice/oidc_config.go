@@ -1,7 +1,6 @@
 package authservice
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 )
@@ -53,12 +52,12 @@ func ValidateEmailDomain(email string, emailVerified bool, allowedDomains []stri
 	}
 
 	if !emailVerified {
-		return errors.New("email not verified by provider")
+		return ErrEmailNotVerified
 	}
 
 	parts := strings.SplitN(email, "@", 2)
 	if len(parts) != 2 {
-		return errors.New("invalid email format")
+		return ErrInvalidEmailFormat
 	}
 
 	domain := strings.ToLower(parts[1])

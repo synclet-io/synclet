@@ -3,7 +3,6 @@ package notifyservice
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 )
@@ -27,7 +26,7 @@ func (e *EmailChannel) Deliver(ctx context.Context, channel *NotificationChannel
 
 	recipientsStr, ok := config["recipients"]
 	if !ok || recipientsStr == "" {
-		return errors.New("recipients missing from channel config")
+		return ErrRecipientsMissing
 	}
 
 	recipients := strings.Split(recipientsStr, ",")
