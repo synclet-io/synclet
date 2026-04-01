@@ -2,7 +2,7 @@ apiVersion: v2
 name: synclet
 description: Data synchronization platform with Airbyte connector compatibility
 type: application
-version: 0.1.1
+version: 0.1.2
 appVersion: "0.3.1" # x-release-please-version:synclet
 home: https://github.com/synclet-io/synclet
 sources:
