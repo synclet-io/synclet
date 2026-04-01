@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -38,7 +39,7 @@ func (t *TelegramChannel) Deliver(ctx context.Context, channel *NotificationChan
 
 	botToken, ok := config["bot_token"]
 	if !ok || botToken == "" {
-		return fmt.Errorf("bot_token missing from channel config")
+		return errors.New("bot_token missing from channel config")
 	}
 
 	// Decrypt bot token if it's a secret reference.
@@ -53,7 +54,7 @@ func (t *TelegramChannel) Deliver(ctx context.Context, channel *NotificationChan
 
 	chatID, ok := config["chat_id"]
 	if !ok || chatID == "" {
-		return fmt.Errorf("chat_id missing from channel config")
+		return errors.New("chat_id missing from channel config")
 	}
 
 	text := formatTelegramMessage(event)
@@ -90,13 +91,13 @@ func (t *TelegramChannel) Deliver(ctx context.Context, channel *NotificationChan
 }
 
 func formatTelegramMessage(event WebhookEvent) string {
-	msg := fmt.Sprintf("[Synclet] Sync %s", event.Event)
+	msg := "[Synclet] Sync " + event.Event
 	if event.ConnectionID != "" {
-		msg += fmt.Sprintf("\nConnection: %s", event.ConnectionID)
+		msg += "\nConnection: " + event.ConnectionID
 	}
 
 	if event.Error != "" {
-		msg += fmt.Sprintf("\nError: %s", event.Error)
+		msg += "\nError: " + event.Error
 	}
 
 	return msg

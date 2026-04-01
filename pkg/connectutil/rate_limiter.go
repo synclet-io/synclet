@@ -2,7 +2,7 @@ package connectutil
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"net"
 	"sync"
 	"time"
@@ -104,7 +104,7 @@ func (r *RateLimitInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFu
 
 		limiter := r.getLimiter(ip, cfg)
 		if !limiter.Allow() {
-			return nil, connect.NewError(connect.CodeResourceExhausted, fmt.Errorf("rate limit exceeded, try again later"))
+			return nil, connect.NewError(connect.CodeResourceExhausted, errors.New("rate limit exceeded, try again later"))
 		}
 
 		return next(ctx, req)

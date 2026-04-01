@@ -2,7 +2,7 @@ package connectutil
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -100,12 +100,12 @@ func (i *AuthInterceptor) authenticate(ctx context.Context, headers http.Header,
 
 		uid, err := parseUUID(userID)
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("internal error"))
+			return nil, connect.NewError(connect.CodeInternal, errors.New("internal error"))
 		}
 
 		wsID, err := parseUUID(workspaceID)
 		if err != nil {
-			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("internal error"))
+			return nil, connect.NewError(connect.CodeInternal, errors.New("internal error"))
 		}
 
 		ctx = ContextWithUserID(ctx, uid)
@@ -126,7 +126,7 @@ func (i *AuthInterceptor) authenticateJWT(ctx context.Context, token, workspaceH
 
 	uid, err := parseUUID(userID)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("internal error"))
+		return nil, connect.NewError(connect.CodeInternal, errors.New("internal error"))
 	}
 
 	ctx = ContextWithUserID(ctx, uid)

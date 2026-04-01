@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/smtp"
+	strconv "strconv"
 	"strings"
 )
 
@@ -35,7 +36,7 @@ func NewSMTPEmailSender(config SMTPConfig) *SMTPEmailSender {
 
 // SendEmail sends an HTML email via SMTP over TLS.
 func (s *SMTPEmailSender) SendEmail(to, subject, htmlBody string) error {
-	addr := net.JoinHostPort(s.config.Host, fmt.Sprintf("%d", s.config.Port))
+	addr := net.JoinHostPort(s.config.Host, strconv.Itoa(s.config.Port))
 	msg := buildMIMEMessage(s.config.From, to, subject, htmlBody)
 
 	// SECURITY: Use explicit TLS to prevent plaintext credential transmission.

@@ -2,7 +2,7 @@ package connectutil
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"log/slog"
 
 	"connectrpc.com/connect"
@@ -40,7 +40,7 @@ func (e *errorClassifier) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
 			"error", err,
 		)
 
-		return resp, connect.NewError(connect.CodeInternal, fmt.Errorf("internal error"))
+		return resp, connect.NewError(connect.CodeInternal, errors.New("internal error"))
 	}
 }
 

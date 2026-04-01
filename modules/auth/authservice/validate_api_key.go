@@ -2,7 +2,7 @@ package authservice
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"time"
 
 	"github.com/go-pnp/go-pnp/logging"
@@ -28,11 +28,11 @@ func (uc *ValidateAPIKey) Execute(ctx context.Context, rawKey string) (*APIKey, 
 		KeyHash: filter.Equals(keyHash),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("invalid API key")
+		return nil, errors.New("invalid API key")
 	}
 
 	if apiKey.ExpiresAt != nil && time.Now().After(*apiKey.ExpiresAt) {
-		return nil, fmt.Errorf("API key expired")
+		return nil, errors.New("API key expired")
 	}
 
 	// Update last used.

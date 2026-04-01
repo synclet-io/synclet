@@ -26,11 +26,19 @@ linters:
     - dupword
     - thelper
     - wsl_v5
+    - usestdlibvars
+    - makezero
+    - wastedassign
+    - perfsprint
+    - gosec
 
   settings:
     wsl_v5:
       disable:
         - decl
+    gosec:
+      excludes:
+        - G115
     gocritic:
       enabled-tags:
         - diagnostic
@@ -85,7 +93,7 @@ linters:
       - node_modules
     rules:
       - path: "gen\\."
-        linters: [unused, unparam, gocritic, whitespace, staticcheck, govet, unconvert, varnamelen, revive, wsl_v5]
+        linters: [unused, unparam, gocritic, whitespace, staticcheck, govet, unconvert, varnamelen, revive, wsl_v5, gosec, perfsprint]
 
 formatters:
   enable:

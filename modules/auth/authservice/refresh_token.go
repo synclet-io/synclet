@@ -2,6 +2,7 @@ package authservice
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -27,7 +28,7 @@ func (uc *RefreshTokenUC) Execute(ctx context.Context, refreshToken string) (*To
 		TokenHash: filter.Equals(tokenHash),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("invalid refresh token")
+		return nil, errors.New("invalid refresh token")
 	}
 
 	if time.Now().After(storedToken.ExpiresAt) {
@@ -38,14 +39,14 @@ func (uc *RefreshTokenUC) Execute(ctx context.Context, refreshToken string) (*To
 			return nil, fmt.Errorf("delete expired refresh token: %w", err)
 		}
 
-		return nil, fmt.Errorf("refresh token expired")
+		return nil, errors.New("refresh token expired")
 	}
 
 	user, err := uc.storage.Users().First(ctx, &UserFilter{
 		ID: filter.Equals(storedToken.UserID),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("user not found")
+		return nil, errors.New("user not found")
 	}
 
 	// Delete old token and create new pair atomically to prevent reuse and token loss.

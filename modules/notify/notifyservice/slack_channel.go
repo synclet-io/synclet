@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -36,7 +37,7 @@ func (s *SlackChannel) Deliver(ctx context.Context, channel *NotificationChannel
 
 	webhookURL, ok := config["webhook_url"]
 	if !ok || webhookURL == "" {
-		return fmt.Errorf("webhook_url missing from channel config")
+		return errors.New("webhook_url missing from channel config")
 	}
 
 	// Decrypt webhook URL if it's a secret reference.
@@ -80,13 +81,13 @@ func (s *SlackChannel) Deliver(ctx context.Context, channel *NotificationChannel
 }
 
 func formatSlackMessage(event WebhookEvent) string {
-	msg := fmt.Sprintf("[Synclet] Connection sync %s", event.Event)
+	msg := "[Synclet] Connection sync " + event.Event
 	if event.ConnectionID != "" {
 		msg += fmt.Sprintf(" (connection: %s)", event.ConnectionID)
 	}
 
 	if event.Error != "" {
-		msg += fmt.Sprintf(": %s", event.Error)
+		msg += ": " + event.Error
 	}
 
 	return msg

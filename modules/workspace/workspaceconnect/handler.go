@@ -238,7 +238,7 @@ func (h *Handler) CreateInvite(ctx context.Context, req *connect.Request[workspa
 
 	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("workspace ID required"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("workspace ID required"))
 	}
 
 	role := protoToMemberRole(req.Msg.GetRole())
@@ -271,7 +271,7 @@ func (h *Handler) AcceptInvite(ctx context.Context, req *connect.Request[workspa
 	// Resolve user email for D-14 enforcement.
 	userEmail, err := connectutil.EmailFromContext(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("cannot determine user email"))
+		return nil, connect.NewError(connect.CodeInternal, errors.New("cannot determine user email"))
 	}
 
 	result, err := h.acceptInvite.Execute(ctx, req.Msg.GetToken(), userID, userEmail)
@@ -298,7 +298,7 @@ func (h *Handler) DeclineInvite(ctx context.Context, req *connect.Request[worksp
 func (h *Handler) RevokeInvite(ctx context.Context, req *connect.Request[workspacev1.RevokeInviteRequest]) (*connect.Response[workspacev1.RevokeInviteResponse], error) {
 	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("workspace ID required"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("workspace ID required"))
 	}
 
 	inviteID, err := uuid.Parse(req.Msg.GetInviteId())
@@ -317,7 +317,7 @@ func (h *Handler) RevokeInvite(ctx context.Context, req *connect.Request[workspa
 func (h *Handler) ResendInvite(ctx context.Context, req *connect.Request[workspacev1.ResendInviteRequest]) (*connect.Response[workspacev1.ResendInviteResponse], error) {
 	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("workspace ID required"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("workspace ID required"))
 	}
 
 	inviteID, err := uuid.Parse(req.Msg.GetInviteId())
@@ -336,7 +336,7 @@ func (h *Handler) ResendInvite(ctx context.Context, req *connect.Request[workspa
 func (h *Handler) ListInvites(ctx context.Context, req *connect.Request[workspacev1.ListInvitesRequest]) (*connect.Response[workspacev1.ListInvitesResponse], error) {
 	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("workspace ID required"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("workspace ID required"))
 	}
 
 	invites, err := h.listInvites.Execute(ctx, workspaceID)

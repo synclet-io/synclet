@@ -3,6 +3,7 @@ package pipelineconnect
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -313,7 +314,7 @@ func (h *ConnectionHandler) ListConnections(ctx context.Context, req *connect.Re
 func (h *ConnectionHandler) EnableConnection(ctx context.Context, req *connect.Request[pipelinev1.EnableConnectionRequest]) (*connect.Response[pipelinev1.EnableConnectionResponse], error) {
 	wsID, err := connectutil.WorkspaceIDFromContext(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, fmt.Errorf("workspace context required"))
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("workspace context required"))
 	}
 
 	id, err := uuid.Parse(req.Msg.GetId())
@@ -337,7 +338,7 @@ func (h *ConnectionHandler) EnableConnection(ctx context.Context, req *connect.R
 func (h *ConnectionHandler) DisableConnection(ctx context.Context, req *connect.Request[pipelinev1.DisableConnectionRequest]) (*connect.Response[pipelinev1.DisableConnectionResponse], error) {
 	wsID, err := connectutil.WorkspaceIDFromContext(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, fmt.Errorf("workspace context required"))
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("workspace context required"))
 	}
 
 	id, err := uuid.Parse(req.Msg.GetId())
@@ -476,7 +477,7 @@ func (h *ConnectionHandler) GetDiscoveredCatalog(ctx context.Context, req *conne
 func (h *ConnectionHandler) GetConfiguredCatalog(ctx context.Context, req *connect.Request[pipelinev1.GetConfiguredCatalogRequest]) (*connect.Response[pipelinev1.GetConfiguredCatalogResponse], error) {
 	wsID, err := connectutil.WorkspaceIDFromContext(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, fmt.Errorf("workspace context required"))
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("workspace context required"))
 	}
 
 	connID, err := uuid.Parse(req.Msg.GetConnectionId())
@@ -562,7 +563,7 @@ func (h *ConnectionHandler) GetSchemaChanges(ctx context.Context, req *connect.R
 func (h *ConnectionHandler) ResetStreamState(ctx context.Context, req *connect.Request[pipelinev1.ResetStreamStateRequest]) (*connect.Response[pipelinev1.ResetStreamStateResponse], error) {
 	wsID, err := connectutil.WorkspaceIDFromContext(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, fmt.Errorf("workspace context required"))
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("workspace context required"))
 	}
 
 	connID, err := uuid.Parse(req.Msg.GetConnectionId())
@@ -571,7 +572,7 @@ func (h *ConnectionHandler) ResetStreamState(ctx context.Context, req *connect.R
 	}
 
 	if req.Msg.GetStreamName() == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("stream_name is required"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("stream_name is required"))
 	}
 
 	if err := h.resetStreamState.Execute(ctx, pipelinestate.ResetStreamStateParams{
@@ -589,7 +590,7 @@ func (h *ConnectionHandler) ResetStreamState(ctx context.Context, req *connect.R
 func (h *ConnectionHandler) ResetConnectionState(ctx context.Context, req *connect.Request[pipelinev1.ResetConnectionStateRequest]) (*connect.Response[pipelinev1.ResetConnectionStateResponse], error) {
 	wsID, err := connectutil.WorkspaceIDFromContext(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, fmt.Errorf("workspace context required"))
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("workspace context required"))
 	}
 
 	connID, err := uuid.Parse(req.Msg.GetConnectionId())
@@ -610,7 +611,7 @@ func (h *ConnectionHandler) ResetConnectionState(ctx context.Context, req *conne
 func (h *ConnectionHandler) ListStreamStates(ctx context.Context, req *connect.Request[pipelinev1.ListStreamStatesRequest]) (*connect.Response[pipelinev1.ListStreamStatesResponse], error) {
 	wsID, err := connectutil.WorkspaceIDFromContext(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, fmt.Errorf("workspace context required"))
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("workspace context required"))
 	}
 
 	connID, err := uuid.Parse(req.Msg.GetConnectionId())
@@ -644,7 +645,7 @@ func (h *ConnectionHandler) ListStreamStates(ctx context.Context, req *connect.R
 func (h *ConnectionHandler) UpdateStreamState(ctx context.Context, req *connect.Request[pipelinev1.UpdateStreamStateRequest]) (*connect.Response[pipelinev1.UpdateStreamStateResponse], error) {
 	wsID, err := connectutil.WorkspaceIDFromContext(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, fmt.Errorf("workspace context required"))
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("workspace context required"))
 	}
 
 	connID, err := uuid.Parse(req.Msg.GetConnectionId())
@@ -653,7 +654,7 @@ func (h *ConnectionHandler) UpdateStreamState(ctx context.Context, req *connect.
 	}
 
 	if req.Msg.GetStreamName() == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("stream_name is required"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("stream_name is required"))
 	}
 
 	if err := h.updateStreamState.Execute(ctx, pipelinestate.UpdateStreamStateParams{
@@ -694,7 +695,7 @@ func (h *ConnectionHandler) ImportWorkspaceConfig(ctx context.Context, req *conn
 	}
 
 	if len(req.Msg.GetConfigYaml()) == 0 {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("config_yaml is required"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("config_yaml is required"))
 	}
 
 	result, err := h.importConfig.Execute(ctx, pipelineconfig.ImportConfigParams{

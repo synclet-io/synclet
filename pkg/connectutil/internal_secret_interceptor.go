@@ -3,7 +3,7 @@ package connectutil
 import (
 	"context"
 	"crypto/subtle"
-	"fmt"
+	"errors"
 
 	"connectrpc.com/connect"
 )
@@ -45,7 +45,7 @@ func (i *InternalSecretInterceptor) WrapStreamingHandler(next connect.StreamingH
 
 func (i *InternalSecretInterceptor) validateSecret(provided string) error {
 	if i.secret == "" {
-		return connect.NewError(connect.CodeUnauthenticated, fmt.Errorf("internal API token not configured"))
+		return connect.NewError(connect.CodeUnauthenticated, errors.New("internal API token not configured"))
 	}
 
 	if subtle.ConstantTimeCompare([]byte(provided), []byte(i.secret)) != 1 {

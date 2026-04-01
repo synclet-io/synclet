@@ -2,6 +2,7 @@ package notifyservice
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -40,7 +41,7 @@ func (uc *UpdateNotificationRule) Execute(ctx context.Context, params UpdateNoti
 
 	if params.Condition != nil {
 		if !params.Condition.IsValid() {
-			return nil, fmt.Errorf("invalid condition: must be one of on_failure, on_consecutive_failures, on_zero_records")
+			return nil, errors.New("invalid condition: must be one of on_failure, on_consecutive_failures, on_zero_records")
 		}
 
 		rule.Condition = *params.Condition
@@ -56,7 +57,7 @@ func (uc *UpdateNotificationRule) Execute(ctx context.Context, params UpdateNoti
 
 	// Validate condition_value after potential updates.
 	if rule.Condition == NotificationConditionOnConsecutiveFailures && rule.ConditionValue < 1 {
-		return nil, fmt.Errorf("condition_value must be >= 1 for on_consecutive_failures")
+		return nil, errors.New("condition_value must be >= 1 for on_consecutive_failures")
 	}
 
 	rule.UpdatedAt = time.Now()

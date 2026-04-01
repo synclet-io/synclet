@@ -61,13 +61,13 @@ func (m *mockManagedConnectorsStorage) First(_ context.Context, f *pipelineservi
 	return nil, pipelineservice.ErrManagedConnectorNotFound
 }
 
-func (m *mockManagedConnectorsStorage) Update(_ context.Context, mc *pipelineservice.ManagedConnector) (*pipelineservice.ManagedConnector, error) {
-	if _, ok := m.connectors[mc.ID]; !ok {
+func (m *mockManagedConnectorsStorage) Update(_ context.Context, connector *pipelineservice.ManagedConnector) (*pipelineservice.ManagedConnector, error) {
+	if _, ok := m.connectors[connector.ID]; !ok {
 		return nil, pipelineservice.ErrManagedConnectorNotFound
 	}
 
-	cp := mc.Copy()
-	m.connectors[mc.ID] = &cp
+	cp := connector.Copy()
+	m.connectors[connector.ID] = &cp
 
 	return &cp, nil
 }

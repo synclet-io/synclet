@@ -2,6 +2,7 @@ package authservice
 
 import (
 	"context"
+	"errors"
 	"fmt"
 )
 
@@ -37,7 +38,7 @@ func NewLoginWithUserInfo(login *Login, validateAccessToken *ValidateAccessToken
 func (uc *LoginWithUserInfo) Execute(ctx context.Context, params LoginWithUserInfoParams) (*LoginWithUserInfoResult, error) {
 	tokens, err := uc.login.Execute(ctx, params.Email, params.Password)
 	if err != nil {
-		return nil, fmt.Errorf("invalid credentials")
+		return nil, errors.New("invalid credentials")
 	}
 
 	claims, err := uc.validateAccessToken.Execute(tokens.AccessToken)

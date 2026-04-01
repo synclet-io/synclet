@@ -2,7 +2,7 @@ package k8s
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"strings"
 	"testing"
 
@@ -340,7 +340,7 @@ func TestLaunchSync_CreatesSecret(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify Secret was created with expected data keys.
-	secretName := sanitizeK8sName(fmt.Sprintf("synclet-sync-%s", "job-secret-1"))
+	secretName := sanitizeK8sName("synclet-sync-" + "job-secret-1")
 	secret, err := client.CoreV1().Secrets("test-ns").Get(context.Background(), secretName, metav1.GetOptions{})
 	require.NoError(t, err)
 
@@ -390,7 +390,7 @@ func TestLaunchSync_SecretVolume(t *testing.T) {
 	require.NotNil(t, secretVol, "sync-configs volume must exist")
 	require.NotNil(t, secretVol.Secret, "sync-configs must be a Secret volume")
 
-	secretName := sanitizeK8sName(fmt.Sprintf("synclet-sync-%s", "job-vol-1"))
+	secretName := sanitizeK8sName("synclet-sync-" + "job-vol-1")
 	assert.Equal(t, secretName, secretVol.Secret.SecretName)
 
 	// Verify orchestrator container has the volume mount.
@@ -486,7 +486,7 @@ func TestLaunchSync_CleansSecretOnFailure(t *testing.T) {
 
 	// Inject job creation failure.
 	client.PrependReactor("create", "jobs", func(action k8stesting.Action) (bool, runtime.Object, error) {
-		return true, nil, fmt.Errorf("simulated job creation failure")
+		return true, nil, errors.New("simulated job creation failure")
 	})
 
 	runner := newTestSyncRunner(client)
@@ -505,7 +505,7 @@ func TestLaunchSync_CleansSecretOnFailure(t *testing.T) {
 	assert.Contains(t, err.Error(), "simulated job creation failure")
 
 	// Verify the Secret was cleaned up (should not exist).
-	secretName := sanitizeK8sName(fmt.Sprintf("synclet-sync-%s", "job-fail-1"))
+	secretName := sanitizeK8sName("synclet-sync-" + "job-fail-1")
 	_, err = client.CoreV1().Secrets("test-ns").Get(context.Background(), secretName, metav1.GetOptions{})
 	assert.Error(t, err, "Secret should have been deleted after job creation failure")
 }

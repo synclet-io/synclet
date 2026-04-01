@@ -2,7 +2,7 @@ package app
 
 import (
 	"encoding/base64"
-	"fmt"
+	"errors"
 
 	"github.com/go-pnp/go-pnp/config/configutil"
 	logging "github.com/go-pnp/go-pnp/logging"
@@ -40,7 +40,7 @@ func secretModule() fx.Option {
 			func(cfg *secretConfig) (encryptionKey, error) {
 				key, err := base64.StdEncoding.DecodeString(cfg.EncryptionKey)
 				if err != nil || len(key) != 32 {
-					return nil, fmt.Errorf("ENCRYPTION_KEY must be a valid base64-encoded 32-byte key")
+					return nil, errors.New("ENCRYPTION_KEY must be a valid base64-encoded 32-byte key")
 				}
 
 				return key, nil

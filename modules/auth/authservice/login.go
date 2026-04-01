@@ -2,7 +2,7 @@ package authservice
 
 import (
 	"context"
-	"fmt"
+	"errors"
 
 	"github.com/saturn4er/boilerplate-go/lib/filter"
 	"golang.org/x/crypto/bcrypt"
@@ -25,11 +25,11 @@ func (uc *Login) Execute(ctx context.Context, email, password string) (*TokenPai
 		Email: filter.Equals(email),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("invalid credentials")
+		return nil, errors.New("invalid credentials")
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
-		return nil, fmt.Errorf("invalid credentials")
+		return nil, errors.New("invalid credentials")
 	}
 
 	return generateTokenPair(ctx, uc.storage, uc.config, user)

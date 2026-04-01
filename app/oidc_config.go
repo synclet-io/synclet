@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -18,7 +19,7 @@ func parseOIDCConfig() (*authservice.OIDCConfig, error) {
 
 	callbackBase := os.Getenv("OIDC_CALLBACK_BASE_URL")
 	if callbackBase == "" {
-		return nil, fmt.Errorf("OIDC_CALLBACK_BASE_URL is required when OIDC_PROVIDERS is set")
+		return nil, errors.New("OIDC_CALLBACK_BASE_URL is required when OIDC_PROVIDERS is set")
 	}
 
 	providers, err := parseOIDCProviderConfigs(providersEnv)

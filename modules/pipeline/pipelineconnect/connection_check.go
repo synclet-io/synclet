@@ -3,6 +3,7 @@ package pipelineconnect
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -47,7 +48,7 @@ func runConnectionCheck(
 	if err != nil {
 		if checkCtx.Err() != nil {
 			return connect.NewError(connect.CodeDeadlineExceeded,
-				fmt.Errorf("connection check timed out"))
+				errors.New("connection check timed out"))
 		}
 
 		return connect.NewError(connect.CodeInternal,

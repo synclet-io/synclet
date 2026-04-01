@@ -2,7 +2,7 @@ package pipelinesync
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"testing"
 
 	"github.com/go-pnp/go-pnp/pkg/optionutil"
@@ -92,7 +92,7 @@ func (w *mockSchedulerStorageWrapper) ExecuteInTransaction(ctx context.Context, 
 
 func (w *mockSchedulerStorageWrapper) WithAdvisoryLock(ctx context.Context, scope string, lockID int64) error {
 	if !w.mock.lockAcquired {
-		return fmt.Errorf("lock not acquired")
+		return errors.New("lock not acquired")
 	}
 
 	return w.mock.lockErr

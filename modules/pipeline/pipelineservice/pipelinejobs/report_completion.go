@@ -94,7 +94,7 @@ func (uc *ReportCompletion) Execute(ctx context.Context, params ReportCompletion
 	if params.Success {
 		uc.wg.Add(1)
 
-		go func() {
+		go func() { //nolint:gosec // intentional background context for fire-and-forget event emission
 			defer uc.wg.Done()
 
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -113,7 +113,7 @@ func (uc *ReportCompletion) Execute(ctx context.Context, params ReportCompletion
 	} else {
 		uc.wg.Add(1)
 
-		go func() {
+		go func() { //nolint:gosec // intentional background context for fire-and-forget event emission
 			defer uc.wg.Done()
 
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -139,7 +139,7 @@ func (uc *ReportCompletion) Execute(ctx context.Context, params ReportCompletion
 	if conn != nil {
 		uc.wg.Add(1)
 
-		go func() {
+		go func() { //nolint:gosec // intentional background context for async cleanup
 			defer uc.wg.Done()
 
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)

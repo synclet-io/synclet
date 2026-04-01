@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"fmt"
+	"errors"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -46,15 +46,15 @@ func newOrchestrateCommand() *cobra.Command {
 			// Task mode: simplified coordinator for connector operations (check/spec/discover).
 			if taskMode {
 				if taskID == "" {
-					return fmt.Errorf("--task-id is required in task mode")
+					return errors.New("--task-id is required in task mode")
 				}
 
 				if taskType == "" {
-					return fmt.Errorf("--task-type is required in task mode")
+					return errors.New("--task-type is required in task mode")
 				}
 
 				if serverAddr == "" {
-					return fmt.Errorf("--server-addr is required in task mode")
+					return errors.New("--server-addr is required in task mode")
 				}
 
 				return coordinator.RunTask(cmd.Context(), coordinator.TaskConfig{
@@ -67,27 +67,27 @@ func newOrchestrateCommand() *cobra.Command {
 
 			// Sync mode: validate required sync flags.
 			if jobID == "" {
-				return fmt.Errorf("--job-id is required in sync mode")
+				return errors.New("--job-id is required in sync mode")
 			}
 
 			if connectionID == "" {
-				return fmt.Errorf("--connection-id is required in sync mode")
+				return errors.New("--connection-id is required in sync mode")
 			}
 
 			if serverAddr == "" {
-				return fmt.Errorf("--server-addr is required in sync mode")
+				return errors.New("--server-addr is required in sync mode")
 			}
 
 			if sourceImage == "" {
-				return fmt.Errorf("--source-image is required in sync mode")
+				return errors.New("--source-image is required in sync mode")
 			}
 
 			if destImage == "" {
-				return fmt.Errorf("--dest-image is required in sync mode")
+				return errors.New("--dest-image is required in sync mode")
 			}
 
 			if secretsDir == "" {
-				return fmt.Errorf("--secrets-dir is required in sync mode")
+				return errors.New("--secrets-dir is required in sync mode")
 			}
 
 			cfg := coordinator.Config{

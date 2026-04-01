@@ -3,6 +3,7 @@ package pipelineconnect
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"connectrpc.com/connect"
@@ -311,7 +312,7 @@ func (h *SourceHandler) TestSourceConnection(ctx context.Context, req *connect.R
 
 		params.SourceID = &id
 	} else {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("either id or managed_connector_id+config must be provided"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("either id or managed_connector_id+config must be provided"))
 	}
 
 	result, err := h.createCheckTask.Execute(ctx, params)

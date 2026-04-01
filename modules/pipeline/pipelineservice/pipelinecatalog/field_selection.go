@@ -2,6 +2,7 @@ package pipelinecatalog
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"slices"
 
@@ -18,7 +19,7 @@ func ValidateSelectedFields(selectedFields []protocol.SelectedField, jsonSchema 
 
 	for _, selectedField := range selectedFields {
 		if len(selectedField.FieldPath) == 0 {
-			return fmt.Errorf("empty field path in selected fields")
+			return errors.New("empty field path in selected fields")
 		}
 
 		if !fieldPathExists(schema, selectedField.FieldPath) {

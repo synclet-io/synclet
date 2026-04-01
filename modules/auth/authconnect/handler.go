@@ -92,11 +92,11 @@ func NewHandler(
 
 func (h *Handler) Register(ctx context.Context, req *connect.Request[authv1.RegisterRequest]) (*connect.Response[authv1.RegisterResponse], error) {
 	if !h.registrationEnabled {
-		return nil, connect.NewError(connect.CodePermissionDenied, fmt.Errorf("registration is disabled"))
+		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("registration is disabled"))
 	}
 
 	if req.Msg.GetEmail() == "" || req.Msg.GetPassword() == "" || req.Msg.GetName() == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("email, password, and name are required"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("email, password, and name are required"))
 	}
 
 	if err := connectutil.ValidateStringLengths(
@@ -127,7 +127,7 @@ func (h *Handler) Register(ctx context.Context, req *connect.Request[authv1.Regi
 
 func (h *Handler) Login(ctx context.Context, req *connect.Request[authv1.LoginRequest]) (*connect.Response[authv1.LoginResponse], error) {
 	if req.Msg.GetEmail() == "" || req.Msg.GetPassword() == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("email and password are required"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("email and password are required"))
 	}
 
 	result, err := h.loginWithUserInfo.Execute(ctx, authservice.LoginWithUserInfoParams{
@@ -135,7 +135,7 @@ func (h *Handler) Login(ctx context.Context, req *connect.Request[authv1.LoginRe
 		Password: req.Msg.GetPassword(),
 	})
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, fmt.Errorf("invalid credentials"))
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid credentials"))
 	}
 
 	resp := connect.NewResponse(&authv1.LoginResponse{
@@ -151,12 +151,12 @@ func (h *Handler) Login(ctx context.Context, req *connect.Request[authv1.LoginRe
 func (h *Handler) RefreshToken(ctx context.Context, req *connect.Request[authv1.RefreshTokenRequest]) (*connect.Response[authv1.RefreshTokenResponse], error) {
 	refreshTokenValue := connectutil.ReadCookieFromHeaders(req.Header(), "synclet_rt")
 	if refreshTokenValue == "" {
-		return nil, connect.NewError(connect.CodeUnauthenticated, fmt.Errorf("missing refresh token cookie"))
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing refresh token cookie"))
 	}
 
 	tokens, err := h.refreshToken.Execute(ctx, refreshTokenValue)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, fmt.Errorf("invalid refresh token"))
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid refresh token"))
 	}
 
 	resp := connect.NewResponse(&authv1.RefreshTokenResponse{
@@ -189,7 +189,7 @@ func (h *Handler) GetCurrentUser(ctx context.Context, _ *connect.Request[authv1.
 
 	user, err := h.getUserByID.Execute(ctx, userID)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("user not found"))
+		return nil, connect.NewError(connect.CodeNotFound, errors.New("user not found"))
 	}
 
 	return connect.NewResponse(&authv1.GetCurrentUserResponse{
@@ -204,7 +204,7 @@ func (h *Handler) UpdateProfile(ctx context.Context, req *connect.Request[authv1
 	}
 
 	if req.Msg.GetName() == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("name is required"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name is required"))
 	}
 
 	if err := connectutil.ValidateStringLengths(
@@ -230,7 +230,7 @@ func (h *Handler) ChangePassword(ctx context.Context, req *connect.Request[authv
 	}
 
 	if req.Msg.GetCurrentPassword() == "" || req.Msg.GetNewPassword() == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("current_password and new_password are required"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("current_password and new_password are required"))
 	}
 
 	if err := h.changePassword.Execute(ctx, userID, req.Msg.GetCurrentPassword(), req.Msg.GetNewPassword()); err != nil {
@@ -252,7 +252,7 @@ func (h *Handler) CreateAPIKey(ctx context.Context, req *connect.Request[authv1.
 	}
 
 	if req.Msg.GetName() == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("name is required"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name is required"))
 	}
 
 	if err := connectutil.ValidateStringLengths(
@@ -286,12 +286,12 @@ func (h *Handler) RevokeAPIKey(ctx context.Context, req *connect.Request[authv1.
 	}
 
 	if req.Msg.GetId() == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("id is required"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("id is required"))
 	}
 
 	id, err := uuid.Parse(req.Msg.GetId())
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid id"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid id"))
 	}
 
 	if err := h.revokeAPIKey.Execute(ctx, id, userID); err != nil {

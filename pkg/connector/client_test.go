@@ -2,7 +2,7 @@ package connector
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -83,7 +83,7 @@ func TestRunWithAutoPull(t *testing.T) {
 	t.Run("pulls and retries on image not found with digest pinning", func(t *testing.T) {
 		expectedResult := &container.RunResult{ContainerID: "def456"}
 		runner := &mockRunner{
-			runErrors:           []error{fmt.Errorf("creating container: No such image: airbyte/source-postgres:latest")},
+			runErrors:           []error{errors.New("creating container: No such image: airbyte/source-postgres:latest")},
 			runResults:          []*container.RunResult{nil, expectedResult},
 			resolveDigestResult: "airbyte/source-postgres@sha256:abc123def456",
 		}
@@ -103,8 +103,8 @@ func TestRunWithAutoPull(t *testing.T) {
 
 	t.Run("returns error when pull fails", func(t *testing.T) {
 		runner := &mockRunner{
-			runErrors: []error{fmt.Errorf("creating container: No such image: airbyte/source-postgres:latest")},
-			pullError: fmt.Errorf("network timeout"),
+			runErrors: []error{errors.New("creating container: No such image: airbyte/source-postgres:latest")},
+			pullError: errors.New("network timeout"),
 		}
 		client := NewConnectorClient(runner)
 
@@ -120,7 +120,7 @@ func TestRunWithAutoPull(t *testing.T) {
 
 	t.Run("returns original error for non-image errors", func(t *testing.T) {
 		runner := &mockRunner{
-			runErrors: []error{fmt.Errorf("permission denied")},
+			runErrors: []error{errors.New("permission denied")},
 		}
 		client := NewConnectorClient(runner)
 
@@ -136,8 +136,8 @@ func TestRunWithAutoPull(t *testing.T) {
 	t.Run("returns retry error when pull succeeds but retry fails", func(t *testing.T) {
 		runner := &mockRunner{
 			runErrors: []error{
-				fmt.Errorf("creating container: No such image: airbyte/source-postgres:latest"),
-				fmt.Errorf("container runtime error"),
+				errors.New("creating container: No such image: airbyte/source-postgres:latest"),
+				errors.New("container runtime error"),
 			},
 		}
 		client := NewConnectorClient(runner)
@@ -169,9 +169,9 @@ func TestRunWithAutoPull(t *testing.T) {
 	t.Run("falls back to tag when ResolveDigest fails", func(t *testing.T) {
 		expectedResult := &container.RunResult{ContainerID: "ghi789"}
 		runner := &mockRunner{
-			runErrors:          []error{fmt.Errorf("creating container: No such image: airbyte/source-postgres:latest")},
+			runErrors:          []error{errors.New("creating container: No such image: airbyte/source-postgres:latest")},
 			runResults:         []*container.RunResult{nil, expectedResult},
-			resolveDigestError: fmt.Errorf("no sha256 digest found"),
+			resolveDigestError: errors.New("no sha256 digest found"),
 		}
 		client := NewConnectorClient(runner)
 
@@ -191,11 +191,11 @@ func TestIsImageNotFoundError(t *testing.T) {
 		err      error
 		expected bool
 	}{
-		{"No such image error", fmt.Errorf("No such image: foo:latest"), true},
-		{"not found error", fmt.Errorf("image not found"), true},
-		{"permission denied", fmt.Errorf("permission denied"), false},
-		{"connection refused", fmt.Errorf("connection refused"), false},
-		{"wrapped not found", fmt.Errorf("creating container: No such image: bar:v1"), true},
+		{"No such image error", errors.New("No such image: foo:latest"), true},
+		{"not found error", errors.New("image not found"), true},
+		{"permission denied", errors.New("permission denied"), false},
+		{"connection refused", errors.New("connection refused"), false},
+		{"wrapped not found", errors.New("creating container: No such image: bar:v1"), true},
 	}
 
 	for _, tt := range tests {

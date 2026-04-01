@@ -19,7 +19,7 @@ func (e *connectorError) Error() string {
 		return fmt.Sprintf("connector error (%s): %s", e.FailureType, e.Message)
 	}
 
-	return fmt.Sprintf("connector error: %s", e.Message)
+	return "connector error: " + e.Message
 }
 
 // ExitCodeError wraps a connector exit with a typed exit code for classification.

@@ -3,6 +3,7 @@ package notifyservice
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -33,11 +34,11 @@ func NewCreateChannel(storage Storage, secrets SecretsProvider) *CreateChannel {
 // Execute creates a notification channel with the given parameters.
 func (uc *CreateChannel) Execute(ctx context.Context, params CreateChannelParams) (*NotificationChannel, error) {
 	if params.Name == "" {
-		return nil, fmt.Errorf("name is required")
+		return nil, errors.New("name is required")
 	}
 
 	if !params.ChannelType.IsValid() {
-		return nil, fmt.Errorf("invalid channel_type: must be one of slack, email, telegram")
+		return nil, errors.New("invalid channel_type: must be one of slack, email, telegram")
 	}
 
 	if err := validateChannelConfig(params.ChannelType, params.Config); err != nil {
@@ -97,19 +98,19 @@ func validateChannelConfig(channelType ChannelType, config map[string]string) er
 	switch channelType {
 	case ChannelTypeSlack:
 		if config["webhook_url"] == "" {
-			return fmt.Errorf("webhook_url is required for slack channels")
+			return errors.New("webhook_url is required for slack channels")
 		}
 	case ChannelTypeEmail:
 		if config["recipients"] == "" {
-			return fmt.Errorf("recipients is required for email channels")
+			return errors.New("recipients is required for email channels")
 		}
 	case ChannelTypeTelegram:
 		if config["bot_token"] == "" {
-			return fmt.Errorf("bot_token is required for telegram channels")
+			return errors.New("bot_token is required for telegram channels")
 		}
 
 		if config["chat_id"] == "" {
-			return fmt.Errorf("chat_id is required for telegram channels")
+			return errors.New("chat_id is required for telegram channels")
 		}
 	}
 

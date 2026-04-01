@@ -2,6 +2,7 @@ package pipelineconnectors
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -42,7 +43,7 @@ func (uc *UpdateManagedConnector) Execute(ctx context.Context, params UpdateMana
 
 	// 2. Verify it has a repository_id (custom connectors cannot be updated this way).
 	if connector.RepositoryID == nil {
-		return nil, fmt.Errorf("connector is not linked to a repository")
+		return nil, errors.New("connector is not linked to a repository")
 	}
 
 	// 3. Find matching repository_connector by docker_image within the same repository.

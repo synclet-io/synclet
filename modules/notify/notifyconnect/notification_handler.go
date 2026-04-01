@@ -111,12 +111,12 @@ func (h *NotificationHandler) CreateNotificationChannel(ctx context.Context, req
 	}
 
 	if req.Msg.GetChannelType() == notifyv1.NotificationChannelType_NOTIFICATION_CHANNEL_TYPE_UNSPECIFIED {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid channel_type: must be one of slack, email, telegram"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid channel_type: must be one of slack, email, telegram"))
 	}
 
 	channelType, ok := channelTypeFromProto[req.Msg.GetChannelType()]
 	if !ok {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid channel_type: must be one of slack, email, telegram"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid channel_type: must be one of slack, email, telegram"))
 	}
 
 	var config map[string]string
@@ -218,7 +218,7 @@ func (h *NotificationHandler) ListNotificationChannels(ctx context.Context, req 
 	if req.Msg.ChannelType != nil && req.Msg.GetChannelType() != notifyv1.NotificationChannelType_NOTIFICATION_CHANNEL_TYPE_UNSPECIFIED {
 		ct, ok := channelTypeFromProto[req.Msg.GetChannelType()]
 		if !ok {
-			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid channel_type"))
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid channel_type"))
 		}
 
 		params.ChannelType = &ct
@@ -281,12 +281,12 @@ func (h *NotificationHandler) CreateNotificationRule(ctx context.Context, req *c
 	}
 
 	if req.Msg.GetCondition() == notifyv1.NotificationCondition_NOTIFICATION_CONDITION_UNSPECIFIED {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid condition: must be one of on_failure, on_consecutive_failures, on_zero_records"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid condition: must be one of on_failure, on_consecutive_failures, on_zero_records"))
 	}
 
 	cond, ok := conditionFromProto[req.Msg.GetCondition()]
 	if !ok {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid condition: must be one of on_failure, on_consecutive_failures, on_zero_records"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid condition: must be one of on_failure, on_consecutive_failures, on_zero_records"))
 	}
 
 	rule, err := h.createNotificationRule.Execute(ctx, notifyservice.CreateNotificationRuleParams{
@@ -325,7 +325,7 @@ func (h *NotificationHandler) UpdateNotificationRule(ctx context.Context, req *c
 	if req.Msg.Condition != nil && req.Msg.GetCondition() != notifyv1.NotificationCondition_NOTIFICATION_CONDITION_UNSPECIFIED {
 		cond, ok := conditionFromProto[req.Msg.GetCondition()]
 		if !ok {
-			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid condition"))
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid condition"))
 		}
 
 		params.Condition = &cond

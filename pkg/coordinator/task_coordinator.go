@@ -72,7 +72,7 @@ func RunTask(ctx context.Context, cfg TaskConfig) error {
 	stdoutPath := filepath.Join(cfg.DataDir, "connector-stdout.log")
 
 	// Log raw connector output for debugging (especially useful for non-zero exit codes).
-	if rawOutput, readErr := os.ReadFile(stdoutPath); readErr == nil {
+	if rawOutput, readErr := os.ReadFile(stdoutPath); readErr == nil { //nolint:gosec // path is constructed internally
 		output := string(rawOutput)
 		if len(output) > 4096 {
 			output = output[:4096] + "... (truncated)"
@@ -83,7 +83,7 @@ func RunTask(ctx context.Context, cfg TaskConfig) error {
 		slog.Warn("task coordinator: could not read connector output", "task_id", cfg.TaskID, "error", readErr)
 	}
 
-	stdoutFile, err := os.Open(stdoutPath)
+	stdoutFile, err := os.Open(stdoutPath) //nolint:gosec // path is constructed internally
 	if err != nil {
 		return reportTaskError(cfg, fmt.Errorf("opening connector stdout: %w", err))
 	}
@@ -159,7 +159,7 @@ func extractTaskResult(taskType string, messages []*protocol.AirbyteMessage) ([]
 			}
 		}
 
-		return nil, fmt.Errorf("connector did not produce a CONNECTION_STATUS message")
+		return nil, errors.New("connector did not produce a CONNECTION_STATUS message")
 
 	case "Spec":
 		for _, msg := range messages {
@@ -179,7 +179,7 @@ func extractTaskResult(taskType string, messages []*protocol.AirbyteMessage) ([]
 			}
 		}
 
-		return nil, fmt.Errorf("connector did not produce a SPEC message")
+		return nil, errors.New("connector did not produce a SPEC message")
 
 	case "Discover":
 		for _, msg := range messages {
@@ -199,7 +199,7 @@ func extractTaskResult(taskType string, messages []*protocol.AirbyteMessage) ([]
 			}
 		}
 
-		return nil, fmt.Errorf("connector did not produce a CATALOG message")
+		return nil, errors.New("connector did not produce a CATALOG message")
 
 	default:
 		return nil, fmt.Errorf("unknown task type: %s", taskType)

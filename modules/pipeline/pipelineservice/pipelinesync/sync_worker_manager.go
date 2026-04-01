@@ -21,7 +21,7 @@ type SyncWorkerManager struct {
 // NewSyncWorkerManager creates a new SyncWorkerManager. The provided parentCtx
 // should be the FX app context so FX signal handling propagates cancellation.
 func NewSyncWorkerManager(parentCtx context.Context, logger *logging.Logger) *SyncWorkerManager {
-	ctx, cancel := context.WithCancel(parentCtx)
+	ctx, cancel := context.WithCancel(parentCtx) //nolint:gosec // cancel is stored and called in Stop()
 
 	return &SyncWorkerManager{
 		ctx:    ctx,
@@ -33,13 +33,13 @@ func NewSyncWorkerManager(parentCtx context.Context, logger *logging.Logger) *Sy
 // RunJob spawns a goroutine tracked by the WaitGroup. The function receives
 // the manager's server-lifetime context. wg.Done() runs AFTER fn returns,
 // ensuring all deferred cleanup (container stops) completes before shutdown proceeds.
-func (m *SyncWorkerManager) RunJob(fn func(ctx context.Context)) {
+func (m *SyncWorkerManager) RunJob(job func(ctx context.Context)) {
 	m.wg.Add(1)
 
 	go func() {
 		defer m.wg.Done()
 
-		fn(m.ctx)
+		job(m.ctx)
 	}()
 }
 

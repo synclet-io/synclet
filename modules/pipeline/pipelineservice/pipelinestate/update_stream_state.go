@@ -3,6 +3,7 @@ package pipelinestate
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -44,7 +45,7 @@ func (uc *UpdateStreamState) Execute(ctx context.Context, params UpdateStreamSta
 	}
 
 	if !json.Valid([]byte(params.StateData)) {
-		return fmt.Errorf("state_data must be valid JSON")
+		return errors.New("state_data must be valid JSON")
 	}
 
 	msg := &protocol.AirbyteStateMessage{

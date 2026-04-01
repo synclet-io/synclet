@@ -2,6 +2,7 @@ package secretservice
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/saturn4er/boilerplate-go/lib/filter"
@@ -56,7 +57,7 @@ func (uc *RetrieveSecret) Execute(ctx context.Context, params RetrieveSecretPara
 	if uc.previousKey != nil {
 		plaintext, prevErr := Decrypt(uc.previousKey, secret.Salt, secret.Nonce, secret.EncryptedValue)
 		if prevErr != nil {
-			return "", fmt.Errorf("decryption failed: invalid key or corrupted data")
+			return "", errors.New("decryption failed: invalid key or corrupted data")
 		}
 
 		// Re-encrypt with current key
@@ -78,5 +79,5 @@ func (uc *RetrieveSecret) Execute(ctx context.Context, params RetrieveSecretPara
 		return string(plaintext), nil
 	}
 
-	return "", fmt.Errorf("decryption failed: invalid key or corrupted data")
+	return "", errors.New("decryption failed: invalid key or corrupted data")
 }

@@ -110,13 +110,13 @@ func workspaceModule(options *RunAppOptions) fx.Option {
 							return nil
 						}
 
-						ws, err := bootstrap.Execute(ctx)
+						workspace, err := bootstrap.Execute(ctx)
 						if err != nil {
 							return fmt.Errorf("bootstrapping default workspace: %w", err)
 						}
 
-						if ws != nil {
-							logger.WithField("id", ws.ID.String()).Info(ctx, "default workspace bootstrapped")
+						if workspace != nil {
+							logger.WithField("id", workspace.ID.String()).Info(ctx, "default workspace bootstrapped")
 						}
 
 						return nil

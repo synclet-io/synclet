@@ -273,13 +273,13 @@ func (uc *ImportConfig) Execute(ctx context.Context, params ImportConfigParams) 
 }
 
 // filterRedacted removes redacted placeholder values from a config map.
-func filterRedacted(m map[string]any) map[string]any {
-	if m == nil {
+func filterRedacted(config map[string]any) map[string]any {
+	if config == nil {
 		return map[string]any{}
 	}
 
-	result := make(map[string]any, len(m))
-	for k, v := range m {
+	result := make(map[string]any, len(config))
+	for k, v := range config {
 		if s, ok := v.(string); ok && s == redactedPlaceholder {
 			continue
 		}

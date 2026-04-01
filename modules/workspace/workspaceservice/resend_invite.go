@@ -91,7 +91,7 @@ func (uc *ResendInvite) Execute(ctx context.Context, inviteID, workspaceID uuid.
 
 	acceptURL := fmt.Sprintf("%s/invite/%s", strings.TrimRight(uc.frontendURL, "/"), invite.Token)
 
-	go func() {
+	go func() { //nolint:gosec // intentional background context for async email
 		sendCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 

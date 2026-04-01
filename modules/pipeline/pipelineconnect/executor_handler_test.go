@@ -1,7 +1,7 @@
 package pipelineconnect
 
 import (
-	"fmt"
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -30,7 +30,7 @@ func TestExecutorHandler_IsJobActive(t *testing.T) {
 		{name: "Failed is not active", status: pipelineservice.JobStatusFailed, expected: false},
 		{name: "Cancelled is not active", status: pipelineservice.JobStatusCancelled, expected: false},
 		{name: "Scheduled is not active", status: pipelineservice.JobStatusScheduled, expected: false},
-		{name: "Not found returns not active", jobErr: fmt.Errorf("not found"), expected: false},
+		{name: "Not found returns not active", jobErr: errors.New("not found"), expected: false},
 	}
 
 	for _, testCase := range tests {
@@ -60,7 +60,7 @@ func TestExecutorHandler_Heartbeat_Cancelled(t *testing.T) {
 	}{
 		{name: "Not cancelled", cancelled: false, expected: false},
 		{name: "Cancelled", cancelled: true, expected: true},
-		{name: "Error checking cancel returns false", cancelErr: fmt.Errorf("db error"), expected: false},
+		{name: "Error checking cancel returns false", cancelErr: errors.New("db error"), expected: false},
 	}
 
 	for _, testCase := range tests {

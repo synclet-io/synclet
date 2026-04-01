@@ -133,7 +133,7 @@ func (r *Reconciler) reconcileJob(ctx context.Context, staleJob StaleJob) {
 
 	// Check pod status.
 	pods, err := r.client.CoreV1().Pods(r.namespace).List(ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("synclet.io/job=%s", staleJob.K8sJobName),
+		LabelSelector: "synclet.io/job=" + staleJob.K8sJobName,
 	})
 	if err != nil {
 		log.WithError(err).Error(ctx, "failed to list pods")
@@ -159,7 +159,7 @@ func (r *Reconciler) reconcileJob(ctx context.Context, staleJob StaleJob) {
 		log.Warn(ctx, "pod failed, cleaning up")
 		r.deleteK8sJob(ctx, staleJob.K8sJobName)
 
-		if err := r.provider.FailJob(ctx, staleJob.JobID, fmt.Sprintf("pod failed: %s", pod.Status.Reason)); err != nil {
+		if err := r.provider.FailJob(ctx, staleJob.JobID, "pod failed: "+pod.Status.Reason); err != nil {
 			log.WithError(err).Error(ctx, "failed to mark job as failed")
 		}
 

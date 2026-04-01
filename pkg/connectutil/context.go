@@ -2,7 +2,7 @@ package connectutil
 
 import (
 	"context"
-	"fmt"
+	"errors"
 
 	"github.com/google/uuid"
 )
@@ -34,7 +34,7 @@ func ContextWithWorkspaceID(ctx context.Context, id uuid.UUID) context.Context {
 func UserIDFromContext(ctx context.Context) (uuid.UUID, error) {
 	v, ok := ctx.Value(userIDKey).(uuid.UUID)
 	if !ok {
-		return uuid.UUID{}, fmt.Errorf("user ID not found in context")
+		return uuid.UUID{}, errors.New("user ID not found in context")
 	}
 
 	return v, nil
@@ -44,7 +44,7 @@ func UserIDFromContext(ctx context.Context) (uuid.UUID, error) {
 func EmailFromContext(ctx context.Context) (string, error) {
 	v, ok := ctx.Value(emailKey).(string)
 	if !ok || v == "" {
-		return "", fmt.Errorf("email not found in context")
+		return "", errors.New("email not found in context")
 	}
 
 	return v, nil
@@ -54,7 +54,7 @@ func EmailFromContext(ctx context.Context) (string, error) {
 func WorkspaceIDFromContext(ctx context.Context) (uuid.UUID, error) {
 	v, ok := ctx.Value(workspaceIDKey).(uuid.UUID)
 	if !ok {
-		return uuid.UUID{}, fmt.Errorf("workspace ID not found in context")
+		return uuid.UUID{}, errors.New("workspace ID not found in context")
 	}
 
 	return v, nil

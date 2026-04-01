@@ -2,6 +2,7 @@ package connectutil
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/url"
@@ -11,27 +12,27 @@ import (
 // Rejects non-HTTP(S) schemes and URLs that resolve to private/loopback/link-local IPs.
 func ValidateWebhookURL(rawURL string) error {
 	if rawURL == "" {
-		return fmt.Errorf("webhook URL is required")
+		return errors.New("webhook URL is required")
 	}
 
 	parsedURL, err := url.Parse(rawURL)
 	if err != nil {
-		return fmt.Errorf("invalid webhook URL")
+		return errors.New("invalid webhook URL")
 	}
 
 	if parsedURL.Scheme != "https" && parsedURL.Scheme != "http" {
-		return fmt.Errorf("webhook URL must use http or https scheme")
+		return errors.New("webhook URL must use http or https scheme")
 	}
 
 	hostname := parsedURL.Hostname()
 	if hostname == "" {
-		return fmt.Errorf("webhook URL must have a hostname")
+		return errors.New("webhook URL must have a hostname")
 	}
 
 	// Check if hostname is a direct IP.
 	if ip := net.ParseIP(hostname); ip != nil {
 		if isBlockedIP(ip) {
-			return fmt.Errorf("webhook URL must not point to a private or internal address")
+			return errors.New("webhook URL must not point to a private or internal address")
 		}
 
 		return nil
@@ -47,7 +48,7 @@ func ValidateWebhookURL(rawURL string) error {
 
 	for _, ip := range ips {
 		if isBlockedIP(ip.IP) {
-			return fmt.Errorf("webhook URL must not resolve to a private or internal address")
+			return errors.New("webhook URL must not resolve to a private or internal address")
 		}
 	}
 

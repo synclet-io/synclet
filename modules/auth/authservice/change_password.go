@@ -2,6 +2,7 @@ package authservice
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -29,7 +30,7 @@ func (uc *ChangePassword) Execute(ctx context.Context, userID uuid.UUID, current
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(currentPassword)); err != nil {
-		return fmt.Errorf("invalid current password")
+		return errors.New("invalid current password")
 	}
 
 	if err := ValidatePassword(newPassword); err != nil {

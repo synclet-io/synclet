@@ -190,13 +190,13 @@ func configToMap(raw string) map[string]any {
 	return m
 }
 
-func redactSecrets(m map[string]any) map[string]any {
-	if m == nil {
+func redactSecrets(config map[string]any) map[string]any {
+	if config == nil {
 		return nil
 	}
 
-	result := make(map[string]any, len(m))
-	for key, value := range m {
+	result := make(map[string]any, len(config))
+	for key, value := range config {
 		switch val := value.(type) {
 		case string:
 			if isLikelySecret(key) {

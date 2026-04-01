@@ -260,7 +260,7 @@ func openFIFO(ctx context.Context, path string, flag int) (*os.File, error) {
 	ch := make(chan result, 1)
 
 	go func() {
-		f, err := os.OpenFile(path, flag, 0)
+		f, err := os.OpenFile(path, flag, 0) //nolint:gosec // path is constructed internally
 		ch <- result{f, err}
 	}()
 

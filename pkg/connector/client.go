@@ -53,7 +53,7 @@ func (c *ConnectorClient) Spec(ctx context.Context, image string) (*protocol.Con
 		}
 	}
 
-	return nil, fmt.Errorf("spec: connector did not produce a SPEC message")
+	return nil, errors.New("spec: connector did not produce a SPEC message")
 }
 
 // Check validates a connector configuration by running the check command.
@@ -74,7 +74,7 @@ func (c *ConnectorClient) Check(ctx context.Context, image string, config json.R
 		}
 	}
 
-	return nil, fmt.Errorf("check: connector did not produce a CONNECTION_STATUS message")
+	return nil, errors.New("check: connector did not produce a CONNECTION_STATUS message")
 }
 
 // Discover discovers the catalog (available streams) for a connector.
@@ -95,7 +95,7 @@ func (c *ConnectorClient) Discover(ctx context.Context, image string, config jso
 		}
 	}
 
-	return nil, fmt.Errorf("discover: connector did not produce a CATALOG message")
+	return nil, errors.New("discover: connector did not produce a CATALOG message")
 }
 
 // Read starts a source connector and returns its stdout for the caller to read messages from.

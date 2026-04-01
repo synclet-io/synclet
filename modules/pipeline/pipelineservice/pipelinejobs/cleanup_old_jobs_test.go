@@ -2,7 +2,7 @@ package pipelinejobs
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -90,7 +90,7 @@ func TestCleanupOldJobs_StorageError(t *testing.T) {
 	settings.On("Execute", mock.Anything, wsID).Return(&pipelineservice.WorkspaceSettings{
 		WorkspaceID: wsID, MaxJobsPerWorkspace: 10,
 	}, nil)
-	storage.On("DeleteOldestTerminalJobs", mock.Anything, wsID, 10).Return(int64(0), fmt.Errorf("db error"))
+	storage.On("DeleteOldestTerminalJobs", mock.Anything, wsID, 10).Return(int64(0), errors.New("db error"))
 
 	err := useCase.ExecuteForWorkspace(context.Background(), wsID)
 	require.Error(t, err)
@@ -104,7 +104,7 @@ func TestCleanupOldJobs_SettingsError(t *testing.T) {
 	useCase := NewCleanupOldJobs(nil, storage, settings, nil)
 
 	wsID := uuid.New()
-	settings.On("Execute", mock.Anything, wsID).Return(nil, fmt.Errorf("workspace not found"))
+	settings.On("Execute", mock.Anything, wsID).Return(nil, errors.New("workspace not found"))
 
 	err := useCase.ExecuteForWorkspace(context.Background(), wsID)
 	require.Error(t, err)

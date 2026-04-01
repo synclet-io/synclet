@@ -70,15 +70,15 @@ func MarshalMetadata(m *RepositoryConnectorMetadata) string {
 }
 
 // UnmarshalMetadata deserializes a JSON string from JSONB storage into RepositoryConnectorMetadata.
-func UnmarshalMetadata(s string) (*RepositoryConnectorMetadata, error) {
-	if s == "" || s == "{}" {
+func UnmarshalMetadata(raw string) (*RepositoryConnectorMetadata, error) {
+	if raw == "" || raw == "{}" {
 		return &RepositoryConnectorMetadata{}, nil
 	}
 
-	var m RepositoryConnectorMetadata
-	if err := json.Unmarshal([]byte(s), &m); err != nil {
+	var metadata RepositoryConnectorMetadata
+	if err := json.Unmarshal([]byte(raw), &metadata); err != nil {
 		return nil, err
 	}
 
-	return &m, nil
+	return &metadata, nil
 }

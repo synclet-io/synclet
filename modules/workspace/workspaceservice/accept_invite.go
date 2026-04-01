@@ -49,7 +49,7 @@ func (uc *AcceptInvite) Execute(ctx context.Context, token string, userID uuid.U
 	}
 
 	if !strings.EqualFold(invite.Email, userEmail) {
-		return nil, &ValidationError{Message: fmt.Sprintf("this invite is for %s", invite.Email)}
+		return nil, &ValidationError{Message: "this invite is for " + invite.Email}
 	}
 
 	// Check if user is already a member (edge case: invited user joined via another invite).

@@ -2,7 +2,7 @@ package pipelinesettings_test
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -50,7 +50,7 @@ func TestGetWorkspaceSettings_ReturnsStoredValue(t *testing.T) {
 func TestGetWorkspaceSettings_PropagatesStorageError(t *testing.T) {
 	storage := &mockStorage{
 		workspaceSettings: &mockWorkspaceSettingssStorage{
-			firstErr: fmt.Errorf("db connection lost"),
+			firstErr: errors.New("db connection lost"),
 		},
 	}
 

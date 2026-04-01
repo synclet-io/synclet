@@ -28,12 +28,12 @@ func CreateFIFOs(dir string) error {
 
 // WriteReadyFile writes the .ready sentinel file that signals connector containers to start.
 func WriteReadyFile(dir string) error {
-	return os.WriteFile(filepath.Join(dir, ".ready"), []byte("ready"), 0o644)
+	return os.WriteFile(filepath.Join(dir, ".ready"), []byte("ready"), 0o644) //nolint:gosec // sentinel file, world-readable is fine
 }
 
 // ReadExitCode reads the exit code written by a connector's run script.
 func ReadExitCode(path string) (int32, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // path is constructed internally
 	if err != nil {
 		return -1, fmt.Errorf("reading exit code from %s: %w", path, err)
 	}
@@ -55,30 +55,33 @@ func ReadExitCode(path string) (int32, error) {
 // It uses $AIRBYTE_ENTRYPOINT (set by Airbyte connector images) as the executable,
 // falling back to running the command args directly if the env var is not set.
 func WriteRunScript(scriptPath string, command []string, dataDir, stdinFIFO, stdoutFIFO, exitCodeFile string) error {
-	var script string
-	script += "#!/bin/sh\n"
+	var script strings.Builder
+
+	script.WriteString("#!/bin/sh\n")
 	// Airbyte connector images set AIRBYTE_ENTRYPOINT to the original Docker ENTRYPOINT.
 	// Use it as the executable so that the connector args (check, read, write, etc.)
 	// are passed as arguments to the correct binary.
-	script += "${AIRBYTE_ENTRYPOINT:-} "
+	script.WriteString("${AIRBYTE_ENTRYPOINT:-} ")
+
 	for _, arg := range command {
-		script += shellQuote(arg) + " "
+		script.WriteString(shellQuote(arg) + " ")
 	}
 
 	if stdinFIFO != "" {
-		script += fmt.Sprintf("< %s ", shellQuote(filepath.Join(dataDir, stdinFIFO)))
+		fmt.Fprintf(&script, "< %s ", shellQuote(filepath.Join(dataDir, stdinFIFO)))
 	}
+
 	// For FIFOs (sync mode), discard stderr to avoid corrupting Airbyte message stream.
 	// For regular files (task mode), merge stderr into stdout for debugging visibility.
 	if stdinFIFO != "" || strings.HasSuffix(stdoutFIFO, ".fifo") {
-		script += fmt.Sprintf("> %s 2>/dev/null\n", shellQuote(filepath.Join(dataDir, stdoutFIFO)))
+		fmt.Fprintf(&script, "> %s 2>/dev/null\n", shellQuote(filepath.Join(dataDir, stdoutFIFO)))
 	} else {
-		script += fmt.Sprintf("> %s 2>&1\n", shellQuote(filepath.Join(dataDir, stdoutFIFO)))
+		fmt.Fprintf(&script, "> %s 2>&1\n", shellQuote(filepath.Join(dataDir, stdoutFIFO)))
 	}
 
-	script += fmt.Sprintf("echo $? > %s\n", shellQuote(filepath.Join(dataDir, exitCodeFile)))
+	fmt.Fprintf(&script, "echo $? > %s\n", shellQuote(filepath.Join(dataDir, exitCodeFile)))
 
-	return os.WriteFile(scriptPath, []byte(script), 0o755)
+	return os.WriteFile(scriptPath, []byte(script.String()), 0o755) //nolint:gosec // run script needs execute permission
 }
 
 func shellQuote(s string) string {
