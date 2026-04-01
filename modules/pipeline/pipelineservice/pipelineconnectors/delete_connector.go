@@ -28,6 +28,40 @@ type DeleteConnectorParams struct {
 
 // Execute removes a managed connector by ID, scoped to workspace.
 func (uc *DeleteConnector) Execute(ctx context.Context, params DeleteConnectorParams) error {
+	connector, err := uc.storage.ManagedConnectors().First(ctx, &pipelineservice.ManagedConnectorFilter{
+		ID:          filter.Equals(params.ID),
+		WorkspaceID: filter.Equals(params.WorkspaceID),
+	})
+	if err != nil {
+		return fmt.Errorf("getting managed connector: %w", err)
+	}
+
+	var dependentCount int
+	var dependentType string
+
+	switch {
+	case connector.ConnectorType.IsSource():
+		dependentCount, err = uc.storage.Sources().Count(ctx, &pipelineservice.SourceFilter{
+			ManagedConnectorID: filter.Equals(params.ID),
+		})
+		dependentType = "source(s)"
+	case connector.ConnectorType.IsDestination():
+		dependentCount, err = uc.storage.Destinations().Count(ctx, &pipelineservice.DestinationFilter{
+			ManagedConnectorID: filter.Equals(params.ID),
+		})
+		dependentType = "destination(s)"
+	}
+
+	if err != nil {
+		return fmt.Errorf("counting dependent resources: %w", err)
+	}
+
+	if dependentCount > 0 {
+		return &pipelineservice.ValidationError{
+			Message: fmt.Sprintf("cannot delete connector: used by %d %s", dependentCount, dependentType),
+		}
+	}
+
 	if err := uc.storage.ManagedConnectors().Delete(ctx, &pipelineservice.ManagedConnectorFilter{
 		ID:          filter.Equals(params.ID),
 		WorkspaceID: filter.Equals(params.WorkspaceID),
