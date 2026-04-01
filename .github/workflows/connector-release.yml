@@ -13,16 +13,19 @@ jobs:
   build-connector:
     runs-on: ubuntu-latest
     outputs:
-      connector-name: ${{ env.CONNECTOR_NAME }}
-      version: ${{ env.VERSION }}
+      connector-name: ${{ steps.tag.outputs.connector-name }}
+      version: ${{ steps.tag.outputs.version }}
+      metadata: ${{ steps.connector-meta.outputs.json }}
     steps:
       - name: Determine connector from tag
+        id: tag
         run: |
           TAG="${GITHUB_REF#refs/tags/}"
           CONNECTOR_NAME="${TAG%-v*}"
           VERSION="${TAG##*-v}"
+          echo "connector-name=${CONNECTOR_NAME}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "CONNECTOR_NAME=${CONNECTOR_NAME}" >> "$GITHUB_ENV"
-          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
 
       - uses: actions/checkout@v4
 
@@ -32,6 +35,16 @@ jobs:
             echo "::error::Connector directory connectors/${{ env.CONNECTOR_NAME }} not found"
             exit 1
           fi
+
+      - name: Read connector metadata
+        id: connector-meta
+        run: |
+          META_FILE="connectors/${{ env.CONNECTOR_NAME }}/meta.json"
+          if [ ! -f "$META_FILE" ]; then
+            echo "::error::meta.json not found at $META_FILE"
+            exit 1
+          fi
+          echo "json=$(jq -c . "$META_FILE")" >> "$GITHUB_OUTPUT"
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -46,7 +59,7 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}/${{ env.CONNECTOR_NAME }}
           tags: |
-            type=semver,pattern={{version}},value=${{ env.VERSION }}
+            type=semver,pattern={{version}},value=${{ steps.tag.outputs.version }}
             type=raw,value=latest
 
       - name: Set up Docker Buildx
@@ -83,5 +96,6 @@ jobs:
             {
               "connector": "${{ needs.build-connector.outputs.connector-name }}",
               "version": "${{ needs.build-connector.outputs.version }}",
-              "image": "ghcr.io/${{ github.repository }}/${{ needs.build-connector.outputs.connector-name }}"
+              "image": "ghcr.io/${{ github.repository }}/${{ needs.build-connector.outputs.connector-name }}",
+              "metadata": ${{ needs.build-connector.outputs.metadata }}
             }
