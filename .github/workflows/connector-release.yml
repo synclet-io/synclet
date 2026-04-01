@@ -12,6 +12,9 @@ permissions:
 jobs:
   build-connector:
     runs-on: ubuntu-latest
+    outputs:
+      connector-name: ${{ env.CONNECTOR_NAME }}
+      version: ${{ env.VERSION }}
     steps:
       - name: Determine connector from tag
         run: |
@@ -59,15 +62,26 @@ jobs:
           cache-from: type=gha,scope=connector-${{ env.CONNECTOR_NAME }}
           cache-to: type=gha,mode=max,scope=connector-${{ env.CONNECTOR_NAME }}
 
+  update-registry:
+    needs: build-connector
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: synclet-io
+
       - name: Update connector registry
         uses: peter-evans/repository-dispatch@v3
         with:
-          token: ${{ secrets.REGISTRY_DISPATCH_TOKEN }}
-          repository: synclet/synclet-connector-registry
+          token: ${{ steps.app-token.outputs.token }}
+          repository: synclet-io/synclet-connector-registry
           event-type: connector-released
           client-payload: |
             {
-              "connector": "${{ env.CONNECTOR_NAME }}",
-              "version": "${{ env.VERSION }}",
-              "image": "ghcr.io/${{ github.repository }}/${{ env.CONNECTOR_NAME }}"
+              "connector": "${{ needs.build-connector.outputs.connector-name }}",
+              "version": "${{ needs.build-connector.outputs.version }}",
+              "image": "ghcr.io/${{ github.repository }}/${{ needs.build-connector.outputs.connector-name }}"
             }
