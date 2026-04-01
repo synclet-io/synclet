@@ -29,11 +29,77 @@ jobs:
           go-version-file: go.mod
       - run: go test ./... -count=1
 
+  backend-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+
   frontend:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
       - run: cd front && bun install --frozen-lockfile
+      - run: cd front && bun run lint
       - run: cd front && bun run type-check
       - run: cd front && bun run build
+
+  detect-connectors:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      has_connectors: ${{ steps.set-matrix.outputs.has_connectors }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed connectors
+        id: set-matrix
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+          else
+            BASE="${{ github.event.before }}"
+          fi
+
+          CHANGED=$(git diff --name-only "$BASE" HEAD -- connectors/ | cut -d/ -f2 | sort -u | jq -R -s -c 'split("\n") | map(select(. != ""))')
+
+          if [ "$CHANGED" = "[]" ] || [ -z "$CHANGED" ]; then
+            echo "has_connectors=false" >> "$GITHUB_OUTPUT"
+            echo "matrix=[]" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_connectors=true" >> "$GITHUB_OUTPUT"
+            echo "matrix=$CHANGED" >> "$GITHUB_OUTPUT"
+          fi
+
+  connector-ci:
+    needs: detect-connectors
+    if: needs.detect-connectors.outputs.has_connectors == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        connector: ${{ fromJSON(needs.detect-connectors.outputs.matrix) }}
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: connectors/${{ matrix.connector }}/go.mod
+
+      - name: Lint connector
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          working-directory: connectors/${{ matrix.connector }}
+          args: --config ../../.golangci.yml
+
+      - name: Test connector
+        run: cd connectors/${{ matrix.connector }} && go test ./... -count=1

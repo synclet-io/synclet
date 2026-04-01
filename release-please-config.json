@@ -15,6 +15,16 @@
       "release-type": "go",
       "component": "destination-google-sheets",
       "changelog-path": "CHANGELOG.md"
+    },
+    "connectors/source-mysql": {
+      "release-type": "go",
+      "component": "source-mysql",
+      "changelog-path": "CHANGELOG.md"
+    },
+    "connectors/destination-bigquery": {
+      "release-type": "go",
+      "component": "destination-bigquery",
+      "changelog-path": "CHANGELOG.md"
     }
   }
 }
