@@ -6,14 +6,7 @@
     ".": {
       "release-type": "go",
       "component": "synclet",
-      "changelog-path": "CHANGELOG.md",
-      "extra-files": [
-        {
-          "type": "generic",
-          "path": "deploy/helm/synclet/Chart.yaml",
-          "glob": false
-        }
-      ]
+      "changelog-path": "CHANGELOG.md"
     },
     "connectors/source-google-sheets": {
       "release-type": "go",
@@ -38,7 +31,12 @@
     "deploy/helm/synclet": {
       "release-type": "helm",
       "component": "synclet-helm",
-      "changelog-path": "CHANGELOG.md"
+      "changelog-path": "CHANGELOG.md",
+      "changelog-sections": [
+        {"type": "feat", "section": "Features"},
+        {"type": "fix", "section": "Bug Fixes"},
+        {"type": "deps", "section": "Dependencies", "hidden": false}
+      ]
     }
   }
 }
