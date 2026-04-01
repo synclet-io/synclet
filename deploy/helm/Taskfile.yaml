@@ -11,7 +11,7 @@ tasks:
   deploy:
     desc: Deploy to local kubernetes cluster
     cmds:
-      - helm upgrade --install --namespace synclet --kube-context orbstack -f ./synclet/values-local.yaml --set server.ingress.hostname={{.DOMAIN}} synclet ./synclet
+      - helm upgrade --install --namespace synclet --kube-context orbstack -f ./synclet/values-local.yaml --set server.ingress.hostname={{.DOMAIN}} synclet --version 0.1.3 oci://ghcr.io/synclet-io/charts/synclet
 
   build:
     desc: Build synclet docker image
