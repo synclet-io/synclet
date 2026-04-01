@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.2](https://github.com/synclet-io/synclet/compare/synclet-v0.3.1...synclet-v0.3.2) (2026-04-01)
+
+
+### Bug Fixes
+
+* cross-platform docker images release ([9218f2d](https://github.com/synclet-io/synclet/commit/9218f2d7bb688237ccce9c5da522cb3c4517a438))
+
 ## [0.3.1](https://github.com/synclet-io/synclet/compare/synclet-v0.3.0...synclet-v0.3.1) (2026-04-01)
 
 
