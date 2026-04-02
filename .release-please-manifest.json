@@ -2,7 +2,7 @@
   ".": "0.3.2",
   "connectors/source-google-sheets": "0.2.1",
   "connectors/destination-google-sheets": "0.1.1",
-  "connectors/source-mysql": "0.1.2",
+  "connectors/source-mysql": "0.2.0",
   "connectors/destination-bigquery": "0.1.1",
   "deploy/helm/synclet": "0.1.3"
 }
