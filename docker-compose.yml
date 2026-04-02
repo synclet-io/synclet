@@ -3,7 +3,7 @@ services:
     build: .
     command: ["migrate", "up"]
     environment:
-      DSN: postgres://synclet:synclet@postgres:5432/synclet?sslmode=disable
+      DB_DSN: postgres://synclet:synclet@postgres:5432/synclet?sslmode=disable
     depends_on:
       postgres:
         condition: service_healthy
@@ -14,10 +14,11 @@ services:
     ports:
       - "8080:8080"
     environment:
-      DSN: postgres://synclet:synclet@postgres:5432/synclet?sslmode=disable
+      DB_DSN: postgres://synclet:synclet@postgres:5432/synclet?sslmode=disable
       HTTP_SERVER_ADDR: 0.0.0.0:8080
       JWT_SECRET: change-me-in-production
-      ENCRYPTION_KEY: PjsJSmk5MpLbSjsXYdIeflREhQ57B7+Sz0b0/VreDRk=
+      SECRET_ENCRYPTION_KEY: PjsJSmk5MpLbSjsXYdIeflREhQ57B7+Sz0b0/VreDRk=
+      INTERNAL_HTTP_SERVER_ADDR: "0.0.0.0:8087"
       ENVIRONMENT: production
       LOG_LEVEL: info
     volumes:
