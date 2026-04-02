@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.3](https://github.com/synclet-io/synclet/compare/synclet-v0.3.2...synclet-v0.3.3) (2026-04-02)
+
+
+### Bug Fixes
+
+* docs link ([d6d1b4f](https://github.com/synclet-io/synclet/commit/d6d1b4fdbb6061eeb9dab40b05aa693fade50a4f))
+* **synclet-helm:** bump appVersion to match synclet release ([07c7707](https://github.com/synclet-io/synclet/commit/07c7707339a4d127fc8bb8952094895027359d0f))
+
 ## [0.3.2](https://github.com/synclet-io/synclet/compare/synclet-v0.3.1...synclet-v0.3.2) (2026-04-01)
 
 
