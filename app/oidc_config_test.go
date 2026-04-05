@@ -8,22 +8,25 @@ import (
 )
 
 func TestParseOIDCProviderConfigs(t *testing.T) {
-	t.Setenv("OIDC_GOOGLE_ISSUER", "https://accounts.google.com")
-	t.Setenv("OIDC_GOOGLE_CLIENT_ID", "google-client-id")
-	t.Setenv("OIDC_GOOGLE_CLIENT_SECRET", "google-secret")
-	t.Setenv("OIDC_GOOGLE_DISPLAY_NAME", "Google")
+	t.Setenv("AUTH_OIDC_GOOGLE_ISSUER", "https://accounts.google.com")
+	t.Setenv("AUTH_OIDC_GOOGLE_CLIENT_ID", "google-client-id")
+	t.Setenv("AUTH_OIDC_GOOGLE_CLIENT_SECRET", "google-secret")
+	t.Setenv("AUTH_OIDC_GOOGLE_DISPLAY_NAME", "Google")
 
-	t.Setenv("OIDC_OKTA_ISSUER", "https://myorg.okta.com")
-	t.Setenv("OIDC_OKTA_CLIENT_ID", "okta-client-id")
-	t.Setenv("OIDC_OKTA_CLIENT_SECRET", "okta-secret")
-	t.Setenv("OIDC_OKTA_SCOPES", "openid,profile")
-	t.Setenv("OIDC_OKTA_DEFAULT_ROLE", "editor")
-	t.Setenv("OIDC_OKTA_ROLE_CLAIM", "groups")
-	t.Setenv("OIDC_OKTA_ROLE_MAP_ADMIN", "synclet-admins")
-	t.Setenv("OIDC_OKTA_ALLOWED_DOMAINS", "mycompany.com,partner.com")
-	t.Setenv("OIDC_OKTA_BOUND_CLAIM_DEPARTMENT", "engineering")
+	t.Setenv("AUTH_OIDC_OKTA_ISSUER", "https://myorg.okta.com")
+	t.Setenv("AUTH_OIDC_OKTA_CLIENT_ID", "okta-client-id")
+	t.Setenv("AUTH_OIDC_OKTA_CLIENT_SECRET", "okta-secret")
+	t.Setenv("AUTH_OIDC_OKTA_SCOPES", "openid,profile")
+	t.Setenv("AUTH_OIDC_OKTA_DEFAULT_ROLE", "editor")
+	t.Setenv("AUTH_OIDC_OKTA_ROLE_CLAIM", "groups")
+	t.Setenv("AUTH_OIDC_OKTA_ROLE_MAP_ADMIN", "synclet-admins")
+	t.Setenv("AUTH_OIDC_OKTA_ALLOWED_DOMAINS", "mycompany.com,partner.com")
+	t.Setenv("AUTH_OIDC_OKTA_BOUND_CLAIM_DEPARTMENT", "engineering")
 
-	configs, err := parseOIDCProviderConfigs("google,okta")
+	configs, err := parseOIDCProviderConfigs(&authConfig{
+		OIDCProviders:       []string{"google", "okta"},
+		OIDCCallbackBaseURL: "https://example.com",
+	})
 	require.NoError(t, err)
 	require.Len(t, configs, 2)
 
@@ -51,17 +54,20 @@ func TestParseOIDCProviderConfigs(t *testing.T) {
 }
 
 func TestParseOIDCProviderConfigs_Empty(t *testing.T) {
-	configs, err := parseOIDCProviderConfigs("")
+	configs, err := parseOIDCProviderConfigs(&authConfig{})
 	require.NoError(t, err)
 	assert.Nil(t, configs)
 }
 
 func TestParseOIDCProviderConfigs_Defaults(t *testing.T) {
-	t.Setenv("OIDC_DEV_ISSUER", "https://dev.example.com")
-	t.Setenv("OIDC_DEV_CLIENT_ID", "dev-id")
-	t.Setenv("OIDC_DEV_CLIENT_SECRET", "dev-secret")
+	t.Setenv("AUTH_OIDC_DEV_ISSUER", "https://dev.example.com")
+	t.Setenv("AUTH_OIDC_DEV_CLIENT_ID", "dev-id")
+	t.Setenv("AUTH_OIDC_DEV_CLIENT_SECRET", "dev-secret")
 
-	configs, err := parseOIDCProviderConfigs("dev")
+	configs, err := parseOIDCProviderConfigs(&authConfig{
+		OIDCProviders:       []string{"dev"},
+		OIDCCallbackBaseURL: "https://example.com",
+	})
 	require.NoError(t, err)
 	require.Len(t, configs, 1)
 

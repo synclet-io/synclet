@@ -94,7 +94,7 @@ func (uc *ReportTaskResult) persistDiscoverResult(ctx context.Context, task *pip
 	// Compute next version number.
 	nextVersion := 1
 
-	latest, err := uc.storage.CatalogDiscoverys().First(ctx, &pipelineservice.CatalogDiscoveryFilter{
+	latest, err := uc.storage.CatalogDiscoveries().First(ctx, &pipelineservice.CatalogDiscoveryFilter{
 		SourceID: filter.Equals(discoverPayload.SourceID),
 	}, dbutil.WithOrder(pipelineservice.CatalogDiscoveryFieldVersion, dbutil.OrderDirDesc))
 	if err == nil {
@@ -109,7 +109,7 @@ func (uc *ReportTaskResult) persistDiscoverResult(ctx context.Context, task *pip
 		DiscoveredAt: time.Now(),
 	}
 
-	if _, err := uc.storage.CatalogDiscoverys().Create(ctx, record); err != nil {
+	if _, err := uc.storage.CatalogDiscoveries().Create(ctx, record); err != nil {
 		uc.logger.WithError(err).Error(ctx, "failed to persist catalog discovery result")
 	}
 }

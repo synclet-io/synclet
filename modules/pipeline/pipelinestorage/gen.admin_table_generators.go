@@ -42,7 +42,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("WorkspaceID", "workspace_id", db.UUID)
@@ -62,7 +61,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("DockerImage", "docker_image", db.Text)
@@ -82,7 +80,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("DockerTag", "docker_tag", db.Text)
@@ -98,7 +95,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("Name", "name", db.Text)
@@ -118,7 +114,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("ConnectorType", "connector_type", db.Enum)
@@ -143,7 +138,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 
@@ -164,7 +158,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("CreatedAt", "created_at", db.Timestamp)
@@ -180,7 +173,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("UpdatedAt", "updated_at", db.Timestamp)
@@ -196,7 +188,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("RepositoryID", "repository_id", db.UUID)
@@ -216,7 +207,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 
@@ -248,7 +238,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("WorkspaceID", "workspace_id", db.UUID)
@@ -268,7 +257,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("Name", "name", db.Text)
@@ -284,7 +272,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("URL", "url", db.Text)
@@ -300,7 +287,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("AuthHeader", "auth_header", db.Text)
@@ -316,7 +302,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("Status", "status", db.Enum)
@@ -325,7 +310,6 @@ func NewTableGenerators() table.GeneratorList {
 				FormType: form.SelectSingle,
 
 				Options: types.FieldOptions{
-					{Value: "syncing", Text: "Syncing"},
 					{Value: "synced", Text: "Synced"},
 					{Value: "failed", Text: "Failed"},
 				},
@@ -342,12 +326,10 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 
 			formList.FieldOptions(types.FieldOptions{
-				{Value: "syncing", Text: "Syncing"},
 				{Value: "synced", Text: "Synced"},
 				{Value: "failed", Text: "Failed"},
 			})
@@ -364,7 +346,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("ConnectorCount", "connector_count", db.Int)
@@ -380,7 +361,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("LastError", "last_error", db.Text)
@@ -396,7 +376,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("CreatedAt", "created_at", db.Timestamp)
@@ -412,7 +391,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("UpdatedAt", "updated_at", db.Timestamp)
@@ -428,7 +406,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 
@@ -460,7 +437,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("RepositoryID", "repository_id", db.UUID)
@@ -480,7 +456,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("DockerRepository", "docker_repository", db.Text)
@@ -500,7 +475,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("DockerImageTag", "docker_image_tag", db.Text)
@@ -516,7 +490,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("Name", "name", db.Text)
@@ -536,7 +509,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("ConnectorType", "connector_type", db.Enum)
@@ -561,7 +533,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 
@@ -582,7 +553,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("ReleaseStage", "release_stage", db.Enum)
@@ -598,7 +568,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 
@@ -622,7 +591,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("Spec", "spec", db.Text)
@@ -638,7 +606,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("SupportLevel", "support_level", db.Enum)
@@ -664,7 +631,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 
@@ -690,7 +656,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("SourceType", "source_type", db.Enum)
@@ -717,7 +682,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 
@@ -727,9 +691,9 @@ func NewTableGenerators() table.GeneratorList {
 				{Value: "file", Text: "File"},
 				{Value: "unknown", Text: "Unknown"},
 			})
-			info.AddField("Metadata", "metadata", db.Text)
+			info.AddField("Metadata", "metadata", db.JSON)
 			info.FieldSortable()
-			formList.AddField("Metadata", "metadata", db.Text, form.Text)
+			formList.AddField("Metadata", "metadata", db.JSON, form.Code)
 			formList.PreProcessFn = func(values form1.Values) form1.Values {
 				for k, v := range values {
 					for i, v := range v {
@@ -740,12 +704,12 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 
 			return table
 		},
+
 		"source": func(ctx *context.Context) table.Table {
 			tableConfig := table.DefaultConfigWithDriver("postgresql")
 			tableConfig.PrimaryKey.Type = db.UUID
@@ -772,7 +736,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("WorkspaceID", "workspace_id", db.UUID)
@@ -792,7 +755,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("Name", "name", db.Text)
@@ -812,7 +774,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("ManagedConnectorID", "managed_connector_id", db.UUID)
@@ -832,7 +793,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("Config", "config", db.Text)
@@ -848,7 +808,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("CreatedAt", "created_at", db.Timestamp)
@@ -864,7 +823,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("UpdatedAt", "updated_at", db.Timestamp)
@@ -880,7 +838,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("RuntimeConfig", "runtime_config", db.Text)
@@ -896,7 +853,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 
@@ -928,7 +884,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("WorkspaceID", "workspace_id", db.UUID)
@@ -948,7 +903,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("Name", "name", db.Text)
@@ -968,7 +922,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("ManagedConnectorID", "managed_connector_id", db.UUID)
@@ -988,7 +941,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("Config", "config", db.Text)
@@ -1004,7 +956,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("CreatedAt", "created_at", db.Timestamp)
@@ -1020,7 +971,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("UpdatedAt", "updated_at", db.Timestamp)
@@ -1036,7 +986,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("RuntimeConfig", "runtime_config", db.Text)
@@ -1052,7 +1001,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 
@@ -1084,7 +1032,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("WorkspaceID", "workspace_id", db.UUID)
@@ -1104,7 +1051,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("Name", "name", db.Text)
@@ -1124,7 +1070,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("Status", "status", db.Enum)
@@ -1150,7 +1095,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 
@@ -1176,7 +1120,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("DestinationID", "destination_id", db.UUID)
@@ -1196,7 +1139,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("Schedule", "schedule", db.Text)
@@ -1212,7 +1154,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("SchemaChangePolicy", "schema_change_policy", db.Enum)
@@ -1228,7 +1169,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 
@@ -1250,7 +1190,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("NamespaceDefinition", "namespace_definition", db.Enum)
@@ -1266,7 +1205,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 
@@ -1288,7 +1226,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("StreamPrefix", "stream_prefix", db.Text)
@@ -1304,7 +1241,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("NextScheduledAt", "next_scheduled_at", db.Timestamp)
@@ -1320,7 +1256,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("CreatedAt", "created_at", db.Timestamp)
@@ -1336,7 +1271,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("UpdatedAt", "updated_at", db.Timestamp)
@@ -1352,7 +1286,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 
@@ -1384,7 +1317,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("ConnectionID", "connection_id", db.UUID)
@@ -1404,7 +1336,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("Status", "status", db.Enum)
@@ -1433,7 +1364,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 
@@ -1468,7 +1398,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 
@@ -1490,7 +1419,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("StartedAt", "started_at", db.Timestamp)
@@ -1510,7 +1438,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("CompletedAt", "completed_at", db.Timestamp)
@@ -1526,7 +1453,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("Error", "error", db.Text)
@@ -1542,7 +1468,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("Attempt", "attempt", db.Int)
@@ -1558,7 +1483,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("MaxAttempts", "max_attempts", db.Int)
@@ -1574,7 +1498,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("WorkerID", "worker_id", db.Text)
@@ -1590,7 +1513,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("HeartbeatAt", "heartbeat_at", db.Timestamp)
@@ -1610,7 +1532,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("K8sJobName", "k8s_job_name", db.Text)
@@ -1626,7 +1547,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("FailureReason", "failure_reason", db.Text)
@@ -1642,7 +1562,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("CreatedAt", "created_at", db.Timestamp)
@@ -1658,7 +1577,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 
@@ -1690,7 +1608,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("JobID", "job_id", db.UUID)
@@ -1710,7 +1627,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("AttemptNumber", "attempt_number", db.Int)
@@ -1726,7 +1642,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("StartedAt", "started_at", db.Timestamp)
@@ -1742,7 +1657,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("CompletedAt", "completed_at", db.Timestamp)
@@ -1758,7 +1672,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("Error", "error", db.Text)
@@ -1774,7 +1687,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("SyncStatsJSON", "sync_stats_json", db.Text)
@@ -1790,7 +1702,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 
@@ -1822,7 +1733,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("SourceID", "source_id", db.UUID)
@@ -1842,7 +1752,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("Version", "version", db.Int)
@@ -1862,7 +1771,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("CatalogJSON", "catalog_json", db.Text)
@@ -1878,7 +1786,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("DiscoveredAt", "discovered_at", db.Timestamp)
@@ -1894,7 +1801,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 
@@ -1926,7 +1832,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("ConnectionID", "connection_id", db.UUID)
@@ -1946,7 +1851,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("StreamsJSON", "streams_json", db.Text)
@@ -1962,7 +1866,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("CreatedAt", "created_at", db.Timestamp)
@@ -1978,7 +1881,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("UpdatedAt", "updated_at", db.Timestamp)
@@ -1994,7 +1896,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 
@@ -2022,7 +1923,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("JobID", "job_id", db.UUID)
@@ -2042,7 +1942,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("LogLine", "log_line", db.Text)
@@ -2058,7 +1957,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("CreatedAt", "created_at", db.Timestamp)
@@ -2074,7 +1972,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 
@@ -2106,7 +2003,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("StateType", "state_type", db.Text)
@@ -2122,7 +2018,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("StateBlob", "state_blob", db.Text)
@@ -2138,7 +2033,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("UpdatedAt", "updated_at", db.Timestamp)
@@ -2154,7 +2048,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 
@@ -2187,7 +2080,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("MaxJobsPerWorkspace", "max_jobs_per_workspace", db.Int)
@@ -2203,7 +2095,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("CreatedAt", "created_at", db.Timestamp)
@@ -2219,7 +2110,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("UpdatedAt", "updated_at", db.Timestamp)
@@ -2235,7 +2125,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 
@@ -2267,7 +2156,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("WorkspaceID", "workspace_id", db.UUID)
@@ -2287,7 +2175,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("TaskType", "task_type", db.Enum)
@@ -2313,7 +2200,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 
@@ -2346,7 +2232,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 
@@ -2369,7 +2254,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("Result", "result", db.JSON)
@@ -2385,7 +2269,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("ErrorMessage", "error_message", db.Text)
@@ -2401,7 +2284,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("WorkerID", "worker_id", db.Text)
@@ -2417,7 +2299,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("CreatedAt", "created_at", db.Timestamp)
@@ -2437,7 +2318,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("UpdatedAt", "updated_at", db.Timestamp)
@@ -2457,7 +2337,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("CompletedAt", "completed_at", db.Timestamp)
@@ -2477,7 +2356,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 
@@ -2509,7 +2387,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("StreamNamespace", "stream_namespace", db.Text)
@@ -2529,7 +2406,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("StreamName", "stream_name", db.Text)
@@ -2549,7 +2425,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("GenerationID", "generation_id", db.Int)
@@ -2565,7 +2440,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("UpdatedAt", "updated_at", db.Timestamp)
@@ -2581,7 +2455,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 

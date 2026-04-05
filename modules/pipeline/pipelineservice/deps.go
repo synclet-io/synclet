@@ -3,39 +3,12 @@ package pipelineservice
 import (
 	"context"
 	"encoding/json"
-	"io"
 	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/synclet-io/synclet/pkg/protocol"
 )
-
-// SourceReader abstracts reading from a source connector.
-// Returns the container's stdout as a ReadCloser, a cleanup function to remove the container,
-// and any startup error. The caller must close stdout and call cleanup when done.
-type SourceReader interface {
-	Read(ctx context.Context, image string, config json.RawMessage, catalog *protocol.ConfiguredAirbyteCatalog, state json.RawMessage, labels map[string]string) (stdout io.ReadCloser, cleanup func(), err error)
-}
-
-// DestinationWriter abstracts writing to a destination connector.
-// Accepts an io.Reader for stdin (source messages piped to dest). Returns the container's
-// stdout as a ReadCloser (for reading dest output/state confirmations), a cleanup function,
-// and any startup error. The caller must close stdout and call cleanup when done.
-type DestinationWriter interface {
-	Write(ctx context.Context, image string, config json.RawMessage, catalog *protocol.ConfiguredAirbyteCatalog, stdin io.Reader, labels map[string]string) (stdout io.ReadCloser, cleanup func(), err error)
-}
-
-// ConnectorClient provides connector operations (check connectivity).
-type ConnectorClient interface {
-	Check(ctx context.Context, image string, config json.RawMessage) error
-}
-
-// ResourceConfigurable is an optional interface that SourceReader or DestinationWriter
-// implementations may support to accept resource limits before Read/Write calls.
-type ResourceConfigurable interface {
-	SetResourceLimits(memoryLimit int64, cpuLimit float64)
-}
 
 // ConnectorDiscoverer discovers the catalog from a source connector.
 type ConnectorDiscoverer interface {
@@ -75,11 +48,6 @@ type SyncStats struct {
 	RecordsRead int64         `json:"records_read"`
 	BytesSynced int64         `json:"bytes_synced"`
 	Duration    time.Duration `json:"duration"`
-}
-
-// K8sSyncLauncher launches sync jobs on Kubernetes.
-type K8sSyncLauncher interface {
-	Launch(ctx context.Context, jobID uuid.UUID) error
 }
 
 // ConnectorSpecFetcher extracts a connector's spec by running its spec command.

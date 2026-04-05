@@ -12,11 +12,12 @@ import (
 // Register creates a new user account.
 type Register struct {
 	storage Storage
+	cfg     Config
 }
 
 // NewRegister creates a new Register use case.
-func NewRegister(storage Storage) *Register {
-	return &Register{storage: storage}
+func NewRegister(storage Storage, cfg Config) *Register {
+	return &Register{storage: storage, cfg: cfg}
 }
 
 // Execute creates a new user with hashed password.
@@ -25,7 +26,7 @@ func (uc *Register) Execute(ctx context.Context, email, password, name string) (
 		return nil, &ValidationError{Message: "invalid email format"}
 	}
 
-	if err := ValidatePassword(password); err != nil {
+	if err := ValidatePassword(password, uc.cfg.MinPasswordLength); err != nil {
 		return nil, err
 	}
 

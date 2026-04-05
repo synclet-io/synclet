@@ -19,6 +19,7 @@ func Run() error {
 	rootCmd.AddCommand(newOrchestrateCommand())
 	rootCmd.AddCommand(newDockerExecutorCommand())
 	rootCmd.AddCommand(newK8sExecutorCommand())
+	rootCmd.AddCommand(newGenerateCommand())
 
 	return rootCmd.Execute()
 }

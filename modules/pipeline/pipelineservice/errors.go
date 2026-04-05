@@ -26,3 +26,19 @@ func (e *ValidationError) Error() string {
 
 	return "validation error: " + e.Message
 }
+
+// ExitCodeError wraps a connector exit with a typed exit code for classification.
+// Enables downstream code to extract exit codes via errors.As for retry decisions.
+type ExitCodeError struct {
+	ExitCode int
+	Role     string // "source" or "destination"
+	Stderr   string
+}
+
+func (e *ExitCodeError) Error() string {
+	if e.Stderr != "" {
+		return fmt.Sprintf("%s connector exited with code %d: %s", e.Role, e.ExitCode, e.Stderr)
+	}
+
+	return fmt.Sprintf("%s connector exited with code %d", e.Role, e.ExitCode)
+}

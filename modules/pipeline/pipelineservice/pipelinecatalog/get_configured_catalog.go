@@ -54,7 +54,7 @@ func (uc *GetConfiguredCatalog) Execute(ctx context.Context, params GetConfigure
 
 	// Load the latest discovered catalog to enrich configured streams with
 	// json_schema and stream metadata that connectors require at runtime.
-	latestRecord, discoverErr := uc.storage.CatalogDiscoverys().First(ctx, &pipelineservice.CatalogDiscoveryFilter{
+	latestRecord, discoverErr := uc.storage.CatalogDiscoveries().First(ctx, &pipelineservice.CatalogDiscoveryFilter{
 		SourceID: filter.Equals(conn.SourceID),
 	}, dbutil.WithOrder(pipelineservice.CatalogDiscoveryFieldVersion, dbutil.OrderDirDesc))
 	if discoverErr == nil {

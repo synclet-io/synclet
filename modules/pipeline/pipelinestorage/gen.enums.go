@@ -23,7 +23,6 @@ func convertSchemaChangePolicyToDB(schemaChangePolicyValue pipelineservice.Schem
 	if !ok {
 		return "", fmt.Errorf("unknown SchemaChangePolicy value: %d", schemaChangePolicyValue)
 	}
-
 	return result, nil
 }
 
@@ -36,7 +35,6 @@ func convertSchemaChangePolicyFromDB(schemaChangePolicyValue string) (pipelinese
 	if !ok {
 		return 0, fmt.Errorf("unknown SchemaChangePolicy db value: %s", schemaChangePolicyValue)
 	}
-
 	return result, nil
 }
 
@@ -55,7 +53,6 @@ func convertConnectionStatusToDB(connectionStatusValue pipelineservice.Connectio
 	if !ok {
 		return "", fmt.Errorf("unknown ConnectionStatus value: %d", connectionStatusValue)
 	}
-
 	return result, nil
 }
 
@@ -68,7 +65,6 @@ func convertConnectionStatusFromDB(connectionStatusValue string) (pipelineservic
 	if !ok {
 		return 0, fmt.Errorf("unknown ConnectionStatus db value: %s", connectionStatusValue)
 	}
-
 	return result, nil
 }
 
@@ -93,7 +89,6 @@ func convertJobStatusToDB(jobStatusValue pipelineservice.JobStatus) (string, err
 	if !ok {
 		return "", fmt.Errorf("unknown JobStatus value: %d", jobStatusValue)
 	}
-
 	return result, nil
 }
 
@@ -109,7 +104,6 @@ func convertJobStatusFromDB(jobStatusValue string) (pipelineservice.JobStatus, e
 	if !ok {
 		return 0, fmt.Errorf("unknown JobStatus db value: %s", jobStatusValue)
 	}
-
 	return result, nil
 }
 
@@ -128,7 +122,6 @@ func convertJobTypeToDB(jobTypeValue pipelineservice.JobType) (string, error) {
 	if !ok {
 		return "", fmt.Errorf("unknown JobType value: %d", jobTypeValue)
 	}
-
 	return result, nil
 }
 
@@ -141,7 +134,6 @@ func convertJobTypeFromDB(jobTypeValue string) (pipelineservice.JobType, error) 
 	if !ok {
 		return 0, fmt.Errorf("unknown JobType db value: %s", jobTypeValue)
 	}
-
 	return result, nil
 }
 
@@ -160,7 +152,6 @@ func convertNamespaceDefinitionToDB(namespaceDefinitionValue pipelineservice.Nam
 	if !ok {
 		return "", fmt.Errorf("unknown NamespaceDefinition value: %d", namespaceDefinitionValue)
 	}
-
 	return result, nil
 }
 
@@ -173,39 +164,33 @@ func convertNamespaceDefinitionFromDB(namespaceDefinitionValue string) (pipeline
 	if !ok {
 		return 0, fmt.Errorf("unknown NamespaceDefinition db value: %s", namespaceDefinitionValue)
 	}
-
 	return result, nil
 }
 
 const (
-	repositoryStatusSyncing = "syncing"
-	repositoryStatusSynced  = "synced"
-	repositoryStatusFailed  = "failed"
+	repositoryStatusSynced = "synced"
+	repositoryStatusFailed = "failed"
 )
 
 func convertRepositoryStatusToDB(repositoryStatusValue pipelineservice.RepositoryStatus) (string, error) {
 	result, ok := map[pipelineservice.RepositoryStatus]string{
-		pipelineservice.RepositoryStatusSyncing: repositoryStatusSyncing,
-		pipelineservice.RepositoryStatusSynced:  repositoryStatusSynced,
-		pipelineservice.RepositoryStatusFailed:  repositoryStatusFailed,
+		pipelineservice.RepositoryStatusSynced: repositoryStatusSynced,
+		pipelineservice.RepositoryStatusFailed: repositoryStatusFailed,
 	}[repositoryStatusValue]
 	if !ok {
 		return "", fmt.Errorf("unknown RepositoryStatus value: %d", repositoryStatusValue)
 	}
-
 	return result, nil
 }
 
 func convertRepositoryStatusFromDB(repositoryStatusValue string) (pipelineservice.RepositoryStatus, error) {
 	result, ok := map[string]pipelineservice.RepositoryStatus{
-		repositoryStatusSyncing: pipelineservice.RepositoryStatusSyncing,
-		repositoryStatusSynced:  pipelineservice.RepositoryStatusSynced,
-		repositoryStatusFailed:  pipelineservice.RepositoryStatusFailed,
+		repositoryStatusSynced: pipelineservice.RepositoryStatusSynced,
+		repositoryStatusFailed: pipelineservice.RepositoryStatusFailed,
 	}[repositoryStatusValue]
 	if !ok {
 		return 0, fmt.Errorf("unknown RepositoryStatus db value: %s", repositoryStatusValue)
 	}
-
 	return result, nil
 }
 
@@ -224,7 +209,6 @@ func convertConnectorTaskTypeToDB(connectorTaskTypeValue pipelineservice.Connect
 	if !ok {
 		return "", fmt.Errorf("unknown ConnectorTaskType value: %d", connectorTaskTypeValue)
 	}
-
 	return result, nil
 }
 
@@ -237,7 +221,6 @@ func convertConnectorTaskTypeFromDB(connectorTaskTypeValue string) (pipelineserv
 	if !ok {
 		return 0, fmt.Errorf("unknown ConnectorTaskType db value: %s", connectorTaskTypeValue)
 	}
-
 	return result, nil
 }
 
@@ -258,7 +241,6 @@ func convertConnectorTaskStatusToDB(connectorTaskStatusValue pipelineservice.Con
 	if !ok {
 		return "", fmt.Errorf("unknown ConnectorTaskStatus value: %d", connectorTaskStatusValue)
 	}
-
 	return result, nil
 }
 
@@ -272,7 +254,6 @@ func convertConnectorTaskStatusFromDB(connectorTaskStatusValue string) (pipeline
 	if !ok {
 		return 0, fmt.Errorf("unknown ConnectorTaskStatus db value: %s", connectorTaskStatusValue)
 	}
-
 	return result, nil
 }
 
@@ -289,7 +270,6 @@ func convertConnectorTypeToDB(connectorTypeValue pipelineservice.ConnectorType) 
 	if !ok {
 		return "", fmt.Errorf("unknown ConnectorType value: %d", connectorTypeValue)
 	}
-
 	return result, nil
 }
 
@@ -301,7 +281,6 @@ func convertConnectorTypeFromDB(connectorTypeValue string) (pipelineservice.Conn
 	if !ok {
 		return 0, fmt.Errorf("unknown ConnectorType db value: %s", connectorTypeValue)
 	}
-
 	return result, nil
 }
 
@@ -320,7 +299,6 @@ func convertSupportLevelToDB(supportLevelValue pipelineservice.SupportLevel) (st
 	if !ok {
 		return "", fmt.Errorf("unknown SupportLevel value: %d", supportLevelValue)
 	}
-
 	return result, nil
 }
 
@@ -333,7 +311,6 @@ func convertSupportLevelFromDB(supportLevelValue string) (pipelineservice.Suppor
 	if !ok {
 		return 0, fmt.Errorf("unknown SupportLevel db value: %s", supportLevelValue)
 	}
-
 	return result, nil
 }
 
@@ -354,7 +331,6 @@ func convertSourceTypeToDB(sourceTypeValue pipelineservice.SourceType) (string, 
 	if !ok {
 		return "", fmt.Errorf("unknown SourceType value: %d", sourceTypeValue)
 	}
-
 	return result, nil
 }
 
@@ -368,7 +344,6 @@ func convertSourceTypeFromDB(sourceTypeValue string) (pipelineservice.SourceType
 	if !ok {
 		return 0, fmt.Errorf("unknown SourceType db value: %s", sourceTypeValue)
 	}
-
 	return result, nil
 }
 
@@ -391,7 +366,6 @@ func convertReleaseStageToDB(releaseStageValue pipelineservice.ReleaseStage) (st
 	if !ok {
 		return "", fmt.Errorf("unknown ReleaseStage value: %d", releaseStageValue)
 	}
-
 	return result, nil
 }
 
@@ -406,7 +380,6 @@ func convertReleaseStageFromDB(releaseStageValue string) (pipelineservice.Releas
 	if !ok {
 		return 0, fmt.Errorf("unknown ReleaseStage db value: %s", releaseStageValue)
 	}
-
 	return result, nil
 }
 
@@ -423,7 +396,6 @@ func convertBucketSizeToDB(bucketSizeValue pipelineservice.BucketSize) (string, 
 	if !ok {
 		return "", fmt.Errorf("unknown BucketSize value: %d", bucketSizeValue)
 	}
-
 	return result, nil
 }
 
@@ -435,7 +407,6 @@ func convertBucketSizeFromDB(bucketSizeValue string) (pipelineservice.BucketSize
 	if !ok {
 		return 0, fmt.Errorf("unknown BucketSize db value: %s", bucketSizeValue)
 	}
-
 	return result, nil
 }
 
@@ -456,7 +427,6 @@ func convertHealthToDB(healthValue pipelineservice.Health) (string, error) {
 	if !ok {
 		return "", fmt.Errorf("unknown Health value: %d", healthValue)
 	}
-
 	return result, nil
 }
 
@@ -470,7 +440,6 @@ func convertHealthFromDB(healthValue string) (pipelineservice.Health, error) {
 	if !ok {
 		return 0, fmt.Errorf("unknown Health db value: %s", healthValue)
 	}
-
 	return result, nil
 }
 
@@ -493,7 +462,6 @@ func convertFailureCategoryToDB(failureCategoryValue pipelineservice.FailureCate
 	if !ok {
 		return "", fmt.Errorf("unknown FailureCategory value: %d", failureCategoryValue)
 	}
-
 	return result, nil
 }
 
@@ -508,7 +476,6 @@ func convertFailureCategoryFromDB(failureCategoryValue string) (pipelineservice.
 	if !ok {
 		return 0, fmt.Errorf("unknown FailureCategory db value: %s", failureCategoryValue)
 	}
-
 	return result, nil
 }
 
@@ -525,7 +492,6 @@ func convertSyncStatusToDB(syncStatusValue pipelineservice.SyncStatus) (string, 
 	if !ok {
 		return "", fmt.Errorf("unknown SyncStatus value: %d", syncStatusValue)
 	}
-
 	return result, nil
 }
 
@@ -537,6 +503,5 @@ func convertSyncStatusFromDB(syncStatusValue string) (pipelineservice.SyncStatus
 	if !ok {
 		return 0, fmt.Errorf("unknown SyncStatus db value: %s", syncStatusValue)
 	}
-
 	return result, nil
 }

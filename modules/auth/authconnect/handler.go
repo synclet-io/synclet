@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
+	"github.com/samber/lo"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	authv1 "github.com/synclet-io/synclet/gen/proto/synclet/publicapi/auth/v1"
@@ -18,19 +20,16 @@ import (
 
 // mapError maps auth domain errors to ConnectRPC error codes.
 func mapError(err error) error {
-	var notFound authservice.NotFoundError
-	if errors.As(err, &notFound) {
-		return connect.NewError(connect.CodeNotFound, err)
+	if notFoundErr, ok := lo.ErrorsAs[authservice.NotFoundError](err); ok {
+		return connect.NewError(connect.CodeNotFound, fmt.Errorf("%s not found", strings.ToLower(string(notFoundErr))))
 	}
 
-	var alreadyExists authservice.AlreadyExistsError
-	if errors.As(err, &alreadyExists) {
-		return connect.NewError(connect.CodeAlreadyExists, err)
+	if alreadyExists, ok := lo.ErrorsAs[authservice.AlreadyExistsError](err); ok {
+		return connect.NewError(connect.CodeAlreadyExists, fmt.Errorf("%s already exists", strings.ToLower(string(alreadyExists))))
 	}
 
-	var validation *authservice.ValidationError
-	if errors.As(err, &validation) {
-		return connect.NewError(connect.CodeInvalidArgument, err)
+	if validationErr, ok := lo.ErrorsAs[*authservice.ValidationError](err); ok {
+		return connect.NewError(connect.CodeInvalidArgument, validationErr)
 	}
 
 	if errors.Is(err, authservice.ErrInvalidCredentials) {
@@ -38,7 +37,7 @@ func mapError(err error) error {
 	}
 
 	if errors.Is(err, authservice.ErrInvalidCurrentPassword) {
-		return connect.NewError(connect.CodePermissionDenied, err)
+		return connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
 	if errors.Is(err, authservice.ErrInvalidRefreshToken) || errors.Is(err, authservice.ErrRefreshTokenExpired) {
@@ -57,32 +56,36 @@ func mapError(err error) error {
 		return connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	if errors.Is(err, authservice.ErrEmailNotVerified) || errors.Is(err, authservice.ErrInvalidEmailFormat) {
+	if errors.Is(err, authservice.ErrEmailNotVerified) {
+		return connect.NewError(connect.CodePermissionDenied, err)
+	}
+
+	if errors.Is(err, authservice.ErrInvalidEmailFormat) {
+		return connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	if errors.Is(err, authservice.ErrRegistrationDisabled) {
 		return connect.NewError(connect.CodePermissionDenied, err)
 	}
 
 	return err
 }
 
-// RegistrationEnabled is a named type for FX injection of the registration toggle.
-type RegistrationEnabled bool
-
 // Handler implements the AuthService ConnectRPC handler.
 type Handler struct {
 	authv1connect.UnimplementedAuthServiceHandler
-	registerAndLogin    *authservice.RegisterAndLogin
-	loginWithUserInfo   *authservice.LoginWithUserInfo
-	refreshToken        *authservice.RefreshTokenUC
-	logout              *authservice.Logout
-	getUserByID         *authservice.GetUserByID
-	updateProfile       *authservice.UpdateProfile
-	changePassword      *authservice.ChangePassword
-	createAPIKey        *authservice.CreateAPIKey
-	revokeAPIKey        *authservice.RevokeAPIKey
-	listAPIKeys         *authservice.ListAPIKeys
-	getOIDCProviders    *authservice.GetOIDCProviders
-	registrationEnabled RegistrationEnabled
-	cookieConfig        connectutil.CookieConfig
+	registerAndLogin  *authservice.RegisterAndLogin
+	loginWithUserInfo *authservice.LoginWithUserInfo
+	refreshToken      *authservice.RefreshTokenUC
+	logout            *authservice.Logout
+	getUserByID       *authservice.GetUserByID
+	updateProfile     *authservice.UpdateProfile
+	changePassword    *authservice.ChangePassword
+	createAPIKey      *authservice.CreateAPIKey
+	revokeAPIKey      *authservice.RevokeAPIKey
+	listAPIKeys       *authservice.ListAPIKeys
+	getOIDCProviders  *authservice.GetOIDCProviders
+	cookieConfig      connectutil.CookieConfig
 }
 
 // NewHandler creates a new auth handler.
@@ -98,31 +101,25 @@ func NewHandler(
 	revokeAPIKey *authservice.RevokeAPIKey,
 	listAPIKeys *authservice.ListAPIKeys,
 	getOIDCProviders *authservice.GetOIDCProviders,
-	registrationEnabled RegistrationEnabled,
 	cookieConfig connectutil.CookieConfig,
 ) *Handler {
 	return &Handler{
-		registerAndLogin:    registerAndLogin,
-		loginWithUserInfo:   loginWithUserInfo,
-		refreshToken:        refreshToken,
-		logout:              logout,
-		getUserByID:         getUserByID,
-		updateProfile:       updateProfile,
-		changePassword:      changePassword,
-		createAPIKey:        createAPIKey,
-		revokeAPIKey:        revokeAPIKey,
-		listAPIKeys:         listAPIKeys,
-		getOIDCProviders:    getOIDCProviders,
-		registrationEnabled: registrationEnabled,
-		cookieConfig:        cookieConfig,
+		registerAndLogin:  registerAndLogin,
+		loginWithUserInfo: loginWithUserInfo,
+		refreshToken:      refreshToken,
+		logout:            logout,
+		getUserByID:       getUserByID,
+		updateProfile:     updateProfile,
+		changePassword:    changePassword,
+		createAPIKey:      createAPIKey,
+		revokeAPIKey:      revokeAPIKey,
+		listAPIKeys:       listAPIKeys,
+		getOIDCProviders:  getOIDCProviders,
+		cookieConfig:      cookieConfig,
 	}
 }
 
 func (h *Handler) Register(ctx context.Context, req *connect.Request[authv1.RegisterRequest]) (*connect.Response[authv1.RegisterResponse], error) {
-	if !h.registrationEnabled {
-		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("registration is disabled"))
-	}
-
 	if req.Msg.GetEmail() == "" || req.Msg.GetPassword() == "" || req.Msg.GetName() == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("email, password, and name are required"))
 	}
@@ -262,7 +259,7 @@ func (h *Handler) ChangePassword(ctx context.Context, req *connect.Request[authv
 	}
 
 	if err := h.changePassword.Execute(ctx, userID, req.Msg.GetCurrentPassword(), req.Msg.GetNewPassword()); err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("changing password: %w", err))
+		return nil, mapError(err)
 	}
 
 	return connect.NewResponse(&authv1.ChangePasswordResponse{}), nil

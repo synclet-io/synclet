@@ -37,7 +37,7 @@ type ListRepositoryConnectorsParams struct {
 func (uc *ListRepositoryConnectors) Execute(ctx context.Context, params ListRepositoryConnectorsParams) ([]*pipelineservice.RepositoryConnector, error) {
 	// Verify repository belongs to the workspace.
 	if params.WorkspaceID != (uuid.UUID{}) {
-		_, err := uc.storage.Repositorys().First(ctx, &pipelineservice.RepositoryFilter{
+		_, err := uc.storage.Repositories().First(ctx, &pipelineservice.RepositoryFilter{
 			ID:          filter.Equals(params.RepositoryID),
 			WorkspaceID: filter.Equals(params.WorkspaceID),
 		})

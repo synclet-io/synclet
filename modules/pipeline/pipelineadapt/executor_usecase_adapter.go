@@ -3,22 +3,23 @@ package pipelineadapt
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
 
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineexec"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinejobs"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinelogs"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinestate"
-	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinesync"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinetasks"
 	"github.com/synclet-io/synclet/pkg/protocol"
 )
 
-// UseCaseExecutorBackend implements pipelinesync.ExecutorBackend by calling
+// UseCaseExecutorBackend implements pipelineexec.ExecutorBackend by calling
 // use cases directly in-process. Used in standalone mode (per D-15).
 type UseCaseExecutorBackend struct {
 	claimJobBundle     *pipelinejobs.ClaimJobBundle
@@ -32,6 +33,7 @@ type UseCaseExecutorBackend struct {
 	getJob             *pipelinejobs.GetJob
 	claimTask          *pipelinetasks.ClaimTask
 	reportTaskResult   *pipelinetasks.ReportTaskResult
+	isTaskActive       *pipelinejobs.IsTaskActive
 }
 
 // NewUseCaseExecutorBackend creates a new UseCaseExecutorBackend.
@@ -47,6 +49,7 @@ func NewUseCaseExecutorBackend(
 	getJob *pipelinejobs.GetJob,
 	claimTask *pipelinetasks.ClaimTask,
 	reportTaskResult *pipelinetasks.ReportTaskResult,
+	isTaskActive *pipelinejobs.IsTaskActive,
 ) *UseCaseExecutorBackend {
 	return &UseCaseExecutorBackend{
 		claimJobBundle:     claimJobBundle,
@@ -60,6 +63,7 @@ func NewUseCaseExecutorBackend(
 		getJob:             getJob,
 		claimTask:          claimTask,
 		reportTaskResult:   reportTaskResult,
+		isTaskActive:       isTaskActive,
 	}
 }
 
@@ -74,7 +78,7 @@ func (a *UseCaseExecutorBackend) ClaimJob(ctx context.Context, workerID string) 
 }
 
 // UpdateJobStatus reports job completion or failure.
-func (a *UseCaseExecutorBackend) UpdateJobStatus(ctx context.Context, params pipelinesync.UpdateJobStatusParams) error {
+func (a *UseCaseExecutorBackend) UpdateJobStatus(ctx context.Context, params pipelineexec.UpdateJobStatusParams) error {
 	var syncErr error
 	if !params.Success {
 		syncErr = fmt.Errorf("%s", params.ErrorMessage)
@@ -94,7 +98,7 @@ func (a *UseCaseExecutorBackend) UpdateJobStatus(ctx context.Context, params pip
 }
 
 // Heartbeat updates the heartbeat timestamp and checks for cancellation.
-func (a *UseCaseExecutorBackend) Heartbeat(ctx context.Context, jobID uuid.UUID, recordsRead, bytesSynced int64) (*pipelinesync.HeartbeatResult, error) {
+func (a *UseCaseExecutorBackend) Heartbeat(ctx context.Context, jobID uuid.UUID, recordsRead, bytesSynced int64) (*pipelineexec.HeartbeatResult, error) {
 	// Update heartbeat timestamp; non-fatal if it fails.
 	if err := a.updateHeartbeat.Execute(ctx, pipelinejobs.UpdateHeartbeatParams{ID: jobID}); err != nil {
 		slog.Error("usecase backend: heartbeat update failed", "job_id", jobID.String(), "error", err)
@@ -105,10 +109,10 @@ func (a *UseCaseExecutorBackend) Heartbeat(ctx context.Context, jobID uuid.UUID,
 	if err != nil {
 		slog.Error("usecase backend: check cancelled failed", "job_id", jobID.String(), "error", err)
 
-		return &pipelinesync.HeartbeatResult{Cancelled: false}, nil
+		return &pipelineexec.HeartbeatResult{Cancelled: false}, nil
 	}
 
-	return &pipelinesync.HeartbeatResult{Cancelled: cancelled}, nil
+	return &pipelineexec.HeartbeatResult{Cancelled: cancelled}, nil
 }
 
 // ReportState saves a sync state message for the given connection.
@@ -120,7 +124,7 @@ func (a *UseCaseExecutorBackend) ReportState(ctx context.Context, connectionID, 
 }
 
 // ReportCompletion reports job completion with full stats and triggers events.
-func (a *UseCaseExecutorBackend) ReportCompletion(ctx context.Context, params pipelinesync.ReportCompletionParams) error {
+func (a *UseCaseExecutorBackend) ReportCompletion(ctx context.Context, params pipelineexec.ReportCompletionParams) error {
 	return a.reportCompletion.Execute(ctx, pipelinejobs.ReportCompletionParams{
 		JobID:        params.JobID,
 		ConnectionID: params.ConnectionID,
@@ -154,7 +158,7 @@ func (a *UseCaseExecutorBackend) ReportLog(ctx context.Context, jobID uuid.UUID,
 }
 
 // ClaimConnectorTask claims the next pending connector task (D-15).
-func (a *UseCaseExecutorBackend) ClaimConnectorTask(ctx context.Context, workerID string) (*pipelinesync.ClaimConnectorTaskResult, error) {
+func (a *UseCaseExecutorBackend) ClaimConnectorTask(ctx context.Context, workerID string) (*pipelineexec.ClaimConnectorTaskResult, error) {
 	result, err := a.claimTask.Execute(ctx, workerID)
 	if err != nil {
 		return nil, fmt.Errorf("claiming connector task: %w", err)
@@ -164,7 +168,7 @@ func (a *UseCaseExecutorBackend) ClaimConnectorTask(ctx context.Context, workerI
 		return nil, nil
 	}
 
-	return &pipelinesync.ClaimConnectorTaskResult{
+	return &pipelineexec.ClaimConnectorTaskResult{
 		TaskID:      result.TaskID,
 		TaskType:    result.TaskType,
 		Image:       result.Image,
@@ -174,7 +178,7 @@ func (a *UseCaseExecutorBackend) ClaimConnectorTask(ctx context.Context, workerI
 }
 
 // ReportConnectorTaskResult reports the result of a connector task (D-18/D-19).
-func (a *UseCaseExecutorBackend) ReportConnectorTaskResult(ctx context.Context, params pipelinesync.ReportConnectorTaskResultParams) error {
+func (a *UseCaseExecutorBackend) ReportConnectorTaskResult(ctx context.Context, params pipelineexec.ReportConnectorTaskResultParams) error {
 	return a.reportTaskResult.Execute(ctx, pipelinetasks.ReportTaskResultParams{
 		TaskID:       params.TaskID,
 		Success:      params.Success,
@@ -196,4 +200,22 @@ func (a *UseCaseExecutorBackend) IsJobActive(ctx context.Context, jobID string) 
 	}
 
 	return job.Status == pipelineservice.JobStatusRunning || job.Status == pipelineservice.JobStatusStarting, nil
+}
+
+// IsTaskActive checks whether a connector task is in pending or running status.
+func (a *UseCaseExecutorBackend) IsTaskActive(ctx context.Context, taskID string) (bool, error) {
+	return a.isTaskActive.ExecuteByString(ctx, taskID)
+}
+
+// FailJob marks a job as failed with the given reason.
+func (a *UseCaseExecutorBackend) FailJob(ctx context.Context, jobID string, reason string) error {
+	parsed, err := uuid.Parse(jobID)
+	if err != nil {
+		return fmt.Errorf("parsing job ID: %w", err)
+	}
+
+	return a.updateJobStatus.Execute(ctx, pipelinejobs.UpdateJobStatusParams{
+		ID:      parsed,
+		SyncErr: errors.New(reason),
+	})
 }

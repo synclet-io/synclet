@@ -33,6 +33,7 @@ type ReportCompletion struct {
 	storage         pipelineservice.Storage
 	cleanupOldJobs  *CleanupOldJobs
 	logger          *logging.Logger
+	cfg             pipelineservice.Config
 }
 
 // NewReportCompletion creates a new ReportCompletion use case.
@@ -42,6 +43,7 @@ func NewReportCompletion(
 	storage pipelineservice.Storage,
 	cleanupOldJobs *CleanupOldJobs,
 	logger *logging.Logger,
+	cfg pipelineservice.Config,
 ) *ReportCompletion {
 	return &ReportCompletion{
 		updateJobStatus: updateJobStatus,
@@ -49,6 +51,7 @@ func NewReportCompletion(
 		storage:         storage,
 		cleanupOldJobs:  cleanupOldJobs,
 		logger:          logger.Named("report-completion"),
+		cfg:             cfg,
 	}
 }
 
@@ -97,7 +100,7 @@ func (uc *ReportCompletion) Execute(ctx context.Context, params ReportCompletion
 		go func() { //nolint:gosec // intentional background context for fire-and-forget event emission
 			defer uc.wg.Done()
 
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), uc.cfg.EventEmitTimeout)
 			defer cancel()
 
 			if emitErr := uc.eventEmitter.EmitSyncCompleted(ctx, pipelineservice.SyncCompletedEvent{
@@ -116,7 +119,7 @@ func (uc *ReportCompletion) Execute(ctx context.Context, params ReportCompletion
 		go func() { //nolint:gosec // intentional background context for fire-and-forget event emission
 			defer uc.wg.Done()
 
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), uc.cfg.EventEmitTimeout)
 			defer cancel()
 
 			if emitErr := uc.eventEmitter.EmitSyncFailed(ctx, pipelineservice.SyncFailedEvent{
@@ -142,7 +145,7 @@ func (uc *ReportCompletion) Execute(ctx context.Context, params ReportCompletion
 		go func() { //nolint:gosec // intentional background context for async cleanup
 			defer uc.wg.Done()
 
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), uc.cfg.EventEmitTimeout)
 			defer cancel()
 
 			if cleanupErr := uc.cleanupOldJobs.ExecuteForWorkspace(ctx, conn.WorkspaceID); cleanupErr != nil {

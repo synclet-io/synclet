@@ -5,7 +5,7 @@ import (
 	"errors"
 
 	"github.com/go-pnp/go-pnp/config/configutil"
-	logging "github.com/go-pnp/go-pnp/logging"
+	"github.com/go-pnp/go-pnp/logging"
 	"go.uber.org/fx"
 	"gorm.io/gorm"
 
@@ -14,52 +14,71 @@ import (
 	"github.com/synclet-io/synclet/modules/secret/secretstorage"
 )
 
-// secretConfig holds secret module configuration loaded from SECRET_ environment variables.
-type secretConfig struct {
-	EncryptionKey         string `env:"ENCRYPTION_KEY,notEmpty"`
-	EncryptionKeyPrevious string `env:"ENCRYPTION_KEY_PREVIOUS"`
+type EncryptionKey []byte
+
+func (e *EncryptionKey) UnmarshalText(text []byte) error {
+	key, err := base64.StdEncoding.DecodeString(string(text))
+	if err != nil || len(key) != 32 {
+		return errors.New("ENCRYPTION_KEY must be a valid base64-encoded 32-byte key")
+	}
+
+	*e = key
+
+	return nil
 }
 
-// encryptionKey is a type alias for the master encryption key bytes.
-type encryptionKey []byte
+type secretConfig struct {
+	EncryptionKey         EncryptionKey `env:"ENCRYPTION_KEY,notEmpty"`
+	EncryptionKeyPrevious EncryptionKey `env:"ENCRYPTION_KEY_PREVIOUS"`
+}
 
 func secretModule() fx.Option {
-	return fx.Options(
-		fx.Provide(
-			configutil.NewPrefixedConfigProvider[secretConfig]("SECRET_"),
-			configutil.NewPrefixedConfigInfoProvider[secretConfig]("SECRET_"),
-		),
-		fx.Provide(
-			func(db *gorm.DB, logger *logging.Logger) *secretstorage.Storages {
-				return secretstorage.NewStorages(db, logger, nil)
-			},
-			fx.Annotate(
-				func(s *secretstorage.Storages) secretservice.Storage { return s },
-				fx.As(new(secretservice.Storage)),
-			),
-			func(cfg *secretConfig) (encryptionKey, error) {
-				key, err := base64.StdEncoding.DecodeString(cfg.EncryptionKey)
-				if err != nil || len(key) != 32 {
-					return nil, errors.New("ENCRYPTION_KEY must be a valid base64-encoded 32-byte key")
-				}
+	return fx.Module(
+		"secret",
+		logging.DecorateNamed("secret"),
 
-				return key, nil
-			},
-			func(storage secretservice.Storage, key encryptionKey) *secretservice.StoreSecret {
-				return secretservice.NewStoreSecret(storage, key, 1)
-			},
-			func(storage secretservice.Storage, key encryptionKey, cfg *secretConfig) *secretservice.RetrieveSecret {
-				var prevKey []byte
-
-				if cfg.EncryptionKeyPrevious != "" {
-					if decoded, err := base64.StdEncoding.DecodeString(cfg.EncryptionKeyPrevious); err == nil && len(decoded) == 32 {
-						prevKey = decoded
-					}
-				}
-
-				return secretservice.NewRetrieveSecret(storage, key, prevKey)
-			},
-			secretservice.NewDeleteSecret,
-		),
+		secretConfigModule(),
+		secretDependenciesModule(),
+		secretUseCasesModule(),
 	)
+}
+
+func secretConfigModule() fx.Option {
+	return fx.Provide(
+		configutil.NewPrefixedConfigProvider[secretConfig]("SECRET_"),
+		configutil.NewPrefixedConfigInfoProvider[secretConfig]("SECRET_"),
+		newSecretServiceConfig,
+	)
+}
+
+func secretDependenciesModule() fx.Option {
+	return fx.Provide(
+		fx.Annotate(newSecretStorage, fx.As(new(secretservice.Storage))),
+	)
+}
+
+func secretUseCasesModule() fx.Option {
+	return fx.Provide(
+		secretservice.NewStoreSecret,
+		secretservice.NewRetrieveSecret,
+		secretservice.NewDeleteSecret,
+	)
+}
+
+func newSecretStorage(db *gorm.DB, logger *logging.Logger) *secretstorage.Storages {
+	return secretstorage.NewStorages(db, logger, nil)
+}
+
+func newSecretServiceConfig(cfg *secretConfig) secretservice.Config {
+	var prevKey []byte
+
+	if len(cfg.EncryptionKeyPrevious) > 0 {
+		prevKey = cfg.EncryptionKeyPrevious
+	}
+
+	return secretservice.Config{
+		MasterKey:   cfg.EncryptionKey,
+		PreviousKey: prevKey,
+		KeyVersion:  1,
+	}
 }

@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
+	"github.com/samber/lo"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	workspacev1 "github.com/synclet-io/synclet/gen/proto/synclet/publicapi/workspace/v1"
@@ -458,19 +460,16 @@ func inviteStatusToProto(s workspaceservice.InviteStatus) workspacev1.InviteStat
 
 // mapError maps domain errors to ConnectRPC error codes.
 func mapError(err error) error {
-	var notFound workspaceservice.NotFoundError
-	if errors.As(err, &notFound) {
-		return connect.NewError(connect.CodeNotFound, err)
+	if notFoundErr, ok := lo.ErrorsAs[workspaceservice.NotFoundError](err); ok {
+		return connect.NewError(connect.CodeNotFound, fmt.Errorf("%s not found", strings.ToLower(string(notFoundErr))))
 	}
 
-	var alreadyExists workspaceservice.AlreadyExistsError
-	if errors.As(err, &alreadyExists) {
-		return connect.NewError(connect.CodeAlreadyExists, err)
+	if alreadyExists, ok := lo.ErrorsAs[workspaceservice.AlreadyExistsError](err); ok {
+		return connect.NewError(connect.CodeAlreadyExists, fmt.Errorf("%s already exists", strings.ToLower(string(alreadyExists))))
 	}
 
-	var validationErr *workspaceservice.ValidationError
-	if errors.As(err, &validationErr) {
-		return connect.NewError(connect.CodeInvalidArgument, err)
+	if validationErr, ok := lo.ErrorsAs[*workspaceservice.ValidationError](err); ok {
+		return connect.NewError(connect.CodeInvalidArgument, validationErr)
 	}
 
 	return err

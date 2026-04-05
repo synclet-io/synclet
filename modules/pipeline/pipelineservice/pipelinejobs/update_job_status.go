@@ -7,11 +7,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/go-pnp/go-pnp/logging"
 	"github.com/google/uuid"
 	"github.com/saturn4er/boilerplate-go/lib/filter"
 
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
-	"github.com/synclet-io/synclet/pkg/connector"
 )
 
 // UpdateJobStatusParams holds parameters for updating a job's status.
@@ -74,7 +74,7 @@ func (uc *UpdateJobStatus) Execute(ctx context.Context, params UpdateJobStatusPa
 		// Classify exit code if available for retry decisions.
 		skipRetry := false
 
-		var exitErr *connector.ExitCodeError
+		var exitErr *pipelineservice.ExitCodeError
 		if errors.As(params.SyncErr, &exitErr) {
 			category, reason := ClassifyExitCode(exitErr.ExitCode)
 			job.FailureReason = &reason
@@ -116,12 +116,14 @@ func (uc *UpdateJobStatus) Execute(ctx context.Context, params UpdateJobStatusPa
 			conn, connErr := tx.Connections().First(ctx, &pipelineservice.ConnectionFilter{
 				ID: filter.Equals(job.ConnectionID),
 			})
-			if connErr == nil {
-				pipelineservice.RecomputeNextScheduledAt(conn, time.Now())
+			if connErr != nil {
+				return fmt.Errorf("getting connection for schedule recompute: %w", connErr)
+			}
 
-				if _, updateErr := tx.Connections().Update(ctx, conn); updateErr != nil {
-					return fmt.Errorf("updating connection next_scheduled_at: %w", updateErr)
-				}
+			pipelineservice.RecomputeNextScheduledAt(conn, time.Now())
+
+			if _, updateErr := tx.Connections().Update(ctx, conn); updateErr != nil {
+				return fmt.Errorf("updating connection next_scheduled_at: %w", updateErr)
 			}
 		}
 
@@ -163,28 +165,35 @@ func (uc *UpdateHeartbeat) Execute(ctx context.Context, params UpdateHeartbeatPa
 	return nil
 }
 
-// RecoverStaleJobsParams holds parameters for recovering stale jobs.
-type RecoverStaleJobsParams struct {
-	HeartbeatTimeout time.Duration
-}
-
-// RecoverStaleJobs finds running jobs with stale heartbeats and marks them as
+// FailStaleJobs finds running jobs with stale heartbeats and marks them as
 // failed so they can be retried.
-type RecoverStaleJobs struct {
-	storage         pipelineservice.Storage
-	updateJobStatus *UpdateJobStatus
+type FailStaleJobs struct {
+	logger           *logging.Logger
+	storage          pipelineservice.Storage
+	updateJobStatus  *UpdateJobStatus
+	heartbeatTimeout time.Duration
 }
 
-// NewRecoverStaleJobs creates a new RecoverStaleJobs use case.
-func NewRecoverStaleJobs(storage pipelineservice.Storage, updateJobStatus *UpdateJobStatus) *RecoverStaleJobs {
-	return &RecoverStaleJobs{storage: storage, updateJobStatus: updateJobStatus}
+// NewFailStaleJobs creates a new FailStaleJobs use case.
+func NewFailStaleJobs(
+	logger *logging.Logger,
+	storage pipelineservice.Storage,
+	updateJobStatus *UpdateJobStatus,
+	config pipelineservice.Config,
+) *FailStaleJobs {
+	return &FailStaleJobs{
+		logger:           logger,
+		storage:          storage,
+		updateJobStatus:  updateJobStatus,
+		heartbeatTimeout: config.HeartbeatTimeout,
+	}
 }
 
-// Execute finds and recovers stale running jobs, returning the number recovered.
+// Execute finds stale running jobs and marks them as failed, returning the count.
 // Uses DB-level HeartbeatAt filter (per D-05) with explicit NULL heartbeat handling
 // for jobs that crash before sending their first heartbeat (per D-04).
-func (uc *RecoverStaleJobs) Execute(ctx context.Context, params RecoverStaleJobsParams) (int, error) {
-	cutoff := time.Now().Add(-params.HeartbeatTimeout)
+func (uc *FailStaleJobs) Execute(ctx context.Context) (int, error) {
+	cutoff := time.Now().Add(-uc.heartbeatTimeout)
 
 	// DB-level filter for running/starting jobs with stale heartbeats (per D-05)
 	staleJobs, err := uc.storage.Jobs().Find(ctx, &pipelineservice.JobFilter{
@@ -196,10 +205,11 @@ func (uc *RecoverStaleJobs) Execute(ctx context.Context, params RecoverStaleJobs
 	}
 
 	// Also find running/starting jobs with NULL heartbeat that started before cutoff
-	// (D-04: recover ALL stale jobs, including those that crash before first heartbeat)
+	// (D-04: fail ALL stale jobs, including those that crash before first heartbeat)
 	nullHeartbeatJobs, err := uc.storage.Jobs().Find(ctx, &pipelineservice.JobFilter{
-		Status:    filter.In(pipelineservice.JobStatusRunning, pipelineservice.JobStatusStarting),
-		StartedAt: filter.Less(&cutoff),
+		Status:      filter.In(pipelineservice.JobStatusRunning, pipelineservice.JobStatusStarting),
+		StartedAt:   filter.Less(&cutoff),
+		HeartbeatAt: filter.IsNull[*time.Time](),
 	})
 	if err != nil {
 		return 0, fmt.Errorf("listing null-heartbeat stale jobs: %w", err)
@@ -212,14 +222,12 @@ func (uc *RecoverStaleJobs) Execute(ctx context.Context, params RecoverStaleJobs
 	}
 
 	for _, j := range nullHeartbeatJobs {
-		if j.HeartbeatAt == nil {
-			if _, ok := seen[j.ID]; !ok {
-				staleJobs = append(staleJobs, j)
-			}
+		if _, ok := seen[j.ID]; !ok {
+			staleJobs = append(staleJobs, j)
 		}
 	}
 
-	recovered := 0
+	failed := 0
 
 	for _, job := range staleJobs {
 		var errMsg string
@@ -233,13 +241,15 @@ func (uc *RecoverStaleJobs) Execute(ctx context.Context, params RecoverStaleJobs
 			ID:      job.ID,
 			SyncErr: fmt.Errorf("%s", errMsg),
 		}); err != nil {
+			uc.logger.WithError(err).WithField("job_id", job.ID).Error(ctx, "failed to mark stale job as failed")
+
 			continue
 		}
 
-		recovered++
+		failed++
 	}
 
-	return recovered, nil
+	return failed, nil
 }
 
 // SetK8sJobNameParams holds parameters for setting a K8s job name.

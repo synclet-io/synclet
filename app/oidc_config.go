@@ -9,56 +9,33 @@ import (
 	"github.com/synclet-io/synclet/modules/auth/authservice"
 )
 
-// parseOIDCConfig parses OIDC configuration from environment variables.
-// Returns nil if OIDC_PROVIDERS is empty (OIDC disabled).
-func parseOIDCConfig() (*authservice.OIDCConfig, error) {
-	providersEnv := os.Getenv("OIDC_PROVIDERS")
-	if providersEnv == "" {
+// parseOIDCProviderConfigs parses per-provider OIDC configuration from environment variables.
+// Returns nil if OIDCProviders is empty (OIDC disabled).
+func parseOIDCProviderConfigs(cfg *authConfig) ([]authservice.OIDCProviderConfig, error) {
+	if len(cfg.OIDCProviders) == 0 {
 		return nil, nil
 	}
 
-	callbackBase := os.Getenv("OIDC_CALLBACK_BASE_URL")
-	if callbackBase == "" {
-		return nil, errors.New("OIDC_CALLBACK_BASE_URL is required when OIDC_PROVIDERS is set")
+	if cfg.OIDCCallbackBaseURL == "" {
+		return nil, errors.New("AUTH_OIDC_CALLBACK_BASE_URL is required when AUTH_OIDC_PROVIDERS is set")
 	}
 
-	providers, err := parseOIDCProviderConfigs(providersEnv)
-	if err != nil {
-		return nil, err
-	}
+	var providers []authservice.OIDCProviderConfig
 
-	return &authservice.OIDCConfig{Providers: providers, CallbackBaseURL: callbackBase}, nil
-}
-
-// parseOIDCProviderConfigs parses comma-separated provider slugs and loads
-// per-provider config from OIDC_{SLUG}_* env vars.
-func parseOIDCProviderConfigs(providersList string) ([]authservice.OIDCProviderConfig, error) {
-	if providersList == "" {
-		return nil, nil
-	}
-
-	slugs := strings.Split(providersList, ",")
-	var configs []authservice.OIDCProviderConfig
-
-	for _, slug := range slugs {
-		slug = strings.TrimSpace(slug)
-		if slug == "" {
-			continue
-		}
-
-		cfg, err := parseOIDCProviderConfig(slug)
+	for _, slug := range cfg.OIDCProviders {
+		providerCfg, err := parseOIDCProviderConfig(slug)
 		if err != nil {
 			return nil, fmt.Errorf("provider %s: %w", slug, err)
 		}
 
-		configs = append(configs, cfg)
+		providers = append(providers, providerCfg)
 	}
 
-	return configs, nil
+	return providers, nil
 }
 
 func parseOIDCProviderConfig(slug string) (authservice.OIDCProviderConfig, error) {
-	prefix := "OIDC_" + strings.ToUpper(slug) + "_"
+	prefix := "AUTH_OIDC_" + strings.TrimSpace(strings.ToUpper(slug)) + "_"
 
 	issuer := os.Getenv(prefix + "ISSUER")
 	if issuer == "" {

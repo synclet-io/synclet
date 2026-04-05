@@ -31,11 +31,12 @@ type CreateConnectionParams struct {
 // DestinationValidator adapter interfaces.
 type CreateConnection struct {
 	storage pipelineservice.Storage
+	cfg     pipelineservice.Config
 }
 
 // NewCreateConnection creates a new CreateConnection use case.
-func NewCreateConnection(storage pipelineservice.Storage) *CreateConnection {
-	return &CreateConnection{storage: storage}
+func NewCreateConnection(storage pipelineservice.Storage, cfg pipelineservice.Config) *CreateConnection {
+	return &CreateConnection{storage: storage, cfg: cfg}
 }
 
 // Execute validates source/destination existence and creates the connection.
@@ -73,7 +74,7 @@ func (uc *CreateConnection) Execute(ctx context.Context, params CreateConnection
 
 	maxAttempts := params.MaxAttempts
 	if maxAttempts <= 0 {
-		maxAttempts = 3
+		maxAttempts = uc.cfg.DefaultMaxAttempts
 	}
 
 	nsDef := params.NamespaceDefinition

@@ -15,9 +15,9 @@ import (
 	"github.com/synclet-io/synclet/gen/proto/synclet/internalapi/executor/v1/executorv1connect"
 	protocolv1 "github.com/synclet-io/synclet/gen/proto/synclet/protocol/v1"
 	pipelinev1 "github.com/synclet-io/synclet/gen/proto/synclet/publicapi/pipeline/v1"
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineexec"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinejobs"
-	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinesync"
 	"github.com/synclet-io/synclet/pkg/protocol"
 )
 
@@ -42,7 +42,7 @@ func (i *tokenInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFun
 	return next
 }
 
-// RPCExecutorBackend implements pipelinesync.ExecutorBackend by calling
+// RPCExecutorBackend implements pipelineexec.ExecutorBackend by calling
 // ExecutorService RPCs over HTTP. Used in distributed mode (per D-15).
 type RPCExecutorBackend struct {
 	client executorv1connect.ExecutorServiceClient
@@ -145,7 +145,7 @@ func (a *RPCExecutorBackend) ClaimJob(ctx context.Context, workerID string) (*pi
 }
 
 // UpdateJobStatus calls the UpdateJobStatus RPC with retry.
-func (a *RPCExecutorBackend) UpdateJobStatus(ctx context.Context, params pipelinesync.UpdateJobStatusParams) error {
+func (a *RPCExecutorBackend) UpdateJobStatus(ctx context.Context, params pipelineexec.UpdateJobStatusParams) error {
 	return a.sendWithRetry(ctx, "UpdateJobStatus", func(ctx context.Context) error {
 		_, err := a.client.UpdateJobStatus(ctx, connect.NewRequest(&executorv1.UpdateJobStatusRequest{
 			JobId:        params.JobID.String(),
@@ -161,8 +161,8 @@ func (a *RPCExecutorBackend) UpdateJobStatus(ctx context.Context, params pipelin
 }
 
 // Heartbeat calls the Heartbeat RPC with retry and returns cancellation status.
-func (a *RPCExecutorBackend) Heartbeat(ctx context.Context, jobID uuid.UUID, recordsRead, bytesSynced int64) (*pipelinesync.HeartbeatResult, error) {
-	var result *pipelinesync.HeartbeatResult
+func (a *RPCExecutorBackend) Heartbeat(ctx context.Context, jobID uuid.UUID, recordsRead, bytesSynced int64) (*pipelineexec.HeartbeatResult, error) {
+	var result *pipelineexec.HeartbeatResult
 
 	err := a.sendWithRetry(ctx, "Heartbeat", func(ctx context.Context) error {
 		resp, callErr := a.client.Heartbeat(ctx, connect.NewRequest(&executorv1.HeartbeatRequest{
@@ -174,7 +174,7 @@ func (a *RPCExecutorBackend) Heartbeat(ctx context.Context, jobID uuid.UUID, rec
 			return callErr
 		}
 
-		result = &pipelinesync.HeartbeatResult{Cancelled: resp.Msg.GetCancelled()}
+		result = &pipelineexec.HeartbeatResult{Cancelled: resp.Msg.GetCancelled()}
 
 		return nil
 	})
@@ -204,7 +204,7 @@ func (a *RPCExecutorBackend) ReportState(ctx context.Context, connectionID, jobI
 }
 
 // ReportCompletion calls the ReportCompletion RPC with retry.
-func (a *RPCExecutorBackend) ReportCompletion(ctx context.Context, params pipelinesync.ReportCompletionParams) error {
+func (a *RPCExecutorBackend) ReportCompletion(ctx context.Context, params pipelineexec.ReportCompletionParams) error {
 	return a.sendWithRetry(ctx, "ReportCompletion", func(ctx context.Context) error {
 		_, err := a.client.ReportCompletion(ctx, connect.NewRequest(&executorv1.ReportCompletionRequest{
 			JobId:        params.JobID.String(),
@@ -244,8 +244,8 @@ func (a *RPCExecutorBackend) ReportLog(ctx context.Context, jobID uuid.UUID, lin
 }
 
 // ClaimConnectorTask calls the ClaimConnectorTask RPC with retry (D-15).
-func (a *RPCExecutorBackend) ClaimConnectorTask(ctx context.Context, workerID string) (*pipelinesync.ClaimConnectorTaskResult, error) {
-	var result *pipelinesync.ClaimConnectorTaskResult
+func (a *RPCExecutorBackend) ClaimConnectorTask(ctx context.Context, workerID string) (*pipelineexec.ClaimConnectorTaskResult, error) {
+	var result *pipelineexec.ClaimConnectorTaskResult
 
 	err := a.sendWithRetry(ctx, "ClaimConnectorTask", func(ctx context.Context) error {
 		resp, callErr := a.client.ClaimConnectorTask(ctx, connect.NewRequest(&executorv1.ClaimConnectorTaskRequest{
@@ -271,7 +271,7 @@ func (a *RPCExecutorBackend) ClaimConnectorTask(ctx context.Context, workerID st
 			return fmt.Errorf("parsing workspace_id: %w", parseErr)
 		}
 
-		result = &pipelinesync.ClaimConnectorTaskResult{
+		result = &pipelineexec.ClaimConnectorTaskResult{
 			TaskID:      parsedTaskID,
 			TaskType:    protoTaskTypeToDomain(resp.Msg.GetTaskType()),
 			Image:       resp.Msg.GetImage(),
@@ -289,7 +289,7 @@ func (a *RPCExecutorBackend) ClaimConnectorTask(ctx context.Context, workerID st
 }
 
 // ReportConnectorTaskResult calls the ReportConnectorTaskResult RPC with retry (D-18/D-19).
-func (a *RPCExecutorBackend) ReportConnectorTaskResult(ctx context.Context, params pipelinesync.ReportConnectorTaskResultParams) error {
+func (a *RPCExecutorBackend) ReportConnectorTaskResult(ctx context.Context, params pipelineexec.ReportConnectorTaskResultParams) error {
 	return a.sendWithRetry(ctx, "ReportConnectorTaskResult", func(ctx context.Context) error {
 		_, err := a.client.ReportConnectorTaskResult(ctx, connect.NewRequest(&executorv1.ReportConnectorTaskResultRequest{
 			TaskId:       params.TaskID.String(),
@@ -313,6 +313,31 @@ func (a *RPCExecutorBackend) IsJobActive(ctx context.Context, jobID string) (boo
 	}
 
 	return resp.Msg.GetActive(), nil
+}
+
+// IsTaskActive calls the IsTaskActive RPC.
+// Best-effort: no retry (reconciler can re-check later).
+func (a *RPCExecutorBackend) IsTaskActive(ctx context.Context, taskID string) (bool, error) {
+	resp, err := a.client.IsTaskActive(ctx, connect.NewRequest(&executorv1.IsTaskActiveRequest{
+		TaskId: taskID,
+	}))
+	if err != nil {
+		return false, err
+	}
+
+	return resp.Msg.GetActive(), nil
+}
+
+// FailJob calls the FailJob RPC with retry.
+func (a *RPCExecutorBackend) FailJob(ctx context.Context, jobID string, reason string) error {
+	return a.sendWithRetry(ctx, "FailJob", func(ctx context.Context) error {
+		_, err := a.client.FailJob(ctx, connect.NewRequest(&executorv1.FailJobRequest{
+			JobId:  jobID,
+			Reason: reason,
+		}))
+
+		return err
+	})
 }
 
 // sendWithRetry retries a function with exponential backoff per D-12.

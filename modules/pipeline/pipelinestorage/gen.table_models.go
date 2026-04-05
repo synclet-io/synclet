@@ -5,6 +5,7 @@ import (
 	time "time"
 
 	uuid "github.com/google/uuid"
+	errors "github.com/pkg/errors"
 
 	pipelineservice "github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
 	// user code 'imports'
@@ -44,7 +45,6 @@ func convertManagedConnectorToDB(src *pipelineservice.ManagedConnector) (*dbMana
 	} else {
 		result.RepositoryID = toPtr(fromPtr(src.RepositoryID))
 	}
-
 	return result, nil
 }
 
@@ -68,7 +68,6 @@ func convertManagedConnectorFromDB(src *dbManagedConnector) (*pipelineservice.Ma
 	} else {
 		result.RepositoryID = toPtr(fromPtr(src.RepositoryID))
 	}
-
 	return result, nil
 }
 func (a dbManagedConnector) TableName() string {
@@ -118,7 +117,6 @@ func convertRepositoryToDB(src *pipelineservice.Repository) (*dbRepository, erro
 	}
 	result.CreatedAt = (src.CreatedAt).UTC()
 	result.UpdatedAt = (src.UpdatedAt).UTC()
-
 	return result, nil
 }
 
@@ -151,7 +149,6 @@ func convertRepositoryFromDB(src *dbRepository) (*pipelineservice.Repository, er
 	}
 	result.CreatedAt = src.CreatedAt
 	result.UpdatedAt = src.UpdatedAt
-
 	return result, nil
 }
 func (a dbRepository) TableName() string {
@@ -159,20 +156,20 @@ func (a dbRepository) TableName() string {
 }
 
 type dbRepositoryConnector struct {
-	ID               uuid.UUID `gorm:"column:id;"`
-	RepositoryID     uuid.UUID `gorm:"column:repository_id;"`
-	DockerRepository string    `gorm:"column:docker_repository;type:text;"`
-	DockerImageTag   string    `gorm:"column:docker_image_tag;type:text;"`
-	Name             string    `gorm:"column:name;type:text;"`
-	ConnectorType    string    `gorm:"column:connector_type;type:text;"`
-	DocumentationURL string    `gorm:"column:documentation_url;type:text;"`
-	ReleaseStage     string    `gorm:"column:release_stage;type:text;"`
-	IconURL          string    `gorm:"column:icon_url;type:text;"`
-	Spec             jsonb     `gorm:"column:spec;"`
-	SupportLevel     string    `gorm:"column:support_level;type:text;"`
-	License          string    `gorm:"column:license;type:text;"`
-	SourceType       string    `gorm:"column:source_type;type:text;"`
-	Metadata         jsonb     `gorm:"column:metadata;"`
+	ID               uuid.UUID                       `gorm:"column:id;"`
+	RepositoryID     uuid.UUID                       `gorm:"column:repository_id;"`
+	DockerRepository string                          `gorm:"column:docker_repository;type:text;"`
+	DockerImageTag   string                          `gorm:"column:docker_image_tag;type:text;"`
+	Name             string                          `gorm:"column:name;type:text;"`
+	ConnectorType    string                          `gorm:"column:connector_type;type:text;"`
+	DocumentationURL string                          `gorm:"column:documentation_url;type:text;"`
+	ReleaseStage     string                          `gorm:"column:release_stage;type:text;"`
+	IconURL          string                          `gorm:"column:icon_url;type:text;"`
+	Spec             jsonb                           `gorm:"column:spec;"`
+	SupportLevel     string                          `gorm:"column:support_level;type:text;"`
+	License          string                          `gorm:"column:license;type:text;"`
+	SourceType       string                          `gorm:"column:source_type;type:text;"`
+	Metadata         jsonRepositoryConnectorMetadata `gorm:"column:metadata;"`
 }
 
 func convertRepositoryConnectorToDB(src *pipelineservice.RepositoryConnector) (*dbRepositoryConnector, error) {
@@ -206,8 +203,11 @@ func convertRepositoryConnectorToDB(src *pipelineservice.RepositoryConnector) (*
 		return nil, err
 	}
 	result.SourceType = tmp12
-	result.Metadata = src.Metadata
-
+	tmp13, err := convertRepositoryConnectorMetadataToJsonModel(toPtr(src.Metadata))
+	if err != nil {
+		return nil, errors.Wrap(err, "convert RepositoryConnectorMetadata to db")
+	}
+	result.Metadata = *tmp13
 	return result, nil
 }
 
@@ -242,8 +242,12 @@ func convertRepositoryConnectorFromDB(src *dbRepositoryConnector) (*pipelineserv
 		return nil, err
 	}
 	result.SourceType = tmp26
-	result.Metadata = src.Metadata
+	tmp27, err := convertRepositoryConnectorMetadataFromJsonModel(toPtr(src.Metadata))
+	if err != nil {
+		return nil, err
+	}
 
+	result.Metadata = fromPtr(tmp27)
 	return result, nil
 }
 func (a dbRepositoryConnector) TableName() string {
@@ -275,7 +279,6 @@ func convertSourceToDB(src *pipelineservice.Source) (*dbSource, error) {
 	} else {
 		result.RuntimeConfig = toPtr(fromPtr(src.RuntimeConfig))
 	}
-
 	return result, nil
 }
 
@@ -293,7 +296,6 @@ func convertSourceFromDB(src *dbSource) (*pipelineservice.Source, error) {
 	} else {
 		result.RuntimeConfig = toPtr(fromPtr(src.RuntimeConfig))
 	}
-
 	return result, nil
 }
 func (a dbSource) TableName() string {
@@ -325,7 +327,6 @@ func convertDestinationToDB(src *pipelineservice.Destination) (*dbDestination, e
 	} else {
 		result.RuntimeConfig = toPtr(fromPtr(src.RuntimeConfig))
 	}
-
 	return result, nil
 }
 
@@ -343,7 +344,6 @@ func convertDestinationFromDB(src *dbDestination) (*pipelineservice.Destination,
 	} else {
 		result.RuntimeConfig = toPtr(fromPtr(src.RuntimeConfig))
 	}
-
 	return result, nil
 }
 func (a dbDestination) TableName() string {
@@ -413,7 +413,6 @@ func convertConnectionToDB(src *pipelineservice.Connection) (*dbConnection, erro
 	}
 	result.CreatedAt = (src.CreatedAt).UTC()
 	result.UpdatedAt = (src.UpdatedAt).UTC()
-
 	return result, nil
 }
 
@@ -462,7 +461,6 @@ func convertConnectionFromDB(src *dbConnection) (*pipelineservice.Connection, er
 	}
 	result.CreatedAt = src.CreatedAt
 	result.UpdatedAt = src.UpdatedAt
-
 	return result, nil
 }
 func (a dbConnection) TableName() string {
@@ -540,7 +538,6 @@ func convertJobToDB(src *pipelineservice.Job) (*dbJob, error) {
 		result.FailureReason = toPtr(fromPtr(src.FailureReason))
 	}
 	result.CreatedAt = (src.CreatedAt).UTC()
-
 	return result, nil
 }
 
@@ -597,7 +594,6 @@ func convertJobFromDB(src *dbJob) (*pipelineservice.Job, error) {
 		result.FailureReason = toPtr(fromPtr(src.FailureReason))
 	}
 	result.CreatedAt = src.CreatedAt
-
 	return result, nil
 }
 func (a dbJob) TableName() string {
@@ -631,7 +627,6 @@ func convertJobAttemptToDB(src *pipelineservice.JobAttempt) (*dbJobAttempt, erro
 		result.Error = toPtr(fromPtr(src.Error))
 	}
 	result.SyncStatsJSON = src.SyncStatsJSON
-
 	return result, nil
 }
 
@@ -652,7 +647,6 @@ func convertJobAttemptFromDB(src *dbJobAttempt) (*pipelineservice.JobAttempt, er
 		result.Error = toPtr(fromPtr(src.Error))
 	}
 	result.SyncStatsJSON = src.SyncStatsJSON
-
 	return result, nil
 }
 func (a dbJobAttempt) TableName() string {
@@ -674,7 +668,6 @@ func convertCatalogDiscoveryToDB(src *pipelineservice.CatalogDiscovery) (*dbCata
 	result.Version = src.Version
 	result.CatalogJSON = src.CatalogJSON
 	result.DiscoveredAt = (src.DiscoveredAt).UTC()
-
 	return result, nil
 }
 
@@ -685,7 +678,6 @@ func convertCatalogDiscoveryFromDB(src *dbCatalogDiscovery) (*pipelineservice.Ca
 	result.Version = src.Version
 	result.CatalogJSON = src.CatalogJSON
 	result.DiscoveredAt = src.DiscoveredAt
-
 	return result, nil
 }
 func (a dbCatalogDiscovery) TableName() string {
@@ -707,7 +699,6 @@ func convertConfiguredCatalogToDB(src *pipelineservice.ConfiguredCatalog) (*dbCo
 	result.StreamsJSON = src.StreamsJSON
 	result.CreatedAt = (src.CreatedAt).UTC()
 	result.UpdatedAt = (src.UpdatedAt).UTC()
-
 	return result, nil
 }
 
@@ -718,7 +709,6 @@ func convertConfiguredCatalogFromDB(src *dbConfiguredCatalog) (*pipelineservice.
 	result.StreamsJSON = src.StreamsJSON
 	result.CreatedAt = src.CreatedAt
 	result.UpdatedAt = src.UpdatedAt
-
 	return result, nil
 }
 func (a dbConfiguredCatalog) TableName() string {
@@ -738,7 +728,6 @@ func convertJobLogToDB(src *pipelineservice.JobLog) (*dbJobLog, error) {
 	result.JobID = src.JobID
 	result.LogLine = src.LogLine
 	result.CreatedAt = (src.CreatedAt).UTC()
-
 	return result, nil
 }
 
@@ -748,7 +737,6 @@ func convertJobLogFromDB(src *dbJobLog) (*pipelineservice.JobLog, error) {
 	result.JobID = src.JobID
 	result.LogLine = src.LogLine
 	result.CreatedAt = src.CreatedAt
-
 	return result, nil
 }
 func (a dbJobLog) TableName() string {
@@ -768,7 +756,6 @@ func convertConnectionStateToDB(src *pipelineservice.ConnectionState) (*dbConnec
 	result.StateType = src.StateType
 	result.StateBlob = src.StateBlob
 	result.UpdatedAt = (src.UpdatedAt).UTC()
-
 	return result, nil
 }
 
@@ -778,7 +765,6 @@ func convertConnectionStateFromDB(src *dbConnectionState) (*pipelineservice.Conn
 	result.StateType = src.StateType
 	result.StateBlob = src.StateBlob
 	result.UpdatedAt = src.UpdatedAt
-
 	return result, nil
 }
 func (a dbConnectionState) TableName() string {
@@ -798,7 +784,6 @@ func convertWorkspaceSettingsToDB(src *pipelineservice.WorkspaceSettings) (*dbWo
 	result.MaxJobsPerWorkspace = src.MaxJobsPerWorkspace
 	result.CreatedAt = (src.CreatedAt).UTC()
 	result.UpdatedAt = (src.UpdatedAt).UTC()
-
 	return result, nil
 }
 
@@ -808,7 +793,6 @@ func convertWorkspaceSettingsFromDB(src *dbWorkspaceSettings) (*pipelineservice.
 	result.MaxJobsPerWorkspace = src.MaxJobsPerWorkspace
 	result.CreatedAt = src.CreatedAt
 	result.UpdatedAt = src.UpdatedAt
-
 	return result, nil
 }
 func (a dbWorkspaceSettings) TableName() string {
@@ -874,7 +858,6 @@ func convertConnectorTaskToDB(src *pipelineservice.ConnectorTask) (*dbConnectorT
 	} else {
 		result.CompletedAt = toPtr((fromPtr(src.CompletedAt)).UTC())
 	}
-
 	return result, nil
 }
 
@@ -923,7 +906,6 @@ func convertConnectorTaskFromDB(src *dbConnectorTask) (*pipelineservice.Connecto
 	} else {
 		result.CompletedAt = toPtr(fromPtr(src.CompletedAt))
 	}
-
 	return result, nil
 }
 func (a dbConnectorTask) TableName() string {
@@ -945,7 +927,6 @@ func convertStreamGenerationToDB(src *pipelineservice.StreamGeneration) (*dbStre
 	result.StreamName = src.StreamName
 	result.GenerationID = src.GenerationID
 	result.UpdatedAt = (src.UpdatedAt).UTC()
-
 	return result, nil
 }
 
@@ -956,7 +937,6 @@ func convertStreamGenerationFromDB(src *dbStreamGeneration) (*pipelineservice.St
 	result.StreamName = src.StreamName
 	result.GenerationID = src.GenerationID
 	result.UpdatedAt = src.UpdatedAt
-
 	return result, nil
 }
 func (a dbStreamGeneration) TableName() string {

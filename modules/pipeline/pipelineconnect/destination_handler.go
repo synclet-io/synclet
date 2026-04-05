@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
@@ -24,13 +25,14 @@ import (
 type DestinationHandler struct {
 	pipelinev1connect.UnimplementedDestinationServiceHandler
 
-	createDestination *pipelinedestinations.CreateDestination
-	updateDestination *pipelinedestinations.UpdateDestination
-	deleteDestination *pipelinedestinations.DeleteDestination
-	getDestination    *pipelinedestinations.GetDestination
-	listDestinations  *pipelinedestinations.ListDestinations
-	createCheckTask   *pipelinetasks.CreateCheckTask
-	waitForTaskResult *pipelinetasks.WaitForTaskResult
+	createDestination      *pipelinedestinations.CreateDestination
+	updateDestination      *pipelinedestinations.UpdateDestination
+	deleteDestination      *pipelinedestinations.DeleteDestination
+	getDestination         *pipelinedestinations.GetDestination
+	listDestinations       *pipelinedestinations.ListDestinations
+	createCheckTask        *pipelinetasks.CreateCheckTask
+	waitForTaskResult      *pipelinetasks.WaitForTaskResult
+	connectionCheckTimeout time.Duration
 }
 
 // NewDestinationHandler creates a new destination handler.
@@ -42,15 +44,17 @@ func NewDestinationHandler(
 	listDestinations *pipelinedestinations.ListDestinations,
 	createCheckTask *pipelinetasks.CreateCheckTask,
 	waitForTaskResult *pipelinetasks.WaitForTaskResult,
+	svcCfg pipelineservice.Config,
 ) *DestinationHandler {
 	return &DestinationHandler{
-		createDestination: createDestination,
-		updateDestination: updateDestination,
-		deleteDestination: deleteDestination,
-		getDestination:    getDestination,
-		listDestinations:  listDestinations,
-		createCheckTask:   createCheckTask,
-		waitForTaskResult: waitForTaskResult,
+		createDestination:      createDestination,
+		updateDestination:      updateDestination,
+		deleteDestination:      deleteDestination,
+		getDestination:         getDestination,
+		listDestinations:       listDestinations,
+		createCheckTask:        createCheckTask,
+		waitForTaskResult:      waitForTaskResult,
+		connectionCheckTimeout: svcCfg.ConnectionCheckTimeout,
 	}
 }
 
@@ -78,7 +82,7 @@ func (h *DestinationHandler) CreateDestination(ctx context.Context, req *connect
 
 	// Blocking connection check before persist.
 	if err := runConnectionCheck(ctx, h.createCheckTask, h.waitForTaskResult,
-		workspaceID, managedConnectorID, config); err != nil {
+		h.connectionCheckTimeout, workspaceID, managedConnectorID, config); err != nil {
 		return nil, err
 	}
 
@@ -142,7 +146,7 @@ func (h *DestinationHandler) UpdateDestination(ctx context.Context, req *connect
 		}
 
 		if err := runConnectionCheck(ctx, h.createCheckTask, h.waitForTaskResult,
-			workspaceID, existingDest.ManagedConnectorID, raw); err != nil {
+			h.connectionCheckTimeout, workspaceID, existingDest.ManagedConnectorID, raw); err != nil {
 			return nil, err
 		}
 	}

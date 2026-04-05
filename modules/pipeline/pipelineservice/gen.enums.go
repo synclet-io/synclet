@@ -186,18 +186,14 @@ func (n NamespaceDefinition) String() string {
 type RepositoryStatus byte
 
 const (
-	RepositoryStatusSyncing RepositoryStatus = iota + 1
-	RepositoryStatusSynced
+	RepositoryStatusSynced RepositoryStatus = iota + 1
 	RepositoryStatusFailed
 )
 
 // user code 'RepositoryStatus methods'
 // end user code 'RepositoryStatus methods'
 func (r RepositoryStatus) IsValid() bool {
-	return r > 0 && r < 4
-}
-func (r RepositoryStatus) IsSyncing() bool {
-	return r == RepositoryStatusSyncing
+	return r > 0 && r < 3
 }
 func (r RepositoryStatus) IsSynced() bool {
 	return r == RepositoryStatusSynced
@@ -206,10 +202,10 @@ func (r RepositoryStatus) IsFailed() bool {
 	return r == RepositoryStatusFailed
 }
 func (r RepositoryStatus) String() string {
-	const names = "SyncingSyncedFailed"
+	const names = "SyncedFailed"
 
-	var indexes = [...]int32{0, 7, 13, 19}
-	if r < 1 || r > 3 {
+	var indexes = [...]int32{0, 6, 12}
+	if r < 1 || r > 2 {
 		return "RepositoryStatus(" + strconv.FormatInt(int64(r), 10) + ")"
 	}
 

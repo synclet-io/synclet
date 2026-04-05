@@ -48,7 +48,7 @@ func (uc *GetDiscoveredCatalogForConnection) Execute(ctx context.Context, params
 	}
 
 	// Read cached catalog instead of running Docker.
-	latest, err := uc.storage.CatalogDiscoverys().First(ctx, &pipelineservice.CatalogDiscoveryFilter{
+	latest, err := uc.storage.CatalogDiscoveries().First(ctx, &pipelineservice.CatalogDiscoveryFilter{
 		SourceID: filter.Equals(conn.SourceID),
 	}, dbutil.WithOrder(pipelineservice.CatalogDiscoveryFieldVersion, dbutil.OrderDirDesc))
 	if err != nil {

@@ -40,7 +40,7 @@ func TestSlackChannel_Deliver_SendsCorrectPayload(t *testing.T) {
 	}))
 	defer server.Close()
 
-	slack := NewSlackChannel(&noopSecretsProvider{})
+	slack := NewSlackChannel(&noopSecretsProvider{}, Config{WebhookHTTPTimeout: 10 * time.Second})
 	channel := &NotificationChannel{
 		ID:          uuid.New(),
 		WorkspaceID: uuid.New(),
@@ -76,7 +76,7 @@ func TestSlackChannel_Deliver_ReturnsErrorOnNon2xx(t *testing.T) {
 	}))
 	defer server.Close()
 
-	slack := NewSlackChannel(&noopSecretsProvider{})
+	slack := NewSlackChannel(&noopSecretsProvider{}, Config{WebhookHTTPTimeout: 10 * time.Second})
 	channel := &NotificationChannel{
 		ID:          uuid.New(),
 		ChannelType: ChannelTypeSlack,
@@ -89,7 +89,7 @@ func TestSlackChannel_Deliver_ReturnsErrorOnNon2xx(t *testing.T) {
 }
 
 func TestSlackChannel_Deliver_ReturnsErrorWhenWebhookURLMissing(t *testing.T) {
-	slack := NewSlackChannel(&noopSecretsProvider{})
+	slack := NewSlackChannel(&noopSecretsProvider{}, Config{WebhookHTTPTimeout: 10 * time.Second})
 	channel := &NotificationChannel{
 		ID:          uuid.New(),
 		ChannelType: ChannelTypeSlack,

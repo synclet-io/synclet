@@ -30,27 +30,31 @@ type RegisterAndLogin struct {
 	register              *Register
 	login                 *Login
 	workspaceAutoAssigner WorkspaceAutoAssigner
-	singleWorkspaceMode   bool
+	config                Config
 }
 
 // NewRegisterAndLogin creates a new RegisterAndLogin use case.
-func NewRegisterAndLogin(register *Register, login *Login, workspaceAutoAssigner WorkspaceAutoAssigner, singleWorkspaceMode bool) *RegisterAndLogin {
+func NewRegisterAndLogin(register *Register, login *Login, workspaceAutoAssigner WorkspaceAutoAssigner, config Config) *RegisterAndLogin {
 	return &RegisterAndLogin{
 		register:              register,
 		login:                 login,
 		workspaceAutoAssigner: workspaceAutoAssigner,
-		singleWorkspaceMode:   singleWorkspaceMode,
+		config:                config,
 	}
 }
 
 // Execute registers a new user and immediately logs them in.
 func (uc *RegisterAndLogin) Execute(ctx context.Context, params RegisterAndLoginParams) (*RegisterAndLoginResult, error) {
+	if !uc.config.RegistrationEnabled {
+		return nil, ErrRegistrationDisabled
+	}
+
 	user, err := uc.register.Execute(ctx, params.Email, params.Password, params.Name)
 	if err != nil {
 		return nil, fmt.Errorf("registering user: %w", err)
 	}
 
-	if uc.singleWorkspaceMode {
+	if uc.config.SingleWorkspaceMode {
 		if err := uc.workspaceAutoAssigner.AutoAssign(ctx, user.ID); err != nil {
 			return nil, fmt.Errorf("auto-assigning to default workspace: %w", err)
 		}

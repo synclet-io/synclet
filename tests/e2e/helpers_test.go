@@ -58,8 +58,8 @@ func startSyncletServer(t *testing.T, env map[string]string) *syncletServer {
 		fmt.Sprintf("INTERNAL_HTTP_SERVER_ADDR=:%d", internalPort),
 		fmt.Sprintf("DB_DSN=%s", testDSN),
 		"SECRET_ENCRYPTION_KEY=PjsJSmk5MpLbSjsXYdIeflREhQ57B7+Sz0b0/VreDRk=",
-		"JWT_SECRET=e2e-test-jwt-secret-key-that-is-long-enough",
-		"INTERNAL_HTTP_SERVER_INTERNAL_API_SECRET=e2e-test-internal-secret",
+		"AUTH_JWT_SECRET=e2e-test-jwt-secret-key-that-is-long-enough",
+		"PIPELINE_EXECUTOR_API_TOKEN=e2e-test-internal-secret",
 	)
 	for k, v := range env {
 		cmd.Env = append(cmd.Env, k+"="+v)

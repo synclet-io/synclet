@@ -4,18 +4,18 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/synclet-io/synclet/pkg/connector"
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineexec/pipelineexecdocker"
 	"github.com/synclet-io/synclet/pkg/protocol"
 )
 
-// ConnectorDiscoverAdapter adapts connector.ConnectorClient to the Discover-only
+// ConnectorDiscoverAdapter adapts pipelineexecdocker.ConnectorClient to the Discover-only
 // interface expected by the catalog service.
 type ConnectorDiscoverAdapter struct {
-	client *connector.ConnectorClient
+	client *pipelineexecdocker.ConnectorClient
 }
 
 // NewConnectorDiscoverAdapter creates a new ConnectorDiscoverAdapter.
-func NewConnectorDiscoverAdapter(client *connector.ConnectorClient) *ConnectorDiscoverAdapter {
+func NewConnectorDiscoverAdapter(client *pipelineexecdocker.ConnectorClient) *ConnectorDiscoverAdapter {
 	return &ConnectorDiscoverAdapter{client: client}
 }
 

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
@@ -21,27 +22,27 @@ import (
 	"github.com/synclet-io/synclet/pkg/connectutil"
 )
 
-// RegistrationEnabled is a named type for the registration toggle flag.
-type RegistrationEnabled bool
-
-// WorkspacesMode is a named type for the workspace mode (single/multi).
-type WorkspacesMode = pipelinev1.WorkspacesMode
+// SourceHandlerConfig holds configuration values exposed via GetSystemInfo.
+type SourceHandlerConfig struct {
+	RegistrationEnabled bool
+	SingleWorkspaceMode bool
+}
 
 // SourceHandler implements the SourceService ConnectRPC handler.
 type SourceHandler struct {
 	pipelinev1connect.UnimplementedSourceServiceHandler
 
-	createSource        *pipelinesources.CreateSource
-	updateSource        *pipelinesources.UpdateSource
-	deleteSource        *pipelinesources.DeleteSource
-	getSource           *pipelinesources.GetSource
-	listSources         *pipelinesources.ListSources
-	createCheckTask     *pipelinetasks.CreateCheckTask
-	waitForTaskResult   *pipelinetasks.WaitForTaskResult
-	createDiscoverTask  *pipelinetasks.CreateDiscoverTask
-	getSourceCatalog    *pipelinecatalog.GetSourceCatalog
-	registrationEnabled RegistrationEnabled
-	workspacesMode      WorkspacesMode
+	createSource           *pipelinesources.CreateSource
+	updateSource           *pipelinesources.UpdateSource
+	deleteSource           *pipelinesources.DeleteSource
+	getSource              *pipelinesources.GetSource
+	listSources            *pipelinesources.ListSources
+	createCheckTask        *pipelinetasks.CreateCheckTask
+	waitForTaskResult      *pipelinetasks.WaitForTaskResult
+	createDiscoverTask     *pipelinetasks.CreateDiscoverTask
+	getSourceCatalog       *pipelinecatalog.GetSourceCatalog
+	config                 SourceHandlerConfig
+	connectionCheckTimeout time.Duration
 }
 
 // NewSourceHandler creates a new source handler.
@@ -55,21 +56,21 @@ func NewSourceHandler(
 	waitForTaskResult *pipelinetasks.WaitForTaskResult,
 	createDiscoverTask *pipelinetasks.CreateDiscoverTask,
 	getSourceCatalog *pipelinecatalog.GetSourceCatalog,
-	registrationEnabled RegistrationEnabled,
-	workspacesMode WorkspacesMode,
+	config SourceHandlerConfig,
+	svcCfg pipelineservice.Config,
 ) *SourceHandler {
 	return &SourceHandler{
-		createSource:        createSource,
-		updateSource:        updateSource,
-		deleteSource:        deleteSource,
-		getSource:           getSource,
-		listSources:         listSources,
-		createCheckTask:     createCheckTask,
-		waitForTaskResult:   waitForTaskResult,
-		createDiscoverTask:  createDiscoverTask,
-		getSourceCatalog:    getSourceCatalog,
-		registrationEnabled: registrationEnabled,
-		workspacesMode:      workspacesMode,
+		createSource:           createSource,
+		updateSource:           updateSource,
+		deleteSource:           deleteSource,
+		getSource:              getSource,
+		listSources:            listSources,
+		createCheckTask:        createCheckTask,
+		waitForTaskResult:      waitForTaskResult,
+		createDiscoverTask:     createDiscoverTask,
+		getSourceCatalog:       getSourceCatalog,
+		config:                 config,
+		connectionCheckTimeout: svcCfg.ConnectionCheckTimeout,
 	}
 }
 
@@ -97,7 +98,7 @@ func (h *SourceHandler) CreateSource(ctx context.Context, req *connect.Request[p
 
 	// Blocking connection check before persist.
 	if err := runConnectionCheck(ctx, h.createCheckTask, h.waitForTaskResult,
-		workspaceID, managedConnectorID, config); err != nil {
+		h.connectionCheckTimeout, workspaceID, managedConnectorID, config); err != nil {
 		return nil, err
 	}
 
@@ -174,7 +175,7 @@ func (h *SourceHandler) UpdateSource(ctx context.Context, req *connect.Request[p
 		}
 
 		if err := runConnectionCheck(ctx, h.createCheckTask, h.waitForTaskResult,
-			workspaceID, existingSource.ManagedConnectorID, raw); err != nil {
+			h.connectionCheckTimeout, workspaceID, existingSource.ManagedConnectorID, raw); err != nil {
 			return nil, err
 		}
 	}
@@ -378,9 +379,14 @@ func (h *SourceHandler) GetSourceCatalog(ctx context.Context, req *connect.Reque
 }
 
 func (h *SourceHandler) GetSystemInfo(ctx context.Context, req *connect.Request[pipelinev1.GetSystemInfoRequest]) (*connect.Response[pipelinev1.GetSystemInfoResponse], error) {
+	workspacesMode := pipelinev1.WorkspacesMode_WORKSPACES_MODE_MULTI
+	if h.config.SingleWorkspaceMode {
+		workspacesMode = pipelinev1.WorkspacesMode_WORKSPACES_MODE_SINGLE
+	}
+
 	return connect.NewResponse(&pipelinev1.GetSystemInfoResponse{
-		RegistrationEnabled: bool(h.registrationEnabled),
-		WorkspacesMode:      h.workspacesMode,
+		RegistrationEnabled: h.config.RegistrationEnabled,
+		WorkspacesMode:      workspacesMode,
 	}), nil
 }
 

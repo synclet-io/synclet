@@ -28,16 +28,15 @@ func NewCreateInvite(
 	storage Storage,
 	emailSender EmailSender,
 	userLookup UserLookup,
-	inviteTTL time.Duration,
-	frontendURL string,
+	cfg Config,
 	logger *logging.Logger,
 ) *CreateInvite {
 	return &CreateInvite{
 		storage:     storage,
 		emailSender: emailSender,
 		userLookup:  userLookup,
-		inviteTTL:   inviteTTL,
-		frontendURL: frontendURL,
+		inviteTTL:   cfg.InviteTTL,
+		frontendURL: cfg.FrontendURL,
 		logger:      logger.Named("create-invite"),
 	}
 }

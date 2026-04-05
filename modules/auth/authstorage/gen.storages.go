@@ -34,8 +34,8 @@ func (s Storages) RefreshTokens() authsvc.RefreshTokensStorage {
 func (s Storages) APIKeys() authsvc.APIKeysStorage {
 	return NewAPIKeysStorage(s.db, s.logger)
 }
-func (s Storages) OIDCIdentitys() authsvc.OIDCIdentitysStorage {
-	return NewOIDCIdentitysStorage(s.db, s.logger)
+func (s Storages) OIDCIdentities() authsvc.OIDCIdentitiesStorage {
+	return NewOIDCIdentitiesStorage(s.db, s.logger)
 }
 func (s Storages) OIDCStates() authsvc.OIDCStatesStorage {
 	return NewOIDCStatesStorage(s.db, s.logger)
@@ -138,7 +138,7 @@ func NewAPIKeysStorage(db *gorm.DB, logger *logging.Logger) authsvc.APIKeysStora
 	}
 }
 
-func NewOIDCIdentitysStorage(db *gorm.DB, logger *logging.Logger) authsvc.OIDCIdentitysStorage {
+func NewOIDCIdentitiesStorage(db *gorm.DB, logger *logging.Logger) authsvc.OIDCIdentitiesStorage {
 	return dbutil.GormEntityStorage[authsvc.OIDCIdentity, dbOIDCIdentity, authsvc.OIDCIdentityFilter]{
 		Logger:            logger,
 		DB:                db,
@@ -157,7 +157,7 @@ func NewOIDCIdentitysStorage(db *gorm.DB, logger *logging.Logger) authsvc.OIDCId
 			authsvc.OIDCIdentityFieldCreatedAt:    {Name: "created_at"},
 			authsvc.OIDCIdentityFieldLastLoginAt:  {Name: "last_login_at"},
 		},
-		LockScope: "auth.OIDCIdentitys",
+		LockScope: "auth.OIDCIdentities",
 	}
 }
 

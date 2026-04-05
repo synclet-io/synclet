@@ -308,7 +308,7 @@ key: internal-api-secret
 Common secret env vars shared across all deployments.
 */}}
 {{- define "synclet.secretEnvVars" -}}
-- name: JWT_SECRET
+- name: AUTH_JWT_SECRET
   valueFrom:
     secretKeyRef:
       {{- include "synclet.auth.secretRef" . | nindent 6 }}
@@ -316,7 +316,7 @@ Common secret env vars shared across all deployments.
   valueFrom:
     secretKeyRef:
       {{- include "synclet.encryption.secretRef" . | nindent 6 }}
-- name: INTERNAL_HTTP_SERVER_INTERNAL_API_SECRET
+- name: PIPELINE_EXECUTOR_API_TOKEN
   valueFrom:
     secretKeyRef:
       {{- include "synclet.internalApi.secretRef" . | nindent 6 }}
@@ -353,18 +353,18 @@ Common secret env vars shared across all deployments.
       key: db-dsn
       {{- end }}
 {{- if .Values.smtp.password }}
-- name: SMTP_PASSWORD
+- name: NOTIFY_SMTP_PASSWORD
   valueFrom:
     secretKeyRef:
       {{- include "synclet.smtp.secretRef" . | nindent 6 }}
 {{- else if .Values.smtp.existingSecret }}
-- name: SMTP_PASSWORD
+- name: NOTIFY_SMTP_PASSWORD
   valueFrom:
     secretKeyRef:
       {{- include "synclet.smtp.secretRef" . | nindent 6 }}
 {{- end }}
 {{- range .Values.oidc.providers }}
-- name: OIDC_{{ upper .slug }}_CLIENT_SECRET
+- name: AUTH_OIDC_{{ upper .slug }}_CLIENT_SECRET
   valueFrom:
     secretKeyRef:
       {{- if $.Values.oidc.existingSecret }}

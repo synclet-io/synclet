@@ -248,7 +248,6 @@ const repoColumns: Column[] = [
 function repoStatusVariant(status: string) {
   const map: Record<string, 'success' | 'warning' | 'info' | 'gray'> = {
     synced: 'success',
-    syncing: 'info',
     failed: 'warning',
   }
   return map[status] || 'gray'

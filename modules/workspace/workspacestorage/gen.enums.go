@@ -23,7 +23,6 @@ func convertMemberRoleToDB(memberRoleValue workspaceservice.MemberRole) (string,
 	if !ok {
 		return "", fmt.Errorf("unknown MemberRole value: %d", memberRoleValue)
 	}
-
 	return result, nil
 }
 
@@ -36,7 +35,6 @@ func convertMemberRoleFromDB(memberRoleValue string) (workspaceservice.MemberRol
 	if !ok {
 		return 0, fmt.Errorf("unknown MemberRole db value: %s", memberRoleValue)
 	}
-
 	return result, nil
 }
 
@@ -57,7 +55,6 @@ func convertInviteStatusToDB(inviteStatusValue workspaceservice.InviteStatus) (s
 	if !ok {
 		return "", fmt.Errorf("unknown InviteStatus value: %d", inviteStatusValue)
 	}
-
 	return result, nil
 }
 
@@ -71,6 +68,5 @@ func convertInviteStatusFromDB(inviteStatusValue string) (workspaceservice.Invit
 	if !ok {
 		return 0, fmt.Errorf("unknown InviteStatus db value: %s", inviteStatusValue)
 	}
-
 	return result, nil
 }

@@ -10,7 +10,8 @@ import (
 	"time"
 
 	executorv1 "github.com/synclet-io/synclet/gen/proto/synclet/internalapi/executor/v1"
-	"github.com/synclet-io/synclet/modules/pipeline/pipelineroute"
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineexec"
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineexec/pipelineexeck8s"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
 	"github.com/synclet-io/synclet/pkg/protocol"
 )
@@ -46,7 +47,7 @@ type Config struct {
 // 3. Signal connectors to start (touch .ready file)
 // 4. Create Reporter for gRPC heartbeat/state/log delivery
 // 5. Create K8sHandler for side effects
-// 6. Run pipelineroute.Run() for message routing
+// 6. Run pipelineexec.Run() for message routing
 // 7. Report completion via Reporter
 //
 // Config files (source-config.json, dest-config.json, catalogs, state) are mounted
@@ -101,7 +102,7 @@ func Run(ctx context.Context, cfg Config) error {
 	// 5-6. Run the data pipeline with K8sHandler.
 	stats, err := runPipeline(ctx, cfg, reporter)
 	if stats == nil {
-		stats = &pipelineroute.Stats{}
+		stats = &pipelineexec.Stats{}
 	}
 
 	// Read exit codes from connector containers.
@@ -136,7 +137,7 @@ func Run(ctx context.Context, cfg Config) error {
 	return nil
 }
 
-func runPipeline(ctx context.Context, cfg Config, reporter *Reporter) (*pipelineroute.Stats, error) {
+func runPipeline(ctx context.Context, cfg Config, reporter *Reporter) (*pipelineexec.Stats, error) {
 	// Open FIFOs with context awareness. FIFO opens block until both ends connect;
 	// if a connector fails to start, the open hangs indefinitely. Using a goroutine
 	// with select on ctx.Done() ensures we unblock on context cancellation.
@@ -152,7 +153,7 @@ func runPipeline(ctx context.Context, cfg Config, reporter *Reporter) (*pipeline
 		return nil, fmt.Errorf("opening dest stdin FIFO: %w", err)
 	}
 	// Note: destStdin is an *os.File which implements io.WriteCloser.
-	// pipelineroute.Run will close it when source EOF is reached.
+	// pipelineexec.Run will close it when source EOF is reached.
 
 	destStdout, err := openFIFO(ctx, filepath.Join(cfg.DataDir, DestStdoutFIFO), os.O_RDONLY)
 	if err != nil {
@@ -164,7 +165,7 @@ func runPipeline(ctx context.Context, cfg Config, reporter *Reporter) (*pipeline
 	defer func() { _ = destStdout.Close() }()
 
 	// Start heartbeat goroutine. During routing, intermediate stats are not
-	// available (pipelineroute.Stats uses plain int64, not atomic), so heartbeats
+	// available (pipelineexec.Stats uses plain int64, not atomic), so heartbeats
 	// send zeros. Final stats are sent in the completion report.
 	heartbeatCtx, cancelHeartbeat := context.WithCancel(ctx)
 	defer cancelHeartbeat()
@@ -184,7 +185,7 @@ func runPipeline(ctx context.Context, cfg Config, reporter *Reporter) (*pipeline
 	}()
 
 	// Create K8s handler for side effects (state, config updates).
-	handler := pipelineroute.NewK8sHandler(pipelineroute.K8sHandlerParams{
+	handler := pipelineexeck8s.NewK8sHandler(pipelineexeck8s.K8sHandlerParams{
 		Logger:        slog.Default(),
 		Reporter:      reporter,
 		SourceID:      cfg.SourceID,
@@ -192,7 +193,7 @@ func runPipeline(ctx context.Context, cfg Config, reporter *Reporter) (*pipeline
 	})
 
 	// Build namespace rewriter from source catalog and connection settings.
-	var rewriter *pipelineroute.NamespaceRewriter
+	var rewriter *pipelineexec.NamespaceRewriter
 
 	if cfg.NamespaceDefinition != "" {
 		sourceCatalogBytes, readErr := os.ReadFile(filepath.Join(cfg.SecretsDir, "source-catalog"))
@@ -215,14 +216,14 @@ func runPipeline(ctx context.Context, cfg Config, reporter *Reporter) (*pipeline
 					prefix = &cfg.StreamPrefix
 				}
 
-				rewriter = pipelineroute.NewNamespaceRewriter(&catalog, nsDef, customFmt, prefix)
+				rewriter = pipelineexec.NewNamespaceRewriter(&catalog, nsDef, customFmt, prefix)
 				slog.Info("coordinator: namespace rewriter created", "namespace_definition", cfg.NamespaceDefinition, "streams", len(catalog.Streams))
 			}
 		}
 	}
 
 	// Route messages using the shared router.
-	return pipelineroute.Run(ctx, sourceStdout, destStdin, destStdout, handler, pipelineroute.RunConfig{
+	return pipelineexec.Run(ctx, sourceStdout, destStdin, destStdout, handler, pipelineexec.RunConfig{
 		Rewriter: rewriter,
 	}, nil)
 }

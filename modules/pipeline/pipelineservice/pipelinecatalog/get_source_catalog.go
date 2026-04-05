@@ -50,7 +50,7 @@ func (uc *GetSourceCatalog) Execute(ctx context.Context, params GetSourceCatalog
 	}
 
 	// Get the latest catalog discovery for this source.
-	latest, err := uc.storage.CatalogDiscoverys().First(ctx, &pipelineservice.CatalogDiscoveryFilter{
+	latest, err := uc.storage.CatalogDiscoveries().First(ctx, &pipelineservice.CatalogDiscoveryFilter{
 		SourceID: filter.Equals(params.SourceID),
 	}, dbutil.WithOrder(pipelineservice.CatalogDiscoveryFieldVersion, dbutil.OrderDirDesc))
 	if err != nil {

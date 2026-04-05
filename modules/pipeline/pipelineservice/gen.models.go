@@ -74,15 +74,12 @@ func copyConnectorTaskPayload(val ConnectorTaskPayload) ConnectorTaskPayload {
 	switch val := val.(type) {
 	case *CheckPayload:
 		valCopy := val.Copy()
-
 		return &valCopy
 	case *SpecPayload:
 		valCopy := val.Copy()
-
 		return &valCopy
 	case *DiscoverPayload:
 		valCopy := val.Copy()
-
 		return &valCopy
 	}
 	panic("called copyConnectorTaskPayload with invalid type")
@@ -152,15 +149,12 @@ func copyConnectorTaskResult(val ConnectorTaskResult) ConnectorTaskResult {
 	switch val := val.(type) {
 	case *CheckResult:
 		valCopy := val.Copy()
-
 		return &valCopy
 	case *SpecResult:
 		valCopy := val.Copy()
-
 		return &valCopy
 	case *DiscoverResult:
 		valCopy := val.Copy()
-
 		return &valCopy
 	}
 	panic("called copyConnectorTaskResult with invalid type")
@@ -450,7 +444,7 @@ type RepositoryConnector struct {
 	SupportLevel     SupportLevel
 	License          string
 	SourceType       SourceType
-	Metadata         jsonb
+	Metadata         RepositoryConnectorMetadata
 }
 
 // user code 'RepositoryConnector methods'
@@ -470,8 +464,8 @@ func (r *RepositoryConnector) Copy() RepositoryConnector {
 	result.Spec = r.Spec
 	result.SupportLevel = r.SupportLevel // enum
 	result.License = r.License
-	result.SourceType = r.SourceType // enum
-	result.Metadata = r.Metadata
+	result.SourceType = r.SourceType    // enum
+	result.Metadata = r.Metadata.Copy() // model
 
 	return result
 }
@@ -521,7 +515,459 @@ func (r *RepositoryConnector) Equals(to *RepositoryConnector) bool {
 	if r.SourceType != to.SourceType {
 		return false
 	}
-	if r.Metadata != to.Metadata {
+	if !r.Metadata.Equals(&to.Metadata) {
+		return false
+	}
+
+	return true
+}
+
+type RepositoryConnectorMetadataField byte
+
+const (
+	RepositoryConnectorMetadataFieldBreakingChanges RepositoryConnectorMetadataField = iota + 1
+	RepositoryConnectorMetadataFieldResourceRequirements
+	RepositoryConnectorMetadataFieldMaxSecondsBetweenMessages
+	RepositoryConnectorMetadataFieldExternalDocumentationURLs
+	RepositoryConnectorMetadataFieldSuggestedStreams
+	RepositoryConnectorMetadataFieldAllowedHosts
+	RepositoryConnectorMetadataFieldErdURL
+	RepositoryConnectorMetadataFieldReleaseDate
+	RepositoryConnectorMetadataFieldLanguage
+	RepositoryConnectorMetadataFieldTags
+	RepositoryConnectorMetadataFieldSupportsRefreshes
+	RepositoryConnectorMetadataFieldSupportsFileTransfer
+	RepositoryConnectorMetadataFieldSupportsDataActivation
+	RepositoryConnectorMetadataFieldMigrationDocumentationURL
+)
+
+type RepositoryConnectorMetadataFilter struct {
+	Or  []*RepositoryConnectorMetadataFilter
+	And []*RepositoryConnectorMetadataFilter
+}
+type RepositoryConnectorMetadataOrder order.Order[RepositoryConnectorMetadataField]
+
+type RepositoryConnectorMetadata struct {
+	BreakingChanges           map[string]BreakingChange
+	ResourceRequirements      *ResourceRequirements
+	MaxSecondsBetweenMessages *int
+	ExternalDocumentationURLs []ExternalDocumentationURL
+	SuggestedStreams          []string
+	AllowedHosts              []string
+	ErdURL                    string
+	ReleaseDate               string
+	Language                  string
+	Tags                      []string
+	SupportsRefreshes         bool
+	SupportsFileTransfer      bool
+	SupportsDataActivation    bool
+	MigrationDocumentationURL string
+}
+
+// user code 'RepositoryConnectorMetadata methods'
+// end user code 'RepositoryConnectorMetadata methods'
+
+func (r *RepositoryConnectorMetadata) Copy() RepositoryConnectorMetadata {
+	var result RepositoryConnectorMetadata
+	tmp := make(map[string]BreakingChange)
+	for k, v := range r.BreakingChanges {
+		var keyCopy string
+		var valueCopy BreakingChange
+		keyCopy = k
+		valueCopy = v.Copy() // model
+		tmp[keyCopy] = valueCopy
+	}
+	result.BreakingChanges = tmp
+	if r.ResourceRequirements != nil {
+		var tmp1 ResourceRequirements
+		tmp1 = (*r.ResourceRequirements).Copy() // model
+		result.ResourceRequirements = &tmp1
+	}
+	if r.MaxSecondsBetweenMessages != nil {
+		var tmp2 int
+		tmp2 = (*r.MaxSecondsBetweenMessages)
+		result.MaxSecondsBetweenMessages = &tmp2
+	}
+	tmp3 := make([]ExternalDocumentationURL, 0, len(r.ExternalDocumentationURLs))
+	for _, i := range r.ExternalDocumentationURLs {
+		var itemCopy ExternalDocumentationURL
+		itemCopy = i.Copy() // model
+		tmp3 = append(tmp3, itemCopy)
+	}
+	result.ExternalDocumentationURLs = tmp3
+	tmp4 := make([]string, 0, len(r.SuggestedStreams))
+	for _, i1 := range r.SuggestedStreams {
+		var itemCopy1 string
+		itemCopy1 = i1
+		tmp4 = append(tmp4, itemCopy1)
+	}
+	result.SuggestedStreams = tmp4
+	tmp5 := make([]string, 0, len(r.AllowedHosts))
+	for _, i2 := range r.AllowedHosts {
+		var itemCopy2 string
+		itemCopy2 = i2
+		tmp5 = append(tmp5, itemCopy2)
+	}
+	result.AllowedHosts = tmp5
+	result.ErdURL = r.ErdURL
+	result.ReleaseDate = r.ReleaseDate
+	result.Language = r.Language
+	tmp6 := make([]string, 0, len(r.Tags))
+	for _, i3 := range r.Tags {
+		var itemCopy3 string
+		itemCopy3 = i3
+		tmp6 = append(tmp6, itemCopy3)
+	}
+	result.Tags = tmp6
+	result.SupportsRefreshes = r.SupportsRefreshes
+	result.SupportsFileTransfer = r.SupportsFileTransfer
+	result.SupportsDataActivation = r.SupportsDataActivation
+	result.MigrationDocumentationURL = r.MigrationDocumentationURL
+
+	return result
+}
+func (r *RepositoryConnectorMetadata) Equals(to *RepositoryConnectorMetadata) bool {
+	if (r == nil) != (to == nil) {
+		return false
+	}
+	if r == nil && to == nil {
+		return true
+	}
+	// map comparision
+	if len(r.BreakingChanges) != len(to.BreakingChanges) {
+		return false
+	}
+	for k := range r.BreakingChanges {
+		valB, ok := to.BreakingChanges[k]
+		if !ok {
+			return false
+		}
+		valA := r.BreakingChanges[k]
+		if !valA.Equals(&valB) {
+			return false
+		}
+	}
+	if (r.ResourceRequirements == nil) != (to.ResourceRequirements == nil) {
+		return false
+	}
+	if r.ResourceRequirements != nil && to.ResourceRequirements != nil {
+		if !(*r.ResourceRequirements).Equals(&(*to.ResourceRequirements)) {
+			return false
+		}
+	}
+	if (r.MaxSecondsBetweenMessages == nil) != (to.MaxSecondsBetweenMessages == nil) {
+		return false
+	}
+	if r.MaxSecondsBetweenMessages != nil && to.MaxSecondsBetweenMessages != nil {
+		if (*r.MaxSecondsBetweenMessages) != (*to.MaxSecondsBetweenMessages) {
+			return false
+		}
+	}
+	if len(r.ExternalDocumentationURLs) != len(to.ExternalDocumentationURLs) {
+		return false
+	}
+	for idx := range r.ExternalDocumentationURLs {
+		if !r.ExternalDocumentationURLs[idx].Equals(&to.ExternalDocumentationURLs[idx]) {
+			return false
+		}
+	}
+	if len(r.SuggestedStreams) != len(to.SuggestedStreams) {
+		return false
+	}
+	for idx1 := range r.SuggestedStreams {
+		if r.SuggestedStreams[idx1] != to.SuggestedStreams[idx1] {
+			return false
+		}
+	}
+	if len(r.AllowedHosts) != len(to.AllowedHosts) {
+		return false
+	}
+	for idx2 := range r.AllowedHosts {
+		if r.AllowedHosts[idx2] != to.AllowedHosts[idx2] {
+			return false
+		}
+	}
+	if r.ErdURL != to.ErdURL {
+		return false
+	}
+	if r.ReleaseDate != to.ReleaseDate {
+		return false
+	}
+	if r.Language != to.Language {
+		return false
+	}
+	if len(r.Tags) != len(to.Tags) {
+		return false
+	}
+	for idx3 := range r.Tags {
+		if r.Tags[idx3] != to.Tags[idx3] {
+			return false
+		}
+	}
+	if r.SupportsRefreshes != to.SupportsRefreshes {
+		return false
+	}
+	if r.SupportsFileTransfer != to.SupportsFileTransfer {
+		return false
+	}
+	if r.SupportsDataActivation != to.SupportsDataActivation {
+		return false
+	}
+	if r.MigrationDocumentationURL != to.MigrationDocumentationURL {
+		return false
+	}
+
+	return true
+}
+
+type BreakingChangeField byte
+
+const (
+	BreakingChangeFieldMessage BreakingChangeField = iota + 1
+	BreakingChangeFieldMigrationDocumentationURL
+	BreakingChangeFieldUpgradeDeadline
+)
+
+type BreakingChangeFilter struct {
+	Or  []*BreakingChangeFilter
+	And []*BreakingChangeFilter
+}
+type BreakingChangeOrder order.Order[BreakingChangeField]
+
+type BreakingChange struct {
+	Message                   string
+	MigrationDocumentationURL string
+	UpgradeDeadline           string
+}
+
+// user code 'BreakingChange methods'
+// end user code 'BreakingChange methods'
+
+func (b *BreakingChange) Copy() BreakingChange {
+	var result BreakingChange
+	result.Message = b.Message
+	result.MigrationDocumentationURL = b.MigrationDocumentationURL
+	result.UpgradeDeadline = b.UpgradeDeadline
+
+	return result
+}
+func (b *BreakingChange) Equals(to *BreakingChange) bool {
+	if (b == nil) != (to == nil) {
+		return false
+	}
+	if b == nil && to == nil {
+		return true
+	}
+	if b.Message != to.Message {
+		return false
+	}
+	if b.MigrationDocumentationURL != to.MigrationDocumentationURL {
+		return false
+	}
+	if b.UpgradeDeadline != to.UpgradeDeadline {
+		return false
+	}
+
+	return true
+}
+
+type ResourceRequirementsField byte
+
+const (
+	ResourceRequirementsFieldJobSpecific ResourceRequirementsField = iota + 1
+)
+
+type ResourceRequirementsFilter struct {
+	Or  []*ResourceRequirementsFilter
+	And []*ResourceRequirementsFilter
+}
+type ResourceRequirementsOrder order.Order[ResourceRequirementsField]
+
+type ResourceRequirements struct {
+	JobSpecific []JobSpecificResourceRequirement
+}
+
+// user code 'ResourceRequirements methods'
+// end user code 'ResourceRequirements methods'
+
+func (r *ResourceRequirements) Copy() ResourceRequirements {
+	var result ResourceRequirements
+	tmp := make([]JobSpecificResourceRequirement, 0, len(r.JobSpecific))
+	for _, i := range r.JobSpecific {
+		var itemCopy JobSpecificResourceRequirement
+		itemCopy = i.Copy() // model
+		tmp = append(tmp, itemCopy)
+	}
+	result.JobSpecific = tmp
+
+	return result
+}
+func (r *ResourceRequirements) Equals(to *ResourceRequirements) bool {
+	if (r == nil) != (to == nil) {
+		return false
+	}
+	if r == nil && to == nil {
+		return true
+	}
+	if len(r.JobSpecific) != len(to.JobSpecific) {
+		return false
+	}
+	for idx := range r.JobSpecific {
+		if !r.JobSpecific[idx].Equals(&to.JobSpecific[idx]) {
+			return false
+		}
+	}
+
+	return true
+}
+
+type JobSpecificResourceRequirementField byte
+
+const (
+	JobSpecificResourceRequirementFieldJobType JobSpecificResourceRequirementField = iota + 1
+	JobSpecificResourceRequirementFieldResourceRequirements
+)
+
+type JobSpecificResourceRequirementFilter struct {
+	Or  []*JobSpecificResourceRequirementFilter
+	And []*JobSpecificResourceRequirementFilter
+}
+type JobSpecificResourceRequirementOrder order.Order[JobSpecificResourceRequirementField]
+
+type JobSpecificResourceRequirement struct {
+	JobType              string
+	ResourceRequirements ResourceRequirementValues
+}
+
+// user code 'JobSpecificResourceRequirement methods'
+// end user code 'JobSpecificResourceRequirement methods'
+
+func (j *JobSpecificResourceRequirement) Copy() JobSpecificResourceRequirement {
+	var result JobSpecificResourceRequirement
+	result.JobType = j.JobType
+	result.ResourceRequirements = j.ResourceRequirements.Copy() // model
+
+	return result
+}
+func (j *JobSpecificResourceRequirement) Equals(to *JobSpecificResourceRequirement) bool {
+	if (j == nil) != (to == nil) {
+		return false
+	}
+	if j == nil && to == nil {
+		return true
+	}
+	if j.JobType != to.JobType {
+		return false
+	}
+	if !j.ResourceRequirements.Equals(&to.ResourceRequirements) {
+		return false
+	}
+
+	return true
+}
+
+type ResourceRequirementValuesField byte
+
+const (
+	ResourceRequirementValuesFieldMemoryLimit ResourceRequirementValuesField = iota + 1
+	ResourceRequirementValuesFieldMemoryRequest
+	ResourceRequirementValuesFieldCPULimit
+	ResourceRequirementValuesFieldCPURequest
+)
+
+type ResourceRequirementValuesFilter struct {
+	Or  []*ResourceRequirementValuesFilter
+	And []*ResourceRequirementValuesFilter
+}
+type ResourceRequirementValuesOrder order.Order[ResourceRequirementValuesField]
+
+type ResourceRequirementValues struct {
+	MemoryLimit   string
+	MemoryRequest string
+	CPULimit      string
+	CPURequest    string
+}
+
+// user code 'ResourceRequirementValues methods'
+// end user code 'ResourceRequirementValues methods'
+
+func (r *ResourceRequirementValues) Copy() ResourceRequirementValues {
+	var result ResourceRequirementValues
+	result.MemoryLimit = r.MemoryLimit
+	result.MemoryRequest = r.MemoryRequest
+	result.CPULimit = r.CPULimit
+	result.CPURequest = r.CPURequest
+
+	return result
+}
+func (r *ResourceRequirementValues) Equals(to *ResourceRequirementValues) bool {
+	if (r == nil) != (to == nil) {
+		return false
+	}
+	if r == nil && to == nil {
+		return true
+	}
+	if r.MemoryLimit != to.MemoryLimit {
+		return false
+	}
+	if r.MemoryRequest != to.MemoryRequest {
+		return false
+	}
+	if r.CPULimit != to.CPULimit {
+		return false
+	}
+	if r.CPURequest != to.CPURequest {
+		return false
+	}
+
+	return true
+}
+
+type ExternalDocumentationURLField byte
+
+const (
+	ExternalDocumentationURLFieldTitle ExternalDocumentationURLField = iota + 1
+	ExternalDocumentationURLFieldType
+	ExternalDocumentationURLFieldURL
+)
+
+type ExternalDocumentationURLFilter struct {
+	Or  []*ExternalDocumentationURLFilter
+	And []*ExternalDocumentationURLFilter
+}
+type ExternalDocumentationURLOrder order.Order[ExternalDocumentationURLField]
+
+type ExternalDocumentationURL struct {
+	Title string
+	Type  string
+	URL   string
+}
+
+// user code 'ExternalDocumentationURL methods'
+// end user code 'ExternalDocumentationURL methods'
+
+func (e *ExternalDocumentationURL) Copy() ExternalDocumentationURL {
+	var result ExternalDocumentationURL
+	result.Title = e.Title
+	result.Type = e.Type
+	result.URL = e.URL
+
+	return result
+}
+func (e *ExternalDocumentationURL) Equals(to *ExternalDocumentationURL) bool {
+	if (e == nil) != (to == nil) {
+		return false
+	}
+	if e == nil && to == nil {
+		return true
+	}
+	if e.Title != to.Title {
+		return false
+	}
+	if e.Type != to.Type {
+		return false
+	}
+	if e.URL != to.URL {
 		return false
 	}
 

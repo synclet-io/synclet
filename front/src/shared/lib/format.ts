@@ -1,12 +1,18 @@
-/** Format a large number with K/M suffix. "1.2M", "45.6K", or raw number if under 1000. */
+const numberSuffixes: [number, string][] = [
+  [1e15, 'Q'],
+  [1e12, 'T'],
+  [1e9, 'B'],
+  [1e6, 'M'],
+  [1e3, 'K'],
+]
+
+/** Format a large number with compact suffix. "1.2M", "45.6K", "3B", or raw number if under 1000. */
 export function formatNumber(n: number): string {
-  if (n >= 1_000_000) {
-    const val = n / 1_000_000
-    return `${val % 1 === 0 ? val.toFixed(0) : val.toFixed(1)}M`
-  }
-  if (n >= 1_000) {
-    const val = n / 1_000
-    return `${val % 1 === 0 ? val.toFixed(0) : val.toFixed(1)}K`
+  for (const [threshold, suffix] of numberSuffixes) {
+    if (n >= threshold) {
+      const val = n / threshold
+      return `${val % 1 === 0 ? val.toFixed(0) : val.toFixed(1)}${suffix}`
+    }
   }
   return String(n)
 }

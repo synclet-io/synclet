@@ -14,17 +14,14 @@ import (
 
 // Config holds auth service configuration.
 type Config struct {
-	JWTSecret          string
-	AccessTokenExpiry  time.Duration
-	RefreshTokenExpiry time.Duration
-}
-
-// DefaultConfig returns default auth config.
-func DefaultConfig() Config {
-	return Config{
-		AccessTokenExpiry:  15 * time.Minute,
-		RefreshTokenExpiry: 7 * 24 * time.Hour,
-	}
+	JWTSecret           string
+	AccessTokenTTL      time.Duration
+	RefreshTokenTTL     time.Duration
+	SingleWorkspaceMode bool
+	RegistrationEnabled bool
+	OIDCCallbackBaseURL string
+	OIDCStateTTL        time.Duration
+	MinPasswordLength   int
 }
 
 // TokenPair represents an access + refresh token pair.
@@ -45,7 +42,7 @@ type Claims struct {
 // generateTokenPair creates a new access + refresh token pair for a user.
 func generateTokenPair(ctx context.Context, storage Storage, config Config, user *User) (*TokenPair, error) {
 	now := time.Now()
-	expiresAt := now.Add(config.AccessTokenExpiry)
+	expiresAt := now.Add(config.AccessTokenTTL)
 
 	claims := &Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -78,7 +75,7 @@ func generateTokenPair(ctx context.Context, storage Storage, config Config, user
 		ID:        uuid.New(),
 		UserID:    user.ID,
 		TokenHash: refreshTokenHash,
-		ExpiresAt: now.Add(config.RefreshTokenExpiry),
+		ExpiresAt: now.Add(config.RefreshTokenTTL),
 		CreatedAt: now,
 	}
 

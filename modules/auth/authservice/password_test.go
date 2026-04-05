@@ -22,7 +22,7 @@ func TestValidatePassword(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := ValidatePassword(tt.password)
+			err := ValidatePassword(tt.password, 8)
 			if tt.wantErr {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), "at least 8 characters")

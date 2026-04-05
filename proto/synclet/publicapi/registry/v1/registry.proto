@@ -16,7 +16,7 @@ enum ConnectorType {
 
 enum RepositoryStatus {
   REPOSITORY_STATUS_UNSPECIFIED = 0;
-  REPOSITORY_STATUS_SYNCING = 1;
+  reserved 1;
   REPOSITORY_STATUS_SYNCED = 2;
   REPOSITORY_STATUS_FAILED = 3;
 }

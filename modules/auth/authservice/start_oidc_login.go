@@ -3,7 +3,6 @@ package authservice
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"golang.org/x/oauth2"
 )
@@ -12,11 +11,12 @@ import (
 type StartOIDCLogin struct {
 	providers  map[string]*OIDCProvider
 	stateStore *StateStore
+	cfg        Config
 }
 
 // NewStartOIDCLogin creates a new StartOIDCLogin use case.
-func NewStartOIDCLogin(providers map[string]*OIDCProvider, stateStore *StateStore) *StartOIDCLogin {
-	return &StartOIDCLogin{providers: providers, stateStore: stateStore}
+func NewStartOIDCLogin(providers map[string]*OIDCProvider, stateStore *StateStore, cfg Config) *StartOIDCLogin {
+	return &StartOIDCLogin{providers: providers, stateStore: stateStore, cfg: cfg}
 }
 
 // Execute generates the authorization URL for the given provider slug.
@@ -33,7 +33,7 @@ func (uc *StartOIDCLogin) Execute(ctx context.Context, providerSlug string) (aut
 	}
 
 	verifier := oauth2.GenerateVerifier()
-	if err := uc.stateStore.Set(ctx, state, verifier, providerSlug, 10*time.Minute); err != nil {
+	if err := uc.stateStore.Set(ctx, state, verifier, providerSlug, uc.cfg.OIDCStateTTL); err != nil {
 		return "", fmt.Errorf("storing state: %w", err)
 	}
 

@@ -229,8 +229,6 @@ func repositoryToProto(repo *pipelineservice.Repository) *registryv1.Repository 
 
 func repositoryStatusToProto(s pipelineservice.RepositoryStatus) registryv1.RepositoryStatus {
 	switch s {
-	case pipelineservice.RepositoryStatusSyncing:
-		return registryv1.RepositoryStatus_REPOSITORY_STATUS_SYNCING
 	case pipelineservice.RepositoryStatusSynced:
 		return registryv1.RepositoryStatus_REPOSITORY_STATUS_SYNCED
 	case pipelineservice.RepositoryStatusFailed:

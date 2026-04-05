@@ -22,11 +22,12 @@ type QueueJobParams struct {
 // QueueJob creates a pending job for a connection.
 type QueueJob struct {
 	storage pipelineservice.Storage
+	cfg     pipelineservice.Config
 }
 
 // NewQueueJob creates a new QueueJob use case.
-func NewQueueJob(storage pipelineservice.Storage) *QueueJob {
-	return &QueueJob{storage: storage}
+func NewQueueJob(storage pipelineservice.Storage, cfg pipelineservice.Config) *QueueJob {
+	return &QueueJob{storage: storage, cfg: cfg}
 }
 
 // Execute creates a new pending job. It reads retry config from the connection
@@ -59,7 +60,7 @@ func (uc *QueueJob) Execute(ctx context.Context, params QueueJobParams) (*pipeli
 	}
 
 	if maxAttempts <= 0 {
-		maxAttempts = 3
+		maxAttempts = uc.cfg.DefaultMaxAttempts
 	}
 
 	scheduledAt := params.ScheduledAt

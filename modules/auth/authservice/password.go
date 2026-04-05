@@ -10,14 +10,12 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-const minPasswordLength = 8
-
 var randomPasswordHash = string(lo.Must(bcrypt.GenerateFromPassword([]byte("password"), bcrypt.DefaultCost)))
 
 // ValidatePassword checks that a password meets minimum requirements.
-func ValidatePassword(password string) error {
-	if len(password) < minPasswordLength {
-		return &ValidationError{Message: fmt.Sprintf("password must be at least %d characters", minPasswordLength)}
+func ValidatePassword(password string, minLength int) error {
+	if len(password) < minLength {
+		return &ValidationError{Message: fmt.Sprintf("password must be at least %d characters", minLength)}
 	}
 
 	return nil

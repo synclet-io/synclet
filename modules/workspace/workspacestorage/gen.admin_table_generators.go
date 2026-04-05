@@ -42,7 +42,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("Name", "name", db.Text)
@@ -62,7 +61,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("Slug", "slug", db.Text)
@@ -82,7 +80,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("CreatedAt", "created_at", db.Timestamp)
@@ -98,7 +95,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("UpdatedAt", "updated_at", db.Timestamp)
@@ -114,7 +110,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 
@@ -146,7 +141,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("WorkspaceID", "workspace_id", db.UUID)
@@ -166,7 +160,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("UserID", "user_id", db.UUID)
@@ -186,7 +179,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("Role", "role", db.Enum)
@@ -212,7 +204,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 
@@ -234,7 +225,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 
@@ -266,7 +256,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("WorkspaceID", "workspace_id", db.UUID)
@@ -286,7 +275,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("InviterUserID", "inviter_user_id", db.UUID)
@@ -306,7 +294,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("Email", "email", db.Text)
@@ -326,7 +313,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("Role", "role", db.Enum)
@@ -342,7 +328,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 
@@ -368,7 +353,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("Status", "status", db.Enum)
@@ -395,7 +379,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 
@@ -418,7 +401,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("CreatedAt", "created_at", db.Timestamp)
@@ -434,7 +416,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 			info.AddField("UpdatedAt", "updated_at", db.Timestamp)
@@ -450,7 +431,6 @@ func NewTableGenerators() table.GeneratorList {
 						}
 					}
 				}
-
 				return values
 			}
 

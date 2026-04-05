@@ -15,10 +15,9 @@ import {
 
 function mapRepositoryStatus(proto: ProtoRepositoryStatus): RepositoryStatus {
   switch (proto) {
-    case ProtoRepositoryStatus.SYNCING: return 'syncing'
     case ProtoRepositoryStatus.SYNCED: return 'synced'
     case ProtoRepositoryStatus.FAILED: return 'failed'
-    default: return 'syncing'
+    default: return 'unknown'
   }
 }
 

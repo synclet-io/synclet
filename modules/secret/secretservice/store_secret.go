@@ -15,11 +15,11 @@ type StoreSecret struct {
 }
 
 // NewStoreSecret creates a new StoreSecret use case.
-func NewStoreSecret(storage Storage, masterKey []byte, keyVersion int) *StoreSecret {
+func NewStoreSecret(storage Storage, cfg Config) *StoreSecret {
 	return &StoreSecret{
 		storage:    storage,
-		masterKey:  masterKey,
-		keyVersion: keyVersion,
+		masterKey:  cfg.MasterKey,
+		keyVersion: cfg.KeyVersion,
 	}
 }
 

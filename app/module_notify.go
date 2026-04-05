@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/caarlos0/env/v10"
 	"github.com/go-pnp/go-pnp/config/configutil"
 	"github.com/go-pnp/go-pnp/connectrpc/pnpconnectrpchandling"
 	"github.com/go-pnp/go-pnp/logging"
@@ -21,83 +20,86 @@ import (
 	"github.com/synclet-io/synclet/modules/notify/notifystorage"
 )
 
-type smtpConfig struct {
-	SMTPHost     string `env:"SMTP_HOST"`
-	SMTPPort     int    `env:"SMTP_PORT" envDefault:"587"`
-	SMTPUser     string `env:"SMTP_USER"`
-	SMTPPassword string `env:"SMTP_PASSWORD"`
-	SMTPFrom     string `env:"SMTP_FROM" envDefault:"noreply@synclet.io"`
+type notifySMTPConfig struct {
+	Host     string `env:"HOST"`
+	Port     int    `env:"PORT" envDefault:"587"`
+	User     string `env:"USER"`
+	Password string `env:"PASSWORD"`
+	From     string `env:"FROM" envDefault:"noreply@synclet.io"`
 }
-
-type inviteConfig struct {
-	InviteTTL   time.Duration `env:"INVITE_TTL" envDefault:"168h"`
-	FrontendURL string        `env:"FRONTEND_URL" envDefault:"http://localhost:5173"`
+type notifyWebhookConfig struct {
+	HTTPTimeout time.Duration `env:"HTTP_TIMEOUT" envDefault:"10s"`
+	MaxRetries  int           `env:"MAX_RETRIES" envDefault:"3"`
+}
+type notifyConfig struct {
+	SMTP    notifySMTPConfig    `envPrefix:"SMTP_"`
+	Webhook notifyWebhookConfig `envPrefix:"WEBHOOK_"`
 }
 
 func notifyModule() fx.Option {
-	return fx.Options(
-		fx.Provide(
-			configutil.NewConfigProvider[smtpConfig](env.Options{}),
-			configutil.NewConfigProvider[inviteConfig](env.Options{}),
-			fx.Annotate(
-				func(db *gorm.DB, logger *logging.Logger) *notifystorage.Storages {
-					return notifystorage.NewStorages(db, logger, []txoutbox.MessageProcessor{})
-				},
-				fx.As(new(notifyservice.Storage)),
-			),
-			// Secrets adapter.
-			fx.Annotate(notifyadapt.NewSecretsAdapter, fx.As(new(notifyservice.SecretsProvider))),
-			// Webhook use cases.
-			notifyservice.NewCreateWebhook,
-			notifyservice.NewUpdateWebhook,
-			notifyservice.NewDeleteWebhook,
-			notifyservice.NewListWebhooks,
-			notifyservice.NewDeliverWebhook,
-			// Notification channel use cases.
-			notifyservice.NewCreateChannel,
-			notifyservice.NewUpdateChannel,
-			notifyservice.NewDeleteChannel,
-			notifyservice.NewListChannels,
-			notifyservice.NewCreateNotificationRule,
-			notifyservice.NewUpdateNotificationRule,
-			notifyservice.NewDeleteNotificationRule,
-			notifyservice.NewListNotificationRules,
-			// Channel deliverers.
-			notifyservice.NewSlackChannel,
-			notifyservice.NewTelegramChannel,
-			notifyservice.NewEmailChannel,
-			// Deliverer map for dispatch.
-			func(slack *notifyservice.SlackChannel, email *notifyservice.EmailChannel, telegram *notifyservice.TelegramChannel) map[notifyservice.ChannelType]notifyservice.ChannelDeliverer {
-				return map[notifyservice.ChannelType]notifyservice.ChannelDeliverer{
-					notifyservice.ChannelTypeSlack:    slack,
-					notifyservice.ChannelTypeEmail:    email,
-					notifyservice.ChannelTypeTelegram: telegram,
-				}
-			},
-			// DeliverNotification and TestChannel use cases.
-			func(storage notifyservice.Storage, deliverers map[notifyservice.ChannelType]notifyservice.ChannelDeliverer, logger *logging.Logger) *notifyservice.DeliverNotification {
-				return notifyservice.NewDeliverNotification(storage, deliverers, logger.Named("notify"))
-			},
-			notifyservice.NewTestChannel,
-			// EmailSender: SMTP when configured, NoOp otherwise.
-			fx.Annotate(
-				func(cfg *smtpConfig, logger *logging.Logger) notifyservice.EmailSender {
-					if cfg.SMTPHost == "" {
-						logger.Named("notify").Info(context.Background(), "SMTP not configured: email delivery disabled. Set SMTP_HOST to enable.")
+	return fx.Module(
+		"notify",
+		logging.DecorateNamed("notify"),
+		notifyConfigModule(),
+		notifyDependenciesModule(),
+		notifyUseCasesModule(),
+	)
+}
 
-						return notifyservice.NewNoOpEmailSender()
-					}
+func notifyConfigModule() fx.Option {
+	return fx.Provide(
+		configutil.NewPrefixedConfigProvider[notifyConfig]("NOTIFY_"),
+		configutil.NewPrefixedConfigInfoProvider[notifyConfig]("NOTIFY_"),
+		newNotifyServiceConfig,
+	)
+}
 
-					return notifyservice.NewSMTPEmailSender(notifyservice.SMTPConfig{
-						Host:     cfg.SMTPHost,
-						Port:     cfg.SMTPPort,
-						Username: cfg.SMTPUser,
-						Password: cfg.SMTPPassword,
-						From:     cfg.SMTPFrom,
-					})
-				},
-			),
-		),
+func newNotifyServiceConfig(cfg *notifyConfig) notifyservice.Config {
+	return notifyservice.Config{
+		WebhookHTTPTimeout: cfg.Webhook.HTTPTimeout,
+		WebhookMaxRetries:  cfg.Webhook.MaxRetries,
+	}
+}
+
+func notifyDependenciesModule() fx.Option {
+	return fx.Provide(
+		fx.Annotate(newNotifyStorage, fx.As(new(notifyservice.Storage))),
+		fx.Annotate(notifyadapt.NewSecretsAdapter, fx.As(new(notifyservice.SecretsProvider))),
+
+		newSMTPEmailSender,
+	)
+}
+
+func notifyUseCasesModule() fx.Option {
+	return fx.Provide(
+		// Webhook use cases
+		notifyservice.NewCreateWebhook,
+		notifyservice.NewUpdateWebhook,
+		notifyservice.NewDeleteWebhook,
+		notifyservice.NewListWebhooks,
+		notifyservice.NewDeliverWebhook,
+
+		// Notification channel use cases
+		notifyservice.NewCreateChannel,
+		notifyservice.NewUpdateChannel,
+		notifyservice.NewDeleteChannel,
+		notifyservice.NewListChannels,
+		notifyservice.NewCreateNotificationRule,
+		notifyservice.NewUpdateNotificationRule,
+		notifyservice.NewDeleteNotificationRule,
+		notifyservice.NewListNotificationRules,
+
+		// Channel deliverers
+		notifyservice.NewSlackChannel,
+		notifyservice.NewTelegramChannel,
+		notifyservice.NewEmailChannel,
+
+		// Deliverer map for dispatch
+		newNotifyChannelDeliverers,
+
+		// DeliverNotification and TestChannel
+		newNotifyDeliverNotification,
+		notifyservice.NewTestChannel,
 	)
 }
 
@@ -111,4 +113,44 @@ func notifyHTTPServerModule() fx.Option {
 			fx.Private,
 		),
 	)
+}
+
+func newNotifyStorage(db *gorm.DB, logger *logging.Logger) *notifystorage.Storages {
+	return notifystorage.NewStorages(db, logger, []txoutbox.MessageProcessor{})
+}
+
+func newNotifyChannelDeliverers(
+	slack *notifyservice.SlackChannel,
+	email *notifyservice.EmailChannel,
+	telegram *notifyservice.TelegramChannel,
+) map[notifyservice.ChannelType]notifyservice.ChannelDeliverer {
+	return map[notifyservice.ChannelType]notifyservice.ChannelDeliverer{
+		notifyservice.ChannelTypeSlack:    slack,
+		notifyservice.ChannelTypeEmail:    email,
+		notifyservice.ChannelTypeTelegram: telegram,
+	}
+}
+
+func newNotifyDeliverNotification(
+	storage notifyservice.Storage,
+	deliverers map[notifyservice.ChannelType]notifyservice.ChannelDeliverer,
+	logger *logging.Logger,
+) *notifyservice.DeliverNotification {
+	return notifyservice.NewDeliverNotification(storage, deliverers, logger.Named("notify"))
+}
+
+func newSMTPEmailSender(cfg *notifyConfig, logger *logging.Logger) notifyservice.EmailSender {
+	if cfg.SMTP.Host == "" {
+		logger.Named("notify").Info(context.Background(), "SMTP not configured: email delivery disabled. Set NOTIFY_SMTP_HOST to enable.")
+
+		return notifyservice.NewNoOpEmailSender()
+	}
+
+	return notifyservice.NewSMTPEmailSender(notifyservice.SMTPConfig{
+		Host:     cfg.SMTP.Host,
+		Port:     cfg.SMTP.Port,
+		Username: cfg.SMTP.User,
+		Password: cfg.SMTP.Password,
+		From:     cfg.SMTP.From,
+	})
 }

@@ -5,9 +5,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
 )
 
 func TestRegistryFetcherSpecParsing(t *testing.T) {
@@ -33,13 +36,13 @@ func TestRegistryFetcherSpecParsing(t *testing.T) {
 	}))
 	defer server.Close()
 
-	fetcher := NewRegistryFetcher()
+	fetcher := NewRegistryFetcher(pipelineservice.Config{RegistryFetchTimeout: 60 * time.Second})
 	connectors, err := fetcher.Fetch(context.Background(), server.URL, nil)
 	require.NoError(t, err)
 	require.Len(t, connectors, 1)
 	assert.Contains(t, connectors[0].Spec, `"api_key"`)
 	assert.Contains(t, connectors[0].Spec, `"type":`)
-	assert.Equal(t, "source", connectors[0].ConnectorType)
+	assert.Equal(t, pipelineservice.ConnectorTypeSource, connectors[0].ConnectorType)
 }
 
 func TestRegistryFetcherNoSpec(t *testing.T) {
@@ -59,7 +62,7 @@ func TestRegistryFetcherNoSpec(t *testing.T) {
 	}))
 	defer server.Close()
 
-	fetcher := NewRegistryFetcher()
+	fetcher := NewRegistryFetcher(pipelineservice.Config{RegistryFetchTimeout: 60 * time.Second})
 	connectors, err := fetcher.Fetch(context.Background(), server.URL, nil)
 	require.NoError(t, err)
 	require.Len(t, connectors, 1)
@@ -84,7 +87,7 @@ func TestRegistryFetcherSpecNilConnectionSpec(t *testing.T) {
 	}))
 	defer server.Close()
 
-	fetcher := NewRegistryFetcher()
+	fetcher := NewRegistryFetcher(pipelineservice.Config{RegistryFetchTimeout: 60 * time.Second})
 	connectors, err := fetcher.Fetch(context.Background(), server.URL, nil)
 	require.NoError(t, err)
 	require.Len(t, connectors, 1)
@@ -111,10 +114,10 @@ func TestRegistryFetcherDestinationSpec(t *testing.T) {
 	}))
 	defer server.Close()
 
-	fetcher := NewRegistryFetcher()
+	fetcher := NewRegistryFetcher(pipelineservice.Config{RegistryFetchTimeout: 60 * time.Second})
 	connectors, err := fetcher.Fetch(context.Background(), server.URL, nil)
 	require.NoError(t, err)
 	require.Len(t, connectors, 1)
 	assert.Contains(t, connectors[0].Spec, `"host"`)
-	assert.Equal(t, "destination", connectors[0].ConnectorType)
+	assert.Equal(t, pipelineservice.ConnectorTypeDestination, connectors[0].ConnectorType)
 }

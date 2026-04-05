@@ -4,9 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"strings"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
+	"github.com/samber/lo"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	webhookv1 "github.com/synclet-io/synclet/gen/proto/synclet/publicapi/webhook/v1"
@@ -16,19 +19,16 @@ import (
 )
 
 func mapError(err error) error {
-	var notFound notifyservice.NotFoundError
-	if errors.As(err, &notFound) {
-		return connect.NewError(connect.CodeNotFound, err)
+	if notFoundErr, ok := lo.ErrorsAs[notifyservice.NotFoundError](err); ok {
+		return connect.NewError(connect.CodeNotFound, fmt.Errorf("%s not found", strings.ToLower(string(notFoundErr))))
 	}
 
-	var alreadyExists notifyservice.AlreadyExistsError
-	if errors.As(err, &alreadyExists) {
-		return connect.NewError(connect.CodeAlreadyExists, err)
+	if alreadyExists, ok := lo.ErrorsAs[notifyservice.AlreadyExistsError](err); ok {
+		return connect.NewError(connect.CodeAlreadyExists, fmt.Errorf("%s already exists", strings.ToLower(string(alreadyExists))))
 	}
 
-	var validation *notifyservice.ValidationError
-	if errors.As(err, &validation) {
-		return connect.NewError(connect.CodeInvalidArgument, err)
+	if validationErr, ok := lo.ErrorsAs[*notifyservice.ValidationError](err); ok {
+		return connect.NewError(connect.CodeInvalidArgument, validationErr)
 	}
 
 	if errors.Is(err, notifyservice.ErrNameRequired) ||

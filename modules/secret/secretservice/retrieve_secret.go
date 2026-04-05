@@ -16,11 +16,11 @@ type RetrieveSecret struct {
 
 // NewRetrieveSecret creates a new RetrieveSecret use case.
 // previousKey can be nil if key rotation is not in use.
-func NewRetrieveSecret(storage Storage, masterKey, previousKey []byte) *RetrieveSecret {
+func NewRetrieveSecret(storage Storage, cfg Config) *RetrieveSecret {
 	return &RetrieveSecret{
 		storage:     storage,
-		masterKey:   masterKey,
-		previousKey: previousKey,
+		masterKey:   cfg.MasterKey,
+		previousKey: cfg.PreviousKey,
 	}
 }
 

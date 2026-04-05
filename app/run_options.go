@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/go-pnp/go-pnp/pkg/optionutil"
+	"github.com/samber/lo"
 	"go.uber.org/fx"
 )
 
@@ -18,6 +19,7 @@ type RunOption = optionutil.Option[RunAppOptions]
 type RunAppOptions struct {
 	DotEnvFiles           []string
 	RunModule             map[string]bool
+	RunConsumers          bool
 	RunPublicHTTPServer   bool
 	RunInternalHTTPServer bool
 	RunJobs               bool
@@ -50,6 +52,11 @@ func WithRunPublicHTTPServer() RunOption {
 func WithRunJobs() RunOption {
 	return func(options *RunAppOptions) {
 		options.RunJobs = true
+	}
+}
+func WithRunConsumers() RunOption {
+	return func(options *RunAppOptions) {
+		options.RunConsumers = true
 	}
 }
 
@@ -87,12 +94,14 @@ func WithFxOptions(fxOptions ...fx.Option) RunOption {
 	}
 }
 
-func conditionalFxOption(condition bool, fn func() fx.Option) fx.Option {
+func conditionalFxOptions(condition bool, fns ...func() fx.Option) fx.Option {
 	if !condition {
 		return fx.Options()
 	}
 
-	return fn()
+	return fx.Options(
+		lo.Map(fns, func(f func() fx.Option, _ int) fx.Option { return f() })...,
+	)
 }
 
 func WithRunModule(module string) RunOption {

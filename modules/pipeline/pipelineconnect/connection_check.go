@@ -14,19 +14,18 @@ import (
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinetasks"
 )
 
-const connectionCheckTimeout = 2 * time.Minute
-
 // runConnectionCheck creates a check task with raw config and blocks until completion.
 // Returns nil on success, or a ConnectRPC error on failure/timeout.
 func runConnectionCheck(
 	ctx context.Context,
 	createCheckTask *pipelinetasks.CreateCheckTask,
 	waitForResult *pipelinetasks.WaitForTaskResult,
+	timeout time.Duration,
 	workspaceID uuid.UUID,
 	managedConnectorID uuid.UUID,
 	config json.RawMessage,
 ) error {
-	checkCtx, cancel := context.WithTimeout(ctx, connectionCheckTimeout)
+	checkCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	mcID := managedConnectorID

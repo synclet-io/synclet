@@ -54,7 +54,6 @@ func buildWorkspaceFilterExpr(filter *workspaceservice.WorkspaceFilter, options 
 				}
 				exprs = append(exprs, expr)
 			}
-
 			return clause.Or(exprs...), nil
 		}),
 		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
@@ -69,7 +68,6 @@ func buildWorkspaceFilterExpr(filter *workspaceservice.WorkspaceFilter, options 
 				}
 				exprs = append(exprs, expr)
 			}
-
 			return clause.And(exprs...), nil
 		}),
 	)
@@ -114,7 +112,6 @@ func buildWorkspaceMemberFilterExpr(filter *workspaceservice.WorkspaceMemberFilt
 				}
 				exprs = append(exprs, expr)
 			}
-
 			return clause.Or(exprs...), nil
 		}),
 		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
@@ -129,7 +126,6 @@ func buildWorkspaceMemberFilterExpr(filter *workspaceservice.WorkspaceMemberFilt
 				}
 				exprs = append(exprs, expr)
 			}
-
 			return clause.And(exprs...), nil
 		}),
 	)
@@ -182,7 +178,6 @@ func buildWorkspaceInviteFilterExpr(filter *workspaceservice.WorkspaceInviteFilt
 				}
 				exprs = append(exprs, expr)
 			}
-
 			return clause.Or(exprs...), nil
 		}),
 		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
@@ -197,7 +192,6 @@ func buildWorkspaceInviteFilterExpr(filter *workspaceservice.WorkspaceInviteFilt
 				}
 				exprs = append(exprs, expr)
 			}
-
 			return clause.And(exprs...), nil
 		}),
 	)

@@ -5,18 +5,18 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/synclet-io/synclet/pkg/connector"
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineexec/pipelineexecdocker"
 )
 
-// ConnectorSpecFetcherAdapter adapts connector.ConnectorClient.Spec to return
+// ConnectorSpecFetcherAdapter adapts pipelineexecdocker.ConnectorClient.Spec to return
 // a JSON string instead of *protocol.ConnectorSpecification, keeping
 // protocol types out of the pipeline service layer.
 type ConnectorSpecFetcherAdapter struct {
-	client *connector.ConnectorClient
+	client *pipelineexecdocker.ConnectorClient
 }
 
 // NewConnectorSpecFetcherAdapter creates a new ConnectorSpecFetcherAdapter.
-func NewConnectorSpecFetcherAdapter(client *connector.ConnectorClient) *ConnectorSpecFetcherAdapter {
+func NewConnectorSpecFetcherAdapter(client *pipelineexecdocker.ConnectorClient) *ConnectorSpecFetcherAdapter {
 	return &ConnectorSpecFetcherAdapter{client: client}
 }
 

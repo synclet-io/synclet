@@ -55,7 +55,6 @@ func convertSecretToJsonModel(src *secretservice.Secret) (*jsonSecret, error) {
 	result.OwnerID = src.OwnerID
 	result.CreatedAt = (src.CreatedAt).UTC()
 	result.UpdatedAt = (src.UpdatedAt).UTC()
-
 	return result, nil
 }
 
@@ -85,6 +84,5 @@ func convertSecretFromJsonModel(src *jsonSecret) (*secretservice.Secret, error) 
 	result.OwnerID = src.OwnerID
 	result.CreatedAt = src.CreatedAt
 	result.UpdatedAt = src.UpdatedAt
-
 	return result, nil
 }

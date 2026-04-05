@@ -3,8 +3,8 @@ package app
 import (
 	"context"
 	"fmt"
+	"time"
 
-	"github.com/caarlos0/env/v10"
 	"github.com/go-pnp/go-pnp/config/configutil"
 	"github.com/go-pnp/go-pnp/connectrpc/pnpconnectrpchandling"
 	"github.com/go-pnp/go-pnp/logging"
@@ -12,7 +12,6 @@ import (
 	"go.uber.org/fx"
 	"gorm.io/gorm"
 
-	pipelinev1 "github.com/synclet-io/synclet/gen/proto/synclet/publicapi/pipeline/v1"
 	"github.com/synclet-io/synclet/gen/proto/synclet/publicapi/workspace/v1/workspacev1connect"
 	"github.com/synclet-io/synclet/modules/workspace/workspaceadapt"
 	"github.com/synclet-io/synclet/modules/workspace/workspaceconnect"
@@ -21,109 +20,83 @@ import (
 	"github.com/synclet-io/synclet/modules/workspace/workspacestorage"
 )
 
-type workspaceConfig struct {
-	WorkspacesMode string `env:"WORKSPACES_MODE" envDefault:"single"`
+const (
+	WorkspaceModeSingle WorkspaceMode = iota
+	WorkspaceModeMulti
+)
+
+type WorkspaceMode byte
+
+func (w *WorkspaceMode) UnmarshalText(text []byte) error {
+	switch string(text) {
+	case "single":
+		*w = WorkspaceModeSingle
+	case "multi":
+		*w = WorkspaceModeMulti
+	default:
+		return fmt.Errorf("invalid workspace mode: %s", text)
+	}
+
+	return nil
 }
 
-// workspacesMode is a named FX type for workspace mode injection.
-type workspacesMode = pipelinev1.WorkspacesMode
+type workspaceConfig struct {
+	Mode        WorkspaceMode `env:"MODE" envDefault:"single"`
+	InviteTTL   time.Duration `env:"INVITE_TTL" envDefault:"168h"`
+	FrontendURL string        `env:"FRONTEND_URL" envDefault:"http://localhost:5173"`
+}
 
 func workspaceModule(options *RunAppOptions) fx.Option {
-	return fx.Options(
-		fx.Provide(
-			configutil.NewConfigProvider[workspaceConfig](env.Options{}),
-			func(cfg *workspaceConfig) workspacesMode {
-				switch cfg.WorkspacesMode {
-				case "multi":
-					return pipelinev1.WorkspacesMode_WORKSPACES_MODE_MULTI
-				default:
-					return pipelinev1.WorkspacesMode_WORKSPACES_MODE_SINGLE
-				}
-			},
-			fx.Annotate(
-				func(db *gorm.DB, logger *logging.Logger) *workspacestorage.Storages {
-					return workspacestorage.NewStorages(db, logger, []txoutbox.MessageProcessor{})
-				},
-				fx.As(new(workspaceservice.Storage)),
-			),
-			workspaceservice.NewAutoAssignMember,
-			workspaceservice.NewCreateWorkspace,
-			workspaceservice.NewBootstrapDefaultWorkspace,
-			workspaceservice.NewUpdateWorkspace,
-			workspaceservice.NewDeleteWorkspace,
-			workspaceservice.NewGetWorkspace,
-			workspaceservice.NewListWorkspacesForUser,
-			workspaceservice.NewRemoveMember,
-			workspaceservice.NewGetMembership,
-			workspaceservice.NewListMembers,
-
-			// Invite use cases
-			fx.Annotate(
-				func(
-					storage workspaceservice.Storage,
-					emailSender workspaceservice.EmailSender,
-					userLookup workspaceservice.UserLookup,
-					cfg *inviteConfig,
-					logger *logging.Logger,
-				) *workspaceservice.CreateInvite {
-					return workspaceservice.NewCreateInvite(storage, emailSender, userLookup, cfg.InviteTTL, cfg.FrontendURL, logger)
-				},
-			),
-			workspaceservice.NewAcceptInvite,
-			workspaceservice.NewDeclineInvite,
-			workspaceservice.NewRevokeInvite,
-			fx.Annotate(
-				func(
-					storage workspaceservice.Storage,
-					emailSender workspaceservice.EmailSender,
-					userLookup workspaceservice.UserLookup,
-					cfg *inviteConfig,
-					logger *logging.Logger,
-				) *workspaceservice.ResendInvite {
-					return workspaceservice.NewResendInvite(storage, emailSender, userLookup, cfg.InviteTTL, cfg.FrontendURL, logger)
-				},
-			),
-			workspaceservice.NewListInvites,
-			workspaceservice.NewGetInviteByToken,
-
-			// Cross-module adapters
-			fx.Annotate(
-				workspaceadapt.NewEmailSenderAdapter,
-				fx.As(new(workspaceservice.EmailSender)),
-			),
-			fx.Annotate(
-				workspaceadapt.NewUserLookupAdapter,
-				fx.As(new(workspaceservice.UserLookup)),
-			),
-			workspaceadapt.NewMembershipChecker,
-		),
-		conditionalFxOption(options.RunPublicHTTPServer, func() fx.Option {
-			return fx.Invoke(func(
-				lc fx.Lifecycle,
-				mode workspacesMode,
-				bootstrap *workspaceservice.BootstrapDefaultWorkspace,
-				logger *logging.Logger,
-			) {
-				lc.Append(fx.Hook{
-					OnStart: func(ctx context.Context) error {
-						if mode != pipelinev1.WorkspacesMode_WORKSPACES_MODE_SINGLE {
-							return nil
-						}
-
-						workspace, err := bootstrap.Execute(ctx)
-						if err != nil {
-							return fmt.Errorf("bootstrapping default workspace: %w", err)
-						}
-
-						if workspace != nil {
-							logger.WithField("id", workspace.ID.String()).Info(ctx, "default workspace bootstrapped")
-						}
-
-						return nil
-					},
-				})
-			})
+	return fx.Module(
+		"workspace",
+		logging.DecorateNamed("workspace"),
+		workspaceConfigModule(),
+		workspaceDependenciesModule(),
+		workspaceUseCasesModule(),
+		conditionalFxOptions(options.RunJobs, func() fx.Option {
+			return fx.Invoke(invokeWorkspaceBootstrap)
 		}),
+	)
+}
+
+func workspaceConfigModule() fx.Option {
+	return fx.Provide(
+		configutil.NewPrefixedConfigProvider[workspaceConfig]("WORKSPACE_"),
+		configutil.NewPrefixedConfigInfoProvider[workspaceConfig]("WORKSPACE_"),
+		newWorkspaceServiceConfig,
+	)
+}
+
+func workspaceDependenciesModule() fx.Option {
+	return fx.Provide(
+		fx.Annotate(newWorkspaceStorage, fx.As(new(workspaceservice.Storage))),
+		fx.Annotate(workspaceadapt.NewEmailSenderAdapter, fx.As(new(workspaceservice.EmailSender))),
+		fx.Annotate(workspaceadapt.NewUserLookupAdapter, fx.As(new(workspaceservice.UserLookup))),
+		workspaceadapt.NewMembershipChecker,
+	)
+}
+
+func workspaceUseCasesModule() fx.Option {
+	return fx.Provide(
+		workspaceservice.NewAutoAssignMember,
+		workspaceservice.NewCreateWorkspace,
+		workspaceservice.NewBootstrapDefaultWorkspace,
+		workspaceservice.NewUpdateWorkspace,
+		workspaceservice.NewDeleteWorkspace,
+		workspaceservice.NewGetWorkspace,
+		workspaceservice.NewListWorkspacesForUser,
+		workspaceservice.NewRemoveMember,
+		workspaceservice.NewGetMembership,
+		workspaceservice.NewListMembers,
+
+		// Invite use cases
+		workspaceservice.NewCreateInvite,
+		workspaceservice.NewAcceptInvite,
+		workspaceservice.NewDeclineInvite,
+		workspaceservice.NewRevokeInvite,
+		workspaceservice.NewResendInvite,
+		workspaceservice.NewListInvites,
+		workspaceservice.NewGetInviteByToken,
 	)
 }
 
@@ -135,4 +108,41 @@ func workspaceHTTPServerModule() fx.Option {
 			fx.Private,
 		),
 	)
+}
+
+func newWorkspaceStorage(db *gorm.DB, logger *logging.Logger) *workspacestorage.Storages {
+	return workspacestorage.NewStorages(db, logger, []txoutbox.MessageProcessor{})
+}
+
+func newWorkspaceServiceConfig(cfg *workspaceConfig) workspaceservice.Config {
+	return workspaceservice.Config{
+		InviteTTL:   cfg.InviteTTL,
+		FrontendURL: cfg.FrontendURL,
+	}
+}
+
+func invokeWorkspaceBootstrap(
+	lc fx.Lifecycle,
+	wsCfg *workspaceConfig,
+	bootstrap *workspaceservice.BootstrapDefaultWorkspace,
+	logger *logging.Logger,
+) {
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			if WorkspaceModeMulti == wsCfg.Mode {
+				return nil
+			}
+
+			workspace, err := bootstrap.Execute(ctx)
+			if err != nil {
+				return fmt.Errorf("bootstrapping default workspace: %w", err)
+			}
+
+			if workspace != nil {
+				logger.WithField("id", workspace.ID.String()).Info(ctx, "default workspace bootstrapped")
+			}
+
+			return nil
+		},
+	})
 }

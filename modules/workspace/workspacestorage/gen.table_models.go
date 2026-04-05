@@ -25,7 +25,6 @@ func convertWorkspaceToDB(src *workspaceservice.Workspace) (*dbWorkspace, error)
 	result.Slug = src.Slug
 	result.CreatedAt = (src.CreatedAt).UTC()
 	result.UpdatedAt = (src.UpdatedAt).UTC()
-
 	return result, nil
 }
 
@@ -36,7 +35,6 @@ func convertWorkspaceFromDB(src *dbWorkspace) (*workspaceservice.Workspace, erro
 	result.Slug = src.Slug
 	result.CreatedAt = src.CreatedAt
 	result.UpdatedAt = src.UpdatedAt
-
 	return result, nil
 }
 func (a dbWorkspace) TableName() string {
@@ -62,7 +60,6 @@ func convertWorkspaceMemberToDB(src *workspaceservice.WorkspaceMember) (*dbWorks
 	}
 	result.Role = tmp3
 	result.JoinedAt = (src.JoinedAt).UTC()
-
 	return result, nil
 }
 
@@ -77,7 +74,6 @@ func convertWorkspaceMemberFromDB(src *dbWorkspaceMember) (*workspaceservice.Wor
 	}
 	result.Role = tmp8
 	result.JoinedAt = src.JoinedAt
-
 	return result, nil
 }
 func (a dbWorkspaceMember) TableName() string {
@@ -117,7 +113,6 @@ func convertWorkspaceInviteToDB(src *workspaceservice.WorkspaceInvite) (*dbWorks
 	result.ExpiresAt = (src.ExpiresAt).UTC()
 	result.CreatedAt = (src.CreatedAt).UTC()
 	result.UpdatedAt = (src.UpdatedAt).UTC()
-
 	return result, nil
 }
 
@@ -141,7 +136,6 @@ func convertWorkspaceInviteFromDB(src *dbWorkspaceInvite) (*workspaceservice.Wor
 	result.ExpiresAt = src.ExpiresAt
 	result.CreatedAt = src.CreatedAt
 	result.UpdatedAt = src.UpdatedAt
-
 	return result, nil
 }
 func (a dbWorkspaceInvite) TableName() string {

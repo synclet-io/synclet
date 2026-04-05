@@ -1,4 +1,4 @@
-export type RepositoryStatus = 'syncing' | 'synced' | 'failed'
+export type RepositoryStatus = 'synced' | 'failed' | 'unknown'
 
 export interface Repository {
   id: string

@@ -19,11 +19,11 @@ type WaitForTaskResult struct {
 }
 
 // NewWaitForTaskResult creates a new WaitForTaskResult use case.
-func NewWaitForTaskResult(storage pipelineservice.Storage) *WaitForTaskResult {
+func NewWaitForTaskResult(storage pipelineservice.Storage, cfg pipelineservice.Config) *WaitForTaskResult {
 	return &WaitForTaskResult{
 		storage:      storage,
-		pollInterval: 500 * time.Millisecond,
-		timeout:      5 * time.Minute,
+		pollInterval: cfg.ConnectorTaskPollInterval,
+		timeout:      cfg.ConnectionCheckTimeout,
 	}
 }
 

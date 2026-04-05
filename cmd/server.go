@@ -25,7 +25,7 @@ func newServerCommand() *cobra.Command {
 				app.WithDotEnvFiles(dotEnvs...),
 			}
 			if standalone {
-				opts = append(opts, app.WithRunJobs(), app.WithStandalone(), app.WithAutoExecutor())
+				opts = append(opts, app.WithRunJobs(), app.WithRunConsumers(), app.WithStandalone(), app.WithAutoExecutor())
 			}
 
 			app.RunServer(opts...)

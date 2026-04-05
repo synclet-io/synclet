@@ -53,7 +53,7 @@ func (uc *DeleteRepository) Execute(ctx context.Context, params DeleteRepository
 		WorkspaceID: filter.Equals(params.WorkspaceID),
 	}
 
-	repo, err := uc.storage.Repositorys().First(ctx, repoFilter)
+	repo, err := uc.storage.Repositories().First(ctx, repoFilter)
 	if err != nil {
 		return nil, fmt.Errorf("loading repository: %w", err)
 	}
@@ -65,7 +65,7 @@ func (uc *DeleteRepository) Execute(ctx context.Context, params DeleteRepository
 
 	// Delete the repository (CASCADE deletes repository_connectors automatically).
 	// WorkspaceID filter unconditionally prevents cross-workspace deletion.
-	if err := uc.storage.Repositorys().Delete(ctx, repoFilter); err != nil {
+	if err := uc.storage.Repositories().Delete(ctx, repoFilter); err != nil {
 		return nil, fmt.Errorf("deleting repository: %w", err)
 	}
 

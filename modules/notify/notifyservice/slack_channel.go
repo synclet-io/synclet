@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/synclet-io/synclet/pkg/secretutil"
 )
@@ -18,11 +17,11 @@ type SlackChannel struct {
 }
 
 // NewSlackChannel creates a new SlackChannel deliverer.
-func NewSlackChannel(secrets SecretsProvider) *SlackChannel {
+func NewSlackChannel(secrets SecretsProvider, cfg Config) *SlackChannel {
 	return &SlackChannel{
 		secrets: secrets,
 		httpClient: &http.Client{
-			Timeout: 10 * time.Second,
+			Timeout: cfg.WebhookHTTPTimeout,
 		},
 	}
 }

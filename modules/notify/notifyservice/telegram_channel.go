@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"time"
 
 	"go.uber.org/multierr"
 
@@ -20,11 +19,11 @@ type TelegramChannel struct {
 }
 
 // NewTelegramChannel creates a new TelegramChannel deliverer.
-func NewTelegramChannel(secrets SecretsProvider) *TelegramChannel {
+func NewTelegramChannel(secrets SecretsProvider, cfg Config) *TelegramChannel {
 	return &TelegramChannel{
 		secrets: secrets,
 		httpClient: &http.Client{
-			Timeout: 10 * time.Second,
+			Timeout: cfg.WebhookHTTPTimeout,
 		},
 	}
 }

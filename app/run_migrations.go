@@ -17,12 +17,17 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/pressly/goose/v3"
 	"github.com/pressly/goose/v3/lock"
+	"github.com/saturn4er/boilerplate-go/lib/txoutbox/txoutboxdbstate"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxevent"
 	"gorm.io/gorm"
 
 	"github.com/synclet-io/synclet/pkg/migrations"
 )
+
+func init() {
+	migrations.Register("tx_outbox", txoutboxdbstate.MigrationsFS)
+}
 
 func RunMigrationUp(opts ...RunOption) error {
 	return runGooseCommand("up", func(db *sql.DB) error {

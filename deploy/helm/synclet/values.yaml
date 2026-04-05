@@ -213,6 +213,16 @@ auth:
   existingSecretKey: "jwt-secret"
   ## Allow new users to register via email/password. Disable to restrict access to OIDC or invites only.
   registrationEnabled: true
+  ## Set secure (HTTPS-only) flag on auth cookies. Enable when using TLS.
+  secureCookies: true
+  ## JWT access token lifetime.
+  accessTokenTTL: "15m"
+  ## JWT refresh token lifetime.
+  refreshTokenTTL: "168h"
+  ## OIDC state parameter time-to-live.
+  oidcStateTTL: "10m"
+  ## Minimum required password length for local accounts.
+  minPasswordLength: 8
 
 ## @section OIDC parameters
 ## Configure OpenID Connect providers for SSO login.
@@ -259,6 +269,13 @@ smtp:
   existingSecret: ""
   existingSecretKey: "smtp-password"
 
+## @section Notification parameters
+notify:
+  ## HTTP client timeout for webhook, Slack, and Telegram delivery.
+  webhookHTTPTimeout: "10s"
+  ## Maximum retry attempts for failed webhook deliveries.
+  webhookMaxRetries: 3
+
 ## @section Workspace parameters
 workspaces:
   ## "single" — one shared workspace, all users join automatically.
@@ -286,7 +303,7 @@ pipeline:
   ## How often the watchdog checks for stale jobs with expired heartbeats.
   watchdogInterval: "10s"
   ## How often orphaned Docker containers (from crashed syncs) are cleaned up.
-  orphanCleanupInterval: "5m"
+  dockerResourceCleanupInterval: "5m"
 
   ## Sync limits
   ## Maximum wall-clock time a single sync job is allowed to run before being killed.
@@ -301,6 +318,22 @@ pipeline:
   connectorTaskRetention: "24h"
   ## How long a pending connector task waits before being marked as timed out.
   connectorTaskTimeout: "5m"
+  ## Default max retry attempts for sync jobs when not configured per-connection.
+  defaultMaxAttempts: 3
+  ## Heartbeat interval for sync worker health reporting.
+  heartbeatInterval: "5s"
+  ## Timeout for connection check operations (spec/check/discover).
+  connectionCheckTimeout: "2m"
+  ## Poll interval for connector task result polling.
+  connectorTaskPollInterval: "500ms"
+  ## Timeout for async event emission (sync completed/failed notifications).
+  eventEmitTimeout: "30s"
+  ## Lookback window for hourly stats rollup computation.
+  statsRollupHourlyLookback: "2h"
+  ## Lookback window for daily stats rollup computation.
+  statsRollupDailyLookback: "48h"
+  ## HTTP timeout for fetching connector registry JSON.
+  registryFetchTimeout: "60s"
 
   ## Default K8s resource requests/limits applied to connector pods when not overridden per-connection.
   resources:

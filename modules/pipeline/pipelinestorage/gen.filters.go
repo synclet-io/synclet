@@ -69,7 +69,6 @@ func buildManagedConnectorFilterExpr(filter *pipelineservice.ManagedConnectorFil
 				}
 				exprs = append(exprs, expr)
 			}
-
 			return clause.Or(exprs...), nil
 		}),
 		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
@@ -84,7 +83,6 @@ func buildManagedConnectorFilterExpr(filter *pipelineservice.ManagedConnectorFil
 				}
 				exprs = append(exprs, expr)
 			}
-
 			return clause.And(exprs...), nil
 		}),
 	)
@@ -125,7 +123,6 @@ func buildRepositoryFilterExpr(filter *pipelineservice.RepositoryFilter, options
 				}
 				exprs = append(exprs, expr)
 			}
-
 			return clause.Or(exprs...), nil
 		}),
 		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
@@ -140,7 +137,6 @@ func buildRepositoryFilterExpr(filter *pipelineservice.RepositoryFilter, options
 				}
 				exprs = append(exprs, expr)
 			}
-
 			return clause.And(exprs...), nil
 		}),
 	)
@@ -203,7 +199,6 @@ func buildRepositoryConnectorFilterExpr(filter *pipelineservice.RepositoryConnec
 				}
 				exprs = append(exprs, expr)
 			}
-
 			return clause.Or(exprs...), nil
 		}),
 		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
@@ -218,11 +213,11 @@ func buildRepositoryConnectorFilterExpr(filter *pipelineservice.RepositoryConnec
 				}
 				exprs = append(exprs, expr)
 			}
-
 			return clause.And(exprs...), nil
 		}),
 	)
 }
+
 func buildSourceFilterExpr(filter *pipelineservice.SourceFilter, options ...func(*filterOptions)) (clause.Expression, error) {
 	if filter == nil {
 		return nil, nil
@@ -262,7 +257,6 @@ func buildSourceFilterExpr(filter *pipelineservice.SourceFilter, options ...func
 				}
 				exprs = append(exprs, expr)
 			}
-
 			return clause.Or(exprs...), nil
 		}),
 		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
@@ -277,7 +271,6 @@ func buildSourceFilterExpr(filter *pipelineservice.SourceFilter, options ...func
 				}
 				exprs = append(exprs, expr)
 			}
-
 			return clause.And(exprs...), nil
 		}),
 	)
@@ -321,7 +314,6 @@ func buildDestinationFilterExpr(filter *pipelineservice.DestinationFilter, optio
 				}
 				exprs = append(exprs, expr)
 			}
-
 			return clause.Or(exprs...), nil
 		}),
 		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
@@ -336,7 +328,6 @@ func buildDestinationFilterExpr(filter *pipelineservice.DestinationFilter, optio
 				}
 				exprs = append(exprs, expr)
 			}
-
 			return clause.And(exprs...), nil
 		}),
 	)
@@ -389,7 +380,6 @@ func buildConnectionFilterExpr(filter *pipelineservice.ConnectionFilter, options
 				}
 				exprs = append(exprs, expr)
 			}
-
 			return clause.Or(exprs...), nil
 		}),
 		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
@@ -404,7 +394,6 @@ func buildConnectionFilterExpr(filter *pipelineservice.ConnectionFilter, options
 				}
 				exprs = append(exprs, expr)
 			}
-
 			return clause.And(exprs...), nil
 		}),
 	)
@@ -458,7 +447,6 @@ func buildJobFilterExpr(filter *pipelineservice.JobFilter, options ...func(*filt
 				}
 				exprs = append(exprs, expr)
 			}
-
 			return clause.Or(exprs...), nil
 		}),
 		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
@@ -473,7 +461,6 @@ func buildJobFilterExpr(filter *pipelineservice.JobFilter, options ...func(*filt
 				}
 				exprs = append(exprs, expr)
 			}
-
 			return clause.And(exprs...), nil
 		}),
 	)
@@ -509,7 +496,6 @@ func buildJobAttemptFilterExpr(filter *pipelineservice.JobAttemptFilter, options
 				}
 				exprs = append(exprs, expr)
 			}
-
 			return clause.Or(exprs...), nil
 		}),
 		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
@@ -524,7 +510,6 @@ func buildJobAttemptFilterExpr(filter *pipelineservice.JobAttemptFilter, options
 				}
 				exprs = append(exprs, expr)
 			}
-
 			return clause.And(exprs...), nil
 		}),
 	)
@@ -564,7 +549,6 @@ func buildCatalogDiscoveryFilterExpr(filter *pipelineservice.CatalogDiscoveryFil
 				}
 				exprs = append(exprs, expr)
 			}
-
 			return clause.Or(exprs...), nil
 		}),
 		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
@@ -579,7 +563,6 @@ func buildCatalogDiscoveryFilterExpr(filter *pipelineservice.CatalogDiscoveryFil
 				}
 				exprs = append(exprs, expr)
 			}
-
 			return clause.And(exprs...), nil
 		}),
 	)
@@ -615,7 +598,6 @@ func buildConfiguredCatalogFilterExpr(filter *pipelineservice.ConfiguredCatalogF
 				}
 				exprs = append(exprs, expr)
 			}
-
 			return clause.Or(exprs...), nil
 		}),
 		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
@@ -630,7 +612,6 @@ func buildConfiguredCatalogFilterExpr(filter *pipelineservice.ConfiguredCatalogF
 				}
 				exprs = append(exprs, expr)
 			}
-
 			return clause.And(exprs...), nil
 		}),
 	)
@@ -662,7 +643,6 @@ func buildJobLogFilterExpr(filter *pipelineservice.JobLogFilter, options ...func
 				}
 				exprs = append(exprs, expr)
 			}
-
 			return clause.Or(exprs...), nil
 		}),
 		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
@@ -677,7 +657,6 @@ func buildJobLogFilterExpr(filter *pipelineservice.JobLogFilter, options ...func
 				}
 				exprs = append(exprs, expr)
 			}
-
 			return clause.And(exprs...), nil
 		}),
 	)
@@ -709,7 +688,6 @@ func buildConnectionStateFilterExpr(filter *pipelineservice.ConnectionStateFilte
 				}
 				exprs = append(exprs, expr)
 			}
-
 			return clause.Or(exprs...), nil
 		}),
 		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
@@ -724,7 +702,6 @@ func buildConnectionStateFilterExpr(filter *pipelineservice.ConnectionStateFilte
 				}
 				exprs = append(exprs, expr)
 			}
-
 			return clause.And(exprs...), nil
 		}),
 	)
@@ -757,7 +734,6 @@ func buildWorkspaceSettingsFilterExpr(filter *pipelineservice.WorkspaceSettingsF
 				}
 				exprs = append(exprs, expr)
 			}
-
 			return clause.Or(exprs...), nil
 		}),
 		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
@@ -772,7 +748,6 @@ func buildWorkspaceSettingsFilterExpr(filter *pipelineservice.WorkspaceSettingsF
 				}
 				exprs = append(exprs, expr)
 			}
-
 			return clause.And(exprs...), nil
 		}),
 	)
@@ -830,7 +805,6 @@ func buildConnectorTaskFilterExpr(filter *pipelineservice.ConnectorTaskFilter, o
 				}
 				exprs = append(exprs, expr)
 			}
-
 			return clause.Or(exprs...), nil
 		}),
 		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
@@ -845,7 +819,6 @@ func buildConnectorTaskFilterExpr(filter *pipelineservice.ConnectorTaskFilter, o
 				}
 				exprs = append(exprs, expr)
 			}
-
 			return clause.And(exprs...), nil
 		}),
 	)
@@ -885,7 +858,6 @@ func buildStreamGenerationFilterExpr(filter *pipelineservice.StreamGenerationFil
 				}
 				exprs = append(exprs, expr)
 			}
-
 			return clause.Or(exprs...), nil
 		}),
 		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
@@ -900,7 +872,6 @@ func buildStreamGenerationFilterExpr(filter *pipelineservice.StreamGenerationFil
 				}
 				exprs = append(exprs, expr)
 			}
-
 			return clause.And(exprs...), nil
 		}),
 	)

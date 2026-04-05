@@ -35,7 +35,6 @@ func convertUserToJsonModel(src *authservice.User) (*jsonUser, error) {
 	result.PasswordHash = src.PasswordHash
 	result.Name = src.Name
 	result.CreatedAt = (src.CreatedAt).UTC()
-
 	return result, nil
 }
 
@@ -46,7 +45,6 @@ func convertUserFromJsonModel(src *jsonUser) (*authservice.User, error) {
 	result.PasswordHash = src.PasswordHash
 	result.Name = src.Name
 	result.CreatedAt = src.CreatedAt
-
 	return result, nil
 }
 
@@ -73,7 +71,6 @@ func convertRefreshTokenToJsonModel(src *authservice.RefreshToken) (*jsonRefresh
 	result.TokenHash = src.TokenHash
 	result.ExpiresAt = (src.ExpiresAt).UTC()
 	result.CreatedAt = (src.CreatedAt).UTC()
-
 	return result, nil
 }
 
@@ -84,7 +81,6 @@ func convertRefreshTokenFromJsonModel(src *jsonRefreshToken) (*authservice.Refre
 	result.TokenHash = src.TokenHash
 	result.ExpiresAt = src.ExpiresAt
 	result.CreatedAt = src.CreatedAt
-
 	return result, nil
 }
 
@@ -125,7 +121,6 @@ func convertAPIKeyToJsonModel(src *authservice.APIKey) (*jsonAPIKey, error) {
 		result.ExpiresAt = toPtr((fromPtr(src.ExpiresAt)).UTC())
 	}
 	result.CreatedAt = (src.CreatedAt).UTC()
-
 	return result, nil
 }
 
@@ -147,7 +142,6 @@ func convertAPIKeyFromJsonModel(src *jsonAPIKey) (*authservice.APIKey, error) {
 		result.ExpiresAt = toPtr(fromPtr(src.ExpiresAt))
 	}
 	result.CreatedAt = src.CreatedAt
-
 	return result, nil
 }
 
@@ -178,7 +172,6 @@ func convertOIDCIdentityToJsonModel(src *authservice.OIDCIdentity) (*jsonOIDCIde
 	result.Email = src.Email
 	result.CreatedAt = (src.CreatedAt).UTC()
 	result.LastLoginAt = (src.LastLoginAt).UTC()
-
 	return result, nil
 }
 
@@ -191,7 +184,6 @@ func convertOIDCIdentityFromJsonModel(src *jsonOIDCIdentity) (*authservice.OIDCI
 	result.Email = src.Email
 	result.CreatedAt = src.CreatedAt
 	result.LastLoginAt = src.LastLoginAt
-
 	return result, nil
 }
 
@@ -220,7 +212,6 @@ func convertOIDCStateToJsonModel(src *authservice.OIDCState) (*jsonOIDCState, er
 	result.ProviderSlug = src.ProviderSlug
 	result.ExpiresAt = (src.ExpiresAt).UTC()
 	result.CreatedAt = (src.CreatedAt).UTC()
-
 	return result, nil
 }
 
@@ -232,6 +223,5 @@ func convertOIDCStateFromJsonModel(src *jsonOIDCState) (*authservice.OIDCState, 
 	result.ProviderSlug = src.ProviderSlug
 	result.ExpiresAt = src.ExpiresAt
 	result.CreatedAt = src.CreatedAt
-
 	return result, nil
 }

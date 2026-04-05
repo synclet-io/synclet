@@ -77,7 +77,6 @@ type RepositoryStatus int32
 
 const (
 	RepositoryStatus_REPOSITORY_STATUS_UNSPECIFIED RepositoryStatus = 0
-	RepositoryStatus_REPOSITORY_STATUS_SYNCING     RepositoryStatus = 1
 	RepositoryStatus_REPOSITORY_STATUS_SYNCED      RepositoryStatus = 2
 	RepositoryStatus_REPOSITORY_STATUS_FAILED      RepositoryStatus = 3
 )
@@ -86,13 +85,11 @@ const (
 var (
 	RepositoryStatus_name = map[int32]string{
 		0: "REPOSITORY_STATUS_UNSPECIFIED",
-		1: "REPOSITORY_STATUS_SYNCING",
 		2: "REPOSITORY_STATUS_SYNCED",
 		3: "REPOSITORY_STATUS_FAILED",
 	}
 	RepositoryStatus_value = map[string]int32{
 		"REPOSITORY_STATUS_UNSPECIFIED": 0,
-		"REPOSITORY_STATUS_SYNCING":     1,
 		"REPOSITORY_STATUS_SYNCED":      2,
 		"REPOSITORY_STATUS_FAILED":      3,
 	}
@@ -2366,12 +2363,11 @@ const file_synclet_publicapi_registry_v1_registry_proto_rawDesc = "" +
 	"\rConnectorType\x12\x1e\n" +
 	"\x1aCONNECTOR_TYPE_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15CONNECTOR_TYPE_SOURCE\x10\x01\x12\x1e\n" +
-	"\x1aCONNECTOR_TYPE_DESTINATION\x10\x02*\x90\x01\n" +
+	"\x1aCONNECTOR_TYPE_DESTINATION\x10\x02*w\n" +
 	"\x10RepositoryStatus\x12!\n" +
-	"\x1dREPOSITORY_STATUS_UNSPECIFIED\x10\x00\x12\x1d\n" +
-	"\x19REPOSITORY_STATUS_SYNCING\x10\x01\x12\x1c\n" +
+	"\x1dREPOSITORY_STATUS_UNSPECIFIED\x10\x00\x12\x1c\n" +
 	"\x18REPOSITORY_STATUS_SYNCED\x10\x02\x12\x1c\n" +
-	"\x18REPOSITORY_STATUS_FAILED\x10\x03*g\n" +
+	"\x18REPOSITORY_STATUS_FAILED\x10\x03\"\x04\b\x01\x10\x01*g\n" +
 	"\fSupportLevel\x12\x1d\n" +
 	"\x19SUPPORT_LEVEL_UNSPECIFIED\x10\x00\x12\x1b\n" +
 	"\x17SUPPORT_LEVEL_COMMUNITY\x10\x01\x12\x1b\n" +

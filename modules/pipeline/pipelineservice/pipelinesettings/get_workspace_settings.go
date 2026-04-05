@@ -24,7 +24,7 @@ func NewGetWorkspaceSettings(storage pipelineservice.Storage) *GetWorkspaceSetti
 // Execute returns workspace settings for the given workspace ID.
 // Returns default settings (MaxJobsPerWorkspace=0, meaning unlimited) when no row exists.
 func (uc *GetWorkspaceSettings) Execute(ctx context.Context, workspaceID uuid.UUID) (*pipelineservice.WorkspaceSettings, error) {
-	settings, err := uc.storage.WorkspaceSettingss().First(ctx, &pipelineservice.WorkspaceSettingsFilter{
+	settings, err := uc.storage.WorkspaceSettings().First(ctx, &pipelineservice.WorkspaceSettingsFilter{
 		WorkspaceID: filter.Equals(workspaceID),
 	})
 	if err != nil {

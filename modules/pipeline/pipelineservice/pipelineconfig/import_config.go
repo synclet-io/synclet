@@ -29,11 +29,12 @@ type ImportConfigResult struct {
 // ImportConfig imports YAML configuration into a workspace.
 type ImportConfig struct {
 	storage pipelineservice.Storage
+	cfg     pipelineservice.Config
 }
 
 // NewImportConfig creates a new ImportConfig use case.
-func NewImportConfig(storage pipelineservice.Storage) *ImportConfig {
-	return &ImportConfig{storage: storage}
+func NewImportConfig(storage pipelineservice.Storage, cfg pipelineservice.Config) *ImportConfig {
+	return &ImportConfig{storage: storage, cfg: cfg}
 }
 
 // Execute parses YAML config and creates/updates sources, destinations, and connections.
@@ -242,7 +243,7 @@ func (uc *ImportConfig) Execute(ctx context.Context, params ImportConfigParams) 
 		} else {
 			maxAttempts := connConfig.MaxAttempts
 			if maxAttempts == 0 {
-				maxAttempts = 3
+				maxAttempts = uc.cfg.DefaultMaxAttempts
 			}
 
 			conn := pipelineservice.Connection{

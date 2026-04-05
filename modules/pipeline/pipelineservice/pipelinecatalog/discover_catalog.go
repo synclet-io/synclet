@@ -48,7 +48,7 @@ func (uc *DiscoverCatalog) Execute(ctx context.Context, params DiscoverCatalogPa
 	// Compute next version number.
 	nextVersion := 1
 
-	latest, err := uc.storage.CatalogDiscoverys().First(ctx, &pipelineservice.CatalogDiscoveryFilter{
+	latest, err := uc.storage.CatalogDiscoveries().First(ctx, &pipelineservice.CatalogDiscoveryFilter{
 		SourceID: filter.Equals(params.SourceID),
 	}, dbutil.WithOrder(pipelineservice.CatalogDiscoveryFieldVersion, dbutil.OrderDirDesc))
 	if err != nil {
@@ -68,7 +68,7 @@ func (uc *DiscoverCatalog) Execute(ctx context.Context, params DiscoverCatalogPa
 		DiscoveredAt: time.Now(),
 	}
 
-	if _, err := uc.storage.CatalogDiscoverys().Create(ctx, record); err != nil {
+	if _, err := uc.storage.CatalogDiscoveries().Create(ctx, record); err != nil {
 		return nil, fmt.Errorf("storing catalog: %w", err)
 	}
 

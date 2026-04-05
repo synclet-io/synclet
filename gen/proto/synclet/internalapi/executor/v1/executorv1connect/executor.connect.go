@@ -63,6 +63,11 @@ const (
 	// ExecutorServiceReportConnectorTaskResultProcedure is the fully-qualified name of the
 	// ExecutorService's ReportConnectorTaskResult RPC.
 	ExecutorServiceReportConnectorTaskResultProcedure = "/synclet.internalapi.executor.v1.ExecutorService/ReportConnectorTaskResult"
+	// ExecutorServiceIsTaskActiveProcedure is the fully-qualified name of the ExecutorService's
+	// IsTaskActive RPC.
+	ExecutorServiceIsTaskActiveProcedure = "/synclet.internalapi.executor.v1.ExecutorService/IsTaskActive"
+	// ExecutorServiceFailJobProcedure is the fully-qualified name of the ExecutorService's FailJob RPC.
+	ExecutorServiceFailJobProcedure = "/synclet.internalapi.executor.v1.ExecutorService/FailJob"
 )
 
 // ExecutorServiceClient is a client for the synclet.internalapi.executor.v1.ExecutorService
@@ -81,6 +86,9 @@ type ExecutorServiceClient interface {
 	// Connector task RPCs per D-15/D-18
 	ClaimConnectorTask(context.Context, *connect.Request[v1.ClaimConnectorTaskRequest]) (*connect.Response[v1.ClaimConnectorTaskResponse], error)
 	ReportConnectorTaskResult(context.Context, *connect.Request[v1.ReportConnectorTaskResultRequest]) (*connect.Response[v1.ReportConnectorTaskResultResponse], error)
+	// Resource status RPCs for K8s reconciler
+	IsTaskActive(context.Context, *connect.Request[v1.IsTaskActiveRequest]) (*connect.Response[v1.IsTaskActiveResponse], error)
+	FailJob(context.Context, *connect.Request[v1.FailJobRequest]) (*connect.Response[v1.FailJobResponse], error)
 }
 
 // NewExecutorServiceClient constructs a client for the
@@ -155,6 +163,18 @@ func NewExecutorServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(executorServiceMethods.ByName("ReportConnectorTaskResult")),
 			connect.WithClientOptions(opts...),
 		),
+		isTaskActive: connect.NewClient[v1.IsTaskActiveRequest, v1.IsTaskActiveResponse](
+			httpClient,
+			baseURL+ExecutorServiceIsTaskActiveProcedure,
+			connect.WithSchema(executorServiceMethods.ByName("IsTaskActive")),
+			connect.WithClientOptions(opts...),
+		),
+		failJob: connect.NewClient[v1.FailJobRequest, v1.FailJobResponse](
+			httpClient,
+			baseURL+ExecutorServiceFailJobProcedure,
+			connect.WithSchema(executorServiceMethods.ByName("FailJob")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -170,6 +190,8 @@ type executorServiceClient struct {
 	isJobActive               *connect.Client[v1.IsJobActiveRequest, v1.IsJobActiveResponse]
 	claimConnectorTask        *connect.Client[v1.ClaimConnectorTaskRequest, v1.ClaimConnectorTaskResponse]
 	reportConnectorTaskResult *connect.Client[v1.ReportConnectorTaskResultRequest, v1.ReportConnectorTaskResultResponse]
+	isTaskActive              *connect.Client[v1.IsTaskActiveRequest, v1.IsTaskActiveResponse]
+	failJob                   *connect.Client[v1.FailJobRequest, v1.FailJobResponse]
 }
 
 // Heartbeat calls synclet.internalapi.executor.v1.ExecutorService.Heartbeat.
@@ -223,6 +245,16 @@ func (c *executorServiceClient) ReportConnectorTaskResult(ctx context.Context, r
 	return c.reportConnectorTaskResult.CallUnary(ctx, req)
 }
 
+// IsTaskActive calls synclet.internalapi.executor.v1.ExecutorService.IsTaskActive.
+func (c *executorServiceClient) IsTaskActive(ctx context.Context, req *connect.Request[v1.IsTaskActiveRequest]) (*connect.Response[v1.IsTaskActiveResponse], error) {
+	return c.isTaskActive.CallUnary(ctx, req)
+}
+
+// FailJob calls synclet.internalapi.executor.v1.ExecutorService.FailJob.
+func (c *executorServiceClient) FailJob(ctx context.Context, req *connect.Request[v1.FailJobRequest]) (*connect.Response[v1.FailJobResponse], error) {
+	return c.failJob.CallUnary(ctx, req)
+}
+
 // ExecutorServiceHandler is an implementation of the
 // synclet.internalapi.executor.v1.ExecutorService service.
 type ExecutorServiceHandler interface {
@@ -239,6 +271,9 @@ type ExecutorServiceHandler interface {
 	// Connector task RPCs per D-15/D-18
 	ClaimConnectorTask(context.Context, *connect.Request[v1.ClaimConnectorTaskRequest]) (*connect.Response[v1.ClaimConnectorTaskResponse], error)
 	ReportConnectorTaskResult(context.Context, *connect.Request[v1.ReportConnectorTaskResultRequest]) (*connect.Response[v1.ReportConnectorTaskResultResponse], error)
+	// Resource status RPCs for K8s reconciler
+	IsTaskActive(context.Context, *connect.Request[v1.IsTaskActiveRequest]) (*connect.Response[v1.IsTaskActiveResponse], error)
+	FailJob(context.Context, *connect.Request[v1.FailJobRequest]) (*connect.Response[v1.FailJobResponse], error)
 }
 
 // NewExecutorServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -308,6 +343,18 @@ func NewExecutorServiceHandler(svc ExecutorServiceHandler, opts ...connect.Handl
 		connect.WithSchema(executorServiceMethods.ByName("ReportConnectorTaskResult")),
 		connect.WithHandlerOptions(opts...),
 	)
+	executorServiceIsTaskActiveHandler := connect.NewUnaryHandler(
+		ExecutorServiceIsTaskActiveProcedure,
+		svc.IsTaskActive,
+		connect.WithSchema(executorServiceMethods.ByName("IsTaskActive")),
+		connect.WithHandlerOptions(opts...),
+	)
+	executorServiceFailJobHandler := connect.NewUnaryHandler(
+		ExecutorServiceFailJobProcedure,
+		svc.FailJob,
+		connect.WithSchema(executorServiceMethods.ByName("FailJob")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/synclet.internalapi.executor.v1.ExecutorService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ExecutorServiceHeartbeatProcedure:
@@ -330,6 +377,10 @@ func NewExecutorServiceHandler(svc ExecutorServiceHandler, opts ...connect.Handl
 			executorServiceClaimConnectorTaskHandler.ServeHTTP(w, r)
 		case ExecutorServiceReportConnectorTaskResultProcedure:
 			executorServiceReportConnectorTaskResultHandler.ServeHTTP(w, r)
+		case ExecutorServiceIsTaskActiveProcedure:
+			executorServiceIsTaskActiveHandler.ServeHTTP(w, r)
+		case ExecutorServiceFailJobProcedure:
+			executorServiceFailJobHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -377,4 +428,12 @@ func (UnimplementedExecutorServiceHandler) ClaimConnectorTask(context.Context, *
 
 func (UnimplementedExecutorServiceHandler) ReportConnectorTaskResult(context.Context, *connect.Request[v1.ReportConnectorTaskResultRequest]) (*connect.Response[v1.ReportConnectorTaskResultResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("synclet.internalapi.executor.v1.ExecutorService.ReportConnectorTaskResult is not implemented"))
+}
+
+func (UnimplementedExecutorServiceHandler) IsTaskActive(context.Context, *connect.Request[v1.IsTaskActiveRequest]) (*connect.Response[v1.IsTaskActiveResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("synclet.internalapi.executor.v1.ExecutorService.IsTaskActive is not implemented"))
+}
+
+func (UnimplementedExecutorServiceHandler) FailJob(context.Context, *connect.Request[v1.FailJobRequest]) (*connect.Response[v1.FailJobResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("synclet.internalapi.executor.v1.ExecutorService.FailJob is not implemented"))
 }

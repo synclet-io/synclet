@@ -36,7 +36,7 @@ types:
         is: true
 
     - name: RepositoryStatus
-      values: [ Syncing, Synced, Failed ]
+      values: [ Synced, Failed ]
       helpers:
         is_valid: true
         stringer: true
@@ -140,6 +140,7 @@ types:
         - { name: RepositoryID, type: "*uuid", filterable: true }
 
     - name: Repository
+      plural_name: Repositories
       table_name: pipeline.repositories
       fields:
         - { name: ID, type: uuid, filterable: true }
@@ -170,7 +171,58 @@ types:
         - { name: SupportLevel, type: SupportLevel, filterable: true }
         - { name: License, type: string, filterable: true }
         - { name: SourceType, type: SourceType, filterable: true }
-        - { name: Metadata, type: jsonb }
+        - { name: Metadata, type: RepositoryConnectorMetadata }
+
+    - name: RepositoryConnectorMetadata
+      do_not_persists: true
+      fields:
+        - { name: BreakingChanges, type: "map[string]BreakingChange" }
+        - { name: ResourceRequirements, type: "*ResourceRequirements" }
+        - { name: MaxSecondsBetweenMessages, type: "*int" }
+        - { name: ExternalDocumentationURLs, type: "[]ExternalDocumentationURL", json_name: external_documentation_urls }
+        - { name: SuggestedStreams, type: "[]string" }
+        - { name: AllowedHosts, type: "[]string" }
+        - { name: ErdURL, type: string }
+        - { name: ReleaseDate, type: string }
+        - { name: Language, type: string }
+        - { name: Tags, type: "[]string" }
+        - { name: SupportsRefreshes, type: bool }
+        - { name: SupportsFileTransfer, type: bool }
+        - { name: SupportsDataActivation, type: bool }
+        - { name: MigrationDocumentationURL, type: string }
+
+    - name: BreakingChange
+      do_not_persists: true
+      fields:
+        - { name: Message, type: string }
+        - { name: MigrationDocumentationURL, type: string }
+        - { name: UpgradeDeadline, type: string }
+
+    - name: ResourceRequirements
+      do_not_persists: true
+      fields:
+        - { name: JobSpecific, type: "[]JobSpecificResourceRequirement" }
+
+    - name: JobSpecificResourceRequirement
+      do_not_persists: true
+      fields:
+        - { name: JobType, type: string }
+        - { name: ResourceRequirements, type: ResourceRequirementValues }
+
+    - name: ResourceRequirementValues
+      do_not_persists: true
+      fields:
+        - { name: MemoryLimit, type: string }
+        - { name: MemoryRequest, type: string }
+        - { name: CPULimit, type: string }
+        - { name: CPURequest, type: string }
+
+    - name: ExternalDocumentationURL
+      do_not_persists: true
+      fields:
+        - { name: Title, type: string }
+        - { name: Type, type: string }
+        - { name: URL, type: string }
 
     - name: Source
       table_name: pipeline.sources
@@ -249,6 +301,7 @@ types:
         - { name: SyncStatsJSON, type: jsonb }
 
     - name: CatalogDiscovery
+      plural_name: CatalogDiscoveries
       table_name: pipeline.catalog_discoveries
       fields:
         - { name: ID, type: uuid, filterable: true }
@@ -333,6 +386,7 @@ types:
         - { name: Catalog, type: string }
 
     - name: WorkspaceSettings
+      plural_name: WorkspaceSettings
       table_name: pipeline.workspace_settings
       fields:
         - { name: WorkspaceID, type: uuid, primary_key: true, filterable: true }

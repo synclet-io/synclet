@@ -36,7 +36,7 @@ func NewConfigureStreams(storage pipelineservice.Storage) *ConfigureStreams {
 // and creates or updates the configured catalog for the connection.
 func (uc *ConfigureStreams) Execute(ctx context.Context, params ConfigureStreamsParams) error {
 	// Get the latest discovered catalog to validate against.
-	latestRecord, err := uc.storage.CatalogDiscoverys().First(ctx, &pipelineservice.CatalogDiscoveryFilter{
+	latestRecord, err := uc.storage.CatalogDiscoveries().First(ctx, &pipelineservice.CatalogDiscoveryFilter{
 		SourceID: filter.Equals(params.SourceID),
 	}, dbutil.WithOrder(pipelineservice.CatalogDiscoveryFieldVersion, dbutil.OrderDirDesc))
 	if err != nil {

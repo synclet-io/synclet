@@ -27,7 +27,7 @@ type ListRepositoriesParams struct {
 
 // Execute returns all repositories for the given workspace.
 func (uc *ListRepositories) Execute(ctx context.Context, params ListRepositoriesParams) ([]*pipelineservice.Repository, error) {
-	repos, err := uc.storage.Repositorys().Find(ctx, &pipelineservice.RepositoryFilter{
+	repos, err := uc.storage.Repositories().Find(ctx, &pipelineservice.RepositoryFilter{
 		WorkspaceID: filter.Equals(params.WorkspaceID),
 	})
 	if err != nil {

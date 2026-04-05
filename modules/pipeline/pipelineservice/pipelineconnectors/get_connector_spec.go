@@ -56,10 +56,7 @@ func (uc *GetConnectorSpec) Execute(ctx context.Context, params GetConnectorSpec
 			DockerRepository: filter.Equals(connector.DockerImage),
 		})
 		if err == nil {
-			meta, mErr := pipelineservice.UnmarshalMetadata(rc.Metadata)
-			if mErr == nil {
-				result.ExternalDocumentationURLs = meta.ExternalDocumentationURLs
-			}
+			result.ExternalDocumentationURLs = rc.Metadata.ExternalDocumentationURLs
 		}
 	}
 

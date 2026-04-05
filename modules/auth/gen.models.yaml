@@ -31,6 +31,7 @@ types:
         - { name: CreatedAt, type: timestamp }
 
     - name: OIDCIdentity
+      plural_name: OIDCIdentities
       table_name: auth.oidc_identities
       fields:
         - { name: ID, type: uuid, filterable: true }

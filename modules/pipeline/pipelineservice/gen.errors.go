@@ -31,6 +31,30 @@ const (
 	ErrRepositoryConnectorAlreadyExists = AlreadyExistsError("RepositoryConnector")
 )
 const (
+	ErrRepositoryConnectorMetadataNotFound      = NotFoundError("RepositoryConnectorMetadata")
+	ErrRepositoryConnectorMetadataAlreadyExists = AlreadyExistsError("RepositoryConnectorMetadata")
+)
+const (
+	ErrBreakingChangeNotFound      = NotFoundError("BreakingChange")
+	ErrBreakingChangeAlreadyExists = AlreadyExistsError("BreakingChange")
+)
+const (
+	ErrResourceRequirementsNotFound      = NotFoundError("ResourceRequirements")
+	ErrResourceRequirementsAlreadyExists = AlreadyExistsError("ResourceRequirements")
+)
+const (
+	ErrJobSpecificResourceRequirementNotFound      = NotFoundError("JobSpecificResourceRequirement")
+	ErrJobSpecificResourceRequirementAlreadyExists = AlreadyExistsError("JobSpecificResourceRequirement")
+)
+const (
+	ErrResourceRequirementValuesNotFound      = NotFoundError("ResourceRequirementValues")
+	ErrResourceRequirementValuesAlreadyExists = AlreadyExistsError("ResourceRequirementValues")
+)
+const (
+	ErrExternalDocumentationURLNotFound      = NotFoundError("ExternalDocumentationURL")
+	ErrExternalDocumentationURLAlreadyExists = AlreadyExistsError("ExternalDocumentationURL")
+)
+const (
 	ErrSourceNotFound      = NotFoundError("Source")
 	ErrSourceAlreadyExists = AlreadyExistsError("Source")
 )

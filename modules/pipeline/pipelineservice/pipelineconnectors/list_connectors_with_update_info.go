@@ -189,10 +189,7 @@ func enrichUpdateInfo(connector *pipelineservice.ManagedConnector, repoConn *pip
 	}
 
 	if hasUpdate {
-		metadata, err := pipelineservice.UnmarshalMetadata(repoConn.Metadata)
-		if err == nil {
-			info.BreakingChanges = DetectBreakingChanges(connector.DockerTag, repoConn.DockerImageTag, metadata)
-		}
+		info.BreakingChanges = DetectBreakingChanges(connector.DockerTag, repoConn.DockerImageTag, &repoConn.Metadata)
 	}
 
 	return info

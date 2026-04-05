@@ -9,16 +9,16 @@ import (
 	"github.com/stretchr/testify/require"
 
 	executorv1 "github.com/synclet-io/synclet/gen/proto/synclet/internalapi/executor/v1"
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineexec"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
-	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinesync"
 )
 
 // Compile-time check that RPCExecutorBackend implements ExecutorBackend.
-var _ pipelinesync.ExecutorBackend = (*RPCExecutorBackend)(nil)
+var _ pipelineexec.ExecutorBackend = (*RPCExecutorBackend)(nil)
 
 func TestRPCExecutorBackend_ImplementsInterface(t *testing.T) {
 	// This test verifies the interface implementation at compile time.
-	t.Log("RPCExecutorBackend implements pipelinesync.ExecutorBackend")
+	t.Log("RPCExecutorBackend implements pipelineexec.ExecutorBackend")
 }
 
 func TestRPCExecutorBackend_TokenInterceptorSetsHeader(t *testing.T) {

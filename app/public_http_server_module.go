@@ -40,70 +40,17 @@ func publicHTTPServerModule(options *RunAppOptions) fx.Option {
 		// Shared infrastructure for all handlers.
 		fx.Provide(
 			pnphttpserver.MuxHandlerRegistrarProvider(pnpconnectrpchandling.NewMuxHandlersRegistrar),
-
-			// Security headers middleware (order -2, before other middleware).
-			pnphttpserver.HandlerMiddlewareProvider(func() ordering.OrderedItem[pnphttpserver.HandlerMiddleware] {
-				return ordering.OrderedItem[pnphttpserver.HandlerMiddleware]{
-					Value: connectutil.SecurityHeadersMiddleware,
-					Order: -2,
-				}
-			}),
-
-			// Rate limiting interceptor (before auth, ordering -1).
-			pnpconnectrpchandling.InterceptorProvider(func(lc fx.Lifecycle) ordering.OrderedItem[connect.Interceptor] {
-				rateLimiter := connectutil.NewRateLimitInterceptor(
-					map[string]connectutil.RateLimitConfig{
-						"/synclet.publicapi.auth.v1.AuthService/Login":        {Rate: rate.Every(6 * time.Second), Burst: 10}, // ~10/min
-						"/synclet.publicapi.auth.v1.AuthService/Register":     {Rate: rate.Every(20 * time.Second), Burst: 3}, // ~3/min
-						"/synclet.publicapi.auth.v1.AuthService/RefreshToken": {Rate: rate.Every(3 * time.Second), Burst: 20}, // ~20/min
-					},
-				)
-
-				lc.Append(fx.Hook{
-					OnStop: func(ctx context.Context) error {
-						rateLimiter.Stop()
-
-						return nil
-					},
-				})
-
-				return ordering.Ordered[connect.Interceptor](-1, rateLimiter)
-			}),
-
-			// Auth interceptor (validates tokens, populates user/workspace context).
-			pnpconnectrpchandling.InterceptorProvider(func(
-				validateAccessToken *authservice.ValidateAccessToken,
-				validateAPIKey *authservice.ValidateAPIKey,
-			) ordering.OrderedItem[connect.Interceptor] {
-				return ordering.Ordered[connect.Interceptor](0, connectutil.NewAuthInterceptor(
-					authadapt.NewTokenValidator(validateAccessToken, validateAPIKey),
-				))
-			}),
-
-			// Role interceptor (enforces proto-annotated role requirements, ordering 1).
-			pnpconnectrpchandling.InterceptorProvider(func(
-				checker connectutil.MembershipChecker,
-			) ordering.OrderedItem[connect.Interceptor] {
-				return ordering.Ordered[connect.Interceptor](1, connectutil.NewRoleInterceptor(checker))
-			}),
-
-			// Error classification interceptor (after role check, ordering 2).
-			// Logs unhandled errors and converts domain errors to connect codes.
-			pnpconnectrpchandling.InterceptorProvider(func() ordering.OrderedItem[connect.Interceptor] {
-				return ordering.Ordered[connect.Interceptor](2, connectutil.NewErrorInterceptor(slog.Default()))
-			}),
-
+			pnphttpserver.HandlerMiddlewareProvider(newHTTPSecurityHeadersMiddleware),
+			pnpconnectrpchandling.InterceptorProvider(newConnectRPCRateLimitInterceptor),
+			pnpconnectrpchandling.InterceptorProvider(newConnectRPCAuthInterceptor),
+			pnpconnectrpchandling.InterceptorProvider(newConnectRPCRoleInterceptor),
+			pnpconnectrpchandling.InterceptorProvider(newConnectRPCErrorInterceptor),
 			fx.Private,
 		),
 
 		// MembershipChecker adapter as standalone FX type for downstream handler injection.
 		fx.Provide(
-			fx.Annotate(
-				func(mc *workspaceadapt.MembershipChecker) connectutil.MembershipChecker {
-					return mc
-				},
-				fx.As(new(connectutil.MembershipChecker)),
-			),
+			fx.Annotate(membershipCheckerAdapter, fx.As(new(connectutil.MembershipChecker))),
 		),
 
 		// SPA frontend handler.
@@ -118,4 +65,52 @@ func publicHTTPServerModule(options *RunAppOptions) fx.Option {
 		pipelineHTTPServerModule(),
 		notifyHTTPServerModule(),
 	)
+}
+
+func newHTTPSecurityHeadersMiddleware() ordering.OrderedItem[pnphttpserver.HandlerMiddleware] {
+	return ordering.OrderedItem[pnphttpserver.HandlerMiddleware]{
+		Value: connectutil.SecurityHeadersMiddleware,
+		Order: -2,
+	}
+}
+
+func newConnectRPCRateLimitInterceptor(lc fx.Lifecycle) ordering.OrderedItem[connect.Interceptor] {
+	rateLimiter := connectutil.NewRateLimitInterceptor(
+		map[string]connectutil.RateLimitConfig{
+			"/synclet.publicapi.auth.v1.AuthService/Login":        {Rate: rate.Every(6 * time.Second), Burst: 10}, // ~10/min
+			"/synclet.publicapi.auth.v1.AuthService/Register":     {Rate: rate.Every(20 * time.Second), Burst: 3}, // ~3/min
+			"/synclet.publicapi.auth.v1.AuthService/RefreshToken": {Rate: rate.Every(3 * time.Second), Burst: 20}, // ~20/min
+		},
+	)
+
+	lc.Append(fx.Hook{
+		OnStop: func(ctx context.Context) error {
+			rateLimiter.Stop()
+
+			return nil
+		},
+	})
+
+	return ordering.Ordered[connect.Interceptor](-1, rateLimiter)
+}
+
+func newConnectRPCAuthInterceptor(
+	validateAccessToken *authservice.ValidateAccessToken,
+	validateAPIKey *authservice.ValidateAPIKey,
+) ordering.OrderedItem[connect.Interceptor] {
+	return ordering.Ordered[connect.Interceptor](0, connectutil.NewAuthInterceptor(
+		authadapt.NewTokenValidator(validateAccessToken, validateAPIKey),
+	))
+}
+
+func newConnectRPCRoleInterceptor(checker connectutil.MembershipChecker) ordering.OrderedItem[connect.Interceptor] {
+	return ordering.Ordered[connect.Interceptor](1, connectutil.NewRoleInterceptor(checker))
+}
+
+func newConnectRPCErrorInterceptor() ordering.OrderedItem[connect.Interceptor] {
+	return ordering.Ordered[connect.Interceptor](2, connectutil.NewErrorInterceptor(slog.Default()))
+}
+
+func membershipCheckerAdapter(mc *workspaceadapt.MembershipChecker) connectutil.MembershipChecker {
+	return mc
 }

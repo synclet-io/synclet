@@ -69,6 +69,7 @@ func wrapRepositoryConnectorQueryError(err error) error {
 
 	return err
 }
+
 func wrapSourceQueryError(err error) error {
 	if err == nil {
 		return nil

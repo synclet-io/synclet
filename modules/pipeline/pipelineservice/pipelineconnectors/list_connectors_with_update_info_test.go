@@ -110,7 +110,7 @@ func TestListConnectorsWithUpdateInfo_HasUpdate(t *testing.T) {
 		DockerImageTag:   "0.2.0",
 		Name:             "Postgres",
 		ConnectorType:    pipelineservice.ConnectorTypeSource,
-		Metadata:         "{}",
+		Metadata:         pipelineservice.RepositoryConnectorMetadata{},
 	}
 
 	result, err := useCase.Execute(context.Background(), pipelineconnectors.ListConnectorsWithUpdateInfoParams{
@@ -152,7 +152,12 @@ func TestListConnectorsWithUpdateInfo_WithBreakingChanges(t *testing.T) {
 		DockerImageTag:   "1.0.0",
 		Name:             "Postgres",
 		ConnectorType:    pipelineservice.ConnectorTypeSource,
-		Metadata:         `{"breakingChanges":{"0.2.0":{"message":"Schema changed","migrationDocumentationUrl":"https://docs.example.com/migrate"},"0.5.0":{"message":"Auth changed","upgradeDeadline":"2025-01-01"}}}`,
+		Metadata: pipelineservice.RepositoryConnectorMetadata{
+			BreakingChanges: map[string]pipelineservice.BreakingChange{
+				"0.2.0": {Message: "Schema changed", MigrationDocumentationURL: "https://docs.example.com/migrate"},
+				"0.5.0": {Message: "Auth changed", UpgradeDeadline: "2025-01-01"},
+			},
+		},
 	}
 
 	result, err := useCase.Execute(context.Background(), pipelineconnectors.ListConnectorsWithUpdateInfoParams{
@@ -199,7 +204,7 @@ func TestGetConnectorWithUpdateInfo(t *testing.T) {
 		DockerImageTag:   "0.2.0",
 		Name:             "Postgres",
 		ConnectorType:    pipelineservice.ConnectorTypeSource,
-		Metadata:         "{}",
+		Metadata:         pipelineservice.RepositoryConnectorMetadata{},
 	}
 
 	result, err := useCase.Execute(context.Background(), pipelineconnectors.GetConnectorWithUpdateInfoParams{

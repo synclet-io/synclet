@@ -5,12 +5,6 @@ import (
 	"strings"
 )
 
-// OIDCConfig holds the top-level OIDC configuration.
-type OIDCConfig struct {
-	Providers       []OIDCProviderConfig
-	CallbackBaseURL string // OIDC_CALLBACK_BASE_URL (e.g. "https://synclet.mycompany.com")
-}
-
 // OIDCProviderConfig holds per-provider OIDC configuration parsed from env vars.
 type OIDCProviderConfig struct {
 	Slug           string

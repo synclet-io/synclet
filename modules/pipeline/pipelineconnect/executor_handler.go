@@ -3,6 +3,7 @@ package pipelineconnect
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"connectrpc.com/connect"
@@ -33,6 +34,7 @@ type ExecutorHandler struct {
 	batchAppendLogs    *pipelinelogs.BatchAppendJobLogs
 	claimTask          *pipelinetasks.ClaimTask
 	reportTaskResult   *pipelinetasks.ReportTaskResult
+	isTaskActive       *pipelinejobs.IsTaskActive
 	logger             *logging.Logger
 }
 
@@ -49,6 +51,7 @@ func NewExecutorHandler(
 	batchAppendLogs *pipelinelogs.BatchAppendJobLogs,
 	claimTask *pipelinetasks.ClaimTask,
 	reportTaskResult *pipelinetasks.ReportTaskResult,
+	isTaskActive *pipelinejobs.IsTaskActive,
 	logger *logging.Logger,
 ) *ExecutorHandler {
 	return &ExecutorHandler{
@@ -63,6 +66,7 @@ func NewExecutorHandler(
 		batchAppendLogs:    batchAppendLogs,
 		claimTask:          claimTask,
 		reportTaskResult:   reportTaskResult,
+		isTaskActive:       isTaskActive,
 		logger:             logger.Named("executor-handler"),
 	}
 }
@@ -325,4 +329,40 @@ func (h *ExecutorHandler) ReportConnectorTaskResult(ctx context.Context, req *co
 	}
 
 	return connect.NewResponse(&executorv1.ReportConnectorTaskResultResponse{}), nil
+}
+
+// IsTaskActive checks whether a connector task is still in pending or running status.
+// Returns active=false on any error (including not found) for safe orphan cleanup.
+func (h *ExecutorHandler) IsTaskActive(ctx context.Context, req *connect.Request[executorv1.IsTaskActiveRequest]) (*connect.Response[executorv1.IsTaskActiveResponse], error) {
+	active, err := h.isTaskActive.ExecuteByString(ctx, req.Msg.GetTaskId())
+	if err != nil {
+		return connect.NewResponse(&executorv1.IsTaskActiveResponse{Active: false}), nil //nolint:nilerr // not-found is expected, return not active
+	}
+
+	return connect.NewResponse(&executorv1.IsTaskActiveResponse{Active: active}), nil
+}
+
+// FailJob marks a job as failed with the given reason.
+func (h *ExecutorHandler) FailJob(ctx context.Context, req *connect.Request[executorv1.FailJobRequest]) (*connect.Response[executorv1.FailJobResponse], error) {
+	jobID, err := uuid.Parse(req.Msg.GetJobId())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid job_id: %w", err))
+	}
+
+	var syncErr error
+	if req.Msg.GetReason() != "" {
+		syncErr = errors.New(req.Msg.GetReason())
+	}
+
+	if err := h.updateJobStatus.Execute(ctx, pipelinejobs.UpdateJobStatusParams{
+		ID:      jobID,
+		SyncErr: syncErr,
+	}); err != nil {
+		h.logger.WithError(err).Error(ctx, "executor: fail job failed",
+			"job_id", req.Msg.GetJobId())
+
+		return nil, mapError(err)
+	}
+
+	return connect.NewResponse(&executorv1.FailJobResponse{}), nil
 }

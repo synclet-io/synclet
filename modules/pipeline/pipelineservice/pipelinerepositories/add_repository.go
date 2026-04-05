@@ -40,7 +40,7 @@ func (uc *AddRepository) Execute(ctx context.Context, params AddRepositoryParams
 		WorkspaceID:    params.WorkspaceID,
 		Name:           params.Name,
 		URL:            params.URL,
-		Status:         pipelineservice.RepositoryStatusSyncing,
+		Status:         pipelineservice.RepositoryStatusSynced,
 		ConnectorCount: 0,
 		CreatedAt:      now,
 		UpdatedAt:      now,
@@ -56,7 +56,7 @@ func (uc *AddRepository) Execute(ctx context.Context, params AddRepositoryParams
 		repo.AuthHeader = &secretRef
 	}
 
-	created, err := uc.storage.Repositorys().Create(ctx, repo)
+	created, err := uc.storage.Repositories().Create(ctx, repo)
 	if err != nil {
 		return nil, fmt.Errorf("creating repository: %w", err)
 	}
@@ -67,7 +67,7 @@ func (uc *AddRepository) Execute(ctx context.Context, params AddRepositoryParams
 		// Sync failed: delete the repository since the URL is not valid.
 		// Clean up the encrypted secret (best-effort).
 		_ = uc.secrets.DeleteByOwner(ctx, "repository", created.ID)
-		_ = uc.storage.Repositorys().Delete(ctx, &pipelineservice.RepositoryFilter{
+		_ = uc.storage.Repositories().Delete(ctx, &pipelineservice.RepositoryFilter{
 			ID: filter.Equals(created.ID),
 		})
 

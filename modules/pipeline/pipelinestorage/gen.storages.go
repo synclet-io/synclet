@@ -28,12 +28,13 @@ var _ pipelinesvc.Storage = &Storages{}
 func (s Storages) ManagedConnectors() pipelinesvc.ManagedConnectorsStorage {
 	return NewManagedConnectorsStorage(s.db, s.logger)
 }
-func (s Storages) Repositorys() pipelinesvc.RepositorysStorage {
-	return NewRepositorysStorage(s.db, s.logger)
+func (s Storages) Repositories() pipelinesvc.RepositoriesStorage {
+	return NewRepositoriesStorage(s.db, s.logger)
 }
 func (s Storages) RepositoryConnectors() pipelinesvc.RepositoryConnectorsStorage {
 	return NewRepositoryConnectorsStorage(s.db, s.logger)
 }
+
 func (s Storages) Sources() pipelinesvc.SourcesStorage {
 	return NewSourcesStorage(s.db, s.logger)
 }
@@ -49,8 +50,8 @@ func (s Storages) Jobs() pipelinesvc.JobsStorage {
 func (s Storages) JobAttempts() pipelinesvc.JobAttemptsStorage {
 	return NewJobAttemptsStorage(s.db, s.logger)
 }
-func (s Storages) CatalogDiscoverys() pipelinesvc.CatalogDiscoverysStorage {
-	return NewCatalogDiscoverysStorage(s.db, s.logger)
+func (s Storages) CatalogDiscoveries() pipelinesvc.CatalogDiscoveriesStorage {
+	return NewCatalogDiscoveriesStorage(s.db, s.logger)
 }
 func (s Storages) ConfiguredCatalogs() pipelinesvc.ConfiguredCatalogsStorage {
 	return NewConfiguredCatalogsStorage(s.db, s.logger)
@@ -62,8 +63,8 @@ func (s Storages) ConnectionStates() pipelinesvc.ConnectionStatesStorage {
 	return NewConnectionStatesStorage(s.db, s.logger)
 }
 
-func (s Storages) WorkspaceSettingss() pipelinesvc.WorkspaceSettingssStorage {
-	return NewWorkspaceSettingssStorage(s.db, s.logger)
+func (s Storages) WorkspaceSettings() pipelinesvc.WorkspaceSettingsStorage {
+	return NewWorkspaceSettingsStorage(s.db, s.logger)
 }
 func (s Storages) ConnectorTasks() pipelinesvc.ConnectorTasksStorage {
 	return NewConnectorTasksStorage(s.db, s.logger)
@@ -129,7 +130,7 @@ func NewManagedConnectorsStorage(db *gorm.DB, logger *logging.Logger) pipelinesv
 	}
 }
 
-func NewRepositorysStorage(db *gorm.DB, logger *logging.Logger) pipelinesvc.RepositorysStorage {
+func NewRepositoriesStorage(db *gorm.DB, logger *logging.Logger) pipelinesvc.RepositoriesStorage {
 	return dbutil.GormEntityStorage[pipelinesvc.Repository, dbRepository, pipelinesvc.RepositoryFilter]{
 		Logger:            logger,
 		DB:                db,
@@ -152,7 +153,7 @@ func NewRepositorysStorage(db *gorm.DB, logger *logging.Logger) pipelinesvc.Repo
 			pipelinesvc.RepositoryFieldCreatedAt:      {Name: "created_at"},
 			pipelinesvc.RepositoryFieldUpdatedAt:      {Name: "updated_at"},
 		},
-		LockScope: "pipeline.Repositorys",
+		LockScope: "pipeline.Repositories",
 	}
 }
 
@@ -339,7 +340,7 @@ func NewJobAttemptsStorage(db *gorm.DB, logger *logging.Logger) pipelinesvc.JobA
 	}
 }
 
-func NewCatalogDiscoverysStorage(db *gorm.DB, logger *logging.Logger) pipelinesvc.CatalogDiscoverysStorage {
+func NewCatalogDiscoveriesStorage(db *gorm.DB, logger *logging.Logger) pipelinesvc.CatalogDiscoveriesStorage {
 	return dbutil.GormEntityStorage[pipelinesvc.CatalogDiscovery, dbCatalogDiscovery, pipelinesvc.CatalogDiscoveryFilter]{
 		Logger:            logger,
 		DB:                db,
@@ -356,7 +357,7 @@ func NewCatalogDiscoverysStorage(db *gorm.DB, logger *logging.Logger) pipelinesv
 			pipelinesvc.CatalogDiscoveryFieldCatalogJSON:  {Name: "catalog_json"},
 			pipelinesvc.CatalogDiscoveryFieldDiscoveredAt: {Name: "discovered_at"},
 		},
-		LockScope: "pipeline.CatalogDiscoverys",
+		LockScope: "pipeline.CatalogDiscoveries",
 	}
 }
 
@@ -431,7 +432,7 @@ func NewConnectionStatesStorage(db *gorm.DB, logger *logging.Logger) pipelinesvc
 	}
 }
 
-func NewWorkspaceSettingssStorage(db *gorm.DB, logger *logging.Logger) pipelinesvc.WorkspaceSettingssStorage {
+func NewWorkspaceSettingsStorage(db *gorm.DB, logger *logging.Logger) pipelinesvc.WorkspaceSettingsStorage {
 	return dbutil.GormEntityStorage[pipelinesvc.WorkspaceSettings, dbWorkspaceSettings, pipelinesvc.WorkspaceSettingsFilter]{
 		Logger:            logger,
 		DB:                db,
@@ -447,7 +448,7 @@ func NewWorkspaceSettingssStorage(db *gorm.DB, logger *logging.Logger) pipelines
 			pipelinesvc.WorkspaceSettingsFieldCreatedAt:           {Name: "created_at"},
 			pipelinesvc.WorkspaceSettingsFieldUpdatedAt:           {Name: "updated_at"},
 		},
-		LockScope: "pipeline.WorkspaceSettingss",
+		LockScope: "pipeline.WorkspaceSettings",
 	}
 }
 

@@ -19,19 +19,17 @@ type HandleOIDCCallback struct {
 	storage               Storage
 	config                Config
 	workspaceAutoAssigner WorkspaceAutoAssigner
-	singleWorkspaceMode   bool
 	logger                *logging.Logger
 }
 
 // NewHandleOIDCCallback creates a new HandleOIDCCallback use case.
-func NewHandleOIDCCallback(providers map[string]*OIDCProvider, stateStore *StateStore, storage Storage, config Config, workspaceAutoAssigner WorkspaceAutoAssigner, singleWorkspaceMode bool, logger *logging.Logger) *HandleOIDCCallback {
+func NewHandleOIDCCallback(providers map[string]*OIDCProvider, stateStore *StateStore, storage Storage, config Config, workspaceAutoAssigner WorkspaceAutoAssigner, logger *logging.Logger) *HandleOIDCCallback {
 	return &HandleOIDCCallback{
 		providers:             providers,
 		stateStore:            stateStore,
 		storage:               storage,
 		config:                config,
 		workspaceAutoAssigner: workspaceAutoAssigner,
-		singleWorkspaceMode:   singleWorkspaceMode,
 		logger:                logger,
 	}
 }
@@ -112,14 +110,14 @@ func (uc *HandleOIDCCallback) Execute(ctx context.Context, providerSlug, code, s
 // 4. Create oidc_identity link
 func (uc *HandleOIDCCallback) findOrCreateUser(ctx context.Context, cfg OIDCProviderConfig, subject, email, name string) (*User, error) {
 	// Check for existing OIDC identity link.
-	existing, err := uc.storage.OIDCIdentitys().First(ctx, &OIDCIdentityFilter{
+	existing, err := uc.storage.OIDCIdentities().First(ctx, &OIDCIdentityFilter{
 		ProviderSlug: filter.Equals(cfg.Slug),
 		Subject:      filter.Equals(subject),
 	})
 	if err == nil {
 		// Update last login time.
 		existing.LastLoginAt = time.Now()
-		if _, err := uc.storage.OIDCIdentitys().Update(ctx, existing); err != nil {
+		if _, err := uc.storage.OIDCIdentities().Update(ctx, existing); err != nil {
 			uc.logger.WithError(err).WithField("identity_id", existing.ID).Warn(ctx, "failed to update OIDC identity last login time")
 		}
 		// Return the linked user.
@@ -164,7 +162,7 @@ func (uc *HandleOIDCCallback) findOrCreateUser(ctx context.Context, cfg OIDCProv
 		}
 
 		// Auto-assign to default workspace in single-workspace mode.
-		if uc.singleWorkspaceMode {
+		if uc.config.SingleWorkspaceMode {
 			if err := uc.workspaceAutoAssigner.AutoAssign(ctx, user.ID); err != nil {
 				return nil, fmt.Errorf("auto-assigning to default workspace: %w", err)
 			}
@@ -181,7 +179,7 @@ func (uc *HandleOIDCCallback) findOrCreateUser(ctx context.Context, cfg OIDCProv
 		CreatedAt:    time.Now(),
 		LastLoginAt:  time.Now(),
 	}
-	if _, err := uc.storage.OIDCIdentitys().Create(ctx, identity); err != nil {
+	if _, err := uc.storage.OIDCIdentities().Create(ctx, identity); err != nil {
 		return nil, fmt.Errorf("creating oidc identity: %w", err)
 	}
 

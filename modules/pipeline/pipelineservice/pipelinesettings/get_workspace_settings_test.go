@@ -16,7 +16,7 @@ import (
 func TestGetWorkspaceSettings_ReturnsDefault_WhenNotFound(t *testing.T) {
 	wsID := uuid.New()
 	storage := &mockStorage{
-		workspaceSettings: &mockWorkspaceSettingssStorage{
+		workspaceSettings: &mockWorkspaceSettingsStorage{
 			firstErr: pipelineservice.ErrWorkspaceSettingsNotFound,
 		},
 	}
@@ -32,7 +32,7 @@ func TestGetWorkspaceSettings_ReturnsDefault_WhenNotFound(t *testing.T) {
 func TestGetWorkspaceSettings_ReturnsStoredValue(t *testing.T) {
 	wsID := uuid.New()
 	storage := &mockStorage{
-		workspaceSettings: &mockWorkspaceSettingssStorage{
+		workspaceSettings: &mockWorkspaceSettingsStorage{
 			firstResult: &pipelineservice.WorkspaceSettings{
 				WorkspaceID:         wsID,
 				MaxJobsPerWorkspace: 50,
@@ -49,7 +49,7 @@ func TestGetWorkspaceSettings_ReturnsStoredValue(t *testing.T) {
 
 func TestGetWorkspaceSettings_PropagatesStorageError(t *testing.T) {
 	storage := &mockStorage{
-		workspaceSettings: &mockWorkspaceSettingssStorage{
+		workspaceSettings: &mockWorkspaceSettingsStorage{
 			firstErr: errors.New("db connection lost"),
 		},
 	}

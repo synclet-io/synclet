@@ -28,16 +28,18 @@ type DeliverWebhookParams struct {
 type DeliverWebhook struct {
 	storage    Storage
 	secrets    SecretsProvider
+	cfg        Config
 	httpClient *http.Client
 }
 
 // NewDeliverWebhook creates a new DeliverWebhook use case.
-func NewDeliverWebhook(storage Storage, secrets SecretsProvider) *DeliverWebhook {
+func NewDeliverWebhook(storage Storage, secrets SecretsProvider, cfg Config) *DeliverWebhook {
 	return &DeliverWebhook{
 		storage: storage,
 		secrets: secrets,
+		cfg:     cfg,
 		httpClient: &http.Client{
-			Timeout: 10 * time.Second,
+			Timeout: cfg.WebhookHTTPTimeout,
 		},
 	}
 }
@@ -68,8 +70,8 @@ func (uc *DeliverWebhook) Execute(ctx context.Context, params DeliverWebhookPara
 			continue
 		}
 
-		// Retry up to 3 times with context-aware backoff.
-		for attempt := range 3 {
+		// Retry with context-aware backoff.
+		for attempt := range uc.cfg.WebhookMaxRetries {
 			if err := uc.sendWebhook(ctx, webhook, payload); err == nil {
 				break
 			}

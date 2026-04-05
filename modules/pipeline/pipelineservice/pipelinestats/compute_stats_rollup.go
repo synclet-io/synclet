@@ -12,21 +12,22 @@ import (
 // Runs as a background job every 5 minutes for fast dashboard queries.
 type ComputeStatsRollup struct {
 	statsStorage pipelineservice.StatsStorage
+	cfg          pipelineservice.Config
 }
 
 // NewComputeStatsRollup creates a new ComputeStatsRollup use case.
-func NewComputeStatsRollup(statsStorage pipelineservice.StatsStorage) *ComputeStatsRollup {
-	return &ComputeStatsRollup{statsStorage: statsStorage}
+func NewComputeStatsRollup(statsStorage pipelineservice.StatsStorage, cfg pipelineservice.Config) *ComputeStatsRollup {
+	return &ComputeStatsRollup{statsStorage: statsStorage, cfg: cfg}
 }
 
 // Execute computes hourly and daily rollup buckets from completed/failed jobs.
 // Uses ON CONFLICT for idempotent upserts so re-runs produce the same results.
 func (uc *ComputeStatsRollup) Execute(ctx context.Context) error {
-	if err := uc.computeRollups(ctx, pipelineservice.BucketSizeHourly, 2*time.Hour); err != nil {
+	if err := uc.computeRollups(ctx, pipelineservice.BucketSizeHourly, uc.cfg.StatsRollupHourlyLookback); err != nil {
 		return fmt.Errorf("computing hourly rollups: %w", err)
 	}
 
-	if err := uc.computeRollups(ctx, pipelineservice.BucketSizeDaily, 48*time.Hour); err != nil {
+	if err := uc.computeRollups(ctx, pipelineservice.BucketSizeDaily, uc.cfg.StatsRollupDailyLookback); err != nil {
 		return fmt.Errorf("computing daily rollups: %w", err)
 	}
 

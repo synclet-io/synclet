@@ -13,18 +13,18 @@ import (
 
 type Storage interface {
 	ManagedConnectors() ManagedConnectorsStorage
-	Repositorys() RepositorysStorage
+	Repositories() RepositoriesStorage
 	RepositoryConnectors() RepositoryConnectorsStorage
 	Sources() SourcesStorage
 	Destinations() DestinationsStorage
 	Connections() ConnectionsStorage
 	Jobs() JobsStorage
 	JobAttempts() JobAttemptsStorage
-	CatalogDiscoverys() CatalogDiscoverysStorage
+	CatalogDiscoveries() CatalogDiscoveriesStorage
 	ConfiguredCatalogs() ConfiguredCatalogsStorage
 	JobLogs() JobLogsStorage
 	ConnectionStates() ConnectionStatesStorage
-	WorkspaceSettingss() WorkspaceSettingssStorage
+	WorkspaceSettings() WorkspaceSettingsStorage
 	ConnectorTasks() ConnectorTasksStorage
 	StreamGenerations() StreamGenerationsStorage
 	IdempotencyKeys() idempotency.Storage
@@ -32,7 +32,7 @@ type Storage interface {
 	WithAdvisoryLock(ctx context.Context, scope string, lockID int64) error
 }
 type ManagedConnectorsStorage dbutil.EntityStorage[ManagedConnector, ManagedConnectorFilter]
-type RepositorysStorage dbutil.EntityStorage[Repository, RepositoryFilter]
+type RepositoriesStorage dbutil.EntityStorage[Repository, RepositoryFilter]
 type RepositoryConnectorsStorage dbutil.EntityStorage[RepositoryConnector, RepositoryConnectorFilter]
 type SourcesStorage dbutil.EntityStorage[Source, SourceFilter]
 type DestinationsStorage dbutil.EntityStorage[Destination, DestinationFilter]
@@ -66,7 +66,7 @@ type JobsStorage interface {
 // user code 'Job definitions'
 // end user code 'Job definitions'
 type JobAttemptsStorage dbutil.EntityStorage[JobAttempt, JobAttemptFilter]
-type CatalogDiscoverysStorage dbutil.EntityStorage[CatalogDiscovery, CatalogDiscoveryFilter]
+type CatalogDiscoveriesStorage dbutil.EntityStorage[CatalogDiscovery, CatalogDiscoveryFilter]
 type ConfiguredCatalogsStorage dbutil.EntityStorage[ConfiguredCatalog, ConfiguredCatalogFilter]
 type JobLogsStorage interface {
 	dbutil.EntityStorage[JobLog, JobLogFilter]
@@ -80,7 +80,7 @@ type JobLogsStorage interface {
 // user code 'JobLog definitions'
 // end user code 'JobLog definitions'
 type ConnectionStatesStorage dbutil.EntityStorage[ConnectionState, ConnectionStateFilter]
-type WorkspaceSettingssStorage dbutil.EntityStorage[WorkspaceSettings, WorkspaceSettingsFilter]
+type WorkspaceSettingsStorage dbutil.EntityStorage[WorkspaceSettings, WorkspaceSettingsFilter]
 type ConnectorTasksStorage interface {
 	dbutil.EntityStorage[ConnectorTask, ConnectorTaskFilter]
 	// user code 'ConnectorTask metods'

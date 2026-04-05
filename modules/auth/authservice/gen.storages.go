@@ -13,7 +13,7 @@ type Storage interface {
 	Users() UsersStorage
 	RefreshTokens() RefreshTokensStorage
 	APIKeys() APIKeysStorage
-	OIDCIdentitys() OIDCIdentitysStorage
+	OIDCIdentities() OIDCIdentitiesStorage
 	OIDCStates() OIDCStatesStorage
 	IdempotencyKeys() idempotency.Storage
 	ExecuteInTransaction(ctx context.Context, cb func(ctx context.Context, tx Storage) error) error
@@ -22,5 +22,5 @@ type Storage interface {
 type UsersStorage dbutil.EntityStorage[User, UserFilter]
 type RefreshTokensStorage dbutil.EntityStorage[RefreshToken, RefreshTokenFilter]
 type APIKeysStorage dbutil.EntityStorage[APIKey, APIKeyFilter]
-type OIDCIdentitysStorage dbutil.EntityStorage[OIDCIdentity, OIDCIdentityFilter]
+type OIDCIdentitiesStorage dbutil.EntityStorage[OIDCIdentity, OIDCIdentityFilter]
 type OIDCStatesStorage dbutil.EntityStorage[OIDCState, OIDCStateFilter]

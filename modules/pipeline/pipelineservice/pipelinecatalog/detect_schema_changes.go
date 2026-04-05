@@ -35,7 +35,7 @@ func NewDetectSchemaChanges(storage pipelineservice.Storage, connector pipelines
 // Execute detects schema changes between the latest catalog and the configured catalog.
 func (uc *DetectSchemaChanges) Execute(ctx context.Context, params DetectSchemaChangesParams) ([]SchemaChange, error) {
 	// Get the latest discovered catalog.
-	latestRecord, err := uc.storage.CatalogDiscoverys().First(ctx, &pipelineservice.CatalogDiscoveryFilter{
+	latestRecord, err := uc.storage.CatalogDiscoveries().First(ctx, &pipelineservice.CatalogDiscoveryFilter{
 		SourceID: filter.Equals(params.SourceID),
 	}, dbutil.WithOrder(pipelineservice.CatalogDiscoveryFieldVersion, dbutil.OrderDirDesc))
 	if err != nil {

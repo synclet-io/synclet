@@ -11,11 +11,12 @@ import (
 // ChangePassword changes a user's password after verifying the current one.
 type ChangePassword struct {
 	storage Storage
+	cfg     Config
 }
 
 // NewChangePassword creates a new ChangePassword use case.
-func NewChangePassword(storage Storage) *ChangePassword {
-	return &ChangePassword{storage: storage}
+func NewChangePassword(storage Storage, cfg Config) *ChangePassword {
+	return &ChangePassword{storage: storage, cfg: cfg}
 }
 
 // Execute verifies the current password and updates to the new password.
@@ -36,7 +37,7 @@ func (uc *ChangePassword) Execute(ctx context.Context, userID uuid.UUID, current
 		return ErrInvalidCurrentPassword
 	}
 
-	if err := ValidatePassword(newPassword); err != nil {
+	if err := ValidatePassword(newPassword, uc.cfg.MinPasswordLength); err != nil {
 		return err
 	}
 

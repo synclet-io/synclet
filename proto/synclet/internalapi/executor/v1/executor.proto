@@ -44,6 +44,10 @@ service ExecutorService {
   // Connector task RPCs per D-15/D-18
   rpc ClaimConnectorTask(ClaimConnectorTaskRequest) returns (ClaimConnectorTaskResponse);
   rpc ReportConnectorTaskResult(ReportConnectorTaskResultRequest) returns (ReportConnectorTaskResultResponse);
+
+  // Resource status RPCs for K8s reconciler
+  rpc IsTaskActive(IsTaskActiveRequest) returns (IsTaskActiveResponse);
+  rpc FailJob(FailJobRequest) returns (FailJobResponse);
 }
 
 message HeartbeatRequest {
@@ -170,3 +174,20 @@ message ReportConnectorTaskResultRequest {
 }
 
 message ReportConnectorTaskResultResponse {}
+
+// IsTaskActive: reconciler queries whether a connector task is still active
+message IsTaskActiveRequest {
+  string task_id = 1;
+}
+
+message IsTaskActiveResponse {
+  bool active = 1;
+}
+
+// FailJob: reconciler reports a job as failed with a reason
+message FailJobRequest {
+  string job_id = 1;
+  string reason = 2;
+}
+
+message FailJobResponse {}

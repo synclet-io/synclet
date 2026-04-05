@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
-	"time"
+	"strings"
 
 	"go.uber.org/multierr"
 
@@ -18,14 +19,14 @@ type ConnectorData struct {
 	DockerRepository string
 	DockerImageTag   string
 	DocumentationURL string
-	ReleaseStage     string
+	ReleaseStage     pipelineservice.ReleaseStage
 	IconURL          string
-	ConnectorType    string // "source" or "destination"
+	ConnectorType    pipelineservice.ConnectorType
 	Spec             string // JSON string of connectionSpecification, empty if not available
-	SupportLevel     string
+	SupportLevel     pipelineservice.SupportLevel
 	License          string
-	SourceType       string
-	Metadata         string // JSON string of RepositoryConnectorMetadata
+	SourceType       pipelineservice.SourceType
+	Metadata         pipelineservice.RepositoryConnectorMetadata
 }
 
 // RegistryFetcher fetches and parses Airbyte-format connector registry JSON.
@@ -34,9 +35,9 @@ type RegistryFetcher struct {
 }
 
 // NewRegistryFetcher creates a new RegistryFetcher with a default HTTP client.
-func NewRegistryFetcher() *RegistryFetcher {
+func NewRegistryFetcher(cfg pipelineservice.Config) *RegistryFetcher {
 	return &RegistryFetcher{
-		httpClient: &http.Client{Timeout: 60 * time.Second},
+		httpClient: &http.Client{Timeout: cfg.RegistryFetchTimeout},
 	}
 }
 
@@ -147,10 +148,15 @@ func (f *RegistryFetcher) Fetch(ctx context.Context, url string, authHeader *str
 	}
 
 	// Limit response size to 50MB to prevent memory exhaustion.
-	limitedBody := http.MaxBytesReader(nil, resp.Body, 50*1024*1024)
+	const maxRegistrySize = 50 * 1024 * 1024
+	lr := &io.LimitedReader{R: resp.Body, N: maxRegistrySize}
 
 	var registry airbyteRegistry
-	if err := json.NewDecoder(limitedBody).Decode(&registry); err != nil {
+	if err := json.NewDecoder(lr).Decode(&registry); err != nil {
+		if lr.N <= 0 {
+			return nil, fmt.Errorf("registry response exceeds %dMB size limit", maxRegistrySize/(1024*1024))
+		}
+
 		return nil, fmt.Errorf("decoding registry JSON: %w", err)
 	}
 
@@ -161,7 +167,7 @@ func (f *RegistryFetcher) Fetch(ctx context.Context, url string, authHeader *str
 			continue
 		}
 
-		connectors = append(connectors, toConnectorData(s, "source"))
+		connectors = append(connectors, toConnectorData(s, pipelineservice.ConnectorTypeSource))
 	}
 
 	for _, d := range registry.Destinations {
@@ -169,7 +175,7 @@ func (f *RegistryFetcher) Fetch(ctx context.Context, url string, authHeader *str
 			continue
 		}
 
-		connectors = append(connectors, toConnectorData(d, "destination"))
+		connectors = append(connectors, toConnectorData(d, pipelineservice.ConnectorTypeDestination))
 	}
 
 	return connectors, nil
@@ -182,22 +188,20 @@ func isEnterpriseLicensed(c airbyteConnector) bool {
 }
 
 // toConnectorData maps an airbyteConnector to ConnectorData, extracting all metadata fields.
-func toConnectorData(connector airbyteConnector, connectorType string) ConnectorData {
-	metadata := buildMetadata(connector)
-
+func toConnectorData(connector airbyteConnector, connectorType pipelineservice.ConnectorType) ConnectorData {
 	return ConnectorData{
 		Name:             connector.Name,
 		DockerRepository: connector.DockerRepository,
 		DockerImageTag:   connector.DockerImageTag,
 		DocumentationURL: connector.DocumentationURL,
-		ReleaseStage:     connector.ReleaseStage,
-		IconURL:          connector.IconURL, // Use iconUrl CDN URL (D-04), not icon filename
+		ReleaseStage:     parseReleaseStage(connector.ReleaseStage),
+		IconURL:          connector.IconURL,
 		ConnectorType:    connectorType,
 		Spec:             marshalConnectorSpec(connector.Spec, connector.DocumentationURL),
-		SupportLevel:     connector.SupportLevel,
+		SupportLevel:     parseSupportLevel(connector.SupportLevel),
 		License:          connector.License,
-		SourceType:       connector.SourceType,
-		Metadata:         pipelineservice.MarshalMetadata(&metadata),
+		SourceType:       parseSourceType(connector.SourceType),
+		Metadata:         buildMetadata(connector),
 	}
 }
 
@@ -291,4 +295,54 @@ func marshalConnectorSpec(spec *airbyteSpec, documentationURL string) string {
 	}
 
 	return string(data)
+}
+
+func parseConnectorType(s string) pipelineservice.ConnectorType {
+	switch strings.ToLower(s) {
+	case "source":
+		return pipelineservice.ConnectorTypeSource
+	case "destination":
+		return pipelineservice.ConnectorTypeDestination
+	default:
+		return pipelineservice.ConnectorTypeSource
+	}
+}
+
+func parseSupportLevel(s string) pipelineservice.SupportLevel {
+	switch strings.ToLower(s) {
+	case "community":
+		return pipelineservice.SupportLevelCommunity
+	case "certified":
+		return pipelineservice.SupportLevelCertified
+	default:
+		return pipelineservice.SupportLevelUnknown
+	}
+}
+
+func parseSourceType(s string) pipelineservice.SourceType {
+	switch strings.ToLower(s) {
+	case "api":
+		return pipelineservice.SourceTypeAPI
+	case "database":
+		return pipelineservice.SourceTypeDatabase
+	case "file":
+		return pipelineservice.SourceTypeFile
+	default:
+		return pipelineservice.SourceTypeUnknown
+	}
+}
+
+func parseReleaseStage(s string) pipelineservice.ReleaseStage {
+	switch strings.ToLower(s) {
+	case "generally_available":
+		return pipelineservice.ReleaseStageGenerallyAvailable
+	case "beta":
+		return pipelineservice.ReleaseStageBeta
+	case "alpha":
+		return pipelineservice.ReleaseStageAlpha
+	case "custom":
+		return pipelineservice.ReleaseStageCustom
+	default:
+		return pipelineservice.ReleaseStageUnknown
+	}
 }

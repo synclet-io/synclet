@@ -2,8 +2,11 @@ package pipelineconnect
 
 import (
 	"errors"
+	"fmt"
+	"strings"
 
 	"connectrpc.com/connect"
+	"github.com/samber/lo"
 
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
 )
@@ -11,19 +14,16 @@ import (
 // mapError maps pipeline domain errors to ConnectRPC error codes.
 // Unknown errors are returned raw so the error interceptor can log them.
 func mapError(err error) error {
-	var notFound pipelineservice.NotFoundError
-	if errors.As(err, &notFound) {
-		return connect.NewError(connect.CodeNotFound, err)
+	if notFoundErr, ok := lo.ErrorsAs[pipelineservice.NotFoundError](err); ok {
+		return connect.NewError(connect.CodeNotFound, fmt.Errorf("%s not found", strings.ToLower(string(notFoundErr))))
 	}
 
-	var alreadyExists pipelineservice.AlreadyExistsError
-	if errors.As(err, &alreadyExists) {
-		return connect.NewError(connect.CodeAlreadyExists, err)
+	if alreadyExists, ok := lo.ErrorsAs[pipelineservice.AlreadyExistsError](err); ok {
+		return connect.NewError(connect.CodeAlreadyExists, fmt.Errorf("%s already exists", strings.ToLower(string(alreadyExists))))
 	}
 
-	var validation *pipelineservice.ValidationError
-	if errors.As(err, &validation) {
-		return connect.NewError(connect.CodeInvalidArgument, err)
+	if validationErr, ok := lo.ErrorsAs[*pipelineservice.ValidationError](err); ok {
+		return connect.NewError(connect.CodeInvalidArgument, validationErr)
 	}
 
 	if errors.Is(err, pipelineservice.ErrStateDataInvalidJSON) ||
