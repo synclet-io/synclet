@@ -24,8 +24,13 @@ services:
       INTERNAL_HTTP_SERVER_ADDR: "0.0.0.0:8087"
       ENVIRONMENT: production
       LOG_LEVEL: info
+      # Scratch dir shared with the host so the host Docker daemon can
+      # bind-mount per-task config/catalog/state files into spawned connector
+      # containers. Path must match the volume mount below verbatim.
+      PIPELINE_DOCKER_TEMP_DIR_ROOT: /tmp/synclet
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - /tmp/synclet:/tmp/synclet
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -39,7 +44,7 @@ services:
       POSTGRES_PASSWORD: synclet
       POSTGRES_DB: synclet
     ports:
-      - "5432:5432"
+      - "5437:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:

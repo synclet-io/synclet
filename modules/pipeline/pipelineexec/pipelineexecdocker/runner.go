@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 	"sync"
 
@@ -80,18 +81,25 @@ var _ pkgcontainer.Runner = (*ContainerRunner)(nil)
 
 // ContainerRunner manages Docker containers for running Airbyte connectors.
 type ContainerRunner struct {
-	client *client.Client
+	client      *client.Client
+	tempDirRoot string
 }
 
 // NewContainerRunner creates a new ContainerRunner using the default Docker client
 // configuration (DOCKER_HOST env var, or the default Docker socket).
-func NewContainerRunner() (*ContainerRunner, error) {
+//
+// tempDirRoot is the directory under which per-task scratch directories are
+// created. Pass "" for the OS default. In Docker-in-Docker deployments this
+// must point at a path bind-mounted to the same location on the host so the
+// host Docker daemon can resolve the bind-mount source — see
+// pipelineConfig.DockerTempDirRoot for the wiring.
+func NewContainerRunner(tempDirRoot string) (*ContainerRunner, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, fmt.Errorf("creating docker client: %w", err)
 	}
 
-	return &ContainerRunner{client: cli}, nil
+	return &ContainerRunner{client: cli, tempDirRoot: tempDirRoot}, nil
 }
 
 // ResolveDigest returns the digest-pinned reference for a locally available image.
@@ -150,7 +158,7 @@ func (r *ContainerRunner) Run(ctx context.Context, opts RunOptions) (*RunResult,
 	if len(files) > 0 {
 		var err error
 
-		tempDir, err = CreateTempDir(files)
+		tempDir, err = CreateTempDir(r.tempDirRoot, files)
 		if err != nil {
 			return nil, fmt.Errorf("creating temp dir: %w", err)
 		}
@@ -159,7 +167,7 @@ func (r *ContainerRunner) Run(ctx context.Context, opts RunOptions) (*RunResult,
 	// Clean up helper used on error paths.
 	cleanup := func() {
 		if tempDir != "" {
-			_ = CleanupTempDir(tempDir)
+			_ = os.RemoveAll(tempDir)
 		}
 	}
 
@@ -315,7 +323,7 @@ func (r *ContainerRunner) Run(ctx context.Context, opts RunOptions) (*RunResult,
 
 		// Clean up temp directory after container exits.
 		if tempDir != "" {
-			_ = CleanupTempDir(tempDir)
+			_ = os.RemoveAll(tempDir)
 		}
 	}()
 

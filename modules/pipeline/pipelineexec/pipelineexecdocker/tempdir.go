@@ -6,11 +6,23 @@ import (
 	"path/filepath"
 )
 
-// CreateTempDir creates a temporary directory and writes the provided files into it.
-// The keys of the files map are filenames (e.g., "config.json"), and the values are file contents.
-// Returns the path to the created directory.
-func CreateTempDir(files map[string][]byte) (string, error) {
-	dir, err := os.MkdirTemp("", "synclet-docker-*")
+// CreateTempDir creates a temporary directory under rootDir and writes the
+// provided files into it. The keys of the files map are filenames (e.g.,
+// "config.json"), and the values are file contents.
+//
+// Pass rootDir == "" to use os.MkdirTemp's default (the OS temp dir). When
+// synclet runs inside Docker and dispatches tasks to the host Docker daemon
+// via /var/run/docker.sock, rootDir must point at a path that is bind-mounted
+// to the same location on the host so the daemon can resolve the bind-mount
+// source — see pipelineConfig.DockerTempDirRoot for the wiring.
+func CreateTempDir(rootDir string, files map[string][]byte) (string, error) {
+	if rootDir != "" {
+		if err := os.MkdirAll(rootDir, 0o750); err != nil {
+			return "", fmt.Errorf("ensuring temp dir root %s: %w", rootDir, err)
+		}
+	}
+
+	dir, err := os.MkdirTemp(rootDir, "synclet-docker-*")
 	if err != nil {
 		return "", fmt.Errorf("creating temp dir: %w", err)
 	}
@@ -26,13 +38,4 @@ func CreateTempDir(files map[string][]byte) (string, error) {
 	}
 
 	return dir, nil
-}
-
-// CleanupTempDir removes the temporary directory and all its contents.
-func CleanupTempDir(path string) error {
-	if err := os.RemoveAll(path); err != nil {
-		return fmt.Errorf("removing temp dir %s: %w", path, err)
-	}
-
-	return nil
 }
