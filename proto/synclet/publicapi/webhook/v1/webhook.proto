@@ -22,6 +22,9 @@ service WebhookService {
   rpc ListWebhooks(ListWebhooksRequest) returns (ListWebhooksResponse) {
     option (synclet.options.v1.required_role) = REQUIRED_ROLE_ADMIN;
   }
+  rpc TestWebhook(TestWebhookRequest) returns (TestWebhookResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_ADMIN;
+  }
 }
 
 message WebhookInfo {
@@ -68,4 +71,17 @@ message ListWebhooksRequest {
 
 message ListWebhooksResponse {
   repeated WebhookInfo webhooks = 1;
+}
+
+message TestWebhookRequest {
+  string id = 1;
+}
+
+message TestWebhookResponse {
+  // HTTP status code returned by the remote endpoint (0 if request failed before
+  // reading a response).
+  int32 delivery_status_code = 1;
+  // Empty when delivery succeeded with a 2xx response. Otherwise carries a
+  // human-readable error suitable for a toast.
+  string delivery_error = 2;
 }

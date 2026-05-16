@@ -45,6 +45,9 @@ const (
 	// WebhookServiceListWebhooksProcedure is the fully-qualified name of the WebhookService's
 	// ListWebhooks RPC.
 	WebhookServiceListWebhooksProcedure = "/synclet.publicapi.webhook.v1.WebhookService/ListWebhooks"
+	// WebhookServiceTestWebhookProcedure is the fully-qualified name of the WebhookService's
+	// TestWebhook RPC.
+	WebhookServiceTestWebhookProcedure = "/synclet.publicapi.webhook.v1.WebhookService/TestWebhook"
 )
 
 // WebhookServiceClient is a client for the synclet.publicapi.webhook.v1.WebhookService service.
@@ -53,6 +56,7 @@ type WebhookServiceClient interface {
 	UpdateWebhook(context.Context, *connect.Request[v1.UpdateWebhookRequest]) (*connect.Response[v1.UpdateWebhookResponse], error)
 	DeleteWebhook(context.Context, *connect.Request[v1.DeleteWebhookRequest]) (*connect.Response[v1.DeleteWebhookResponse], error)
 	ListWebhooks(context.Context, *connect.Request[v1.ListWebhooksRequest]) (*connect.Response[v1.ListWebhooksResponse], error)
+	TestWebhook(context.Context, *connect.Request[v1.TestWebhookRequest]) (*connect.Response[v1.TestWebhookResponse], error)
 }
 
 // NewWebhookServiceClient constructs a client for the synclet.publicapi.webhook.v1.WebhookService
@@ -90,6 +94,12 @@ func NewWebhookServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(webhookServiceMethods.ByName("ListWebhooks")),
 			connect.WithClientOptions(opts...),
 		),
+		testWebhook: connect.NewClient[v1.TestWebhookRequest, v1.TestWebhookResponse](
+			httpClient,
+			baseURL+WebhookServiceTestWebhookProcedure,
+			connect.WithSchema(webhookServiceMethods.ByName("TestWebhook")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -99,6 +109,7 @@ type webhookServiceClient struct {
 	updateWebhook *connect.Client[v1.UpdateWebhookRequest, v1.UpdateWebhookResponse]
 	deleteWebhook *connect.Client[v1.DeleteWebhookRequest, v1.DeleteWebhookResponse]
 	listWebhooks  *connect.Client[v1.ListWebhooksRequest, v1.ListWebhooksResponse]
+	testWebhook   *connect.Client[v1.TestWebhookRequest, v1.TestWebhookResponse]
 }
 
 // CreateWebhook calls synclet.publicapi.webhook.v1.WebhookService.CreateWebhook.
@@ -121,6 +132,11 @@ func (c *webhookServiceClient) ListWebhooks(ctx context.Context, req *connect.Re
 	return c.listWebhooks.CallUnary(ctx, req)
 }
 
+// TestWebhook calls synclet.publicapi.webhook.v1.WebhookService.TestWebhook.
+func (c *webhookServiceClient) TestWebhook(ctx context.Context, req *connect.Request[v1.TestWebhookRequest]) (*connect.Response[v1.TestWebhookResponse], error) {
+	return c.testWebhook.CallUnary(ctx, req)
+}
+
 // WebhookServiceHandler is an implementation of the synclet.publicapi.webhook.v1.WebhookService
 // service.
 type WebhookServiceHandler interface {
@@ -128,6 +144,7 @@ type WebhookServiceHandler interface {
 	UpdateWebhook(context.Context, *connect.Request[v1.UpdateWebhookRequest]) (*connect.Response[v1.UpdateWebhookResponse], error)
 	DeleteWebhook(context.Context, *connect.Request[v1.DeleteWebhookRequest]) (*connect.Response[v1.DeleteWebhookResponse], error)
 	ListWebhooks(context.Context, *connect.Request[v1.ListWebhooksRequest]) (*connect.Response[v1.ListWebhooksResponse], error)
+	TestWebhook(context.Context, *connect.Request[v1.TestWebhookRequest]) (*connect.Response[v1.TestWebhookResponse], error)
 }
 
 // NewWebhookServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -161,6 +178,12 @@ func NewWebhookServiceHandler(svc WebhookServiceHandler, opts ...connect.Handler
 		connect.WithSchema(webhookServiceMethods.ByName("ListWebhooks")),
 		connect.WithHandlerOptions(opts...),
 	)
+	webhookServiceTestWebhookHandler := connect.NewUnaryHandler(
+		WebhookServiceTestWebhookProcedure,
+		svc.TestWebhook,
+		connect.WithSchema(webhookServiceMethods.ByName("TestWebhook")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/synclet.publicapi.webhook.v1.WebhookService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case WebhookServiceCreateWebhookProcedure:
@@ -171,6 +194,8 @@ func NewWebhookServiceHandler(svc WebhookServiceHandler, opts ...connect.Handler
 			webhookServiceDeleteWebhookHandler.ServeHTTP(w, r)
 		case WebhookServiceListWebhooksProcedure:
 			webhookServiceListWebhooksHandler.ServeHTTP(w, r)
+		case WebhookServiceTestWebhookProcedure:
+			webhookServiceTestWebhookHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -194,4 +219,8 @@ func (UnimplementedWebhookServiceHandler) DeleteWebhook(context.Context, *connec
 
 func (UnimplementedWebhookServiceHandler) ListWebhooks(context.Context, *connect.Request[v1.ListWebhooksRequest]) (*connect.Response[v1.ListWebhooksResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("synclet.publicapi.webhook.v1.WebhookService.ListWebhooks is not implemented"))
+}
+
+func (UnimplementedWebhookServiceHandler) TestWebhook(context.Context, *connect.Request[v1.TestWebhookRequest]) (*connect.Response[v1.TestWebhookResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("synclet.publicapi.webhook.v1.WebhookService.TestWebhook is not implemented"))
 }

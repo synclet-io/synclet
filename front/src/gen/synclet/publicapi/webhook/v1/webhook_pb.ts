@@ -13,7 +13,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file synclet/publicapi/webhook/v1/webhook.proto.
  */
 export const file_synclet_publicapi_webhook_v1_webhook: GenFile = /*@__PURE__*/
-  fileDesc("CipzeW5jbGV0L3B1YmxpY2FwaS93ZWJob29rL3YxL3dlYmhvb2sucHJvdG8SHHN5bmNsZXQucHVibGljYXBpLndlYmhvb2sudjEivQEKC1dlYmhvb2tJbmZvEgoKAmlkGAEgASgJEhQKDHdvcmtzcGFjZV9pZBgCIAEoCRILCgN1cmwYAyABKAkSDgoGZXZlbnRzGAQgAygJEg8KB2VuYWJsZWQYBSABKAgSLgoKY3JlYXRlZF9hdBgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLgoKdXBkYXRlZF9hdBgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiWQoUQ3JlYXRlV2ViaG9va1JlcXVlc3QSFAoMd29ya3NwYWNlX2lkGAEgASgJEgsKA3VybBgCIAEoCRIOCgZldmVudHMYAyADKAkSDgoGc2VjcmV0GAQgASgJIlMKFUNyZWF0ZVdlYmhvb2tSZXNwb25zZRI6Cgd3ZWJob29rGAEgASgLMikuc3luY2xldC5wdWJsaWNhcGkud2ViaG9vay52MS5XZWJob29rSW5mbyJuChRVcGRhdGVXZWJob29rUmVxdWVzdBIKCgJpZBgBIAEoCRIQCgN1cmwYAiABKAlIAIgBARIOCgZldmVudHMYAyADKAkSFAoHZW5hYmxlZBgEIAEoCEgBiAEBQgYKBF91cmxCCgoIX2VuYWJsZWQiUwoVVXBkYXRlV2ViaG9va1Jlc3BvbnNlEjoKB3dlYmhvb2sYASABKAsyKS5zeW5jbGV0LnB1YmxpY2FwaS53ZWJob29rLnYxLldlYmhvb2tJbmZvIiIKFERlbGV0ZVdlYmhvb2tSZXF1ZXN0EgoKAmlkGAEgASgJIhcKFURlbGV0ZVdlYmhvb2tSZXNwb25zZSIrChNMaXN0V2ViaG9va3NSZXF1ZXN0EhQKDHdvcmtzcGFjZV9pZBgBIAEoCSJTChRMaXN0V2ViaG9va3NSZXNwb25zZRI7Cgh3ZWJob29rcxgBIAMoCzIpLnN5bmNsZXQucHVibGljYXBpLndlYmhvb2sudjEuV2ViaG9va0luZm8yjQQKDldlYmhvb2tTZXJ2aWNlEn4KDUNyZWF0ZVdlYmhvb2sSMi5zeW5jbGV0LnB1YmxpY2FwaS53ZWJob29rLnYxLkNyZWF0ZVdlYmhvb2tSZXF1ZXN0GjMuc3luY2xldC5wdWJsaWNhcGkud2ViaG9vay52MS5DcmVhdGVXZWJob29rUmVzcG9uc2UiBIi1GAMSfgoNVXBkYXRlV2ViaG9vaxIyLnN5bmNsZXQucHVibGljYXBpLndlYmhvb2sudjEuVXBkYXRlV2ViaG9va1JlcXVlc3QaMy5zeW5jbGV0LnB1YmxpY2FwaS53ZWJob29rLnYxLlVwZGF0ZVdlYmhvb2tSZXNwb25zZSIEiLUYAxJ+Cg1EZWxldGVXZWJob29rEjIuc3luY2xldC5wdWJsaWNhcGkud2ViaG9vay52MS5EZWxldGVXZWJob29rUmVxdWVzdBozLnN5bmNsZXQucHVibGljYXBpLndlYmhvb2sudjEuRGVsZXRlV2ViaG9va1Jlc3BvbnNlIgSItRgDEnsKDExpc3RXZWJob29rcxIxLnN5bmNsZXQucHVibGljYXBpLndlYmhvb2sudjEuTGlzdFdlYmhvb2tzUmVxdWVzdBoyLnN5bmNsZXQucHVibGljYXBpLndlYmhvb2sudjEuTGlzdFdlYmhvb2tzUmVzcG9uc2UiBIi1GANCkwIKIGNvbS5zeW5jbGV0LnB1YmxpY2FwaS53ZWJob29rLnYxQgxXZWJob29rUHJvdG9QAVpOZ2l0aHViLmNvbS9zeW5jbGV0LWlvL3N5bmNsZXQvZ2VuL3Byb3RvL3N5bmNsZXQvcHVibGljYXBpL3dlYmhvb2svdjE7d2ViaG9va3YxogIDU1BXqgIcU3luY2xldC5QdWJsaWNhcGkuV2ViaG9vay5WMcoCHFN5bmNsZXRcUHVibGljYXBpXFdlYmhvb2tcVjHiAihTeW5jbGV0XFB1YmxpY2FwaVxXZWJob29rXFYxXEdQQk1ldGFkYXRh6gIfU3luY2xldDo6UHVibGljYXBpOjpXZWJob29rOjpWMWIGcHJvdG8z", [file_google_protobuf_timestamp, file_synclet_options_v1_options]);
+  fileDesc("CipzeW5jbGV0L3B1YmxpY2FwaS93ZWJob29rL3YxL3dlYmhvb2sucHJvdG8SHHN5bmNsZXQucHVibGljYXBpLndlYmhvb2sudjEivQEKC1dlYmhvb2tJbmZvEgoKAmlkGAEgASgJEhQKDHdvcmtzcGFjZV9pZBgCIAEoCRILCgN1cmwYAyABKAkSDgoGZXZlbnRzGAQgAygJEg8KB2VuYWJsZWQYBSABKAgSLgoKY3JlYXRlZF9hdBgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLgoKdXBkYXRlZF9hdBgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiWQoUQ3JlYXRlV2ViaG9va1JlcXVlc3QSFAoMd29ya3NwYWNlX2lkGAEgASgJEgsKA3VybBgCIAEoCRIOCgZldmVudHMYAyADKAkSDgoGc2VjcmV0GAQgASgJIlMKFUNyZWF0ZVdlYmhvb2tSZXNwb25zZRI6Cgd3ZWJob29rGAEgASgLMikuc3luY2xldC5wdWJsaWNhcGkud2ViaG9vay52MS5XZWJob29rSW5mbyJuChRVcGRhdGVXZWJob29rUmVxdWVzdBIKCgJpZBgBIAEoCRIQCgN1cmwYAiABKAlIAIgBARIOCgZldmVudHMYAyADKAkSFAoHZW5hYmxlZBgEIAEoCEgBiAEBQgYKBF91cmxCCgoIX2VuYWJsZWQiUwoVVXBkYXRlV2ViaG9va1Jlc3BvbnNlEjoKB3dlYmhvb2sYASABKAsyKS5zeW5jbGV0LnB1YmxpY2FwaS53ZWJob29rLnYxLldlYmhvb2tJbmZvIiIKFERlbGV0ZVdlYmhvb2tSZXF1ZXN0EgoKAmlkGAEgASgJIhcKFURlbGV0ZVdlYmhvb2tSZXNwb25zZSIrChNMaXN0V2ViaG9va3NSZXF1ZXN0EhQKDHdvcmtzcGFjZV9pZBgBIAEoCSJTChRMaXN0V2ViaG9va3NSZXNwb25zZRI7Cgh3ZWJob29rcxgBIAMoCzIpLnN5bmNsZXQucHVibGljYXBpLndlYmhvb2sudjEuV2ViaG9va0luZm8iIAoSVGVzdFdlYmhvb2tSZXF1ZXN0EgoKAmlkGAEgASgJIksKE1Rlc3RXZWJob29rUmVzcG9uc2USHAoUZGVsaXZlcnlfc3RhdHVzX2NvZGUYASABKAUSFgoOZGVsaXZlcnlfZXJyb3IYAiABKAkyhwUKDldlYmhvb2tTZXJ2aWNlEn4KDUNyZWF0ZVdlYmhvb2sSMi5zeW5jbGV0LnB1YmxpY2FwaS53ZWJob29rLnYxLkNyZWF0ZVdlYmhvb2tSZXF1ZXN0GjMuc3luY2xldC5wdWJsaWNhcGkud2ViaG9vay52MS5DcmVhdGVXZWJob29rUmVzcG9uc2UiBIi1GAMSfgoNVXBkYXRlV2ViaG9vaxIyLnN5bmNsZXQucHVibGljYXBpLndlYmhvb2sudjEuVXBkYXRlV2ViaG9va1JlcXVlc3QaMy5zeW5jbGV0LnB1YmxpY2FwaS53ZWJob29rLnYxLlVwZGF0ZVdlYmhvb2tSZXNwb25zZSIEiLUYAxJ+Cg1EZWxldGVXZWJob29rEjIuc3luY2xldC5wdWJsaWNhcGkud2ViaG9vay52MS5EZWxldGVXZWJob29rUmVxdWVzdBozLnN5bmNsZXQucHVibGljYXBpLndlYmhvb2sudjEuRGVsZXRlV2ViaG9va1Jlc3BvbnNlIgSItRgDEnsKDExpc3RXZWJob29rcxIxLnN5bmNsZXQucHVibGljYXBpLndlYmhvb2sudjEuTGlzdFdlYmhvb2tzUmVxdWVzdBoyLnN5bmNsZXQucHVibGljYXBpLndlYmhvb2sudjEuTGlzdFdlYmhvb2tzUmVzcG9uc2UiBIi1GAMSeAoLVGVzdFdlYmhvb2sSMC5zeW5jbGV0LnB1YmxpY2FwaS53ZWJob29rLnYxLlRlc3RXZWJob29rUmVxdWVzdBoxLnN5bmNsZXQucHVibGljYXBpLndlYmhvb2sudjEuVGVzdFdlYmhvb2tSZXNwb25zZSIEiLUYA0KTAgogY29tLnN5bmNsZXQucHVibGljYXBpLndlYmhvb2sudjFCDFdlYmhvb2tQcm90b1ABWk5naXRodWIuY29tL3N5bmNsZXQtaW8vc3luY2xldC9nZW4vcHJvdG8vc3luY2xldC9wdWJsaWNhcGkvd2ViaG9vay92MTt3ZWJob29rdjGiAgNTUFeqAhxTeW5jbGV0LlB1YmxpY2FwaS5XZWJob29rLlYxygIcU3luY2xldFxQdWJsaWNhcGlcV2ViaG9va1xWMeICKFN5bmNsZXRcUHVibGljYXBpXFdlYmhvb2tcVjFcR1BCTWV0YWRhdGHqAh9TeW5jbGV0OjpQdWJsaWNhcGk6OldlYmhvb2s6OlYxYgZwcm90bzM", [file_google_protobuf_timestamp, file_synclet_options_v1_options]);
 
 /**
  * @generated from message synclet.publicapi.webhook.v1.WebhookInfo
@@ -225,6 +225,51 @@ export const ListWebhooksResponseSchema: GenMessage<ListWebhooksResponse> = /*@_
   messageDesc(file_synclet_publicapi_webhook_v1_webhook, 8);
 
 /**
+ * @generated from message synclet.publicapi.webhook.v1.TestWebhookRequest
+ */
+export type TestWebhookRequest = Message<"synclet.publicapi.webhook.v1.TestWebhookRequest"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+};
+
+/**
+ * Describes the message synclet.publicapi.webhook.v1.TestWebhookRequest.
+ * Use `create(TestWebhookRequestSchema)` to create a new message.
+ */
+export const TestWebhookRequestSchema: GenMessage<TestWebhookRequest> = /*@__PURE__*/
+  messageDesc(file_synclet_publicapi_webhook_v1_webhook, 9);
+
+/**
+ * @generated from message synclet.publicapi.webhook.v1.TestWebhookResponse
+ */
+export type TestWebhookResponse = Message<"synclet.publicapi.webhook.v1.TestWebhookResponse"> & {
+  /**
+   * HTTP status code returned by the remote endpoint (0 if request failed before
+   * reading a response).
+   *
+   * @generated from field: int32 delivery_status_code = 1;
+   */
+  deliveryStatusCode: number;
+
+  /**
+   * Empty when delivery succeeded with a 2xx response. Otherwise carries a
+   * human-readable error suitable for a toast.
+   *
+   * @generated from field: string delivery_error = 2;
+   */
+  deliveryError: string;
+};
+
+/**
+ * Describes the message synclet.publicapi.webhook.v1.TestWebhookResponse.
+ * Use `create(TestWebhookResponseSchema)` to create a new message.
+ */
+export const TestWebhookResponseSchema: GenMessage<TestWebhookResponse> = /*@__PURE__*/
+  messageDesc(file_synclet_publicapi_webhook_v1_webhook, 10);
+
+/**
  * WebhookService manages webhook subscriptions.
  * Available events: sync.completed, sync.failed, connection.paused, schema.changed, * (all).
  *
@@ -262,6 +307,14 @@ export const WebhookService: GenService<{
     methodKind: "unary";
     input: typeof ListWebhooksRequestSchema;
     output: typeof ListWebhooksResponseSchema;
+  },
+  /**
+   * @generated from rpc synclet.publicapi.webhook.v1.WebhookService.TestWebhook
+   */
+  testWebhook: {
+    methodKind: "unary";
+    input: typeof TestWebhookRequestSchema;
+    output: typeof TestWebhookResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_synclet_publicapi_webhook_v1_webhook, 0);

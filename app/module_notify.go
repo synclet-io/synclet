@@ -78,6 +78,7 @@ func notifyUseCasesModule() fx.Option {
 		notifyservice.NewDeleteWebhook,
 		notifyservice.NewListWebhooks,
 		notifyservice.NewDeliverWebhook,
+		notifyservice.NewTestWebhook,
 
 		// Notification channel use cases
 		notifyservice.NewCreateChannel,

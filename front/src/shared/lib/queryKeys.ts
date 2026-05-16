@@ -64,3 +64,8 @@ export const inviteKeys = {
   all: ['invite'] as const,
   byToken: (token: string) => [...inviteKeys.all, token] as const,
 } as const
+
+export const webhookKeys = {
+  all: (workspaceId: string) => ['webhooks', workspaceId] as const,
+  list: (workspaceId: string) => [...webhookKeys.all(workspaceId), 'list'] as const,
+} as const

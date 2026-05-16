@@ -52,6 +52,7 @@ type Handler struct {
 	updateWebhook *notifyservice.UpdateWebhook
 	deleteWebhook *notifyservice.DeleteWebhook
 	listWebhooks  *notifyservice.ListWebhooks
+	testWebhook   *notifyservice.TestWebhook
 }
 
 // NewHandler creates a new webhook handler.
@@ -60,12 +61,14 @@ func NewHandler(
 	updateWebhook *notifyservice.UpdateWebhook,
 	deleteWebhook *notifyservice.DeleteWebhook,
 	listWebhooks *notifyservice.ListWebhooks,
+	testWebhook *notifyservice.TestWebhook,
 ) *Handler {
 	return &Handler{
 		createWebhook: createWebhook,
 		updateWebhook: updateWebhook,
 		deleteWebhook: deleteWebhook,
 		listWebhooks:  listWebhooks,
+		testWebhook:   testWebhook,
 	}
 }
 
@@ -180,6 +183,31 @@ func (h *Handler) ListWebhooks(ctx context.Context, req *connect.Request[webhook
 
 	return connect.NewResponse(&webhookv1.ListWebhooksResponse{
 		Webhooks: result,
+	}), nil
+}
+
+func (h *Handler) TestWebhook(ctx context.Context, req *connect.Request[webhookv1.TestWebhookRequest]) (*connect.Response[webhookv1.TestWebhookResponse], error) {
+	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+	}
+
+	id, err := uuid.Parse(req.Msg.GetId())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	result, err := h.testWebhook.Execute(ctx, notifyservice.TestWebhookParams{
+		ID:          id,
+		WorkspaceID: workspaceID,
+	})
+	if err != nil {
+		return nil, mapError(err)
+	}
+
+	return connect.NewResponse(&webhookv1.TestWebhookResponse{
+		DeliveryStatusCode: int32(result.StatusCode),
+		DeliveryError:      result.DeliveryError,
 	}), nil
 }
 

@@ -507,6 +507,106 @@ func (x *ListWebhooksResponse) GetWebhooks() []*WebhookInfo {
 	return nil
 }
 
+type TestWebhookRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TestWebhookRequest) Reset() {
+	*x = TestWebhookRequest{}
+	mi := &file_synclet_publicapi_webhook_v1_webhook_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TestWebhookRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TestWebhookRequest) ProtoMessage() {}
+
+func (x *TestWebhookRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_publicapi_webhook_v1_webhook_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TestWebhookRequest.ProtoReflect.Descriptor instead.
+func (*TestWebhookRequest) Descriptor() ([]byte, []int) {
+	return file_synclet_publicapi_webhook_v1_webhook_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *TestWebhookRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type TestWebhookResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// HTTP status code returned by the remote endpoint (0 if request failed before
+	// reading a response).
+	DeliveryStatusCode int32 `protobuf:"varint,1,opt,name=delivery_status_code,json=deliveryStatusCode,proto3" json:"delivery_status_code,omitempty"`
+	// Empty when delivery succeeded with a 2xx response. Otherwise carries a
+	// human-readable error suitable for a toast.
+	DeliveryError string `protobuf:"bytes,2,opt,name=delivery_error,json=deliveryError,proto3" json:"delivery_error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TestWebhookResponse) Reset() {
+	*x = TestWebhookResponse{}
+	mi := &file_synclet_publicapi_webhook_v1_webhook_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TestWebhookResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TestWebhookResponse) ProtoMessage() {}
+
+func (x *TestWebhookResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_publicapi_webhook_v1_webhook_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TestWebhookResponse.ProtoReflect.Descriptor instead.
+func (*TestWebhookResponse) Descriptor() ([]byte, []int) {
+	return file_synclet_publicapi_webhook_v1_webhook_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *TestWebhookResponse) GetDeliveryStatusCode() int32 {
+	if x != nil {
+		return x.DeliveryStatusCode
+	}
+	return 0
+}
+
+func (x *TestWebhookResponse) GetDeliveryError() string {
+	if x != nil {
+		return x.DeliveryError
+	}
+	return ""
+}
+
 var File_synclet_publicapi_webhook_v1_webhook_proto protoreflect.FileDescriptor
 
 const file_synclet_publicapi_webhook_v1_webhook_proto_rawDesc = "" +
@@ -545,12 +645,18 @@ const file_synclet_publicapi_webhook_v1_webhook_proto_rawDesc = "" +
 	"\x13ListWebhooksRequest\x12!\n" +
 	"\fworkspace_id\x18\x01 \x01(\tR\vworkspaceId\"]\n" +
 	"\x14ListWebhooksResponse\x12E\n" +
-	"\bwebhooks\x18\x01 \x03(\v2).synclet.publicapi.webhook.v1.WebhookInfoR\bwebhooks2\x8d\x04\n" +
+	"\bwebhooks\x18\x01 \x03(\v2).synclet.publicapi.webhook.v1.WebhookInfoR\bwebhooks\"$\n" +
+	"\x12TestWebhookRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"n\n" +
+	"\x13TestWebhookResponse\x120\n" +
+	"\x14delivery_status_code\x18\x01 \x01(\x05R\x12deliveryStatusCode\x12%\n" +
+	"\x0edelivery_error\x18\x02 \x01(\tR\rdeliveryError2\x87\x05\n" +
 	"\x0eWebhookService\x12~\n" +
 	"\rCreateWebhook\x122.synclet.publicapi.webhook.v1.CreateWebhookRequest\x1a3.synclet.publicapi.webhook.v1.CreateWebhookResponse\"\x04\x88\xb5\x18\x03\x12~\n" +
 	"\rUpdateWebhook\x122.synclet.publicapi.webhook.v1.UpdateWebhookRequest\x1a3.synclet.publicapi.webhook.v1.UpdateWebhookResponse\"\x04\x88\xb5\x18\x03\x12~\n" +
 	"\rDeleteWebhook\x122.synclet.publicapi.webhook.v1.DeleteWebhookRequest\x1a3.synclet.publicapi.webhook.v1.DeleteWebhookResponse\"\x04\x88\xb5\x18\x03\x12{\n" +
-	"\fListWebhooks\x121.synclet.publicapi.webhook.v1.ListWebhooksRequest\x1a2.synclet.publicapi.webhook.v1.ListWebhooksResponse\"\x04\x88\xb5\x18\x03B\x93\x02\n" +
+	"\fListWebhooks\x121.synclet.publicapi.webhook.v1.ListWebhooksRequest\x1a2.synclet.publicapi.webhook.v1.ListWebhooksResponse\"\x04\x88\xb5\x18\x03\x12x\n" +
+	"\vTestWebhook\x120.synclet.publicapi.webhook.v1.TestWebhookRequest\x1a1.synclet.publicapi.webhook.v1.TestWebhookResponse\"\x04\x88\xb5\x18\x03B\x93\x02\n" +
 	" com.synclet.publicapi.webhook.v1B\fWebhookProtoP\x01ZNgithub.com/synclet-io/synclet/gen/proto/synclet/publicapi/webhook/v1;webhookv1\xa2\x02\x03SPW\xaa\x02\x1cSynclet.Publicapi.Webhook.V1\xca\x02\x1cSynclet\\Publicapi\\Webhook\\V1\xe2\x02(Synclet\\Publicapi\\Webhook\\V1\\GPBMetadata\xea\x02\x1fSynclet::Publicapi::Webhook::V1b\x06proto3"
 
 var (
@@ -565,7 +671,7 @@ func file_synclet_publicapi_webhook_v1_webhook_proto_rawDescGZIP() []byte {
 	return file_synclet_publicapi_webhook_v1_webhook_proto_rawDescData
 }
 
-var file_synclet_publicapi_webhook_v1_webhook_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_synclet_publicapi_webhook_v1_webhook_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_synclet_publicapi_webhook_v1_webhook_proto_goTypes = []any{
 	(*WebhookInfo)(nil),           // 0: synclet.publicapi.webhook.v1.WebhookInfo
 	(*CreateWebhookRequest)(nil),  // 1: synclet.publicapi.webhook.v1.CreateWebhookRequest
@@ -576,27 +682,31 @@ var file_synclet_publicapi_webhook_v1_webhook_proto_goTypes = []any{
 	(*DeleteWebhookResponse)(nil), // 6: synclet.publicapi.webhook.v1.DeleteWebhookResponse
 	(*ListWebhooksRequest)(nil),   // 7: synclet.publicapi.webhook.v1.ListWebhooksRequest
 	(*ListWebhooksResponse)(nil),  // 8: synclet.publicapi.webhook.v1.ListWebhooksResponse
-	(*timestamppb.Timestamp)(nil), // 9: google.protobuf.Timestamp
+	(*TestWebhookRequest)(nil),    // 9: synclet.publicapi.webhook.v1.TestWebhookRequest
+	(*TestWebhookResponse)(nil),   // 10: synclet.publicapi.webhook.v1.TestWebhookResponse
+	(*timestamppb.Timestamp)(nil), // 11: google.protobuf.Timestamp
 }
 var file_synclet_publicapi_webhook_v1_webhook_proto_depIdxs = []int32{
-	9, // 0: synclet.publicapi.webhook.v1.WebhookInfo.created_at:type_name -> google.protobuf.Timestamp
-	9, // 1: synclet.publicapi.webhook.v1.WebhookInfo.updated_at:type_name -> google.protobuf.Timestamp
-	0, // 2: synclet.publicapi.webhook.v1.CreateWebhookResponse.webhook:type_name -> synclet.publicapi.webhook.v1.WebhookInfo
-	0, // 3: synclet.publicapi.webhook.v1.UpdateWebhookResponse.webhook:type_name -> synclet.publicapi.webhook.v1.WebhookInfo
-	0, // 4: synclet.publicapi.webhook.v1.ListWebhooksResponse.webhooks:type_name -> synclet.publicapi.webhook.v1.WebhookInfo
-	1, // 5: synclet.publicapi.webhook.v1.WebhookService.CreateWebhook:input_type -> synclet.publicapi.webhook.v1.CreateWebhookRequest
-	3, // 6: synclet.publicapi.webhook.v1.WebhookService.UpdateWebhook:input_type -> synclet.publicapi.webhook.v1.UpdateWebhookRequest
-	5, // 7: synclet.publicapi.webhook.v1.WebhookService.DeleteWebhook:input_type -> synclet.publicapi.webhook.v1.DeleteWebhookRequest
-	7, // 8: synclet.publicapi.webhook.v1.WebhookService.ListWebhooks:input_type -> synclet.publicapi.webhook.v1.ListWebhooksRequest
-	2, // 9: synclet.publicapi.webhook.v1.WebhookService.CreateWebhook:output_type -> synclet.publicapi.webhook.v1.CreateWebhookResponse
-	4, // 10: synclet.publicapi.webhook.v1.WebhookService.UpdateWebhook:output_type -> synclet.publicapi.webhook.v1.UpdateWebhookResponse
-	6, // 11: synclet.publicapi.webhook.v1.WebhookService.DeleteWebhook:output_type -> synclet.publicapi.webhook.v1.DeleteWebhookResponse
-	8, // 12: synclet.publicapi.webhook.v1.WebhookService.ListWebhooks:output_type -> synclet.publicapi.webhook.v1.ListWebhooksResponse
-	9, // [9:13] is the sub-list for method output_type
-	5, // [5:9] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	11, // 0: synclet.publicapi.webhook.v1.WebhookInfo.created_at:type_name -> google.protobuf.Timestamp
+	11, // 1: synclet.publicapi.webhook.v1.WebhookInfo.updated_at:type_name -> google.protobuf.Timestamp
+	0,  // 2: synclet.publicapi.webhook.v1.CreateWebhookResponse.webhook:type_name -> synclet.publicapi.webhook.v1.WebhookInfo
+	0,  // 3: synclet.publicapi.webhook.v1.UpdateWebhookResponse.webhook:type_name -> synclet.publicapi.webhook.v1.WebhookInfo
+	0,  // 4: synclet.publicapi.webhook.v1.ListWebhooksResponse.webhooks:type_name -> synclet.publicapi.webhook.v1.WebhookInfo
+	1,  // 5: synclet.publicapi.webhook.v1.WebhookService.CreateWebhook:input_type -> synclet.publicapi.webhook.v1.CreateWebhookRequest
+	3,  // 6: synclet.publicapi.webhook.v1.WebhookService.UpdateWebhook:input_type -> synclet.publicapi.webhook.v1.UpdateWebhookRequest
+	5,  // 7: synclet.publicapi.webhook.v1.WebhookService.DeleteWebhook:input_type -> synclet.publicapi.webhook.v1.DeleteWebhookRequest
+	7,  // 8: synclet.publicapi.webhook.v1.WebhookService.ListWebhooks:input_type -> synclet.publicapi.webhook.v1.ListWebhooksRequest
+	9,  // 9: synclet.publicapi.webhook.v1.WebhookService.TestWebhook:input_type -> synclet.publicapi.webhook.v1.TestWebhookRequest
+	2,  // 10: synclet.publicapi.webhook.v1.WebhookService.CreateWebhook:output_type -> synclet.publicapi.webhook.v1.CreateWebhookResponse
+	4,  // 11: synclet.publicapi.webhook.v1.WebhookService.UpdateWebhook:output_type -> synclet.publicapi.webhook.v1.UpdateWebhookResponse
+	6,  // 12: synclet.publicapi.webhook.v1.WebhookService.DeleteWebhook:output_type -> synclet.publicapi.webhook.v1.DeleteWebhookResponse
+	8,  // 13: synclet.publicapi.webhook.v1.WebhookService.ListWebhooks:output_type -> synclet.publicapi.webhook.v1.ListWebhooksResponse
+	10, // 14: synclet.publicapi.webhook.v1.WebhookService.TestWebhook:output_type -> synclet.publicapi.webhook.v1.TestWebhookResponse
+	10, // [10:15] is the sub-list for method output_type
+	5,  // [5:10] is the sub-list for method input_type
+	5,  // [5:5] is the sub-list for extension type_name
+	5,  // [5:5] is the sub-list for extension extendee
+	0,  // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_synclet_publicapi_webhook_v1_webhook_proto_init() }
@@ -611,7 +721,7 @@ func file_synclet_publicapi_webhook_v1_webhook_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_synclet_publicapi_webhook_v1_webhook_proto_rawDesc), len(file_synclet_publicapi_webhook_v1_webhook_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

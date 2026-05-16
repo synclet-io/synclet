@@ -161,6 +161,12 @@ export const router = createRouter({
               component: () => import('@pages/settings/NotificationsPage.vue'),
             },
             {
+              path: 'webhooks',
+              name: 'settings-webhooks',
+              component: () => import('@pages/settings/WebhooksPage.vue'),
+              meta: { requiresAdmin: true },
+            },
+            {
               path: 'api-keys',
               name: 'settings-api-keys',
               component: () => import('@pages/settings/APIKeysPage.vue'),
@@ -228,6 +234,14 @@ router.beforeEach(async (to) => {
       workspaceName: workspace.name,
       role,
     })))
+  }
+
+  // Block admin-only routes for non-admins.
+  if (to.meta.requiresAdmin) {
+    const currentWs = auth.workspaces.value.find(w => w.workspaceId === auth.currentWorkspaceId.value)
+    if (currentWs && currentWs.role !== 'admin') {
+      return { name: 'settings-account' }
+    }
   }
 
   // Redirect to workspace creation if user has no workspaces.
