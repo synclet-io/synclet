@@ -96,11 +96,11 @@ const columns: Column[] = [
     <template #empty>
       <SEmptyState
         title="No sources yet"
-        description="A source is a connector instance with credentials for a specific system. Install a source connector from the catalog first, then add a source here."
+        description="A source is a connector instance with credentials for a specific system. Sync a connector repository in Settings first, then add a source here."
       >
         <div class="flex gap-2 flex-wrap justify-center">
-          <SButton to="/connectors/catalog" variant="secondary" size="sm">
-            Browse catalog
+          <SButton to="/settings/connectors" variant="secondary" size="sm">
+            Manage connectors
           </SButton>
           <SButton to="/sources/new" size="sm">
             <Plus class="w-4 h-4" /> Add source

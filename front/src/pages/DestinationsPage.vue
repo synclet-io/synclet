@@ -96,11 +96,11 @@ const columns: Column[] = [
     <template #empty>
       <SEmptyState
         title="No destinations yet"
-        description="A destination is a connector instance with credentials for the system that will receive synced data. Install a destination connector from the catalog first, then add a destination here."
+        description="A destination is a connector instance with credentials for the system that will receive synced data. Sync a connector repository in Settings first, then add a destination here."
       >
         <div class="flex gap-2 flex-wrap justify-center">
-          <SButton to="/connectors/catalog" variant="secondary" size="sm">
-            Browse catalog
+          <SButton to="/settings/connectors" variant="secondary" size="sm">
+            Manage connectors
           </SButton>
           <SButton to="/destinations/new" size="sm">
             <Plus class="w-4 h-4" /> Add destination

@@ -150,10 +150,6 @@ export async function addConnector(params: { dockerImage: string, dockerTag: str
   return { id: res.id }
 }
 
-export async function deleteManagedConnector(id: string): Promise<void> {
-  await registryClient.deleteManagedConnector({ id })
-}
-
 export async function getConnectorSpec(id: string): Promise<ConnectorSpecResult> {
   const res = await registryClient.getConnectorSpec({ id })
   return {

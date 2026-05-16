@@ -2,13 +2,13 @@
 import type { ConnectorType, ManagedConnector } from '@entities/connector'
 import type { Repository } from '@entities/repository'
 import type { Column, Tab } from '@shared/ui'
-import { useAddConnector, useBatchUpdateConnectors, useDeleteManagedConnector, useManagedConnectors, useUpdateManagedConnector } from '@entities/connector'
+import { useAddConnector, useBatchUpdateConnectors, useManagedConnectors, useUpdateManagedConnector } from '@entities/connector'
 import { useAddRepository, useDeleteRepository, useRepositories, useSyncRepository } from '@entities/repository'
 import { BreakingChangeDialog } from '@features/connector-update'
 import { getErrorMessage } from '@shared/lib/errorUtils'
 import { SAlert, SBadge, SButton, SConfirmDialog, SEmptyState, SInput, SModal, SPagination, SSelect, SSkeleton, STable, STabs, useToast } from '@shared/ui'
 import { refDebounced } from '@vueuse/core'
-import { ArrowUpCircle, Container, Database, Globe, RefreshCw, Trash2 } from 'lucide-vue-next'
+import { ArrowUpCircle, Container, Globe, RefreshCw, Trash2 } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
 
 const toast = useToast()
@@ -31,7 +31,6 @@ const { data: managed, isLoading: managedLoading } = useManagedConnectors({
   repositoryId: mappedRepositoryId,
   search: debouncedSearch,
 })
-const deleteConnector = useDeleteManagedConnector()
 const updateConnector = useUpdateManagedConnector()
 const batchUpdate = useBatchUpdateConnectors()
 
@@ -68,7 +67,6 @@ const columns: Column[] = [
   { key: 'dockerTag', label: 'Tag', width: '100px' },
   { key: 'status', label: 'Status', width: '100px' },
   { key: 'update', label: 'Update', width: '160px' },
-  { key: 'actions', label: '', align: 'right', width: '100px' },
 ]
 
 function statusVariant(status: string) {
@@ -78,27 +76,6 @@ function statusVariant(status: string) {
     error: 'warning',
   }
   return map[status?.toLowerCase()] || 'gray'
-}
-
-// Delete confirmation
-const deleteTarget = ref<ManagedConnector | null>(null)
-const deleteLoading = ref(false)
-
-async function handleDelete() {
-  if (!deleteTarget.value)
-    return
-  deleteLoading.value = true
-  try {
-    await deleteConnector.mutateAsync(deleteTarget.value.id)
-    toast.success(`${deleteTarget.value.name} deleted`)
-    deleteTarget.value = null
-  }
-  catch (e: unknown) {
-    toast.error(getErrorMessage(e) || 'Failed to delete connector')
-  }
-  finally {
-    deleteLoading.value = false
-  }
 }
 
 // Breaking change dialog state
@@ -508,9 +485,6 @@ async function handleSyncRepo(repo: Repository) {
         >
           <ArrowUpCircle class="w-4 h-4" /> Update All ({{ connectorsWithUpdates.length }})
         </SButton>
-        <SButton variant="secondary" :to="{ name: 'connector-catalog' }">
-          <Database class="w-4 h-4" /> Browse catalog
-        </SButton>
         <SButton @click="openAddModal">
           <Container class="w-4 h-4" /> Add Custom
         </SButton>
@@ -552,11 +526,6 @@ async function handleSyncRepo(repo: Repository) {
           </SButton>
         </div>
       </template>
-      <template #cell-actions="{ row }">
-        <SButton size="sm" variant="ghost" class="text-danger hover:text-danger" @click="deleteTarget = row">
-          Delete
-        </SButton>
-      </template>
       <template #empty>
         <SEmptyState
           :title="`No ${connectorTab}s installed`"
@@ -577,18 +546,6 @@ async function handleSyncRepo(repo: Repository) {
       @page-change="currentPage = $event"
     />
   </template>
-
-  <!-- Delete confirmation -->
-  <SConfirmDialog
-    :open="!!deleteTarget"
-    title="Delete Connector"
-    :message="`Are you sure you want to delete ${deleteTarget?.name}? This cannot be undone.`"
-    confirm-text="Delete"
-    variant="danger"
-    :loading="deleteLoading"
-    @close="deleteTarget = null"
-    @confirm="handleDelete"
-  />
 
   <!-- Add Custom Connector Modal -->
   <SModal :open="showAddModal" title="Add Custom Connector" size="sm" @close="closeAddModal">

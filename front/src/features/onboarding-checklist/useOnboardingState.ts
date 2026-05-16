@@ -73,8 +73,8 @@ export function deriveOnboardingState(
     {
       id: 'connector',
       title: 'Install a connector',
-      description: 'Pick a source or destination connector from the catalog.',
-      cta: { label: 'Browse catalog', to: '/connectors/catalog' },
+      description: 'Sync a repository to populate the connector catalog.',
+      cta: { label: 'Manage connectors', to: '/settings/connectors' },
       done: toBool(signals.hasConnector),
     },
     {
