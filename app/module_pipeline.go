@@ -24,13 +24,11 @@ import (
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineconnect"
 	_ "github.com/synclet-io/synclet/modules/pipeline/pipelinedbstate"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineeventhandle"
-	"github.com/synclet-io/synclet/modules/pipeline/pipelineexec/pipelineexecdocker"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinemetrics"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinesettings"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelinestorage"
 	"github.com/synclet-io/synclet/pkg/connectutil"
-	"github.com/synclet-io/synclet/pkg/container"
 )
 
 // pipelineJobsConfig holds intervals for all pipeline background jobs.
@@ -122,13 +120,6 @@ func pipelineMetricsModule() fx.Option {
 
 func pipelineDependenciesModule() fx.Option {
 	return fx.Options(
-		// Container infrastructure
-		fx.Provide(
-			newContainerRunner,
-			fx.Annotate(dockerContainerRunnerAdapter, fx.As(new(container.Runner))),
-			pipelineexecdocker.NewConnectorClient,
-		),
-
 		// Adapters
 		fx.Provide(
 			fx.Annotate(pipelineadapt.NewConnectorDiscoverAdapter, fx.As(new(pipelineservice.ConnectorDiscoverer))),
@@ -159,12 +150,6 @@ func pipelineDependenciesModule() fx.Option {
 
 func pipelineMetricsCollectorAdapter(c *pipelinemetrics.MetricsCollector) prometheus.Collector {
 	return c
-}
-
-func dockerContainerRunnerAdapter(r *pipelineexecdocker.ContainerRunner) container.Runner { return r }
-
-func newContainerRunner(cfg *dockerExecutorConfig) (*pipelineexecdocker.ContainerRunner, error) {
-	return pipelineexecdocker.NewContainerRunner(cfg.TempDirRoot)
 }
 
 func newPipelineSourceHandlerConfig(authCfg *authConfig, wsCfg *workspaceConfig) pipelineconnect.SourceHandlerConfig {

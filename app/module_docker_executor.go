@@ -11,6 +11,7 @@ import (
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineexec"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineexec/pipelineexecdocker"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinemetrics"
+	"github.com/synclet-io/synclet/pkg/container"
 	"github.com/synclet-io/synclet/pkg/jobutil"
 	"go.uber.org/fx"
 )
@@ -35,17 +36,28 @@ type dockerExecutorConfig struct {
 	TempDirRoot string `env:"TEMP_DIR_ROOT"`
 }
 
-// dockerExecutorConfigModule registers the Docker executor configuration
-// unconditionally. ContainerRunner (used by ImagePullerAdapter and any
-// pipeline use case that talks to Docker) needs config regardless of whether
-// the background worker jobs are enabled.
+// dockerExecutorConfigModule registers the Docker executor configuration and
+// the always-on Docker container infrastructure. ContainerRunner (used by
+// ImagePullerAdapter and any pipeline use case that talks to Docker) needs to
+// resolve regardless of whether the background worker jobs are enabled.
 func dockerExecutorConfigModule() fx.Option {
 	return fx.Options(
 		fx.Provide(
 			configutil.NewPrefixedConfigProvider[dockerExecutorConfig]("DOCKER_EXECUTOR_"),
 			configutil.NewPrefixedConfigInfoProvider[dockerExecutorConfig]("DOCKER_EXECUTOR_"),
+			newContainerRunner,
+			fx.Annotate(dockerContainerRunnerAdapter, fx.As(new(container.Runner))),
+			pipelineexecdocker.NewConnectorClient,
 		),
 	)
+}
+
+func newContainerRunner(cfg *dockerExecutorConfig) (*pipelineexecdocker.ContainerRunner, error) {
+	return pipelineexecdocker.NewContainerRunner(cfg.TempDirRoot)
+}
+
+func dockerContainerRunnerAdapter(r *pipelineexecdocker.ContainerRunner) container.Runner {
+	return r
 }
 
 func dockerExecutorModule(options *RunAppOptions) fx.Option {
