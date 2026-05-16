@@ -48,7 +48,11 @@ func TestSecurityHeadersMiddleware(t *testing.T) {
 	})
 
 	t.Run("sets Content-Security-Policy", func(t *testing.T) {
-		assert.Contains(t, resp.Header.Get("Content-Security-Policy"), "default-src 'self'")
+		csp := resp.Header.Get("Content-Security-Policy")
+		assert.Contains(t, csp, "default-src 'self'")
+		// img-src must allow https: so the connector catalog can render icons
+		// from third-party registries.
+		assert.Contains(t, csp, "img-src 'self' data: https:")
 	})
 
 	t.Run("passes request to inner handler", func(t *testing.T) {
