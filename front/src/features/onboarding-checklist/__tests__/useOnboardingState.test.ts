@@ -4,8 +4,6 @@ import { deriveOnboardingState } from '../useOnboardingState'
 
 function allFalse() {
   return {
-    hasRepository: false,
-    hasConnector: false,
     hasSource: false,
     hasDestination: false,
     hasConnection: false,
@@ -14,12 +12,10 @@ function allFalse() {
 }
 
 describe('deriveOnboardingState', () => {
-  it('emits six steps in onboarding order', () => {
+  it('emits four steps in onboarding order', () => {
     const state = deriveOnboardingState(allFalse(), false)
     const ids = state.steps.value.map(s => s.id)
     expect(ids).toEqual([
-      'repository',
-      'connector',
       'source',
       'destination',
       'connection',
@@ -30,50 +26,44 @@ describe('deriveOnboardingState', () => {
   it('starts with zero complete on a fresh workspace', () => {
     const state = deriveOnboardingState(allFalse(), false)
     expect(state.completedCount.value).toBe(0)
-    expect(state.totalSteps.value).toBe(6)
+    expect(state.totalSteps.value).toBe(4)
     expect(state.allComplete.value).toBe(false)
   })
 
   it('marks each step done when its signal flips to true', () => {
     const state = deriveOnboardingState({
-      hasRepository: true,
-      hasConnector: true,
-      hasSource: false,
-      hasDestination: false,
+      hasSource: true,
+      hasDestination: true,
       hasConnection: false,
       hasSuccessfulSync: false,
     }, false)
     expect(state.completedCount.value).toBe(2)
-    expect(state.steps.value.find(s => s.id === 'repository')?.done).toBe(true)
-    expect(state.steps.value.find(s => s.id === 'connector')?.done).toBe(true)
-    expect(state.steps.value.find(s => s.id === 'source')?.done).toBe(false)
+    expect(state.steps.value.find(s => s.id === 'source')?.done).toBe(true)
+    expect(state.steps.value.find(s => s.id === 'destination')?.done).toBe(true)
+    expect(state.steps.value.find(s => s.id === 'connection')?.done).toBe(false)
   })
 
-  it('reports allComplete when all six signals are true', () => {
+  it('reports allComplete when all four signals are true', () => {
     const state = deriveOnboardingState({
-      hasRepository: true,
-      hasConnector: true,
       hasSource: true,
       hasDestination: true,
       hasConnection: true,
       hasSuccessfulSync: true,
     }, false)
-    expect(state.completedCount.value).toBe(6)
+    expect(state.completedCount.value).toBe(4)
     expect(state.allComplete.value).toBe(true)
   })
 
   it('reacts to changing refs', () => {
-    const hasRepository = ref(false)
+    const hasSource = ref(false)
     const state = deriveOnboardingState({
-      hasRepository,
-      hasConnector: false,
-      hasSource: false,
+      hasSource,
       hasDestination: false,
       hasConnection: false,
       hasSuccessfulSync: false,
     }, false)
     expect(state.completedCount.value).toBe(0)
-    hasRepository.value = true
+    hasSource.value = true
     expect(state.completedCount.value).toBe(1)
     expect(state.steps.value[0].done).toBe(true)
   })

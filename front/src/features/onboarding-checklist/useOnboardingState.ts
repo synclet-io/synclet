@@ -1,17 +1,16 @@
 import type { ComputedRef, MaybeRef } from 'vue'
 import { useAuth } from '@entities/auth'
 import { useConnections } from '@entities/connection'
-import { useManagedConnectors } from '@entities/connector'
 import { useDestinations } from '@entities/destination'
-import { useRepositories } from '@entities/repository'
 import { useSources } from '@entities/source'
 import { useWorkspaceStats } from '@entities/stats'
 import { computed, ref, watch } from 'vue'
 
+// Onboarding starts at "configure a source" because default registries are
+// auto-seeded on workspace creation and their connectors auto-install on sync
+// — neither step is a meaningful checkbox for the user.
 export type OnboardingStepId
-  = | 'repository'
-    | 'connector'
-    | 'source'
+  = | 'source'
     | 'destination'
     | 'connection'
     | 'first-sync'
@@ -42,8 +41,6 @@ export interface OnboardingState {
 }
 
 interface OnboardingSignals {
-  hasRepository: MaybeRef<boolean>
-  hasConnector: MaybeRef<boolean>
   hasSource: MaybeRef<boolean>
   hasDestination: MaybeRef<boolean>
   hasConnection: MaybeRef<boolean>
@@ -63,20 +60,6 @@ export function deriveOnboardingState(
   }
 
   const steps = computed<OnboardingStep[]>(() => [
-    {
-      id: 'repository',
-      title: 'Add a repository',
-      description: 'Connect a connector registry to browse and install connectors.',
-      cta: { label: 'Manage repositories', to: '/settings/connectors' },
-      done: toBool(signals.hasRepository),
-    },
-    {
-      id: 'connector',
-      title: 'Install a connector',
-      description: 'Sync a repository to populate the connector catalog.',
-      cta: { label: 'Manage connectors', to: '/settings/connectors' },
-      done: toBool(signals.hasConnector),
-    },
     {
       id: 'source',
       title: 'Configure a source',
@@ -132,8 +115,6 @@ export function deriveOnboardingState(
 export function useOnboardingState(): OnboardingState {
   const { currentWorkspaceId, user } = useAuth()
 
-  const { data: repositories } = useRepositories()
-  const { data: managed } = useManagedConnectors()
   const { data: sourcesPage } = useSources()
   const { data: destinationsPage } = useDestinations()
   const { data: connectionsPage } = useConnections()
@@ -186,8 +167,6 @@ export function useOnboardingState(): OnboardingState {
 
   const state = deriveOnboardingState(
     {
-      hasRepository: computed(() => (repositories.value?.length ?? 0) > 0),
-      hasConnector: computed(() => (managed.value?.length ?? 0) > 0),
       hasSource: computed(() => (sourcesPage.value?.items?.length ?? 0) > 0),
       hasDestination: computed(() => (destinationsPage.value?.items?.length ?? 0) > 0),
       hasConnection: computed(() => (connectionsPage.value?.items?.length ?? 0) > 0),
