@@ -36,17 +36,17 @@ func (uc *ListWorkspacesForUser) Execute(ctx context.Context, userID uuid.UUID) 
 	}
 
 	out := make([]UserWorkspace, 0, len(members))
-	for _, m := range members {
+	for _, member := range members {
 		workspace, err := uc.storage.Workspaces().First(ctx, &WorkspaceFilter{
-			ID: filter.Equals(m.WorkspaceID),
+			ID: filter.Equals(member.WorkspaceID),
 		})
 		if err != nil {
-			zap.L().Warn("failed to load workspace", zap.String("workspace_id", m.WorkspaceID.String()), zap.Error(err))
+			zap.L().Warn("failed to load workspace", zap.String("workspace_id", member.WorkspaceID.String()), zap.Error(err))
 
 			continue
 		}
 
-		out = append(out, UserWorkspace{Workspace: workspace, Role: m.Role})
+		out = append(out, UserWorkspace{Workspace: workspace, Role: member.Role})
 	}
 
 	return out, nil
