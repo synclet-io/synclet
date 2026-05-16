@@ -123,8 +123,9 @@ watch(connection, async (conn) => {
           configuredCat = await getConfiguredCatalog(id) as ConfiguredCatalogInput | undefined
         }
         catch (e) {
-          // No configured catalog yet — fresh connection.
-          console.debug('[stream-config] getConfiguredCatalog failed (cached path)', e)
+          // No configured catalog yet — fresh connection. Surface as warn
+          // (project ESLint only allows warn/error from console).
+          console.warn('[stream-config] getConfiguredCatalog failed (cached path)', e)
         }
         parseStreams(cached.catalog as unknown as DiscoveredCatalog, configuredCat)
         hasLoadedCatalog.value = true
@@ -147,7 +148,7 @@ watch(connection, async (conn) => {
       configuredCat = await getConfiguredCatalog(id) as ConfiguredCatalogInput | undefined
     }
     catch (e) {
-      console.debug('[stream-config] getConfiguredCatalog failed (fallback path)', e)
+      console.warn('[stream-config] getConfiguredCatalog failed (fallback path)', e)
     }
     if (cat)
       parseStreams(cat, configuredCat)
