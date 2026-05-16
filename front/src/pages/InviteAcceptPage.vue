@@ -4,9 +4,8 @@ import type { MemberRole } from '@entities/workspace'
 import { getOIDCProviders, useAuth } from '@entities/auth'
 import { useAcceptInvite, useDeclineInvite, useInviteByToken } from '@entities/workspace'
 import { getErrorMessage } from '@shared/lib/errorUtils'
-import { SAlert, SBadge, SButton, SCard, SConfirmDialog, SInput, SSkeleton } from '@shared/ui'
+import { SAlert, SBadge, SButton, SCard, SConfirmDialog, SInput, SSkeleton, SyncletLogo } from '@shared/ui'
 import { useToast } from '@shared/ui/useToast'
-import { Zap } from 'lucide-vue-next'
 import { computed, onMounted, ref, watch } from 'vue'
 
 import { useRoute, useRouter } from 'vue-router'
@@ -161,9 +160,7 @@ function startOIDCLogin(slug: string) {
     <div class="w-full max-w-sm">
       <!-- Logo -->
       <div class="flex items-center gap-2.5 mb-10">
-        <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-          <Zap class="w-4.5 h-4.5 text-white" />
-        </div>
+        <SyncletLogo size="w-8 h-8" />
         <span class="text-lg font-semibold text-heading tracking-tight">Synclet</span>
       </div>
 

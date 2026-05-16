@@ -2,7 +2,7 @@
 import type { DropdownItem } from '@shared/ui'
 import { useAuth } from '@entities/auth'
 import { useSystemInfo } from '@entities/system'
-import { DarkModeToggle } from '@shared/ui'
+import { DarkModeToggle, SyncletLogo } from '@shared/ui'
 import SDropdown from '@shared/ui/SDropdown.vue'
 import { ArrowRightLeft, ChevronDown, Database, History, LayoutDashboard, LogOut, Menu, Server, Settings } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
@@ -68,7 +68,7 @@ const userInitial = computed(() => {
       <!-- Logo -->
       <div class="px-5 h-14 flex items-center border-b border-sidebar-border">
         <div class="flex items-center gap-2.5">
-          <img src="/favicon.svg" alt="Synclet" class="w-7 h-7 rounded-lg">
+          <SyncletLogo />
           <span class="text-[15px] font-semibold text-sidebar-text-active tracking-tight">Synclet</span>
         </div>
       </div>
@@ -137,7 +137,7 @@ const userInitial = computed(() => {
           <Menu class="w-5 h-5 text-heading" />
         </button>
         <div class="ml-3 flex items-center gap-2.5">
-          <img src="/favicon.svg" alt="Synclet" class="w-7 h-7 rounded-lg">
+          <SyncletLogo />
           <span class="text-[15px] font-semibold text-heading tracking-tight">Synclet</span>
         </div>
       </div>

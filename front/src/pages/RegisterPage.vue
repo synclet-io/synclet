@@ -2,8 +2,7 @@
 import { useAuth } from '@entities/auth'
 import { useSystemInfo } from '@entities/system'
 import { getErrorMessage } from '@shared/lib/errorUtils'
-import { SAlert, SButton, SInput } from '@shared/ui'
-import { Zap } from 'lucide-vue-next'
+import { SAlert, SButton, SInput, SyncletLogo } from '@shared/ui'
 import { ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -53,9 +52,7 @@ async function handleRegister() {
     <!-- Left panel - branding -->
     <div class="hidden lg:flex lg:w-[480px] bg-slate-900 flex-col justify-between p-10">
       <div class="flex items-center gap-2.5">
-        <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-          <Zap class="w-4.5 h-4.5 text-white" />
-        </div>
+        <SyncletLogo size="w-8 h-8" />
         <span class="text-lg font-semibold text-white tracking-tight">Synclet</span>
       </div>
       <div>
@@ -75,9 +72,7 @@ async function handleRegister() {
     <div class="flex-1 flex items-center justify-center bg-page p-6">
       <div class="w-full max-w-sm">
         <div class="flex items-center gap-2.5 mb-10 lg:hidden">
-          <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <Zap class="w-4.5 h-4.5 text-white" />
-          </div>
+          <SyncletLogo size="w-8 h-8" />
           <span class="text-lg font-semibold text-heading tracking-tight">Synclet</span>
         </div>
 
