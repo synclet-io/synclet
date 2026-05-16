@@ -75,3 +75,26 @@ func (i InviteStatus) String() string {
 
 	return names[indexes[i-1]:indexes[i]]
 }
+
+type WorkspaceEventType byte
+
+const (
+	WorkspaceEventTypeCreated WorkspaceEventType = iota + 1
+	WorkspaceEventTypeUpdated
+	WorkspaceEventTypeDeleted
+)
+
+// user code 'WorkspaceEventType methods'
+// end user code 'WorkspaceEventType methods'
+func (w WorkspaceEventType) IsValid() bool {
+	return w > 0 && w < 4
+}
+func (w WorkspaceEventType) IsCreated() bool {
+	return w == WorkspaceEventTypeCreated
+}
+func (w WorkspaceEventType) IsUpdated() bool {
+	return w == WorkspaceEventTypeUpdated
+}
+func (w WorkspaceEventType) IsDeleted() bool {
+	return w == WorkspaceEventTypeDeleted
+}

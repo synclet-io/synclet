@@ -15,8 +15,11 @@ services:
       - "8080:8080"
     environment:
       DB_DSN: postgres://synclet:synclet@postgres:5432/synclet?sslmode=disable
+      WATERMILL_TRANSPORT: sql
+      WATERMILL_SQL_DRIVER: "postgres"
+      WATERMILL_SQL_CONSUMER_GROUP: "local"
       HTTP_SERVER_ADDR: 0.0.0.0:8080
-      JWT_SECRET: change-me-in-production
+      AUTH_JWT_SECRET: PA9XhBlfi6GZlJ8AFd3audLEfV9IcnV2
       SECRET_ENCRYPTION_KEY: PjsJSmk5MpLbSjsXYdIeflREhQ57B7+Sz0b0/VreDRk=
       INTERNAL_HTTP_SERVER_ADDR: "0.0.0.0:8087"
       ENVIRONMENT: production

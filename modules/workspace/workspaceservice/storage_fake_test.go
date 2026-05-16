@@ -20,9 +20,11 @@ type fakeStorage struct {
 	workspaces      []*Workspace
 	members         []*WorkspaceMember
 	invites         []*WorkspaceInvite
+	events          []*WorkspaceEvent
 	workspacesStore *fakeWorkspacesStorage
 	membersStore    *fakeMembersStorage
 	invitesStore    *fakeInvitesStorage
+	eventsOutbox    *fakeEventsOutbox
 	txCallCount     int
 }
 
@@ -31,6 +33,7 @@ func newFakeStorage() *fakeStorage {
 	s.workspacesStore = &fakeWorkspacesStorage{parent: s}
 	s.membersStore = &fakeMembersStorage{parent: s}
 	s.invitesStore = &fakeInvitesStorage{parent: s}
+	s.eventsOutbox = &fakeEventsOutbox{parent: s}
 
 	return s
 }
@@ -38,8 +41,23 @@ func newFakeStorage() *fakeStorage {
 func (s *fakeStorage) Workspaces() WorkspacesStorage             { return s.workspacesStore }
 func (s *fakeStorage) WorkspaceMembers() WorkspaceMembersStorage { return s.membersStore }
 func (s *fakeStorage) WorkspaceInvites() WorkspaceInvitesStorage { return s.invitesStore }
+func (s *fakeStorage) WorkspaceEvents() WorkspaceEventsOutbox    { return s.eventsOutbox }
 func (s *fakeStorage) IdempotencyKeys() idempotency.Storage {
 	panic("IdempotencyKeys not implemented")
+}
+
+// fakeEventsOutbox records every event sent via the outbox so tests can
+// assert on emitted events. Send is a no-op aside from the recording.
+type fakeEventsOutbox struct {
+	parent *fakeStorage
+}
+
+func (o *fakeEventsOutbox) Send(_ context.Context, event *WorkspaceEvent) error {
+	o.parent.mu.Lock()
+	defer o.parent.mu.Unlock()
+	o.parent.events = append(o.parent.events, event)
+
+	return nil
 }
 
 func (s *fakeStorage) ExecuteInTransaction(ctx context.Context, cb func(ctx context.Context, tx Storage) error) error {

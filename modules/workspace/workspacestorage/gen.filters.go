@@ -196,3 +196,44 @@ func buildWorkspaceInviteFilterExpr(filter *workspaceservice.WorkspaceInviteFilt
 		}),
 	)
 }
+func buildWorkspaceEventFilterExpr(filter *workspaceservice.WorkspaceEventFilter, options ...func(*filterOptions)) (clause.Expression, error) {
+	if filter == nil {
+		return nil, nil
+	}
+
+	opts := &filterOptions{}
+	for _, opt := range options {
+		opt(opts)
+	}
+
+	return dbutil.BuildFilterExpression(
+		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
+			if filter.Or == nil {
+				return nil, nil
+			}
+			exprs := make([]clause.Expression, 0, len(filter.Or))
+			for _, orFilter := range filter.Or {
+				expr, err := buildWorkspaceEventFilterExpr(orFilter)
+				if err != nil {
+					return nil, err
+				}
+				exprs = append(exprs, expr)
+			}
+			return clause.Or(exprs...), nil
+		}),
+		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
+			if filter.And == nil {
+				return nil, nil
+			}
+			exprs := make([]clause.Expression, 0, len(filter.And))
+			for _, andFilter := range filter.And {
+				expr, err := buildWorkspaceEventFilterExpr(andFilter)
+				if err != nil {
+					return nil, err
+				}
+				exprs = append(exprs, expr)
+			}
+			return clause.And(exprs...), nil
+		}),
+	)
+}

@@ -1,6 +1,7 @@
 package workspacestorage
 
 import (
+	fmt "fmt"
 	time "time"
 
 	uuid "github.com/google/uuid"
@@ -140,4 +141,39 @@ func convertWorkspaceInviteFromDB(src *dbWorkspaceInvite) (*workspaceservice.Wor
 }
 func (a dbWorkspaceInvite) TableName() string {
 	return "workspace.workspace_invites"
+}
+
+type dbWorkspaceEvent struct {
+	EventType string                  `gorm:"column:event_type;type:text;"`
+	Data      *jsonWorkspaceEventData `gorm:"column:data;"`
+}
+
+func convertWorkspaceEventToDB(src *workspaceservice.WorkspaceEvent) (*dbWorkspaceEvent, error) {
+	result := &dbWorkspaceEvent{}
+	tmp, err := convertWorkspaceEventTypeToDB(src.EventType)
+	if err != nil {
+		return nil, err
+	}
+	result.EventType = tmp
+	tmp1, err := convertWorkspaceEventDataToDB(src.Data)
+	if err != nil {
+		return nil, err
+	}
+	result.Data = tmp1
+	return result, nil
+}
+
+func convertWorkspaceEventFromDB(src *dbWorkspaceEvent) (*workspaceservice.WorkspaceEvent, error) {
+	result := &workspaceservice.WorkspaceEvent{}
+	tmp2, err := convertWorkspaceEventTypeFromDB(src.EventType)
+	if err != nil {
+		return nil, err
+	}
+	result.EventType = tmp2
+	tmp3, err := convertWorkspaceEventDataFromDB(src.Data)
+	if err != nil {
+		return nil, fmt.Errorf("convert WorkspaceEventData to service type: %w", err)
+	}
+	result.Data = tmp3
+	return result, nil
 }

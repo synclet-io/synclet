@@ -8,6 +8,7 @@ modules:
   workspace:
     imports:
       - "./workspace/gen.models.yaml"
+      - "./workspace/gen.events.yaml"
   auth:
     imports:
       - "./auth/gen.models.yaml"

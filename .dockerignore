@@ -1,4 +1,8 @@
 .git
+docker-compose.yml
+docker-compose.*.yml
+Taskfile.yml
+
 front/node_modules
 bin/
 .planning/
@@ -6,3 +10,12 @@ bin/
 .claude/
 .env
 .env.*
+.dockerignore
+.golangci.yml
+
+
+release-please-config.json
+.release-please-manifest.json
+
+CLAUDE.md
+CHANGELOG.md

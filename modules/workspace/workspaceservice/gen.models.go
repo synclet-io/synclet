@@ -10,6 +10,81 @@ import (
 	// end user code 'imports'
 )
 
+type WorkspaceEventData interface {
+	isWorkspaceEventData()
+	WorkspaceEventDataEquals(WorkspaceEventData) bool
+	// user code 'WorkspaceEventData methods'
+	// end user code 'WorkspaceEventData methods'
+}
+
+func (*WorkspaceCreatedEventData) isWorkspaceEventData() {}
+func (w *WorkspaceCreatedEventData) WorkspaceEventDataEquals(to WorkspaceEventData) bool {
+	if (w == nil) != (to == nil) {
+		return false
+	}
+	if w == nil && to == nil {
+		return true
+	}
+
+	toTyped, ok := to.(*WorkspaceCreatedEventData)
+	if !ok {
+		return false
+	}
+
+	return w.Equals(toTyped)
+}
+func (*WorkspaceUpdatedEventData) isWorkspaceEventData() {}
+func (w *WorkspaceUpdatedEventData) WorkspaceEventDataEquals(to WorkspaceEventData) bool {
+	if (w == nil) != (to == nil) {
+		return false
+	}
+	if w == nil && to == nil {
+		return true
+	}
+
+	toTyped, ok := to.(*WorkspaceUpdatedEventData)
+	if !ok {
+		return false
+	}
+
+	return w.Equals(toTyped)
+}
+func (*WorkspaceDeletedEventData) isWorkspaceEventData() {}
+func (w *WorkspaceDeletedEventData) WorkspaceEventDataEquals(to WorkspaceEventData) bool {
+	if (w == nil) != (to == nil) {
+		return false
+	}
+	if w == nil && to == nil {
+		return true
+	}
+
+	toTyped, ok := to.(*WorkspaceDeletedEventData)
+	if !ok {
+		return false
+	}
+
+	return w.Equals(toTyped)
+}
+
+func copyWorkspaceEventData(val WorkspaceEventData) WorkspaceEventData {
+	if val == nil {
+		return nil
+	}
+
+	switch val := val.(type) {
+	case *WorkspaceCreatedEventData:
+		valCopy := val.Copy()
+		return &valCopy
+	case *WorkspaceUpdatedEventData:
+		valCopy := val.Copy()
+		return &valCopy
+	case *WorkspaceDeletedEventData:
+		valCopy := val.Copy()
+		return &valCopy
+	}
+	panic("called copyWorkspaceEventData with invalid type")
+}
+
 type WorkspaceField byte
 
 const (
@@ -237,6 +312,210 @@ func (w *WorkspaceInvite) Equals(to *WorkspaceInvite) bool {
 	}
 	if w.UpdatedAt != to.UpdatedAt {
 		return false
+	}
+
+	return true
+}
+
+type WorkspaceEventField byte
+
+const (
+	WorkspaceEventFieldEventType WorkspaceEventField = iota + 1
+	WorkspaceEventFieldData
+)
+
+type WorkspaceEventFilter struct {
+	Or  []*WorkspaceEventFilter
+	And []*WorkspaceEventFilter
+}
+type WorkspaceEventOrder order.Order[WorkspaceEventField]
+
+type WorkspaceEvent struct {
+	EventType WorkspaceEventType
+	Data      WorkspaceEventData
+}
+
+// user code 'WorkspaceEvent methods'
+// end user code 'WorkspaceEvent methods'
+
+func (w *WorkspaceEvent) Copy() WorkspaceEvent {
+	var result WorkspaceEvent
+	result.EventType = w.EventType // enum
+	result.Data = copyWorkspaceEventData(w.Data)
+
+	return result
+}
+func (w *WorkspaceEvent) Equals(to *WorkspaceEvent) bool {
+	if (w == nil) != (to == nil) {
+		return false
+	}
+	if w == nil && to == nil {
+		return true
+	}
+	if w.EventType != to.EventType {
+		return false
+	}
+	if !w.Data.WorkspaceEventDataEquals(to.Data) {
+		return false
+	}
+
+	return true
+}
+
+type WorkspaceCreatedEventDataField byte
+
+const (
+	WorkspaceCreatedEventDataFieldWorkspace WorkspaceCreatedEventDataField = iota + 1
+)
+
+type WorkspaceCreatedEventDataFilter struct {
+	Or  []*WorkspaceCreatedEventDataFilter
+	And []*WorkspaceCreatedEventDataFilter
+}
+type WorkspaceCreatedEventDataOrder order.Order[WorkspaceCreatedEventDataField]
+
+type WorkspaceCreatedEventData struct {
+	Workspace *Workspace
+}
+
+// user code 'WorkspaceCreatedEventData methods'
+// end user code 'WorkspaceCreatedEventData methods'
+
+func (w *WorkspaceCreatedEventData) Copy() WorkspaceCreatedEventData {
+	var result WorkspaceCreatedEventData
+	if w.Workspace != nil {
+		var tmp Workspace
+		tmp = (*w.Workspace).Copy() // model
+		result.Workspace = &tmp
+	}
+
+	return result
+}
+func (w *WorkspaceCreatedEventData) Equals(to *WorkspaceCreatedEventData) bool {
+	if (w == nil) != (to == nil) {
+		return false
+	}
+	if w == nil && to == nil {
+		return true
+	}
+	if (w.Workspace == nil) != (to.Workspace == nil) {
+		return false
+	}
+	if w.Workspace != nil && to.Workspace != nil {
+		if !(*w.Workspace).Equals(&(*to.Workspace)) {
+			return false
+		}
+	}
+
+	return true
+}
+
+type WorkspaceUpdatedEventDataField byte
+
+const (
+	WorkspaceUpdatedEventDataFieldOldData WorkspaceUpdatedEventDataField = iota + 1
+	WorkspaceUpdatedEventDataFieldNewData
+)
+
+type WorkspaceUpdatedEventDataFilter struct {
+	Or  []*WorkspaceUpdatedEventDataFilter
+	And []*WorkspaceUpdatedEventDataFilter
+}
+type WorkspaceUpdatedEventDataOrder order.Order[WorkspaceUpdatedEventDataField]
+
+type WorkspaceUpdatedEventData struct {
+	OldData *Workspace
+	NewData *Workspace
+}
+
+// user code 'WorkspaceUpdatedEventData methods'
+// end user code 'WorkspaceUpdatedEventData methods'
+
+func (w *WorkspaceUpdatedEventData) Copy() WorkspaceUpdatedEventData {
+	var result WorkspaceUpdatedEventData
+	if w.OldData != nil {
+		var tmp Workspace
+		tmp = (*w.OldData).Copy() // model
+		result.OldData = &tmp
+	}
+	if w.NewData != nil {
+		var tmp1 Workspace
+		tmp1 = (*w.NewData).Copy() // model
+		result.NewData = &tmp1
+	}
+
+	return result
+}
+func (w *WorkspaceUpdatedEventData) Equals(to *WorkspaceUpdatedEventData) bool {
+	if (w == nil) != (to == nil) {
+		return false
+	}
+	if w == nil && to == nil {
+		return true
+	}
+	if (w.OldData == nil) != (to.OldData == nil) {
+		return false
+	}
+	if w.OldData != nil && to.OldData != nil {
+		if !(*w.OldData).Equals(&(*to.OldData)) {
+			return false
+		}
+	}
+	if (w.NewData == nil) != (to.NewData == nil) {
+		return false
+	}
+	if w.NewData != nil && to.NewData != nil {
+		if !(*w.NewData).Equals(&(*to.NewData)) {
+			return false
+		}
+	}
+
+	return true
+}
+
+type WorkspaceDeletedEventDataField byte
+
+const (
+	WorkspaceDeletedEventDataFieldWorkspace WorkspaceDeletedEventDataField = iota + 1
+)
+
+type WorkspaceDeletedEventDataFilter struct {
+	Or  []*WorkspaceDeletedEventDataFilter
+	And []*WorkspaceDeletedEventDataFilter
+}
+type WorkspaceDeletedEventDataOrder order.Order[WorkspaceDeletedEventDataField]
+
+type WorkspaceDeletedEventData struct {
+	Workspace *Workspace
+}
+
+// user code 'WorkspaceDeletedEventData methods'
+// end user code 'WorkspaceDeletedEventData methods'
+
+func (w *WorkspaceDeletedEventData) Copy() WorkspaceDeletedEventData {
+	var result WorkspaceDeletedEventData
+	if w.Workspace != nil {
+		var tmp Workspace
+		tmp = (*w.Workspace).Copy() // model
+		result.Workspace = &tmp
+	}
+
+	return result
+}
+func (w *WorkspaceDeletedEventData) Equals(to *WorkspaceDeletedEventData) bool {
+	if (w == nil) != (to == nil) {
+		return false
+	}
+	if w == nil && to == nil {
+		return true
+	}
+	if (w.Workspace == nil) != (to.Workspace == nil) {
+		return false
+	}
+	if w.Workspace != nil && to.Workspace != nil {
+		if !(*w.Workspace).Equals(&(*to.Workspace)) {
+			return false
+		}
 	}
 
 	return true

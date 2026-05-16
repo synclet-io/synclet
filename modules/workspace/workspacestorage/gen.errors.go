@@ -69,3 +69,22 @@ func wrapWorkspaceInviteQueryError(err error) error {
 
 	return err
 }
+func wrapWorkspaceEventQueryError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return errors.WithStack(errors1.Join(workspacesvc.ErrWorkspaceEventNotFound, err))
+	}
+
+	var pgErr *pgconn.PgError
+
+	if errors.As(err, &pgErr) {
+		if pgErr.Code == "23505" {
+			return errors.WithStack(errors1.Join(workspacesvc.ErrWorkspaceEventAlreadyExists, err))
+		}
+	}
+
+	return err
+}

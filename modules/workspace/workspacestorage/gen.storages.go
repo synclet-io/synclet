@@ -34,6 +34,9 @@ func (s Storages) WorkspaceMembers() workspacesvc.WorkspaceMembersStorage {
 func (s Storages) WorkspaceInvites() workspacesvc.WorkspaceInvitesStorage {
 	return NewWorkspaceInvitesStorage(s.db, s.logger)
 }
+func (s Storages) WorkspaceEvents() workspacesvc.WorkspaceEventsOutbox {
+	return NewWorkspaceEventsOutbox(s.db, s.processors)
+}
 
 func (s Storages) IdempotencyKeys() idempotency.Storage {
 	return idempotency.GormStorage{
@@ -131,5 +134,12 @@ func NewWorkspaceInvitesStorage(db *gorm.DB, logger *logging.Logger) workspacesv
 			workspacesvc.WorkspaceInviteFieldUpdatedAt:     {Name: "updated_at"},
 		},
 		LockScope: "workspace.WorkspaceInvites",
+	}
+}
+func NewWorkspaceEventsOutbox(db *gorm.DB, processors []txoutbox.MessageProcessor) workspacesvc.WorkspaceEventsOutbox {
+	return txoutbox.GormStorage[workspacesvc.WorkspaceEvent]{
+		DB:                db,
+		BuildMessage:      buildWorkspaceEventMessage,
+		MessageProcessors: processors,
 	}
 }

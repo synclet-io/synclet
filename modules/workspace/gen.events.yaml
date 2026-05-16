@@ -1,0 +1,38 @@
+types:
+  one_ofs:
+    - name: WorkspaceEventData
+      values:
+        - WorkspaceCreatedEventData
+        - WorkspaceUpdatedEventData
+        - WorkspaceDeletedEventData
+  enums:
+    - name: WorkspaceEventType
+      values: [ Created, Updated, Deleted ]
+      helpers:
+        is_valid: true
+        is: true
+  models:
+    - name: WorkspaceEvent
+      storage_type: tx_outbox
+      fields:
+        - { name: EventType, type: "WorkspaceEventType" }
+        - { name: Data, type: "WorkspaceEventData" }
+
+    - name: WorkspaceCreatedEventData
+      id: 30001
+      do_not_persists: true
+      fields:
+        - { name: Workspace, type: "*Workspace" }
+
+    - name: WorkspaceUpdatedEventData
+      id: 30002
+      do_not_persists: true
+      fields:
+        - { name: OldData, type: "*Workspace" }
+        - { name: NewData, type: "*Workspace" }
+
+    - name: WorkspaceDeletedEventData
+      id: 30003
+      do_not_persists: true
+      fields:
+        - { name: Workspace, type: "*Workspace" }

@@ -70,3 +70,33 @@ func convertInviteStatusFromDB(inviteStatusValue string) (workspaceservice.Invit
 	}
 	return result, nil
 }
+
+const (
+	workspaceEventTypeCreated = "created"
+	workspaceEventTypeUpdated = "updated"
+	workspaceEventTypeDeleted = "deleted"
+)
+
+func convertWorkspaceEventTypeToDB(workspaceEventTypeValue workspaceservice.WorkspaceEventType) (string, error) {
+	result, ok := map[workspaceservice.WorkspaceEventType]string{
+		workspaceservice.WorkspaceEventTypeCreated: workspaceEventTypeCreated,
+		workspaceservice.WorkspaceEventTypeUpdated: workspaceEventTypeUpdated,
+		workspaceservice.WorkspaceEventTypeDeleted: workspaceEventTypeDeleted,
+	}[workspaceEventTypeValue]
+	if !ok {
+		return "", fmt.Errorf("unknown WorkspaceEventType value: %d", workspaceEventTypeValue)
+	}
+	return result, nil
+}
+
+func convertWorkspaceEventTypeFromDB(workspaceEventTypeValue string) (workspaceservice.WorkspaceEventType, error) {
+	result, ok := map[string]workspaceservice.WorkspaceEventType{
+		workspaceEventTypeCreated: workspaceservice.WorkspaceEventTypeCreated,
+		workspaceEventTypeUpdated: workspaceservice.WorkspaceEventTypeUpdated,
+		workspaceEventTypeDeleted: workspaceservice.WorkspaceEventTypeDeleted,
+	}[workspaceEventTypeValue]
+	if !ok {
+		return 0, fmt.Errorf("unknown WorkspaceEventType db value: %s", workspaceEventTypeValue)
+	}
+	return result, nil
+}

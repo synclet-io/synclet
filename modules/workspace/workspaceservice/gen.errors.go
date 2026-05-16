@@ -30,3 +30,19 @@ const (
 	ErrWorkspaceInviteNotFound      = NotFoundError("WorkspaceInvite")
 	ErrWorkspaceInviteAlreadyExists = AlreadyExistsError("WorkspaceInvite")
 )
+const (
+	ErrWorkspaceEventNotFound      = NotFoundError("WorkspaceEvent")
+	ErrWorkspaceEventAlreadyExists = AlreadyExistsError("WorkspaceEvent")
+)
+const (
+	ErrWorkspaceCreatedEventDataNotFound      = NotFoundError("WorkspaceCreatedEventData")
+	ErrWorkspaceCreatedEventDataAlreadyExists = AlreadyExistsError("WorkspaceCreatedEventData")
+)
+const (
+	ErrWorkspaceUpdatedEventDataNotFound      = NotFoundError("WorkspaceUpdatedEventData")
+	ErrWorkspaceUpdatedEventDataAlreadyExists = AlreadyExistsError("WorkspaceUpdatedEventData")
+)
+const (
+	ErrWorkspaceDeletedEventDataNotFound      = NotFoundError("WorkspaceDeletedEventData")
+	ErrWorkspaceDeletedEventDataAlreadyExists = AlreadyExistsError("WorkspaceDeletedEventData")
+)
