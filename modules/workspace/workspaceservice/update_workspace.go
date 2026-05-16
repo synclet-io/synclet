@@ -25,7 +25,8 @@ func NewUpdateWorkspace(storage Storage) *UpdateWorkspace {
 	return &UpdateWorkspace{storage: storage}
 }
 
-// Execute updates the workspace fields specified in params.
+// Execute updates the workspace fields specified in params and publishes
+// the workspace.updated event for downstream subscribers.
 func (uc *UpdateWorkspace) Execute(ctx context.Context, params UpdateWorkspaceParams) (*Workspace, error) {
 	workspace, err := uc.storage.Workspaces().First(ctx, &WorkspaceFilter{
 		ID: filter.Equals(params.ID),
@@ -33,6 +34,8 @@ func (uc *UpdateWorkspace) Execute(ctx context.Context, params UpdateWorkspacePa
 	if err != nil {
 		return nil, fmt.Errorf("getting workspace: %w", err)
 	}
+
+	oldData := workspace.Copy()
 
 	if params.Name != nil {
 		workspace.Name = *params.Name
@@ -43,6 +46,13 @@ func (uc *UpdateWorkspace) Execute(ctx context.Context, params UpdateWorkspacePa
 	updated, err := uc.storage.Workspaces().Update(ctx, workspace)
 	if err != nil {
 		return nil, fmt.Errorf("updating workspace: %w", err)
+	}
+
+	if err := uc.storage.WorkspaceEvents().Send(ctx, &WorkspaceEvent{
+		EventType: WorkspaceEventTypeUpdated,
+		Data:      &WorkspaceUpdatedEventData{OldData: &oldData, NewData: updated},
+	}); err != nil {
+		return nil, fmt.Errorf("publishing workspace.updated event: %w", err)
 	}
 
 	return updated, nil

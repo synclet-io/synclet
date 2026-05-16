@@ -20,7 +20,9 @@ func NewCreateWorkspace(storage Storage) *CreateWorkspace {
 	return &CreateWorkspace{storage: storage}
 }
 
-// Execute creates a workspace with the given name and adds the owner as admin.
+// Execute creates a workspace, adds the owner as admin, and publishes the
+// workspace.created event for downstream subscribers (e.g. seeding default
+// connector registries).
 func (uc *CreateWorkspace) Execute(ctx context.Context, name string, ownerUserID uuid.UUID) (*Workspace, error) {
 	now := time.Now()
 	slug := stringutil.Slugify(name)
@@ -49,6 +51,13 @@ func (uc *CreateWorkspace) Execute(ctx context.Context, name string, ownerUserID
 
 	if _, err := uc.storage.WorkspaceMembers().Create(ctx, member); err != nil {
 		return nil, fmt.Errorf("adding owner member: %w", err)
+	}
+
+	if err := uc.storage.WorkspaceEvents().Send(ctx, &WorkspaceEvent{
+		EventType: WorkspaceEventTypeCreated,
+		Data:      &WorkspaceCreatedEventData{Workspace: created},
+	}); err != nil {
+		return nil, fmt.Errorf("publishing workspace.created event: %w", err)
 	}
 
 	return created, nil

@@ -30,6 +30,23 @@ func TestCreateWorkspace_CreatesWorkspaceAndAdminMember(t *testing.T) {
 	assert.Equal(t, MemberRoleAdmin, members[0].Role)
 }
 
+func TestCreateWorkspace_EmitsCreatedEvent(t *testing.T) {
+	ctx := context.Background()
+	store := newFakeStorage()
+
+	ws, err := NewCreateWorkspace(store).Execute(ctx, "Acme Corp", uuid.New())
+	require.NoError(t, err)
+
+	require.Len(t, store.events, 1, "exactly one workspace event must be emitted")
+	event := store.events[0]
+	assert.Equal(t, WorkspaceEventTypeCreated, event.EventType)
+
+	data, ok := event.Data.(*WorkspaceCreatedEventData)
+	require.True(t, ok, "data must be *WorkspaceCreatedEventData")
+	require.NotNil(t, data.Workspace)
+	assert.Equal(t, ws.ID, data.Workspace.ID)
+}
+
 func TestCreateWorkspace_DuplicateSlugFails(t *testing.T) {
 	ctx := context.Background()
 	store := newFakeStorage()

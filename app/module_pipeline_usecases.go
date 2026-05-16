@@ -49,6 +49,7 @@ func pipelineUseCasesModule() fx.Option {
 			pipelinerepositories.NewListRepositoryConnectors,
 			pipelinerepositories.NewGetConnectorVersions,
 			pipelinerepositories.NewSyncAllRepositories,
+			pipelinerepositories.NewCreateDefaultRepositories,
 		),
 
 		// Source use cases

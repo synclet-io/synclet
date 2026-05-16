@@ -10,6 +10,7 @@ import (
 	"github.com/go-pnp/go-pnp/fxutil"
 	"github.com/go-pnp/go-pnp/logging"
 	"github.com/go-pnp/go-pnp/prometheus/pnpprometheus"
+	"github.com/go-pnp/go-pnp/watermill/pnpwatermill"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/saturn4er/boilerplate-go/lib/txoutbox"
 	"go.uber.org/fx"
@@ -22,6 +23,7 @@ import (
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineadapt"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineconnect"
 	_ "github.com/synclet-io/synclet/modules/pipeline/pipelinedbstate"
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineeventhandle"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineexec/pipelineexecdocker"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinemetrics"
@@ -88,7 +90,16 @@ func pipelineModule(options *RunAppOptions) fx.Option {
 		pipelineMetricsModule(),
 		pipelineDependenciesModule(),
 		pipelineUseCasesModule(),
+		pipelineEventHandlersModule(),
 		pipelineJobsModule(options),
+	)
+}
+
+func pipelineEventHandlersModule() fx.Option {
+	return fx.Options(
+		fx.Provide(
+			pnpwatermill.HandlerProvider(pipelineeventhandle.NewWorkspaceCreatedHandler),
+		),
 	)
 }
 
