@@ -21,7 +21,9 @@ func NewBootstrapDefaultWorkspace(storage Storage) *BootstrapDefaultWorkspace {
 	return &BootstrapDefaultWorkspace{storage: storage}
 }
 
-// Execute creates the "Default" workspace with slug "default" if it does not exist.
+// Execute creates the "Default" workspace with slug "default" if it does not
+// exist, and publishes a workspace.created event so subscribers (e.g. the
+// default-registries seeder) treat it like any other newly created workspace.
 func (uc *BootstrapDefaultWorkspace) Execute(ctx context.Context) (*Workspace, error) {
 	existing, err := uc.storage.Workspaces().First(ctx, &WorkspaceFilter{
 		Slug: filter.Equals("default"),
@@ -48,6 +50,13 @@ func (uc *BootstrapDefaultWorkspace) Execute(ctx context.Context) (*Workspace, e
 	created, err := uc.storage.Workspaces().Create(ctx, workspace)
 	if err != nil {
 		return nil, fmt.Errorf("creating default workspace: %w", err)
+	}
+
+	if err := uc.storage.WorkspaceEvents().Send(ctx, &WorkspaceEvent{
+		EventType: WorkspaceEventTypeCreated,
+		Data:      &WorkspaceCreatedEventData{Workspace: created},
+	}); err != nil {
+		return nil, fmt.Errorf("publishing workspace.created event: %w", err)
 	}
 
 	return created, nil

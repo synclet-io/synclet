@@ -18,6 +18,9 @@ func TestBootstrapDefaultWorkspace_CreatesWhenMissing(t *testing.T) {
 	require.NotNil(t, got)
 	assert.Equal(t, "Default", got.Name)
 	assert.Equal(t, "default", got.Slug)
+
+	require.Len(t, store.events, 1, "bootstrap must emit workspace.created so subscribers seed registries")
+	assert.Equal(t, WorkspaceEventTypeCreated, store.events[0].EventType)
 }
 
 func TestBootstrapDefaultWorkspace_IdempotentWhenExisting(t *testing.T) {
@@ -33,4 +36,5 @@ func TestBootstrapDefaultWorkspace_IdempotentWhenExisting(t *testing.T) {
 	all, err := store.Workspaces().Find(ctx, &WorkspaceFilter{})
 	require.NoError(t, err)
 	assert.Len(t, all, 1, "no extra workspace must be created")
+	assert.Empty(t, store.events, "no event when bootstrap is a no-op")
 }
