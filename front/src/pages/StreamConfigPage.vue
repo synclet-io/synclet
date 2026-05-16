@@ -122,14 +122,20 @@ watch(connection, async (conn) => {
         try {
           configuredCat = await getConfiguredCatalog(id) as ConfiguredCatalogInput | undefined
         }
-        catch { /* No configured catalog yet */ }
+        catch (e) {
+          // No configured catalog yet — fresh connection.
+          console.debug('[stream-config] getConfiguredCatalog failed (cached path)', e)
+        }
         parseStreams(cached.catalog as unknown as DiscoveredCatalog, configuredCat)
         hasLoadedCatalog.value = true
         loading.value = false
         return
       }
     }
-    catch { /* Fallback to connection-scoped discover below */ }
+    catch (e) {
+      // Falling back to connection-scoped discover.
+      console.warn('[stream-config] getSourceCatalog failed, falling back to connection discover', e)
+    }
   }
 
   // Fallback: existing getDiscoveredCatalog (connection-scoped, synchronous Docker)
@@ -140,11 +146,18 @@ watch(connection, async (conn) => {
     try {
       configuredCat = await getConfiguredCatalog(id) as ConfiguredCatalogInput | undefined
     }
-    catch { /* No configured catalog yet */ }
+    catch (e) {
+      console.debug('[stream-config] getConfiguredCatalog failed (fallback path)', e)
+    }
     if (cat)
       parseStreams(cat, configuredCat)
   }
-  catch { /* No catalog yet */ }
+  catch (e) {
+    // Both the cached source catalog and the connection-scoped discover failed —
+    // user gets a blank page otherwise, so surface a recoverable error.
+    console.warn('[stream-config] getDiscoveredCatalog failed', e)
+    error.value = getErrorMessage(e) || 'Failed to load catalog. Try running schema discovery.'
+  }
   hasLoadedCatalog.value = true
   loading.value = false
 }, { immediate: true })

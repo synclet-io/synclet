@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { SButton, SCard, SInput } from '@shared/ui'
+import { SButton, SCard, SConfirmDialog, SInput } from '@shared/ui'
 import { ref, watch } from 'vue'
 
 const props = defineProps<{
@@ -22,6 +22,7 @@ const tolerationsJson = ref('')
 const nodeSelectorJson = ref('')
 const affinityJson = ref('')
 const validationErrors = ref<Record<string, string>>({})
+const confirmResetOpen = ref(false)
 
 function parseConfig(json: string | null) {
   if (!json) {
@@ -130,10 +131,12 @@ function handleSave() {
 }
 
 function handleReset() {
-  // eslint-disable-next-line no-alert
-  if (window.confirm('Reset runtime config: This will clear all overrides and revert to global defaults. Continue?')) {
-    emit('reset')
-  }
+  confirmResetOpen.value = true
+}
+
+function confirmReset() {
+  confirmResetOpen.value = false
+  emit('reset')
 }
 </script>
 
@@ -237,4 +240,13 @@ function handleReset() {
       </div>
     </div>
   </SCard>
+
+  <SConfirmDialog
+    :open="confirmResetOpen"
+    title="Reset runtime config"
+    message="This will clear all overrides and revert to global defaults. Continue?"
+    confirm-text="Reset"
+    @confirm="confirmReset"
+    @cancel="confirmResetOpen = false"
+  />
 </template>
