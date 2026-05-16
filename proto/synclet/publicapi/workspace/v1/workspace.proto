@@ -38,6 +38,9 @@ service WorkspaceService {
   rpc RemoveMember(RemoveMemberRequest) returns (RemoveMemberResponse) {
     option (synclet.options.v1.required_role) = REQUIRED_ROLE_ADMIN;
   }
+  rpc UpdateMemberRole(UpdateMemberRoleRequest) returns (UpdateMemberRoleResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_ADMIN;
+  }
   rpc ListMembers(ListMembersRequest) returns (ListMembersResponse) {
     option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
   }
@@ -143,6 +146,14 @@ message RemoveMemberRequest {
 }
 
 message RemoveMemberResponse {}
+
+message UpdateMemberRoleRequest {
+  string workspace_id = 1;
+  string user_id = 2;
+  MemberRole role = 3;
+}
+
+message UpdateMemberRoleResponse {}
 
 message ListMembersRequest {
   string workspace_id = 1;

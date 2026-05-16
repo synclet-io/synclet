@@ -34,6 +34,17 @@ export function useRemoveMember() {
   })
 }
 
+export function useUpdateMemberRole() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (params: { workspaceId: string, userId: string, role: MemberRole }) =>
+      workspaceApi.updateMemberRole(params.workspaceId, params.userId, params.role),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: workspaceKeys.members(variables.workspaceId) })
+    },
+  })
+}
+
 export function useInvites() {
   const { isAuthenticated } = useAuth()
   return useQuery({

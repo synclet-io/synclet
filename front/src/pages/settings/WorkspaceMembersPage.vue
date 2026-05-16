@@ -8,6 +8,7 @@ import {
   useRemoveMember,
   useResendInvite,
   useRevokeInvite,
+  useUpdateMemberRole,
   useWorkspaceMembers,
 } from '@entities/workspace'
 import { getErrorMessage } from '@shared/lib/errorUtils'
@@ -41,6 +42,30 @@ const createInvite = useCreateInvite()
 const removeMember = useRemoveMember()
 const revokeInvite = useRevokeInvite()
 const resendInvite = useResendInvite()
+const updateMemberRole = useUpdateMemberRole()
+
+const adminCount = computed(() => (members.value ?? []).filter(m => m.role === 'admin').length)
+
+function canEditRole(member: WorkspaceMember): boolean {
+  if (!isAdmin.value)
+    return false
+  // Block demoting the last admin (the current user themselves, when they are the only admin)
+  if (member.role === 'admin' && adminCount.value <= 1)
+    return false
+  return true
+}
+
+async function handleRoleChange(member: WorkspaceMember, newRole: MemberRole) {
+  if (newRole === member.role)
+    return
+  try {
+    await updateMemberRole.mutateAsync({ workspaceId: workspaceId.value, userId: member.userId, role: newRole })
+    toast.success('Role updated')
+  }
+  catch (e: unknown) {
+    error.value = getErrorMessage(e) || 'Failed to update role'
+  }
+}
 
 const roleOptions = [
   { label: 'Admin', value: 'admin' },
@@ -233,9 +258,22 @@ const columns: Column[] = [
       </template>
 
       <template #cell-role="{ row }">
-        <SBadge :variant="roleVariant(row.type === 'member' ? row.member.role : row.invite.role)">
-          {{ row.type === 'member' ? row.member.role : row.invite.role }}
-        </SBadge>
+        <template v-if="row.type === 'member' && canEditRole(row.member)">
+          <SSelect
+            :model-value="row.member.role"
+            :options="roleOptions"
+            :disabled="updateMemberRole.isPending.value"
+            @update:model-value="(value: string | number) => handleRoleChange(row.member, value as MemberRole)"
+          />
+        </template>
+        <template v-else>
+          <SBadge
+            :variant="roleVariant(row.type === 'member' ? row.member.role : row.invite.role)"
+            :title="row.type === 'member' && row.member.role === 'admin' && adminCount <= 1 ? 'You cannot demote the last admin' : undefined"
+          >
+            {{ row.type === 'member' ? row.member.role : row.invite.role }}
+          </SBadge>
+        </template>
       </template>
 
       <template #cell-date="{ row }">

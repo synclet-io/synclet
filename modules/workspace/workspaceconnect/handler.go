@@ -26,6 +26,7 @@ type Handler struct {
 	getWorkspace          *workspaceservice.GetWorkspace
 	listWorkspacesForUser *workspaceservice.ListWorkspacesForUser
 	removeMember          *workspaceservice.RemoveMember
+	updateMemberRole      *workspaceservice.UpdateMemberRole
 	listMembers           *workspaceservice.ListMembers
 
 	// Invite use cases
@@ -46,6 +47,7 @@ func NewHandler(
 	getWorkspace *workspaceservice.GetWorkspace,
 	listWorkspacesForUser *workspaceservice.ListWorkspacesForUser,
 	removeMember *workspaceservice.RemoveMember,
+	updateMemberRole *workspaceservice.UpdateMemberRole,
 	listMembers *workspaceservice.ListMembers,
 	createInvite *workspaceservice.CreateInvite,
 	acceptInvite *workspaceservice.AcceptInvite,
@@ -62,6 +64,7 @@ func NewHandler(
 		getWorkspace:          getWorkspace,
 		listWorkspacesForUser: listWorkspacesForUser,
 		removeMember:          removeMember,
+		updateMemberRole:      updateMemberRole,
 		listMembers:           listMembers,
 		createInvite:          createInvite,
 		acceptInvite:          acceptInvite,
@@ -205,6 +208,39 @@ func (h *Handler) RemoveMember(ctx context.Context, req *connect.Request[workspa
 	}
 
 	return connect.NewResponse(&workspacev1.RemoveMemberResponse{}), nil
+}
+
+func (h *Handler) UpdateMemberRole(ctx context.Context, req *connect.Request[workspacev1.UpdateMemberRoleRequest]) (*connect.Response[workspacev1.UpdateMemberRoleResponse], error) {
+	// Use workspace ID from auth context to prevent IDOR -- the role interceptor
+	// validates admin role against this same context workspace, so we must target it.
+	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+	}
+
+	userID, err := uuid.Parse(req.Msg.GetUserId())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	role := protoToMemberRole(req.Msg.GetRole())
+	if !role.IsValid() {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid role: %v", req.Msg.GetRole()))
+	}
+
+	if err := h.updateMemberRole.Execute(ctx, workspaceID, userID, role); err != nil {
+		if errors.Is(err, workspaceservice.ErrLastAdminCannotBeDemoted) {
+			return nil, connect.NewError(connect.CodeFailedPrecondition, err)
+		}
+
+		if errors.Is(err, workspaceservice.ErrInvalidMemberRole) {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+
+		return nil, mapError(err)
+	}
+
+	return connect.NewResponse(&workspacev1.UpdateMemberRoleResponse{}), nil
 }
 
 func (h *Handler) ListMembers(ctx context.Context, req *connect.Request[workspacev1.ListMembersRequest]) (*connect.Response[workspacev1.ListMembersResponse], error) {

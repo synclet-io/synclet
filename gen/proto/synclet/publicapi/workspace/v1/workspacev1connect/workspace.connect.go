@@ -51,6 +51,9 @@ const (
 	// WorkspaceServiceRemoveMemberProcedure is the fully-qualified name of the WorkspaceService's
 	// RemoveMember RPC.
 	WorkspaceServiceRemoveMemberProcedure = "/synclet.publicapi.workspace.v1.WorkspaceService/RemoveMember"
+	// WorkspaceServiceUpdateMemberRoleProcedure is the fully-qualified name of the WorkspaceService's
+	// UpdateMemberRole RPC.
+	WorkspaceServiceUpdateMemberRoleProcedure = "/synclet.publicapi.workspace.v1.WorkspaceService/UpdateMemberRole"
 	// WorkspaceServiceListMembersProcedure is the fully-qualified name of the WorkspaceService's
 	// ListMembers RPC.
 	WorkspaceServiceListMembersProcedure = "/synclet.publicapi.workspace.v1.WorkspaceService/ListMembers"
@@ -86,6 +89,7 @@ type WorkspaceServiceClient interface {
 	GetWorkspace(context.Context, *connect.Request[v1.GetWorkspaceRequest]) (*connect.Response[v1.GetWorkspaceResponse], error)
 	ListWorkspaces(context.Context, *connect.Request[v1.ListWorkspacesRequest]) (*connect.Response[v1.ListWorkspacesResponse], error)
 	RemoveMember(context.Context, *connect.Request[v1.RemoveMemberRequest]) (*connect.Response[v1.RemoveMemberResponse], error)
+	UpdateMemberRole(context.Context, *connect.Request[v1.UpdateMemberRoleRequest]) (*connect.Response[v1.UpdateMemberRoleResponse], error)
 	ListMembers(context.Context, *connect.Request[v1.ListMembersRequest]) (*connect.Response[v1.ListMembersResponse], error)
 	// Invite RPCs
 	CreateInvite(context.Context, *connect.Request[v1.CreateInviteRequest]) (*connect.Response[v1.CreateInviteResponse], error)
@@ -143,6 +147,12 @@ func NewWorkspaceServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			httpClient,
 			baseURL+WorkspaceServiceRemoveMemberProcedure,
 			connect.WithSchema(workspaceServiceMethods.ByName("RemoveMember")),
+			connect.WithClientOptions(opts...),
+		),
+		updateMemberRole: connect.NewClient[v1.UpdateMemberRoleRequest, v1.UpdateMemberRoleResponse](
+			httpClient,
+			baseURL+WorkspaceServiceUpdateMemberRoleProcedure,
+			connect.WithSchema(workspaceServiceMethods.ByName("UpdateMemberRole")),
 			connect.WithClientOptions(opts...),
 		),
 		listMembers: connect.NewClient[v1.ListMembersRequest, v1.ListMembersResponse](
@@ -204,6 +214,7 @@ type workspaceServiceClient struct {
 	getWorkspace     *connect.Client[v1.GetWorkspaceRequest, v1.GetWorkspaceResponse]
 	listWorkspaces   *connect.Client[v1.ListWorkspacesRequest, v1.ListWorkspacesResponse]
 	removeMember     *connect.Client[v1.RemoveMemberRequest, v1.RemoveMemberResponse]
+	updateMemberRole *connect.Client[v1.UpdateMemberRoleRequest, v1.UpdateMemberRoleResponse]
 	listMembers      *connect.Client[v1.ListMembersRequest, v1.ListMembersResponse]
 	createInvite     *connect.Client[v1.CreateInviteRequest, v1.CreateInviteResponse]
 	acceptInvite     *connect.Client[v1.AcceptInviteRequest, v1.AcceptInviteResponse]
@@ -242,6 +253,11 @@ func (c *workspaceServiceClient) ListWorkspaces(ctx context.Context, req *connec
 // RemoveMember calls synclet.publicapi.workspace.v1.WorkspaceService.RemoveMember.
 func (c *workspaceServiceClient) RemoveMember(ctx context.Context, req *connect.Request[v1.RemoveMemberRequest]) (*connect.Response[v1.RemoveMemberResponse], error) {
 	return c.removeMember.CallUnary(ctx, req)
+}
+
+// UpdateMemberRole calls synclet.publicapi.workspace.v1.WorkspaceService.UpdateMemberRole.
+func (c *workspaceServiceClient) UpdateMemberRole(ctx context.Context, req *connect.Request[v1.UpdateMemberRoleRequest]) (*connect.Response[v1.UpdateMemberRoleResponse], error) {
+	return c.updateMemberRole.CallUnary(ctx, req)
 }
 
 // ListMembers calls synclet.publicapi.workspace.v1.WorkspaceService.ListMembers.
@@ -293,6 +309,7 @@ type WorkspaceServiceHandler interface {
 	GetWorkspace(context.Context, *connect.Request[v1.GetWorkspaceRequest]) (*connect.Response[v1.GetWorkspaceResponse], error)
 	ListWorkspaces(context.Context, *connect.Request[v1.ListWorkspacesRequest]) (*connect.Response[v1.ListWorkspacesResponse], error)
 	RemoveMember(context.Context, *connect.Request[v1.RemoveMemberRequest]) (*connect.Response[v1.RemoveMemberResponse], error)
+	UpdateMemberRole(context.Context, *connect.Request[v1.UpdateMemberRoleRequest]) (*connect.Response[v1.UpdateMemberRoleResponse], error)
 	ListMembers(context.Context, *connect.Request[v1.ListMembersRequest]) (*connect.Response[v1.ListMembersResponse], error)
 	// Invite RPCs
 	CreateInvite(context.Context, *connect.Request[v1.CreateInviteRequest]) (*connect.Response[v1.CreateInviteResponse], error)
@@ -345,6 +362,12 @@ func NewWorkspaceServiceHandler(svc WorkspaceServiceHandler, opts ...connect.Han
 		WorkspaceServiceRemoveMemberProcedure,
 		svc.RemoveMember,
 		connect.WithSchema(workspaceServiceMethods.ByName("RemoveMember")),
+		connect.WithHandlerOptions(opts...),
+	)
+	workspaceServiceUpdateMemberRoleHandler := connect.NewUnaryHandler(
+		WorkspaceServiceUpdateMemberRoleProcedure,
+		svc.UpdateMemberRole,
+		connect.WithSchema(workspaceServiceMethods.ByName("UpdateMemberRole")),
 		connect.WithHandlerOptions(opts...),
 	)
 	workspaceServiceListMembersHandler := connect.NewUnaryHandler(
@@ -409,6 +432,8 @@ func NewWorkspaceServiceHandler(svc WorkspaceServiceHandler, opts ...connect.Han
 			workspaceServiceListWorkspacesHandler.ServeHTTP(w, r)
 		case WorkspaceServiceRemoveMemberProcedure:
 			workspaceServiceRemoveMemberHandler.ServeHTTP(w, r)
+		case WorkspaceServiceUpdateMemberRoleProcedure:
+			workspaceServiceUpdateMemberRoleHandler.ServeHTTP(w, r)
 		case WorkspaceServiceListMembersProcedure:
 			workspaceServiceListMembersHandler.ServeHTTP(w, r)
 		case WorkspaceServiceCreateInviteProcedure:
@@ -456,6 +481,10 @@ func (UnimplementedWorkspaceServiceHandler) ListWorkspaces(context.Context, *con
 
 func (UnimplementedWorkspaceServiceHandler) RemoveMember(context.Context, *connect.Request[v1.RemoveMemberRequest]) (*connect.Response[v1.RemoveMemberResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("synclet.publicapi.workspace.v1.WorkspaceService.RemoveMember is not implemented"))
+}
+
+func (UnimplementedWorkspaceServiceHandler) UpdateMemberRole(context.Context, *connect.Request[v1.UpdateMemberRoleRequest]) (*connect.Response[v1.UpdateMemberRoleResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("synclet.publicapi.workspace.v1.WorkspaceService.UpdateMemberRole is not implemented"))
 }
 
 func (UnimplementedWorkspaceServiceHandler) ListMembers(context.Context, *connect.Request[v1.ListMembersRequest]) (*connect.Response[v1.ListMembersResponse], error) {

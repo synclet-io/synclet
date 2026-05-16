@@ -86,6 +86,7 @@ func workspaceUseCasesModule() fx.Option {
 		workspaceservice.NewGetWorkspace,
 		workspaceservice.NewListWorkspacesForUser,
 		workspaceservice.NewRemoveMember,
+		workspaceservice.NewUpdateMemberRole,
 		workspaceservice.NewGetMembership,
 		workspaceservice.NewListMembers,
 

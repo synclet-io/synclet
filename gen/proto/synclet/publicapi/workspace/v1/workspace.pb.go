@@ -990,6 +990,102 @@ func (*RemoveMemberResponse) Descriptor() ([]byte, []int) {
 	return file_synclet_publicapi_workspace_v1_workspace_proto_rawDescGZIP(), []int{15}
 }
 
+type UpdateMemberRoleRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	WorkspaceId   string                 `protobuf:"bytes,1,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Role          MemberRole             `protobuf:"varint,3,opt,name=role,proto3,enum=synclet.publicapi.workspace.v1.MemberRole" json:"role,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateMemberRoleRequest) Reset() {
+	*x = UpdateMemberRoleRequest{}
+	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateMemberRoleRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateMemberRoleRequest) ProtoMessage() {}
+
+func (x *UpdateMemberRoleRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateMemberRoleRequest.ProtoReflect.Descriptor instead.
+func (*UpdateMemberRoleRequest) Descriptor() ([]byte, []int) {
+	return file_synclet_publicapi_workspace_v1_workspace_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *UpdateMemberRoleRequest) GetWorkspaceId() string {
+	if x != nil {
+		return x.WorkspaceId
+	}
+	return ""
+}
+
+func (x *UpdateMemberRoleRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *UpdateMemberRoleRequest) GetRole() MemberRole {
+	if x != nil {
+		return x.Role
+	}
+	return MemberRole_MEMBER_ROLE_UNSPECIFIED
+}
+
+type UpdateMemberRoleResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateMemberRoleResponse) Reset() {
+	*x = UpdateMemberRoleResponse{}
+	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateMemberRoleResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateMemberRoleResponse) ProtoMessage() {}
+
+func (x *UpdateMemberRoleResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateMemberRoleResponse.ProtoReflect.Descriptor instead.
+func (*UpdateMemberRoleResponse) Descriptor() ([]byte, []int) {
+	return file_synclet_publicapi_workspace_v1_workspace_proto_rawDescGZIP(), []int{17}
+}
+
 type ListMembersRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	WorkspaceId   string                 `protobuf:"bytes,1,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
@@ -999,7 +1095,7 @@ type ListMembersRequest struct {
 
 func (x *ListMembersRequest) Reset() {
 	*x = ListMembersRequest{}
-	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[16]
+	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1011,7 +1107,7 @@ func (x *ListMembersRequest) String() string {
 func (*ListMembersRequest) ProtoMessage() {}
 
 func (x *ListMembersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[16]
+	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1024,7 +1120,7 @@ func (x *ListMembersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMembersRequest.ProtoReflect.Descriptor instead.
 func (*ListMembersRequest) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_workspace_v1_workspace_proto_rawDescGZIP(), []int{16}
+	return file_synclet_publicapi_workspace_v1_workspace_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *ListMembersRequest) GetWorkspaceId() string {
@@ -1043,7 +1139,7 @@ type ListMembersResponse struct {
 
 func (x *ListMembersResponse) Reset() {
 	*x = ListMembersResponse{}
-	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[17]
+	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1055,7 +1151,7 @@ func (x *ListMembersResponse) String() string {
 func (*ListMembersResponse) ProtoMessage() {}
 
 func (x *ListMembersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[17]
+	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1068,7 +1164,7 @@ func (x *ListMembersResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMembersResponse.ProtoReflect.Descriptor instead.
 func (*ListMembersResponse) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_workspace_v1_workspace_proto_rawDescGZIP(), []int{17}
+	return file_synclet_publicapi_workspace_v1_workspace_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *ListMembersResponse) GetMembers() []*WorkspaceMemberInfo {
@@ -1089,7 +1185,7 @@ type CreateInviteRequest struct {
 
 func (x *CreateInviteRequest) Reset() {
 	*x = CreateInviteRequest{}
-	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[18]
+	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1101,7 +1197,7 @@ func (x *CreateInviteRequest) String() string {
 func (*CreateInviteRequest) ProtoMessage() {}
 
 func (x *CreateInviteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[18]
+	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1114,7 +1210,7 @@ func (x *CreateInviteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateInviteRequest.ProtoReflect.Descriptor instead.
 func (*CreateInviteRequest) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_workspace_v1_workspace_proto_rawDescGZIP(), []int{18}
+	return file_synclet_publicapi_workspace_v1_workspace_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *CreateInviteRequest) GetWorkspaceId() string {
@@ -1147,7 +1243,7 @@ type CreateInviteResponse struct {
 
 func (x *CreateInviteResponse) Reset() {
 	*x = CreateInviteResponse{}
-	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[19]
+	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1159,7 +1255,7 @@ func (x *CreateInviteResponse) String() string {
 func (*CreateInviteResponse) ProtoMessage() {}
 
 func (x *CreateInviteResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[19]
+	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1172,7 +1268,7 @@ func (x *CreateInviteResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateInviteResponse.ProtoReflect.Descriptor instead.
 func (*CreateInviteResponse) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_workspace_v1_workspace_proto_rawDescGZIP(), []int{19}
+	return file_synclet_publicapi_workspace_v1_workspace_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *CreateInviteResponse) GetInvite() *WorkspaceInviteInfo {
@@ -1191,7 +1287,7 @@ type AcceptInviteRequest struct {
 
 func (x *AcceptInviteRequest) Reset() {
 	*x = AcceptInviteRequest{}
-	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[20]
+	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1203,7 +1299,7 @@ func (x *AcceptInviteRequest) String() string {
 func (*AcceptInviteRequest) ProtoMessage() {}
 
 func (x *AcceptInviteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[20]
+	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1216,7 +1312,7 @@ func (x *AcceptInviteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AcceptInviteRequest.ProtoReflect.Descriptor instead.
 func (*AcceptInviteRequest) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_workspace_v1_workspace_proto_rawDescGZIP(), []int{20}
+	return file_synclet_publicapi_workspace_v1_workspace_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *AcceptInviteRequest) GetToken() string {
@@ -1236,7 +1332,7 @@ type AcceptInviteResponse struct {
 
 func (x *AcceptInviteResponse) Reset() {
 	*x = AcceptInviteResponse{}
-	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[21]
+	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1248,7 +1344,7 @@ func (x *AcceptInviteResponse) String() string {
 func (*AcceptInviteResponse) ProtoMessage() {}
 
 func (x *AcceptInviteResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[21]
+	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1261,7 +1357,7 @@ func (x *AcceptInviteResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AcceptInviteResponse.ProtoReflect.Descriptor instead.
 func (*AcceptInviteResponse) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_workspace_v1_workspace_proto_rawDescGZIP(), []int{21}
+	return file_synclet_publicapi_workspace_v1_workspace_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *AcceptInviteResponse) GetWorkspaceId() string {
@@ -1287,7 +1383,7 @@ type DeclineInviteRequest struct {
 
 func (x *DeclineInviteRequest) Reset() {
 	*x = DeclineInviteRequest{}
-	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[22]
+	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1299,7 +1395,7 @@ func (x *DeclineInviteRequest) String() string {
 func (*DeclineInviteRequest) ProtoMessage() {}
 
 func (x *DeclineInviteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[22]
+	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1312,7 +1408,7 @@ func (x *DeclineInviteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeclineInviteRequest.ProtoReflect.Descriptor instead.
 func (*DeclineInviteRequest) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_workspace_v1_workspace_proto_rawDescGZIP(), []int{22}
+	return file_synclet_publicapi_workspace_v1_workspace_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *DeclineInviteRequest) GetToken() string {
@@ -1330,7 +1426,7 @@ type DeclineInviteResponse struct {
 
 func (x *DeclineInviteResponse) Reset() {
 	*x = DeclineInviteResponse{}
-	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[23]
+	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1342,7 +1438,7 @@ func (x *DeclineInviteResponse) String() string {
 func (*DeclineInviteResponse) ProtoMessage() {}
 
 func (x *DeclineInviteResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[23]
+	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1355,7 +1451,7 @@ func (x *DeclineInviteResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeclineInviteResponse.ProtoReflect.Descriptor instead.
 func (*DeclineInviteResponse) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_workspace_v1_workspace_proto_rawDescGZIP(), []int{23}
+	return file_synclet_publicapi_workspace_v1_workspace_proto_rawDescGZIP(), []int{25}
 }
 
 type RevokeInviteRequest struct {
@@ -1367,7 +1463,7 @@ type RevokeInviteRequest struct {
 
 func (x *RevokeInviteRequest) Reset() {
 	*x = RevokeInviteRequest{}
-	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[24]
+	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1379,7 +1475,7 @@ func (x *RevokeInviteRequest) String() string {
 func (*RevokeInviteRequest) ProtoMessage() {}
 
 func (x *RevokeInviteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[24]
+	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1392,7 +1488,7 @@ func (x *RevokeInviteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevokeInviteRequest.ProtoReflect.Descriptor instead.
 func (*RevokeInviteRequest) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_workspace_v1_workspace_proto_rawDescGZIP(), []int{24}
+	return file_synclet_publicapi_workspace_v1_workspace_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *RevokeInviteRequest) GetInviteId() string {
@@ -1410,7 +1506,7 @@ type RevokeInviteResponse struct {
 
 func (x *RevokeInviteResponse) Reset() {
 	*x = RevokeInviteResponse{}
-	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[25]
+	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1422,7 +1518,7 @@ func (x *RevokeInviteResponse) String() string {
 func (*RevokeInviteResponse) ProtoMessage() {}
 
 func (x *RevokeInviteResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[25]
+	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1435,7 +1531,7 @@ func (x *RevokeInviteResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevokeInviteResponse.ProtoReflect.Descriptor instead.
 func (*RevokeInviteResponse) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_workspace_v1_workspace_proto_rawDescGZIP(), []int{25}
+	return file_synclet_publicapi_workspace_v1_workspace_proto_rawDescGZIP(), []int{27}
 }
 
 type ResendInviteRequest struct {
@@ -1447,7 +1543,7 @@ type ResendInviteRequest struct {
 
 func (x *ResendInviteRequest) Reset() {
 	*x = ResendInviteRequest{}
-	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[26]
+	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1459,7 +1555,7 @@ func (x *ResendInviteRequest) String() string {
 func (*ResendInviteRequest) ProtoMessage() {}
 
 func (x *ResendInviteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[26]
+	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1472,7 +1568,7 @@ func (x *ResendInviteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResendInviteRequest.ProtoReflect.Descriptor instead.
 func (*ResendInviteRequest) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_workspace_v1_workspace_proto_rawDescGZIP(), []int{26}
+	return file_synclet_publicapi_workspace_v1_workspace_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *ResendInviteRequest) GetInviteId() string {
@@ -1490,7 +1586,7 @@ type ResendInviteResponse struct {
 
 func (x *ResendInviteResponse) Reset() {
 	*x = ResendInviteResponse{}
-	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[27]
+	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1502,7 +1598,7 @@ func (x *ResendInviteResponse) String() string {
 func (*ResendInviteResponse) ProtoMessage() {}
 
 func (x *ResendInviteResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[27]
+	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1515,7 +1611,7 @@ func (x *ResendInviteResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResendInviteResponse.ProtoReflect.Descriptor instead.
 func (*ResendInviteResponse) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_workspace_v1_workspace_proto_rawDescGZIP(), []int{27}
+	return file_synclet_publicapi_workspace_v1_workspace_proto_rawDescGZIP(), []int{29}
 }
 
 type ListInvitesRequest struct {
@@ -1526,7 +1622,7 @@ type ListInvitesRequest struct {
 
 func (x *ListInvitesRequest) Reset() {
 	*x = ListInvitesRequest{}
-	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[28]
+	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1538,7 +1634,7 @@ func (x *ListInvitesRequest) String() string {
 func (*ListInvitesRequest) ProtoMessage() {}
 
 func (x *ListInvitesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[28]
+	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1551,7 +1647,7 @@ func (x *ListInvitesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListInvitesRequest.ProtoReflect.Descriptor instead.
 func (*ListInvitesRequest) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_workspace_v1_workspace_proto_rawDescGZIP(), []int{28}
+	return file_synclet_publicapi_workspace_v1_workspace_proto_rawDescGZIP(), []int{30}
 }
 
 type ListInvitesResponse struct {
@@ -1563,7 +1659,7 @@ type ListInvitesResponse struct {
 
 func (x *ListInvitesResponse) Reset() {
 	*x = ListInvitesResponse{}
-	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[29]
+	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1575,7 +1671,7 @@ func (x *ListInvitesResponse) String() string {
 func (*ListInvitesResponse) ProtoMessage() {}
 
 func (x *ListInvitesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[29]
+	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1588,7 +1684,7 @@ func (x *ListInvitesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListInvitesResponse.ProtoReflect.Descriptor instead.
 func (*ListInvitesResponse) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_workspace_v1_workspace_proto_rawDescGZIP(), []int{29}
+	return file_synclet_publicapi_workspace_v1_workspace_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *ListInvitesResponse) GetInvites() []*WorkspaceInviteInfo {
@@ -1607,7 +1703,7 @@ type GetInviteByTokenRequest struct {
 
 func (x *GetInviteByTokenRequest) Reset() {
 	*x = GetInviteByTokenRequest{}
-	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[30]
+	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1619,7 +1715,7 @@ func (x *GetInviteByTokenRequest) String() string {
 func (*GetInviteByTokenRequest) ProtoMessage() {}
 
 func (x *GetInviteByTokenRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[30]
+	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1632,7 +1728,7 @@ func (x *GetInviteByTokenRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetInviteByTokenRequest.ProtoReflect.Descriptor instead.
 func (*GetInviteByTokenRequest) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_workspace_v1_workspace_proto_rawDescGZIP(), []int{30}
+	return file_synclet_publicapi_workspace_v1_workspace_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *GetInviteByTokenRequest) GetToken() string {
@@ -1651,7 +1747,7 @@ type GetInviteByTokenResponse struct {
 
 func (x *GetInviteByTokenResponse) Reset() {
 	*x = GetInviteByTokenResponse{}
-	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[31]
+	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1663,7 +1759,7 @@ func (x *GetInviteByTokenResponse) String() string {
 func (*GetInviteByTokenResponse) ProtoMessage() {}
 
 func (x *GetInviteByTokenResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[31]
+	mi := &file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1676,7 +1772,7 @@ func (x *GetInviteByTokenResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetInviteByTokenResponse.ProtoReflect.Descriptor instead.
 func (*GetInviteByTokenResponse) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_workspace_v1_workspace_proto_rawDescGZIP(), []int{31}
+	return file_synclet_publicapi_workspace_v1_workspace_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *GetInviteByTokenResponse) GetInvite() *WorkspaceInviteInfo {
@@ -1748,7 +1844,12 @@ const file_synclet_publicapi_workspace_v1_workspace_proto_rawDesc = "" +
 	"\x13RemoveMemberRequest\x12!\n" +
 	"\fworkspace_id\x18\x01 \x01(\tR\vworkspaceId\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\"\x16\n" +
-	"\x14RemoveMemberResponse\"7\n" +
+	"\x14RemoveMemberResponse\"\x95\x01\n" +
+	"\x17UpdateMemberRoleRequest\x12!\n" +
+	"\fworkspace_id\x18\x01 \x01(\tR\vworkspaceId\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\x12>\n" +
+	"\x04role\x18\x03 \x01(\x0e2*.synclet.publicapi.workspace.v1.MemberRoleR\x04role\"\x1a\n" +
+	"\x18UpdateMemberRoleResponse\"7\n" +
 	"\x12ListMembersRequest\x12!\n" +
 	"\fworkspace_id\x18\x01 \x01(\tR\vworkspaceId\"d\n" +
 	"\x13ListMembersResponse\x12M\n" +
@@ -1792,14 +1893,15 @@ const file_synclet_publicapi_workspace_v1_workspace_proto_rawDesc = "" +
 	"\x16INVITE_STATUS_ACCEPTED\x10\x02\x12\x1a\n" +
 	"\x16INVITE_STATUS_DECLINED\x10\x03\x12\x19\n" +
 	"\x15INVITE_STATUS_REVOKED\x10\x04\x12\x19\n" +
-	"\x15INVITE_STATUS_EXPIRED\x10\x052\xb0\x0e\n" +
+	"\x15INVITE_STATUS_EXPIRED\x10\x052\xbe\x0f\n" +
 	"\x10WorkspaceService\x12\x82\x01\n" +
 	"\x0fCreateWorkspace\x126.synclet.publicapi.workspace.v1.CreateWorkspaceRequest\x1a7.synclet.publicapi.workspace.v1.CreateWorkspaceResponse\x12\x88\x01\n" +
 	"\x0fUpdateWorkspace\x126.synclet.publicapi.workspace.v1.UpdateWorkspaceRequest\x1a7.synclet.publicapi.workspace.v1.UpdateWorkspaceResponse\"\x04\x88\xb5\x18\x03\x12\x88\x01\n" +
 	"\x0fDeleteWorkspace\x126.synclet.publicapi.workspace.v1.DeleteWorkspaceRequest\x1a7.synclet.publicapi.workspace.v1.DeleteWorkspaceResponse\"\x04\x88\xb5\x18\x03\x12\x7f\n" +
 	"\fGetWorkspace\x123.synclet.publicapi.workspace.v1.GetWorkspaceRequest\x1a4.synclet.publicapi.workspace.v1.GetWorkspaceResponse\"\x04\x88\xb5\x18\x01\x12\x7f\n" +
 	"\x0eListWorkspaces\x125.synclet.publicapi.workspace.v1.ListWorkspacesRequest\x1a6.synclet.publicapi.workspace.v1.ListWorkspacesResponse\x12\x7f\n" +
-	"\fRemoveMember\x123.synclet.publicapi.workspace.v1.RemoveMemberRequest\x1a4.synclet.publicapi.workspace.v1.RemoveMemberResponse\"\x04\x88\xb5\x18\x03\x12|\n" +
+	"\fRemoveMember\x123.synclet.publicapi.workspace.v1.RemoveMemberRequest\x1a4.synclet.publicapi.workspace.v1.RemoveMemberResponse\"\x04\x88\xb5\x18\x03\x12\x8b\x01\n" +
+	"\x10UpdateMemberRole\x127.synclet.publicapi.workspace.v1.UpdateMemberRoleRequest\x1a8.synclet.publicapi.workspace.v1.UpdateMemberRoleResponse\"\x04\x88\xb5\x18\x03\x12|\n" +
 	"\vListMembers\x122.synclet.publicapi.workspace.v1.ListMembersRequest\x1a3.synclet.publicapi.workspace.v1.ListMembersResponse\"\x04\x88\xb5\x18\x01\x12\x7f\n" +
 	"\fCreateInvite\x123.synclet.publicapi.workspace.v1.CreateInviteRequest\x1a4.synclet.publicapi.workspace.v1.CreateInviteResponse\"\x04\x88\xb5\x18\x03\x12y\n" +
 	"\fAcceptInvite\x123.synclet.publicapi.workspace.v1.AcceptInviteRequest\x1a4.synclet.publicapi.workspace.v1.AcceptInviteResponse\x12|\n" +
@@ -1823,7 +1925,7 @@ func file_synclet_publicapi_workspace_v1_workspace_proto_rawDescGZIP() []byte {
 }
 
 var file_synclet_publicapi_workspace_v1_workspace_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes = make([]protoimpl.MessageInfo, 32)
+var file_synclet_publicapi_workspace_v1_workspace_proto_msgTypes = make([]protoimpl.MessageInfo, 34)
 var file_synclet_publicapi_workspace_v1_workspace_proto_goTypes = []any{
 	(MemberRole)(0),                  // 0: synclet.publicapi.workspace.v1.MemberRole
 	(InviteStatus)(0),                // 1: synclet.publicapi.workspace.v1.InviteStatus
@@ -1843,77 +1945,82 @@ var file_synclet_publicapi_workspace_v1_workspace_proto_goTypes = []any{
 	(*UserWorkspaceInfo)(nil),        // 15: synclet.publicapi.workspace.v1.UserWorkspaceInfo
 	(*RemoveMemberRequest)(nil),      // 16: synclet.publicapi.workspace.v1.RemoveMemberRequest
 	(*RemoveMemberResponse)(nil),     // 17: synclet.publicapi.workspace.v1.RemoveMemberResponse
-	(*ListMembersRequest)(nil),       // 18: synclet.publicapi.workspace.v1.ListMembersRequest
-	(*ListMembersResponse)(nil),      // 19: synclet.publicapi.workspace.v1.ListMembersResponse
-	(*CreateInviteRequest)(nil),      // 20: synclet.publicapi.workspace.v1.CreateInviteRequest
-	(*CreateInviteResponse)(nil),     // 21: synclet.publicapi.workspace.v1.CreateInviteResponse
-	(*AcceptInviteRequest)(nil),      // 22: synclet.publicapi.workspace.v1.AcceptInviteRequest
-	(*AcceptInviteResponse)(nil),     // 23: synclet.publicapi.workspace.v1.AcceptInviteResponse
-	(*DeclineInviteRequest)(nil),     // 24: synclet.publicapi.workspace.v1.DeclineInviteRequest
-	(*DeclineInviteResponse)(nil),    // 25: synclet.publicapi.workspace.v1.DeclineInviteResponse
-	(*RevokeInviteRequest)(nil),      // 26: synclet.publicapi.workspace.v1.RevokeInviteRequest
-	(*RevokeInviteResponse)(nil),     // 27: synclet.publicapi.workspace.v1.RevokeInviteResponse
-	(*ResendInviteRequest)(nil),      // 28: synclet.publicapi.workspace.v1.ResendInviteRequest
-	(*ResendInviteResponse)(nil),     // 29: synclet.publicapi.workspace.v1.ResendInviteResponse
-	(*ListInvitesRequest)(nil),       // 30: synclet.publicapi.workspace.v1.ListInvitesRequest
-	(*ListInvitesResponse)(nil),      // 31: synclet.publicapi.workspace.v1.ListInvitesResponse
-	(*GetInviteByTokenRequest)(nil),  // 32: synclet.publicapi.workspace.v1.GetInviteByTokenRequest
-	(*GetInviteByTokenResponse)(nil), // 33: synclet.publicapi.workspace.v1.GetInviteByTokenResponse
-	(*timestamppb.Timestamp)(nil),    // 34: google.protobuf.Timestamp
+	(*UpdateMemberRoleRequest)(nil),  // 18: synclet.publicapi.workspace.v1.UpdateMemberRoleRequest
+	(*UpdateMemberRoleResponse)(nil), // 19: synclet.publicapi.workspace.v1.UpdateMemberRoleResponse
+	(*ListMembersRequest)(nil),       // 20: synclet.publicapi.workspace.v1.ListMembersRequest
+	(*ListMembersResponse)(nil),      // 21: synclet.publicapi.workspace.v1.ListMembersResponse
+	(*CreateInviteRequest)(nil),      // 22: synclet.publicapi.workspace.v1.CreateInviteRequest
+	(*CreateInviteResponse)(nil),     // 23: synclet.publicapi.workspace.v1.CreateInviteResponse
+	(*AcceptInviteRequest)(nil),      // 24: synclet.publicapi.workspace.v1.AcceptInviteRequest
+	(*AcceptInviteResponse)(nil),     // 25: synclet.publicapi.workspace.v1.AcceptInviteResponse
+	(*DeclineInviteRequest)(nil),     // 26: synclet.publicapi.workspace.v1.DeclineInviteRequest
+	(*DeclineInviteResponse)(nil),    // 27: synclet.publicapi.workspace.v1.DeclineInviteResponse
+	(*RevokeInviteRequest)(nil),      // 28: synclet.publicapi.workspace.v1.RevokeInviteRequest
+	(*RevokeInviteResponse)(nil),     // 29: synclet.publicapi.workspace.v1.RevokeInviteResponse
+	(*ResendInviteRequest)(nil),      // 30: synclet.publicapi.workspace.v1.ResendInviteRequest
+	(*ResendInviteResponse)(nil),     // 31: synclet.publicapi.workspace.v1.ResendInviteResponse
+	(*ListInvitesRequest)(nil),       // 32: synclet.publicapi.workspace.v1.ListInvitesRequest
+	(*ListInvitesResponse)(nil),      // 33: synclet.publicapi.workspace.v1.ListInvitesResponse
+	(*GetInviteByTokenRequest)(nil),  // 34: synclet.publicapi.workspace.v1.GetInviteByTokenRequest
+	(*GetInviteByTokenResponse)(nil), // 35: synclet.publicapi.workspace.v1.GetInviteByTokenResponse
+	(*timestamppb.Timestamp)(nil),    // 36: google.protobuf.Timestamp
 }
 var file_synclet_publicapi_workspace_v1_workspace_proto_depIdxs = []int32{
-	34, // 0: synclet.publicapi.workspace.v1.WorkspaceInfo.created_at:type_name -> google.protobuf.Timestamp
-	34, // 1: synclet.publicapi.workspace.v1.WorkspaceInfo.updated_at:type_name -> google.protobuf.Timestamp
+	36, // 0: synclet.publicapi.workspace.v1.WorkspaceInfo.created_at:type_name -> google.protobuf.Timestamp
+	36, // 1: synclet.publicapi.workspace.v1.WorkspaceInfo.updated_at:type_name -> google.protobuf.Timestamp
 	0,  // 2: synclet.publicapi.workspace.v1.WorkspaceMemberInfo.role:type_name -> synclet.publicapi.workspace.v1.MemberRole
-	34, // 3: synclet.publicapi.workspace.v1.WorkspaceMemberInfo.joined_at:type_name -> google.protobuf.Timestamp
+	36, // 3: synclet.publicapi.workspace.v1.WorkspaceMemberInfo.joined_at:type_name -> google.protobuf.Timestamp
 	0,  // 4: synclet.publicapi.workspace.v1.WorkspaceInviteInfo.role:type_name -> synclet.publicapi.workspace.v1.MemberRole
 	1,  // 5: synclet.publicapi.workspace.v1.WorkspaceInviteInfo.status:type_name -> synclet.publicapi.workspace.v1.InviteStatus
-	34, // 6: synclet.publicapi.workspace.v1.WorkspaceInviteInfo.expires_at:type_name -> google.protobuf.Timestamp
-	34, // 7: synclet.publicapi.workspace.v1.WorkspaceInviteInfo.created_at:type_name -> google.protobuf.Timestamp
+	36, // 6: synclet.publicapi.workspace.v1.WorkspaceInviteInfo.expires_at:type_name -> google.protobuf.Timestamp
+	36, // 7: synclet.publicapi.workspace.v1.WorkspaceInviteInfo.created_at:type_name -> google.protobuf.Timestamp
 	2,  // 8: synclet.publicapi.workspace.v1.CreateWorkspaceResponse.workspace:type_name -> synclet.publicapi.workspace.v1.WorkspaceInfo
 	2,  // 9: synclet.publicapi.workspace.v1.UpdateWorkspaceResponse.workspace:type_name -> synclet.publicapi.workspace.v1.WorkspaceInfo
 	2,  // 10: synclet.publicapi.workspace.v1.GetWorkspaceResponse.workspace:type_name -> synclet.publicapi.workspace.v1.WorkspaceInfo
 	15, // 11: synclet.publicapi.workspace.v1.ListWorkspacesResponse.workspaces:type_name -> synclet.publicapi.workspace.v1.UserWorkspaceInfo
 	2,  // 12: synclet.publicapi.workspace.v1.UserWorkspaceInfo.workspace:type_name -> synclet.publicapi.workspace.v1.WorkspaceInfo
 	0,  // 13: synclet.publicapi.workspace.v1.UserWorkspaceInfo.role:type_name -> synclet.publicapi.workspace.v1.MemberRole
-	3,  // 14: synclet.publicapi.workspace.v1.ListMembersResponse.members:type_name -> synclet.publicapi.workspace.v1.WorkspaceMemberInfo
-	0,  // 15: synclet.publicapi.workspace.v1.CreateInviteRequest.role:type_name -> synclet.publicapi.workspace.v1.MemberRole
-	4,  // 16: synclet.publicapi.workspace.v1.CreateInviteResponse.invite:type_name -> synclet.publicapi.workspace.v1.WorkspaceInviteInfo
-	4,  // 17: synclet.publicapi.workspace.v1.ListInvitesResponse.invites:type_name -> synclet.publicapi.workspace.v1.WorkspaceInviteInfo
-	4,  // 18: synclet.publicapi.workspace.v1.GetInviteByTokenResponse.invite:type_name -> synclet.publicapi.workspace.v1.WorkspaceInviteInfo
-	5,  // 19: synclet.publicapi.workspace.v1.WorkspaceService.CreateWorkspace:input_type -> synclet.publicapi.workspace.v1.CreateWorkspaceRequest
-	7,  // 20: synclet.publicapi.workspace.v1.WorkspaceService.UpdateWorkspace:input_type -> synclet.publicapi.workspace.v1.UpdateWorkspaceRequest
-	9,  // 21: synclet.publicapi.workspace.v1.WorkspaceService.DeleteWorkspace:input_type -> synclet.publicapi.workspace.v1.DeleteWorkspaceRequest
-	11, // 22: synclet.publicapi.workspace.v1.WorkspaceService.GetWorkspace:input_type -> synclet.publicapi.workspace.v1.GetWorkspaceRequest
-	13, // 23: synclet.publicapi.workspace.v1.WorkspaceService.ListWorkspaces:input_type -> synclet.publicapi.workspace.v1.ListWorkspacesRequest
-	16, // 24: synclet.publicapi.workspace.v1.WorkspaceService.RemoveMember:input_type -> synclet.publicapi.workspace.v1.RemoveMemberRequest
-	18, // 25: synclet.publicapi.workspace.v1.WorkspaceService.ListMembers:input_type -> synclet.publicapi.workspace.v1.ListMembersRequest
-	20, // 26: synclet.publicapi.workspace.v1.WorkspaceService.CreateInvite:input_type -> synclet.publicapi.workspace.v1.CreateInviteRequest
-	22, // 27: synclet.publicapi.workspace.v1.WorkspaceService.AcceptInvite:input_type -> synclet.publicapi.workspace.v1.AcceptInviteRequest
-	24, // 28: synclet.publicapi.workspace.v1.WorkspaceService.DeclineInvite:input_type -> synclet.publicapi.workspace.v1.DeclineInviteRequest
-	26, // 29: synclet.publicapi.workspace.v1.WorkspaceService.RevokeInvite:input_type -> synclet.publicapi.workspace.v1.RevokeInviteRequest
-	28, // 30: synclet.publicapi.workspace.v1.WorkspaceService.ResendInvite:input_type -> synclet.publicapi.workspace.v1.ResendInviteRequest
-	30, // 31: synclet.publicapi.workspace.v1.WorkspaceService.ListInvites:input_type -> synclet.publicapi.workspace.v1.ListInvitesRequest
-	32, // 32: synclet.publicapi.workspace.v1.WorkspaceService.GetInviteByToken:input_type -> synclet.publicapi.workspace.v1.GetInviteByTokenRequest
-	6,  // 33: synclet.publicapi.workspace.v1.WorkspaceService.CreateWorkspace:output_type -> synclet.publicapi.workspace.v1.CreateWorkspaceResponse
-	8,  // 34: synclet.publicapi.workspace.v1.WorkspaceService.UpdateWorkspace:output_type -> synclet.publicapi.workspace.v1.UpdateWorkspaceResponse
-	10, // 35: synclet.publicapi.workspace.v1.WorkspaceService.DeleteWorkspace:output_type -> synclet.publicapi.workspace.v1.DeleteWorkspaceResponse
-	12, // 36: synclet.publicapi.workspace.v1.WorkspaceService.GetWorkspace:output_type -> synclet.publicapi.workspace.v1.GetWorkspaceResponse
-	14, // 37: synclet.publicapi.workspace.v1.WorkspaceService.ListWorkspaces:output_type -> synclet.publicapi.workspace.v1.ListWorkspacesResponse
-	17, // 38: synclet.publicapi.workspace.v1.WorkspaceService.RemoveMember:output_type -> synclet.publicapi.workspace.v1.RemoveMemberResponse
-	19, // 39: synclet.publicapi.workspace.v1.WorkspaceService.ListMembers:output_type -> synclet.publicapi.workspace.v1.ListMembersResponse
-	21, // 40: synclet.publicapi.workspace.v1.WorkspaceService.CreateInvite:output_type -> synclet.publicapi.workspace.v1.CreateInviteResponse
-	23, // 41: synclet.publicapi.workspace.v1.WorkspaceService.AcceptInvite:output_type -> synclet.publicapi.workspace.v1.AcceptInviteResponse
-	25, // 42: synclet.publicapi.workspace.v1.WorkspaceService.DeclineInvite:output_type -> synclet.publicapi.workspace.v1.DeclineInviteResponse
-	27, // 43: synclet.publicapi.workspace.v1.WorkspaceService.RevokeInvite:output_type -> synclet.publicapi.workspace.v1.RevokeInviteResponse
-	29, // 44: synclet.publicapi.workspace.v1.WorkspaceService.ResendInvite:output_type -> synclet.publicapi.workspace.v1.ResendInviteResponse
-	31, // 45: synclet.publicapi.workspace.v1.WorkspaceService.ListInvites:output_type -> synclet.publicapi.workspace.v1.ListInvitesResponse
-	33, // 46: synclet.publicapi.workspace.v1.WorkspaceService.GetInviteByToken:output_type -> synclet.publicapi.workspace.v1.GetInviteByTokenResponse
-	33, // [33:47] is the sub-list for method output_type
-	19, // [19:33] is the sub-list for method input_type
-	19, // [19:19] is the sub-list for extension type_name
-	19, // [19:19] is the sub-list for extension extendee
-	0,  // [0:19] is the sub-list for field type_name
+	0,  // 14: synclet.publicapi.workspace.v1.UpdateMemberRoleRequest.role:type_name -> synclet.publicapi.workspace.v1.MemberRole
+	3,  // 15: synclet.publicapi.workspace.v1.ListMembersResponse.members:type_name -> synclet.publicapi.workspace.v1.WorkspaceMemberInfo
+	0,  // 16: synclet.publicapi.workspace.v1.CreateInviteRequest.role:type_name -> synclet.publicapi.workspace.v1.MemberRole
+	4,  // 17: synclet.publicapi.workspace.v1.CreateInviteResponse.invite:type_name -> synclet.publicapi.workspace.v1.WorkspaceInviteInfo
+	4,  // 18: synclet.publicapi.workspace.v1.ListInvitesResponse.invites:type_name -> synclet.publicapi.workspace.v1.WorkspaceInviteInfo
+	4,  // 19: synclet.publicapi.workspace.v1.GetInviteByTokenResponse.invite:type_name -> synclet.publicapi.workspace.v1.WorkspaceInviteInfo
+	5,  // 20: synclet.publicapi.workspace.v1.WorkspaceService.CreateWorkspace:input_type -> synclet.publicapi.workspace.v1.CreateWorkspaceRequest
+	7,  // 21: synclet.publicapi.workspace.v1.WorkspaceService.UpdateWorkspace:input_type -> synclet.publicapi.workspace.v1.UpdateWorkspaceRequest
+	9,  // 22: synclet.publicapi.workspace.v1.WorkspaceService.DeleteWorkspace:input_type -> synclet.publicapi.workspace.v1.DeleteWorkspaceRequest
+	11, // 23: synclet.publicapi.workspace.v1.WorkspaceService.GetWorkspace:input_type -> synclet.publicapi.workspace.v1.GetWorkspaceRequest
+	13, // 24: synclet.publicapi.workspace.v1.WorkspaceService.ListWorkspaces:input_type -> synclet.publicapi.workspace.v1.ListWorkspacesRequest
+	16, // 25: synclet.publicapi.workspace.v1.WorkspaceService.RemoveMember:input_type -> synclet.publicapi.workspace.v1.RemoveMemberRequest
+	18, // 26: synclet.publicapi.workspace.v1.WorkspaceService.UpdateMemberRole:input_type -> synclet.publicapi.workspace.v1.UpdateMemberRoleRequest
+	20, // 27: synclet.publicapi.workspace.v1.WorkspaceService.ListMembers:input_type -> synclet.publicapi.workspace.v1.ListMembersRequest
+	22, // 28: synclet.publicapi.workspace.v1.WorkspaceService.CreateInvite:input_type -> synclet.publicapi.workspace.v1.CreateInviteRequest
+	24, // 29: synclet.publicapi.workspace.v1.WorkspaceService.AcceptInvite:input_type -> synclet.publicapi.workspace.v1.AcceptInviteRequest
+	26, // 30: synclet.publicapi.workspace.v1.WorkspaceService.DeclineInvite:input_type -> synclet.publicapi.workspace.v1.DeclineInviteRequest
+	28, // 31: synclet.publicapi.workspace.v1.WorkspaceService.RevokeInvite:input_type -> synclet.publicapi.workspace.v1.RevokeInviteRequest
+	30, // 32: synclet.publicapi.workspace.v1.WorkspaceService.ResendInvite:input_type -> synclet.publicapi.workspace.v1.ResendInviteRequest
+	32, // 33: synclet.publicapi.workspace.v1.WorkspaceService.ListInvites:input_type -> synclet.publicapi.workspace.v1.ListInvitesRequest
+	34, // 34: synclet.publicapi.workspace.v1.WorkspaceService.GetInviteByToken:input_type -> synclet.publicapi.workspace.v1.GetInviteByTokenRequest
+	6,  // 35: synclet.publicapi.workspace.v1.WorkspaceService.CreateWorkspace:output_type -> synclet.publicapi.workspace.v1.CreateWorkspaceResponse
+	8,  // 36: synclet.publicapi.workspace.v1.WorkspaceService.UpdateWorkspace:output_type -> synclet.publicapi.workspace.v1.UpdateWorkspaceResponse
+	10, // 37: synclet.publicapi.workspace.v1.WorkspaceService.DeleteWorkspace:output_type -> synclet.publicapi.workspace.v1.DeleteWorkspaceResponse
+	12, // 38: synclet.publicapi.workspace.v1.WorkspaceService.GetWorkspace:output_type -> synclet.publicapi.workspace.v1.GetWorkspaceResponse
+	14, // 39: synclet.publicapi.workspace.v1.WorkspaceService.ListWorkspaces:output_type -> synclet.publicapi.workspace.v1.ListWorkspacesResponse
+	17, // 40: synclet.publicapi.workspace.v1.WorkspaceService.RemoveMember:output_type -> synclet.publicapi.workspace.v1.RemoveMemberResponse
+	19, // 41: synclet.publicapi.workspace.v1.WorkspaceService.UpdateMemberRole:output_type -> synclet.publicapi.workspace.v1.UpdateMemberRoleResponse
+	21, // 42: synclet.publicapi.workspace.v1.WorkspaceService.ListMembers:output_type -> synclet.publicapi.workspace.v1.ListMembersResponse
+	23, // 43: synclet.publicapi.workspace.v1.WorkspaceService.CreateInvite:output_type -> synclet.publicapi.workspace.v1.CreateInviteResponse
+	25, // 44: synclet.publicapi.workspace.v1.WorkspaceService.AcceptInvite:output_type -> synclet.publicapi.workspace.v1.AcceptInviteResponse
+	27, // 45: synclet.publicapi.workspace.v1.WorkspaceService.DeclineInvite:output_type -> synclet.publicapi.workspace.v1.DeclineInviteResponse
+	29, // 46: synclet.publicapi.workspace.v1.WorkspaceService.RevokeInvite:output_type -> synclet.publicapi.workspace.v1.RevokeInviteResponse
+	31, // 47: synclet.publicapi.workspace.v1.WorkspaceService.ResendInvite:output_type -> synclet.publicapi.workspace.v1.ResendInviteResponse
+	33, // 48: synclet.publicapi.workspace.v1.WorkspaceService.ListInvites:output_type -> synclet.publicapi.workspace.v1.ListInvitesResponse
+	35, // 49: synclet.publicapi.workspace.v1.WorkspaceService.GetInviteByToken:output_type -> synclet.publicapi.workspace.v1.GetInviteByTokenResponse
+	35, // [35:50] is the sub-list for method output_type
+	20, // [20:35] is the sub-list for method input_type
+	20, // [20:20] is the sub-list for extension type_name
+	20, // [20:20] is the sub-list for extension extendee
+	0,  // [0:20] is the sub-list for field type_name
 }
 
 func init() { file_synclet_publicapi_workspace_v1_workspace_proto_init() }
@@ -1927,7 +2034,7 @@ func file_synclet_publicapi_workspace_v1_workspace_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_synclet_publicapi_workspace_v1_workspace_proto_rawDesc), len(file_synclet_publicapi_workspace_v1_workspace_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   32,
+			NumMessages:   34,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

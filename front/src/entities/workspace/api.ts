@@ -103,6 +103,10 @@ export async function removeMember(workspaceId: string, userId: string): Promise
   await workspaceClient.removeMember({ workspaceId, userId })
 }
 
+export async function updateMemberRole(workspaceId: string, userId: string, role: MemberRole): Promise<void> {
+  await workspaceClient.updateMemberRole({ workspaceId, userId, role: toProtoMemberRole(role) })
+}
+
 function mapInviteStatus(proto: ProtoInviteStatus): InviteStatus {
   switch (proto) {
     case ProtoInviteStatus.PENDING: return 'pending'
