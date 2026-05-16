@@ -145,8 +145,6 @@ func convertConnectorTaskPayloadFromDB(val *jsonConnectorTaskPayload) (pipelines
 	default:
 		return nil, fmt.Errorf("invalid ConnectorTaskPayload value type: %T", *val)
 	}
-
-	panic("implement me")
 }
 
 type jsonConnectorTaskResult struct {
@@ -282,6 +280,4 @@ func convertConnectorTaskResultFromDB(val *jsonConnectorTaskResult) (pipelineser
 	default:
 		return nil, fmt.Errorf("invalid ConnectorTaskResult value type: %T", *val)
 	}
-
-	panic("implement me")
 }
