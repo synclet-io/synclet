@@ -26,6 +26,26 @@ type dockerExecutorConfig struct {
 	MaxSyncDuration   time.Duration            `env:"MAX_SYNC_DURATION" envDefault:"24h"`
 	HeartbeatInterval time.Duration            `env:"HEARTBEAT_INTERVAL" envDefault:"5s"`
 	MaxConcurrentJobs int                      `env:"MAX_CONCURRENT_JOBS" envDefault:"5"`
+	// TempDirRoot is the directory under which per-task scratch directories
+	// are created when ContainerRunner spawns connector containers. Leave
+	// empty for host-native deployments. In Docker-in-Docker setups (synclet
+	// running in a container with /var/run/docker.sock mounted) set this to
+	// a path bind-mounted to the same location on the host — otherwise the
+	// host Docker daemon cannot resolve the bind-mount source.
+	TempDirRoot string `env:"TEMP_DIR_ROOT"`
+}
+
+// dockerExecutorConfigModule registers the Docker executor configuration
+// unconditionally. ContainerRunner (used by ImagePullerAdapter and any
+// pipeline use case that talks to Docker) needs config regardless of whether
+// the background worker jobs are enabled.
+func dockerExecutorConfigModule() fx.Option {
+	return fx.Options(
+		fx.Provide(
+			configutil.NewPrefixedConfigProvider[dockerExecutorConfig]("DOCKER_EXECUTOR_"),
+			configutil.NewPrefixedConfigInfoProvider[dockerExecutorConfig]("DOCKER_EXECUTOR_"),
+		),
+	)
 }
 
 func dockerExecutorModule(options *RunAppOptions) fx.Option {
@@ -37,8 +57,6 @@ func dockerExecutorModule(options *RunAppOptions) fx.Option {
 		"docker-executor",
 		logging.DecorateNamed("docker"),
 		fx.Provide(
-			configutil.NewPrefixedConfigProvider[dockerExecutorConfig]("DOCKER_EXECUTOR_"),
-			configutil.NewPrefixedConfigInfoProvider[dockerExecutorConfig]("DOCKER_EXECUTOR_"),
 			pipelineexecdocker.NewOrphanCleaner,
 			func(backend pipelineexec.ExecutorBackend) pipelineexecdocker.OrphanJobChecker {
 				return backend

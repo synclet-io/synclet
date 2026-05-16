@@ -72,7 +72,9 @@ func NewFxAppOptions(options *RunAppOptions) fx.Option {
 
 		// K8s executor
 		k8sExecutorModule(options),
-		// Docker executor
+		// Docker executor — config is always-on (ContainerRunner needs it
+		// regardless of whether worker jobs run); worker jobs are conditional.
+		dockerExecutorConfigModule(),
 		dockerExecutorModule(options),
 
 		// Metrics

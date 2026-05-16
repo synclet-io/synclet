@@ -71,13 +71,6 @@ type pipelineConfig struct {
 	StatsRollupHourlyLookback   time.Duration         `env:"STATS_ROLLUP_HOURLY_LOOKBACK" envDefault:"2h"`
 	StatsRollupDailyLookback    time.Duration         `env:"STATS_ROLLUP_DAILY_LOOKBACK" envDefault:"48h"`
 	RegistryFetchTimeout        time.Duration         `env:"REGISTRY_FETCH_TIMEOUT" envDefault:"60s"`
-	// DockerTempDirRoot is the directory under which per-task scratch
-	// directories are created when dispatching connector tasks via Docker.
-	// Leave empty for host-native deployments. In Docker-in-Docker setups
-	// (synclet running in a container with /var/run/docker.sock mounted) set
-	// this to a path that is bind-mounted to the same location on the host —
-	// otherwise the host Docker daemon cannot resolve the bind-mount source.
-	DockerTempDirRoot string `env:"DOCKER_TEMP_DIR_ROOT"`
 }
 
 // runtimeDefaults converts pipelineRuntimeConfig to RuntimeDefaults.
@@ -170,8 +163,8 @@ func pipelineMetricsCollectorAdapter(c *pipelinemetrics.MetricsCollector) promet
 
 func dockerContainerRunnerAdapter(r *pipelineexecdocker.ContainerRunner) container.Runner { return r }
 
-func newContainerRunner(cfg *pipelineConfig) (*pipelineexecdocker.ContainerRunner, error) {
-	return pipelineexecdocker.NewContainerRunner(cfg.DockerTempDirRoot)
+func newContainerRunner(cfg *dockerExecutorConfig) (*pipelineexecdocker.ContainerRunner, error) {
+	return pipelineexecdocker.NewContainerRunner(cfg.TempDirRoot)
 }
 
 func newPipelineSourceHandlerConfig(authCfg *authConfig, wsCfg *workspaceConfig) pipelineconnect.SourceHandlerConfig {

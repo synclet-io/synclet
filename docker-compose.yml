@@ -27,7 +27,7 @@ services:
       # Scratch dir shared with the host so the host Docker daemon can
       # bind-mount per-task config/catalog/state files into spawned connector
       # containers. Path must match the volume mount below verbatim.
-      PIPELINE_DOCKER_TEMP_DIR_ROOT: /tmp/synclet
+      DOCKER_EXECUTOR_TEMP_DIR_ROOT: /tmp/synclet
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /tmp/synclet:/tmp/synclet
