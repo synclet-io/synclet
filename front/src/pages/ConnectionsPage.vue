@@ -56,10 +56,21 @@ const columns: Column[] = [
 
   <STable :columns="columns" :data="data?.items" :loading="loading" empty-text="No connections configured">
     <template #empty>
-      <SEmptyState title="No connections configured" description="Create a connection to sync data between a source and destination">
-        <SButton to="/connections/new" size="sm">
-          Create Connection
-        </SButton>
+      <SEmptyState
+        title="No connections yet"
+        description="A connection pairs a source with a destination. Configure a source and a destination first, then create a connection to start syncing."
+      >
+        <div class="flex gap-2 flex-wrap justify-center">
+          <SButton to="/sources" variant="secondary" size="sm">
+            Manage sources
+          </SButton>
+          <SButton to="/destinations" variant="secondary" size="sm">
+            Manage destinations
+          </SButton>
+          <SButton to="/connections/new" size="sm">
+            <Plus class="w-4 h-4" /> Create connection
+          </SButton>
+        </div>
       </SEmptyState>
     </template>
     <template #cell-name="{ row }">

@@ -94,10 +94,18 @@ const columns: Column[] = [
 
   <STable :columns="columns" :data="data?.items" :loading="loading" empty-text="No sources configured">
     <template #empty>
-      <SEmptyState title="No sources configured" description="Add your first data source to start syncing">
-        <SButton to="/sources/new" size="sm">
-          Add Source
-        </SButton>
+      <SEmptyState
+        title="No sources yet"
+        description="A source is a connector instance with credentials for a specific system. Install a source connector from the catalog first, then add a source here."
+      >
+        <div class="flex gap-2 flex-wrap justify-center">
+          <SButton to="/connectors/catalog" variant="secondary" size="sm">
+            Browse catalog
+          </SButton>
+          <SButton to="/sources/new" size="sm">
+            <Plus class="w-4 h-4" /> Add source
+          </SButton>
+        </div>
       </SEmptyState>
     </template>
     <template #cell-name="{ row }">

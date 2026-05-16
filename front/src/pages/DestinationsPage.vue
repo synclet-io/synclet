@@ -94,10 +94,18 @@ const columns: Column[] = [
 
   <STable :columns="columns" :data="data?.items" :loading="loading" empty-text="No destinations configured">
     <template #empty>
-      <SEmptyState title="No destinations configured" description="Add a destination to receive your synced data">
-        <SButton to="/destinations/new" size="sm">
-          Add Destination
-        </SButton>
+      <SEmptyState
+        title="No destinations yet"
+        description="A destination is a connector instance with credentials for the system that will receive synced data. Install a destination connector from the catalog first, then add a destination here."
+      >
+        <div class="flex gap-2 flex-wrap justify-center">
+          <SButton to="/connectors/catalog" variant="secondary" size="sm">
+            Browse catalog
+          </SButton>
+          <SButton to="/destinations/new" size="sm">
+            <Plus class="w-4 h-4" /> Add destination
+          </SButton>
+        </div>
       </SEmptyState>
     </template>
     <template #cell-name="{ row }">

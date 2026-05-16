@@ -1,4 +1,5 @@
 export { default as DarkModeToggle } from './DarkModeToggle.vue'
+export { default as HelpTooltip } from './HelpTooltip.vue'
 export { default as JsonSchemaForm } from './JsonSchemaForm.vue'
 export { default as PageHeader } from './PageHeader.vue'
 export { default as SAlert } from './SAlert.vue'

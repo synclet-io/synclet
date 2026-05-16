@@ -243,7 +243,13 @@ function filteredConnectors() {
         </div>
 
         <form class="space-y-4" @submit.prevent="handleCreateSource">
-          <SInput v-model="name" label="Source Name" placeholder="My Source" required />
+          <SInput
+            v-model="name"
+            label="Source Name"
+            placeholder="My Source"
+            tooltip="A friendly label for this source. Shown throughout the UI; doesn't have to match the underlying database or API name."
+            required
+          />
 
           <div>
             <div class="flex items-center justify-between mb-2">

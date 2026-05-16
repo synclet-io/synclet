@@ -64,6 +64,7 @@ function onStreamPrefix(v: string | number) {
       :model-value="name"
       label="Connection Name"
       placeholder="My Connection"
+      tooltip="A friendly label for this connection. Often combines the source and destination, e.g. 'Production Postgres → Snowflake'."
       required
       @update:model-value="onName"
     />
@@ -78,6 +79,7 @@ function onStreamPrefix(v: string | number) {
       :model-value="schemaChangePolicy"
       label="Schema Change Policy"
       :options="policyOptions"
+      tooltip="What Synclet does when the source schema drifts: propagate applies changes automatically, pause stops syncs until you review, ignore continues but logs the drift."
       @update:model-value="onPolicy"
     />
 
@@ -97,6 +99,7 @@ function onStreamPrefix(v: string | number) {
         :model-value="namespaceDefinition"
         label="Namespace Mode"
         :options="namespaceOptions"
+        tooltip="Where streams land at the destination: 'source' mirrors the source namespace, 'destination' uses the destination's default, 'custom' lets you template a namespace per stream."
         @update:model-value="onNamespace"
       />
 
@@ -114,6 +117,7 @@ function onStreamPrefix(v: string | number) {
         label="Stream Prefix"
         placeholder="e.g. production_"
         hint="Prepended to all stream names at the destination"
+        tooltip="A static prefix applied to every destination table or stream name. Useful for keeping multiple environments separate in the same warehouse."
         @update:model-value="onStreamPrefix"
       />
     </div>

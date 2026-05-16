@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import HelpTooltip from './HelpTooltip.vue'
+
 defineProps<{
   label?: string
   error?: string
+  tooltip?: string
   options: Array<{ label: string, value: string | number }>
   modelValue?: string | number
   placeholder?: string
@@ -17,7 +20,10 @@ defineEmits<{
 
 <template>
   <div>
-    <label v-if="label" class="block text-sm font-medium text-heading mb-1.5">{{ label }}</label>
+    <label v-if="label" class="flex items-center gap-1.5 text-sm font-medium text-heading mb-1.5">
+      <span>{{ label }}</span>
+      <HelpTooltip v-if="tooltip" :text="tooltip" />
+    </label>
     <select
       :value="modelValue"
       :required="required"

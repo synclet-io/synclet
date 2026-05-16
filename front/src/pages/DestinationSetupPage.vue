@@ -241,7 +241,13 @@ function filteredConnectors() {
         </div>
 
         <form class="space-y-4" @submit.prevent="handleCreateDestination">
-          <SInput v-model="name" label="Destination Name" placeholder="My Destination" required />
+          <SInput
+            v-model="name"
+            label="Destination Name"
+            placeholder="My Destination"
+            tooltip="A friendly label for this destination. Shown throughout the UI; doesn't have to match the underlying warehouse or bucket name."
+            required
+          />
 
           <div>
             <div class="flex items-center justify-between mb-2">

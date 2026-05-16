@@ -8,6 +8,7 @@ import SyncTimelineChart from '@features/dashboard/SyncTimelineChart.vue'
 import ThroughputChart from '@features/dashboard/ThroughputChart.vue'
 import TimeRangeSelector from '@features/dashboard/TimeRangeSelector.vue'
 import TopConnectionsTable from '@features/dashboard/TopConnectionsTable.vue'
+import QuickStartChecklist from '@features/onboarding-checklist/QuickStartChecklist.vue'
 import { formatNumber, formatPercent, formatTrend } from '@shared/lib/format'
 import { PageHeader, SCard, SEmptyState, SSkeleton, SStatCard } from '@shared/ui'
 import { Activity, ArrowRightLeft, CheckCircle, Database, XCircle } from 'lucide-vue-next'
@@ -33,6 +34,8 @@ function trendColorClass(color: 'green' | 'red' | 'gray') {
         <TimeRangeSelector v-model="timeRange" />
       </template>
     </PageHeader>
+
+    <QuickStartChecklist />
 
     <!-- Loading skeleton for stat cards -->
     <div v-if="isLoading" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
