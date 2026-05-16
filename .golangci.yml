@@ -94,6 +94,10 @@ linters:
     rules:
       - path: "gen\\."
         linters: [unused, unparam, gocritic, whitespace, staticcheck, govet, unconvert, varnamelen, revive, wsl_v5, gosec, perfsprint, misspell, nlreturn]
+      - path: "storage_fake_test\\.go"
+        linters: [varnamelen, nlreturn, wsl_v5]
+      - path: "_test\\.go"
+        linters: [varnamelen]
 
 formatters:
   enable:

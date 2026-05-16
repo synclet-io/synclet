@@ -27,7 +27,15 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - run: go test ./... -count=1
+      - name: Run tests with coverage
+        run: go test ./... -count=1 -coverprofile=coverage.out -covermode=atomic
+      - name: Print coverage summary
+        run: go tool cover -func=coverage.out | tail -1
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: coverage.out
 
   backend-lint:
     runs-on: ubuntu-latest

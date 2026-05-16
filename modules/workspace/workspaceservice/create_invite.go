@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -61,12 +62,13 @@ func (uc *CreateInvite) Execute(ctx context.Context, params CreateInviteParams) 
 	}
 
 	if user != nil {
-		// User exists, check membership.
+		// User exists, check membership. NotFound means "not a member yet" -- the
+		// happy path. Any other storage error is unexpected.
 		existingMember, err := uc.storage.WorkspaceMembers().First(ctx, &WorkspaceMemberFilter{
 			WorkspaceID: filter.Equals(params.WorkspaceID),
 			UserID:      filter.Equals(user.ID),
 		})
-		if err != nil {
+		if err != nil && !errors.Is(err, ErrWorkspaceMemberNotFound) {
 			return nil, fmt.Errorf("checking membership: %w", err)
 		}
 
@@ -79,12 +81,13 @@ func (uc *CreateInvite) Execute(ctx context.Context, params CreateInviteParams) 
 	expiresAt := now.Add(uc.inviteTTL)
 
 	// Check for existing pending invite for this email + workspace (D-07: replace existing).
+	// NotFound means "no existing invite" -- the create-new path.
 	existingInvite, err := uc.storage.WorkspaceInvites().First(ctx, &WorkspaceInviteFilter{
 		WorkspaceID: filter.Equals(params.WorkspaceID),
 		Email:       filter.Equals(email),
 		Status:      filter.Equals(InviteStatusPending),
 	})
-	if err != nil {
+	if err != nil && !errors.Is(err, ErrWorkspaceInviteNotFound) {
 		return nil, fmt.Errorf("checking existing invite: %w", err)
 	}
 

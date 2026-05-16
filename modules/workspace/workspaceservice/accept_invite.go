@@ -2,6 +2,7 @@ package workspaceservice
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -53,11 +54,12 @@ func (uc *AcceptInvite) Execute(ctx context.Context, token string, userID uuid.U
 	}
 
 	// Check if user is already a member (edge case: invited user joined via another invite).
+	// NotFound is the happy path: user is not yet a member.
 	existingMember, err := uc.storage.WorkspaceMembers().First(ctx, &WorkspaceMemberFilter{
 		WorkspaceID: filter.Equals(invite.WorkspaceID),
 		UserID:      filter.Equals(userID),
 	})
-	if err != nil {
+	if err != nil && !errors.Is(err, ErrWorkspaceMemberNotFound) {
 		return nil, fmt.Errorf("checking existing membership: %w", err)
 	}
 
