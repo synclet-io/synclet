@@ -27,15 +27,6 @@ export function useSource(id: MaybeRef<string>) {
   })
 }
 
-export function useCreateSource() {
-  const qc = useQueryClient()
-  const { currentWorkspaceId } = useAuth()
-  return useMutation({
-    mutationFn: sourceApi.createSource,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: sourceKeys.all(currentWorkspaceId.value ?? '') }) },
-  })
-}
-
 export function useUpdateSource() {
   const qc = useQueryClient()
   const { currentWorkspaceId } = useAuth()

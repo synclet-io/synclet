@@ -27,15 +27,6 @@ export function useDestination(id: MaybeRef<string>) {
   })
 }
 
-export function useCreateDestination() {
-  const qc = useQueryClient()
-  const { currentWorkspaceId } = useAuth()
-  return useMutation({
-    mutationFn: destinationApi.createDestination,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: destinationKeys.all(currentWorkspaceId.value ?? '') }) },
-  })
-}
-
 export function useUpdateDestination() {
   const qc = useQueryClient()
   const { currentWorkspaceId } = useAuth()
