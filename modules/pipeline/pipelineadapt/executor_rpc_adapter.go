@@ -329,7 +329,7 @@ func (a *RPCExecutorBackend) IsTaskActive(ctx context.Context, taskID string) (b
 }
 
 // FailJob calls the FailJob RPC with retry.
-func (a *RPCExecutorBackend) FailJob(ctx context.Context, jobID string, reason string) error {
+func (a *RPCExecutorBackend) FailJob(ctx context.Context, jobID, reason string) error {
 	return a.sendWithRetry(ctx, "FailJob", func(ctx context.Context) error {
 		_, err := a.client.FailJob(ctx, connect.NewRequest(&executorv1.FailJobRequest{
 			JobId:  jobID,

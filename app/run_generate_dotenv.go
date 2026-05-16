@@ -33,7 +33,7 @@ func RunGenerateDotEnvFile() error {
 			}
 		}
 
-		dotEnvFile, err := os.OpenFile(".env", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
+		dotEnvFile, err := os.OpenFile(".env", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
 		if err != nil {
 			return err
 		}
@@ -47,7 +47,7 @@ func RunGenerateDotEnvFile() error {
 					continue
 				}
 
-				newFields = append(newFields, fmt.Sprintf("%s=\"%s\"", config.Key, config.DefaultValue))
+				newFields = append(newFields, fmt.Sprintf("%s=%q", config.Key, config.DefaultValue))
 			}
 
 			if len(newFields) > 0 {

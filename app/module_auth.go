@@ -2,7 +2,7 @@ package app
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"time"
 
 	"github.com/go-pnp/go-pnp/config/configutil"
@@ -24,7 +24,7 @@ type JWTSecret string
 
 func (s *JWTSecret) UnmarshalText(text []byte) error {
 	if len(text) < 32 {
-		return fmt.Errorf("JWT secret must be at least 32 bytes long")
+		return errors.New("JWT secret must be at least 32 bytes long")
 	}
 
 	*s = JWTSecret(text)

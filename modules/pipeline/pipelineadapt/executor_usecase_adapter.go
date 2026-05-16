@@ -208,7 +208,7 @@ func (a *UseCaseExecutorBackend) IsTaskActive(ctx context.Context, taskID string
 }
 
 // FailJob marks a job as failed with the given reason.
-func (a *UseCaseExecutorBackend) FailJob(ctx context.Context, jobID string, reason string) error {
+func (a *UseCaseExecutorBackend) FailJob(ctx context.Context, jobID, reason string) error {
 	parsed, err := uuid.Parse(jobID)
 	if err != nil {
 		return fmt.Errorf("parsing job ID: %w", err)

@@ -396,15 +396,15 @@ func TestReconciler_GracePeriodApplies(t *testing.T) {
 	}, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	r := newTestReconciler(client, checker)
+	rec := newTestReconciler(client, checker)
 
 	// Reconcile with grace should NOT delete the recent secret.
-	r.Reconcile(ctx, true)
+	rec.Reconcile(ctx, true)
 	_, err = client.CoreV1().Secrets("default").Get(ctx, "synclet-sync-recent", metav1.GetOptions{})
 	require.NoError(t, err, "recent sync secret should NOT have been deleted (grace period)")
 
 	// Reconcile without grace (startup) SHOULD delete it.
-	r.Reconcile(ctx, false)
+	rec.Reconcile(ctx, false)
 	_, err = client.CoreV1().Secrets("default").Get(ctx, "synclet-sync-recent", metav1.GetOptions{})
 	assert.Error(t, err, "recent sync secret should have been deleted by startup reconcile")
 }

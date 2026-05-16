@@ -30,14 +30,14 @@ const (
 func NewWorkerManager(logger *logging.Logger) *WorkerManager {
 	ctx, cancel := context.WithCancel(context.Background()) //nolint:gosec // cancel is stored and called in Close()
 
-	m := &WorkerManager{
+	mgr := &WorkerManager{
 		ctx:    ctx,
 		cancel: cancel,
 		logger: logger.Named("worker-manager"),
 	}
-	m.state.Store(stateRunning)
+	mgr.state.Store(stateRunning)
 
-	return m
+	return mgr
 }
 
 // RunJob spawns a goroutine tracked by the WaitGroup. The function receives

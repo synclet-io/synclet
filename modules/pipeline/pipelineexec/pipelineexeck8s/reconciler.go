@@ -129,6 +129,7 @@ func (r *ResourceCleaner) reconcileSyncJobs(ctx context.Context, applyGrace bool
 			}
 
 			r.deleteK8sJob(ctx, job.Name)
+
 			cleaned++
 
 			continue
@@ -145,6 +146,7 @@ func (r *ResourceCleaner) reconcileSyncJobs(ctx context.Context, applyGrace bool
 		if !active {
 			log.Info(ctx, "removing orphaned sync job")
 			r.deleteK8sJob(ctx, job.Name)
+
 			cleaned++
 		}
 	}
@@ -186,6 +188,7 @@ func (r *ResourceCleaner) cleanupTaskJobs(ctx context.Context, applyGrace bool) 
 				"task_id": taskID,
 			}).Info(ctx, "removing orphaned task job")
 			r.deleteK8sJob(ctx, job.Name)
+
 			cleaned++
 		}
 	}
@@ -227,6 +230,7 @@ func (r *ResourceCleaner) cleanupSecrets(ctx context.Context, labelKey string, a
 				"id":     id,
 			}).Info(ctx, "removing orphaned secret")
 			r.deleteSecret(ctx, secret.Name)
+
 			cleaned++
 		}
 	}
@@ -236,7 +240,7 @@ func (r *ResourceCleaner) cleanupSecrets(ctx context.Context, labelKey string, a
 
 // checkPodFailure checks pods for a K8s Job and returns whether any pod is in a
 // terminal failure state. Returns (failed, reason).
-func (r *ResourceCleaner) checkPodFailure(ctx context.Context, k8sJobName string) (bool, string) {
+func (r *ResourceCleaner) checkPodFailure(ctx context.Context, k8sJobName string) (failed bool, reason string) {
 	pods, err := r.client.CoreV1().Pods(r.namespace).List(ctx, metav1.ListOptions{
 		LabelSelector: "synclet.io/job=" + k8sJobName,
 	})
@@ -262,14 +266,14 @@ func (r *ResourceCleaner) checkPodFailure(ctx context.Context, k8sJobName string
 		allStatuses = append(allStatuses, pod.Status.ContainerStatuses...)
 		allStatuses = append(allStatuses, pod.Status.InitContainerStatuses...)
 
-		for _, cs := range allStatuses {
-			if cs.State.Waiting != nil {
-				reason := cs.State.Waiting.Reason
-				switch reason {
+		for _, status := range allStatuses {
+			if status.State.Waiting != nil {
+				waiting := status.State.Waiting.Reason
+				switch waiting {
 				case "CrashLoopBackOff":
-					return true, fmt.Sprintf("container %s in CrashLoopBackOff", cs.Name)
+					return true, fmt.Sprintf("container %s in CrashLoopBackOff", status.Name)
 				case "ImagePullBackOff", "ErrImagePull":
-					return true, fmt.Sprintf("container %s: %s", cs.Name, reason)
+					return true, fmt.Sprintf("container %s: %s", status.Name, waiting)
 				}
 			}
 		}
