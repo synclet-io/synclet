@@ -463,7 +463,6 @@ async function handleSyncRepo(repo: Repository) {
     <div class="flex items-end gap-3 mb-4">
       <SSelect
         v-model="repositoryFilter"
-        size="sm"
         class="w-48"
         :options="[
           { label: 'All repositories', value: '' },

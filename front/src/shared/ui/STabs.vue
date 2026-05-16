@@ -17,13 +17,17 @@ defineEmits<{
   <!-- Pills variant -->
   <nav v-if="variant === 'pills'" class="inline-flex gap-1 p-1 bg-surface-raised rounded-lg mb-6">
     <template v-for="tab in tabs" :key="tab.name">
-      <RouterLink
-        v-if="tab.to"
-        :to="tab.to"
-        class="px-3 py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap text-text-secondary hover:text-heading"
-        active-class="bg-surface text-heading shadow-sm"
-      >
-        {{ tab.name }}
+      <RouterLink v-if="tab.to" v-slot="{ isActive, navigate, href }" :to="tab.to" custom>
+        <a
+          :href="href"
+          class="px-3 py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap cursor-pointer"
+          :class="isActive
+            ? 'bg-surface text-heading shadow-sm'
+            : 'text-text-secondary hover:text-heading'"
+          @click="navigate"
+        >
+          {{ tab.name }}
+        </a>
       </RouterLink>
       <button
         v-else
@@ -41,13 +45,17 @@ defineEmits<{
   <!-- Underline variant (default) -->
   <nav v-else class="flex gap-1 border-b border-border mb-6">
     <template v-for="tab in tabs" :key="tab.name">
-      <RouterLink
-        v-if="tab.to"
-        :to="tab.to"
-        class="px-4 py-2.5 text-sm font-medium -mb-px border-b-2 transition-colors whitespace-nowrap border-transparent text-text-secondary hover:text-heading hover:border-border"
-        active-class="border-primary text-primary"
-      >
-        {{ tab.name }}
+      <RouterLink v-if="tab.to" v-slot="{ isActive, navigate, href }" :to="tab.to" custom>
+        <a
+          :href="href"
+          class="px-4 py-2.5 text-sm font-medium -mb-px border-b-2 transition-colors whitespace-nowrap cursor-pointer"
+          :class="isActive
+            ? 'border-primary text-primary'
+            : 'border-transparent text-text-secondary hover:text-heading hover:border-border'"
+          @click="navigate"
+        >
+          {{ tab.name }}
+        </a>
       </RouterLink>
       <button
         v-else
