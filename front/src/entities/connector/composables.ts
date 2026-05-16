@@ -5,6 +5,16 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
 import { computed, toValue } from 'vue'
 import * as connectorApi from './api'
 
+export function useAvailableConnectors() {
+  const { currentWorkspaceId } = useAuth()
+  return useQuery({
+    queryKey: computed(() => [...connectorKeys.all(currentWorkspaceId.value ?? ''), 'available']),
+    queryFn: () => connectorApi.listConnectors(),
+    enabled: computed(() => !!currentWorkspaceId.value),
+    staleTime: 30_000,
+  })
+}
+
 export function useAddConnector() {
   const qc = useQueryClient()
   const { currentWorkspaceId } = useAuth()

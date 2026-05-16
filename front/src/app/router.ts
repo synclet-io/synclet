@@ -128,6 +128,11 @@ export const router = createRouter({
           component: () => import('@pages/StreamConfigPage.vue'),
         },
         {
+          path: 'connectors/catalog',
+          name: 'connector-catalog',
+          component: () => import('@pages/CatalogBrowsePage.vue'),
+        },
+        {
           path: 'jobs',
           name: 'jobs',
           component: () => import('@pages/JobsPage.vue'),

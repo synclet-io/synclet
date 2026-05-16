@@ -1,2 +1,2 @@
-export { useAddConnector, useBatchUpdateConnectors, useConnectorVersions, useDeleteManagedConnector, useManagedConnector, useManagedConnectors, useUpdateManagedConnector } from './composables'
+export { useAddConnector, useAvailableConnectors, useBatchUpdateConnectors, useConnectorVersions, useDeleteManagedConnector, useManagedConnector, useManagedConnectors, useUpdateManagedConnector } from './composables'
 export type { BreakingChange, Connector, ConnectorSourceType, ConnectorSpecResult, ConnectorType, ConnectorVersionInfo, ExternalDocumentationType, ExternalDocumentationUrl, LicenseType, ManagedConnector, ReleaseStage, SupportLevel, UpdateInfo } from './types'

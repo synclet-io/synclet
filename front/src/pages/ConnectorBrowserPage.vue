@@ -8,7 +8,7 @@ import { BreakingChangeDialog } from '@features/connector-update'
 import { getErrorMessage } from '@shared/lib/errorUtils'
 import { SAlert, SBadge, SButton, SConfirmDialog, SEmptyState, SInput, SModal, SPagination, SSelect, SSkeleton, STable, STabs, useToast } from '@shared/ui'
 import { refDebounced } from '@vueuse/core'
-import { ArrowUpCircle, Container, Globe, RefreshCw, Trash2 } from 'lucide-vue-next'
+import { ArrowUpCircle, Container, Database, Globe, RefreshCw, Trash2 } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
 
 const toast = useToast()
@@ -507,6 +507,9 @@ async function handleSyncRepo(repo: Repository) {
           @click="handleUpdateAll"
         >
           <ArrowUpCircle class="w-4 h-4" /> Update All ({{ connectorsWithUpdates.length }})
+        </SButton>
+        <SButton variant="secondary" :to="{ name: 'connector-catalog' }">
+          <Database class="w-4 h-4" /> Browse catalog
         </SButton>
         <SButton @click="openAddModal">
           <Container class="w-4 h-4" /> Add Custom
