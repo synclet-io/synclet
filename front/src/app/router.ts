@@ -223,12 +223,11 @@ router.beforeEach(async (to) => {
   // Load workspaces if not yet loaded.
   if (auth.workspaces.value.length === 0) {
     const ws = await listWorkspaces()
-    // TODO(W8): ListWorkspaces API does not return member role. Need to either
-    // extend the proto to include role per workspace, or make a separate
-    // ListMembers call per workspace. Defaulting to 'admin' so admin-only UI
-    // is not incorrectly hidden. The RoleInterceptor on the backend enforces
-    // actual permissions regardless of what the frontend displays.
-    auth.setWorkspaces(ws.map(w => ({ workspaceId: w.id, workspaceName: w.name, role: 'admin' })))
+    auth.setWorkspaces(ws.map(({ workspace, role }) => ({
+      workspaceId: workspace.id,
+      workspaceName: workspace.name,
+      role,
+    })))
   }
 
   // Redirect to workspace creation if user has no workspaces.

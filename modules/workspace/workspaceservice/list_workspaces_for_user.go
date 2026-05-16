@@ -9,9 +9,16 @@ import (
 	"go.uber.org/zap"
 )
 
-// ListWorkspacesForUser returns all workspaces a user is a member of.
+// ListWorkspacesForUser returns all workspaces a user is a member of, along
+// with the user's role in each.
 type ListWorkspacesForUser struct {
 	storage Storage
+}
+
+// UserWorkspace couples a workspace with the caller's role in it.
+type UserWorkspace struct {
+	Workspace *Workspace
+	Role      MemberRole
 }
 
 // NewListWorkspacesForUser creates a new ListWorkspacesForUser use case.
@@ -20,7 +27,7 @@ func NewListWorkspacesForUser(storage Storage) *ListWorkspacesForUser {
 }
 
 // Execute returns all workspaces for the given user.
-func (uc *ListWorkspacesForUser) Execute(ctx context.Context, userID uuid.UUID) ([]*Workspace, error) {
+func (uc *ListWorkspacesForUser) Execute(ctx context.Context, userID uuid.UUID) ([]UserWorkspace, error) {
 	members, err := uc.storage.WorkspaceMembers().Find(ctx, &WorkspaceMemberFilter{
 		UserID: filter.Equals(userID),
 	})
@@ -28,7 +35,7 @@ func (uc *ListWorkspacesForUser) Execute(ctx context.Context, userID uuid.UUID) 
 		return nil, fmt.Errorf("listing memberships: %w", err)
 	}
 
-	workspaces := make([]*Workspace, 0, len(members))
+	out := make([]UserWorkspace, 0, len(members))
 	for _, m := range members {
 		workspace, err := uc.storage.Workspaces().First(ctx, &WorkspaceFilter{
 			ID: filter.Equals(m.WorkspaceID),
@@ -39,8 +46,8 @@ func (uc *ListWorkspacesForUser) Execute(ctx context.Context, userID uuid.UUID) 
 			continue
 		}
 
-		workspaces = append(workspaces, workspace)
+		out = append(out, UserWorkspace{Workspace: workspace, Role: m.Role})
 	}
 
-	return workspaces, nil
+	return out, nil
 }

@@ -174,9 +174,12 @@ func (h *Handler) ListWorkspaces(ctx context.Context, req *connect.Request[works
 		return nil, mapError(err)
 	}
 
-	result := make([]*workspacev1.WorkspaceInfo, len(workspaces))
-	for i, ws := range workspaces {
-		result[i] = workspaceToProto(ws)
+	result := make([]*workspacev1.UserWorkspaceInfo, len(workspaces))
+	for i, uw := range workspaces {
+		result[i] = &workspacev1.UserWorkspaceInfo{
+			Workspace: workspaceToProto(uw.Workspace),
+			Role:      memberRoleToProto(uw.Role),
+		}
 	}
 
 	return connect.NewResponse(&workspacev1.ListWorkspacesResponse{

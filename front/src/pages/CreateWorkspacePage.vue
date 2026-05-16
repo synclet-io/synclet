@@ -27,7 +27,11 @@ async function handleSubmit() {
   try {
     await createWorkspace.mutateAsync(name.value)
     const ws = await listWorkspaces()
-    auth.setWorkspaces(ws.map(w => ({ workspaceId: w.id, workspaceName: w.name, role: 'admin' })))
+    auth.setWorkspaces(ws.map(({ workspace, role }) => ({
+      workspaceId: workspace.id,
+      workspaceName: workspace.name,
+      role,
+    })))
     router.push('/')
   }
   catch (e: unknown) {

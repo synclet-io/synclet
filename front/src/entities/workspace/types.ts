@@ -8,6 +8,11 @@ export interface Workspace {
   updatedAt: Date | undefined
 }
 
+export interface UserWorkspace {
+  workspace: Workspace
+  role: MemberRole
+}
+
 export interface WorkspaceMember {
   id: string
   workspaceId: string

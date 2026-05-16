@@ -1,5 +1,5 @@
-import type { InviteStatus, MemberRole, Workspace, WorkspaceInvite, WorkspaceMember } from './types'
-import type { WorkspaceInfo as ProtoWorkspaceInfo, WorkspaceInviteInfo as ProtoWorkspaceInviteInfo, WorkspaceMemberInfo as ProtoWorkspaceMemberInfo } from '@/gen/synclet/publicapi/workspace/v1/workspace_pb'
+import type { InviteStatus, MemberRole, UserWorkspace, Workspace, WorkspaceInvite, WorkspaceMember } from './types'
+import type { UserWorkspaceInfo as ProtoUserWorkspaceInfo, WorkspaceInfo as ProtoWorkspaceInfo, WorkspaceInviteInfo as ProtoWorkspaceInviteInfo, WorkspaceMemberInfo as ProtoWorkspaceMemberInfo } from '@/gen/synclet/publicapi/workspace/v1/workspace_pb'
 import { createClient } from '@connectrpc/connect'
 import { createConnectTransport } from '@connectrpc/connect-web'
 import { connectionClient, workspaceClient } from '@shared/api/services'
@@ -53,9 +53,20 @@ function mapMember(proto: ProtoWorkspaceMemberInfo): WorkspaceMember {
   }
 }
 
-export async function listWorkspaces(): Promise<Workspace[]> {
+function mapUserWorkspace(proto: ProtoUserWorkspaceInfo): UserWorkspace | null {
+  if (!proto.workspace)
+    return null
+  return {
+    workspace: mapWorkspace(proto.workspace),
+    role: mapMemberRole(proto.role),
+  }
+}
+
+export async function listWorkspaces(): Promise<UserWorkspace[]> {
   const res = await workspaceClient.listWorkspaces({})
-  return (res.workspaces || []).map(mapWorkspace)
+  return (res.workspaces || [])
+    .map(mapUserWorkspace)
+    .filter((w): w is UserWorkspace => w !== null)
 }
 
 export async function getWorkspace(id: string): Promise<Workspace | undefined> {

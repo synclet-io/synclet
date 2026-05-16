@@ -128,7 +128,13 @@ message ListWorkspacesRequest {
 }
 
 message ListWorkspacesResponse {
-  repeated WorkspaceInfo workspaces = 1;
+  repeated UserWorkspaceInfo workspaces = 1;
+}
+
+// UserWorkspaceInfo couples a workspace with the caller's role in it.
+message UserWorkspaceInfo {
+  WorkspaceInfo workspace = 1;
+  MemberRole role = 2;
 }
 
 message RemoveMemberRequest {
