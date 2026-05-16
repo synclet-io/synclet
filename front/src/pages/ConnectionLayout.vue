@@ -29,6 +29,7 @@ const activeJob = computed(() => jobs.value?.items.find(j => j.status === 'runni
 
 const tabs = computed<Tab[]>(() => [
   { name: 'Overview', to: { name: 'connection-detail', params: { id: id.value } } },
+  { name: 'Schema changes', to: { name: 'connection-schema-changes', params: { id: id.value } } },
   { name: 'Settings', to: { name: 'connection-settings', params: { id: id.value } } },
   { name: 'Notifications', to: { name: 'connection-notifications', params: { id: id.value } } },
 ])

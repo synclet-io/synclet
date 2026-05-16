@@ -94,6 +94,32 @@ export function useUpdateConnection() {
   })
 }
 
+export function useSchemaChanges(connectionId: MaybeRef<string>, options?: { enabled?: MaybeRef<boolean> }) {
+  const { currentWorkspaceId } = useAuth()
+  return useQuery({
+    queryKey: computed(() => connectionKeys.schemaChanges(currentWorkspaceId.value ?? '', toValue(connectionId))),
+    queryFn: () => connectionApi.getSchemaChanges(toValue(connectionId)),
+    enabled: computed(() => {
+      const baseEnabled = !!currentWorkspaceId.value && !!toValue(connectionId)
+      if (options?.enabled === undefined)
+        return baseEnabled
+      return baseEnabled && toValue(options.enabled)
+    }),
+    staleTime: 30_000,
+  })
+}
+
+export function useDiscoverSchema() {
+  const qc = useQueryClient()
+  const { currentWorkspaceId } = useAuth()
+  return useMutation({
+    mutationFn: (connectionId: string) => connectionApi.discoverSchema(connectionId),
+    onSuccess: (_data, connectionId) => {
+      qc.invalidateQueries({ queryKey: connectionKeys.schemaChanges(currentWorkspaceId.value ?? '', connectionId) })
+    },
+  })
+}
+
 export function useConfigureStreams() {
   const qc = useQueryClient()
   const { currentWorkspaceId } = useAuth()

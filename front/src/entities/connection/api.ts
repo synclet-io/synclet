@@ -1,5 +1,5 @@
-import type { ConfiguredStream, Connection, ConnectionStatus, DestinationSyncMode, NamespaceDefinition, SchemaChangePolicy, StateType, StreamStatesResult, SyncMode } from './types'
-import type { Connection as ProtoConnection } from '@/gen/synclet/publicapi/pipeline/v1/pipeline_pb'
+import type { ConfiguredStream, Connection, ConnectionStatus, DestinationSyncMode, NamespaceDefinition, SchemaChange, SchemaChangePolicy, SchemaChangeType, StateType, StreamStatesResult, SyncMode } from './types'
+import type { Connection as ProtoConnection, SchemaChange as ProtoSchemaChange } from '@/gen/synclet/publicapi/pipeline/v1/pipeline_pb'
 import { ConfiguredStreamSchema, connectionClient, create } from '@shared/api/services'
 import { tsToDate } from '@shared/lib/formatting'
 import {
@@ -226,4 +226,35 @@ export async function listStreamStates(connectionId: string): Promise<StreamStat
 
 export async function updateStreamState(connectionId: string, streamName: string, streamNamespace: string, stateData: string): Promise<void> {
   await connectionClient.updateStreamState({ connectionId, streamName, streamNamespace, stateData })
+}
+
+function mapSchemaChangeType(raw: string): SchemaChangeType {
+  switch (raw) {
+    case 'column_added':
+    case 'stream_added':
+      return 'added'
+    case 'column_removed':
+    case 'stream_removed':
+      return 'removed'
+    case 'column_type_changed':
+      return 'modified'
+    default:
+      return 'unknown'
+  }
+}
+
+function mapSchemaChange(proto: ProtoSchemaChange): SchemaChange {
+  return {
+    type: mapSchemaChangeType(proto.type),
+    streamName: proto.streamName,
+    namespace: proto.namespace,
+    columnName: proto.columnName,
+    oldType: proto.oldType || undefined,
+    newType: proto.newType || undefined,
+  }
+}
+
+export async function getSchemaChanges(connectionId: string): Promise<SchemaChange[]> {
+  const res = await connectionClient.getSchemaChanges({ connectionId })
+  return (res.changes ?? []).map(mapSchemaChange)
 }

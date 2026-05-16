@@ -65,3 +65,14 @@ export const SYNC_MODE_PAIRS: SyncModePair[] = [
 export function getAvailableSyncModePairs(supportedSyncModes: string[]): SyncModePair[] {
   return SYNC_MODE_PAIRS.filter(p => supportedSyncModes.includes(p.syncMode))
 }
+
+export type SchemaChangeType = 'added' | 'removed' | 'modified' | 'unknown'
+
+export interface SchemaChange {
+  type: SchemaChangeType
+  streamName: string
+  namespace: string
+  columnName: string
+  oldType?: string
+  newType?: string
+}

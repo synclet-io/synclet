@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { Column } from '@shared/ui'
 import { useConnections, useDeleteConnection } from '@entities/connection'
+import SchemaDriftBadge from '@features/schema-changes/SchemaDriftBadge.vue'
 import { getErrorMessage } from '@shared/lib/errorUtils'
 import { statusVariant } from '@shared/lib/format'
-import { PageHeader, SBadge, SButton, SConfirmDialog, SEmptyState, SPagination, STable, useToast } from '@shared/ui'
+import { PageHeader, SAlert, SBadge, SButton, SConfirmDialog, SEmptyState, SPagination, STable, useToast } from '@shared/ui'
 import { Plus, Trash2 } from 'lucide-vue-next'
 import { ref } from 'vue'
 
@@ -62,9 +63,12 @@ const columns: Column[] = [
       </SEmptyState>
     </template>
     <template #cell-name="{ row }">
-      <RouterLink :to="`/connections/${row.id}`" class="text-sm font-medium text-primary hover:underline hover:text-primary-hover">
-        {{ row.name }}
-      </RouterLink>
+      <div class="flex items-center gap-2">
+        <RouterLink :to="`/connections/${row.id}`" class="text-sm font-medium text-primary hover:underline hover:text-primary-hover">
+          {{ row.name }}
+        </RouterLink>
+        <SchemaDriftBadge :connection-id="row.id" />
+      </div>
     </template>
     <template #cell-status="{ row }">
       <SBadge :variant="statusVariant(row.status)" dot>

@@ -106,6 +106,11 @@ export const router = createRouter({
               component: () => import('@pages/ConnectionDetailPage.vue'),
             },
             {
+              path: 'schema-changes',
+              name: 'connection-schema-changes',
+              component: () => import('@pages/ConnectionSchemaChangesPage.vue'),
+            },
+            {
               path: 'settings',
               name: 'connection-settings',
               component: () => import('@pages/ConnectionSettingsPage.vue'),
