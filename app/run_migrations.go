@@ -72,6 +72,8 @@ func runGooseCommand(_ string, proceed func(db *sql.DB) error, optionsList ...Ru
 		}
 	}
 
+	applyEnvDefaults(bootLogger)
+
 	return fxutil.RunJob2(func(ctx context.Context, logger *logging.Logger, db *gorm.DB) error {
 		sqlDB, err := db.DB()
 		if err != nil {

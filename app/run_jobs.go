@@ -28,5 +28,7 @@ func RunJobs(optionsList ...RunOption) {
 		}
 	}
 
+	applyEnvDefaults(bootLogger)
+
 	fx.New(NewFxAppOptions(options)).Run()
 }

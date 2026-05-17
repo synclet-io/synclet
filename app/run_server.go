@@ -29,6 +29,8 @@ func RunServer(optionsList ...RunOption) {
 		}
 	}
 
+	applyEnvDefaults(bootLogger)
+
 	fx.New(
 		NewFxAppOptions(options),
 		fx.StopTimeout(60*time.Second),
