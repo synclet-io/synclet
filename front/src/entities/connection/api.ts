@@ -207,6 +207,33 @@ export async function getConfiguredCatalog(connectionId: string): Promise<Record
   return res.catalog ?? undefined
 }
 
+interface RawConfiguredStream {
+  stream?: { name?: string, namespace?: string }
+  sync_mode?: string
+  destination_sync_mode?: string
+  cursor_field?: string[]
+  primary_key?: string[][]
+  selected_fields?: Array<{ field_path?: string[] }>
+}
+
+export function configuredCatalogToStreams(catalog: Record<string, unknown> | null | undefined): ConfiguredStream[] {
+  if (!catalog)
+    return []
+  const cat = catalog as { streams?: RawConfiguredStream[] }
+  return (cat.streams ?? []).map((cs) => {
+    const stream = cs.stream ?? {}
+    return {
+      streamName: stream.name ?? '',
+      namespace: stream.namespace ?? '',
+      syncMode: (cs.sync_mode ?? 'full_refresh') as SyncMode,
+      destinationSyncMode: (cs.destination_sync_mode ?? 'overwrite') as DestinationSyncMode,
+      cursorField: cs.cursor_field ?? [],
+      primaryKey: cs.primary_key ?? [],
+      selectedFields: (cs.selected_fields ?? []).map(sf => ({ fieldPath: sf.field_path ?? [] })),
+    }
+  })
+}
+
 export async function resetConnectionState(connectionId: string): Promise<void> {
   await connectionClient.resetConnectionState({ connectionId })
 }

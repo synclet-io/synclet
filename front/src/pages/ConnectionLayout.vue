@@ -7,7 +7,7 @@ import HealthBadge from '@features/connection-stats/HealthBadge.vue'
 import { getErrorMessage } from '@shared/lib/errorUtils'
 import { statusVariant } from '@shared/lib/format'
 import { PageHeader, SAlert, SBadge, SButton, SSkeleton, STabs, useToast } from '@shared/ui'
-import { Pause, Play, RefreshCw, Settings, XCircle } from 'lucide-vue-next'
+import { Copy, Pause, Play, RefreshCw, Settings, XCircle } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
 
@@ -101,6 +101,9 @@ async function toggleEnabled() {
         </SButton>
         <SButton variant="secondary" :to="`/connections/${id}/streams`">
           <Settings class="w-4 h-4" /> Streams
+        </SButton>
+        <SButton variant="secondary" :to="`/connections/new?cloneFrom=${id}`" title="Duplicate this connection">
+          <Copy class="w-4 h-4" /> Duplicate
         </SButton>
         <SButton v-if="activeJob" variant="danger" :loading="cancelling" @click="cancelSync">
           <XCircle class="w-4 h-4" />

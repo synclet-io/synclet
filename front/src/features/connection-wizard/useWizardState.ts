@@ -76,8 +76,10 @@ export function useWizardState() {
       currentStep.value--
   }
 
-  function goTo(step: number) {
-    if (step >= 1 && step <= currentStep.value)
+  function goTo(step: number, options?: { force?: boolean }) {
+    if (step < 1 || step > totalSteps)
+      return
+    if (options?.force || step <= currentStep.value)
       currentStep.value = step
   }
 

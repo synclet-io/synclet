@@ -13,6 +13,7 @@ defineProps<{
 
 defineSlots<{
   [key: `cell-${string}`]: (props: { row: any, index: number }) => any
+  [key: `header-${string}`]: (props: { column: Column }) => any
   empty?: () => any
 }>()
 </script>
@@ -52,7 +53,9 @@ defineSlots<{
               }"
               :style="col.width ? { width: col.width } : {}"
             >
-              {{ col.label }}
+              <slot :name="`header-${col.key}`" :column="col">
+                {{ col.label }}
+              </slot>
             </th>
           </tr>
         </thead>
