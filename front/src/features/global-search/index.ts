@@ -1,0 +1,5 @@
+export { default as GlobalSearchModal } from './GlobalSearchModal.vue'
+export { matchScore, rankMatches } from './matcher'
+export type { SearchGroup, SearchResult, SearchResultKind } from './useGlobalSearch'
+export { useGlobalSearch } from './useGlobalSearch'
+export { useRecentHistory } from './useRecentHistory'

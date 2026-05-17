@@ -2,19 +2,38 @@
 import type { DropdownItem } from '@shared/ui'
 import { useAuth } from '@entities/auth'
 import { useSystemInfo } from '@entities/system'
+import { GlobalSearchModal } from '@features/global-search'
 import { DarkModeToggle, SyncletLogo } from '@shared/ui'
 import SDropdown from '@shared/ui/SDropdown.vue'
-import { ArrowRightLeft, ChevronDown, Database, History, LayoutDashboard, LogOut, Menu, Server, Settings } from 'lucide-vue-next'
-import { computed, ref, watch } from 'vue'
+import { ArrowRightLeft, ChevronDown, Database, History, LayoutDashboard, LogOut, Menu, Search, Server, Settings } from 'lucide-vue-next'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 
 const router = useRouter()
 const route = useRoute()
 const sidebarOpen = ref(false)
+const searchOpen = ref(false)
 
 watch(() => route.path, () => {
   sidebarOpen.value = false
 })
+
+function onSearchKeydown(e: KeyboardEvent) {
+  if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+    e.preventDefault()
+    searchOpen.value = !searchOpen.value
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('keydown', onSearchKeydown)
+})
+onUnmounted(() => {
+  document.removeEventListener('keydown', onSearchKeydown)
+})
+
+const MAC_RE = /mac/i
+const cmdKey = computed(() => (typeof navigator !== 'undefined' && MAC_RE.test(navigator.platform)) ? '⌘' : 'Ctrl')
 const auth = useAuth()
 const { data: systemInfo } = useSystemInfo()
 const isSingleWorkspace = computed(() => systemInfo.value?.workspacesMode === 'single')
@@ -75,6 +94,14 @@ const userInitial = computed(() => {
 
       <!-- Navigation -->
       <nav class="flex-1 px-3 py-3 space-y-0.5">
+        <button
+          class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-active transition-colors text-left"
+          @click="searchOpen = true"
+        >
+          <Search class="w-4 h-4 opacity-70" />
+          <span class="flex-1">Search</span>
+          <kbd class="text-[10px] border border-sidebar-border rounded px-1 py-0.5 opacity-70">{{ cmdKey }}K</kbd>
+        </button>
         <RouterLink
           v-for="item in navItems"
           :key="item.name"
@@ -145,5 +172,7 @@ const userInitial = computed(() => {
         <RouterView />
       </div>
     </main>
+
+    <GlobalSearchModal :open="searchOpen" @close="searchOpen = false" />
   </div>
 </template>
