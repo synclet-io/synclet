@@ -26,11 +26,12 @@ type UpdateWebhookParams struct {
 type UpdateWebhook struct {
 	storage Storage
 	secrets SecretsProvider
+	audit   AuditRecorder
 }
 
 // NewUpdateWebhook creates a new UpdateWebhook use case.
-func NewUpdateWebhook(storage Storage, secrets SecretsProvider) *UpdateWebhook {
-	return &UpdateWebhook{storage: storage, secrets: secrets}
+func NewUpdateWebhook(storage Storage, secrets SecretsProvider, audit AuditRecorder) *UpdateWebhook {
+	return &UpdateWebhook{storage: storage, secrets: secrets, audit: audit}
 }
 
 // Execute updates the webhook matching the given ID and workspace.
@@ -41,6 +42,12 @@ func (uc *UpdateWebhook) Execute(ctx context.Context, params UpdateWebhookParams
 	})
 	if err != nil {
 		return nil, fmt.Errorf("getting webhook: %w", err)
+	}
+
+	before := map[string]any{
+		"url":     webhook.URL,
+		"enabled": webhook.Enabled,
+		"events":  webhook.Events,
 	}
 
 	if params.URL != nil {
@@ -80,6 +87,20 @@ func (uc *UpdateWebhook) Execute(ctx context.Context, params UpdateWebhookParams
 	if err != nil {
 		return nil, fmt.Errorf("updating webhook: %w", err)
 	}
+
+	uc.audit.Record(ctx, AuditEvent{
+		WorkspaceID:   params.WorkspaceID,
+		Action:        "update",
+		ResourceType:  "webhook",
+		ResourceID:    updated.ID,
+		ResourceLabel: updated.URL,
+		Before:        before,
+		After: map[string]any{
+			"url":     updated.URL,
+			"enabled": updated.Enabled,
+			"events":  updated.Events,
+		},
+	})
 
 	return updated, nil
 }

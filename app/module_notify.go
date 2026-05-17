@@ -65,6 +65,7 @@ func notifyDependenciesModule() fx.Option {
 	return fx.Provide(
 		fx.Annotate(newNotifyStorage, fx.As(new(notifyservice.Storage))),
 		fx.Annotate(notifyadapt.NewSecretsAdapter, fx.As(new(notifyservice.SecretsProvider))),
+		fx.Annotate(notifyadapt.NewAuditRecorder, fx.As(new(notifyservice.AuditRecorder))),
 
 		newSMTPEmailSender,
 	)

@@ -20,11 +20,12 @@ type DeleteWebhookParams struct {
 type DeleteWebhook struct {
 	storage Storage
 	secrets SecretsProvider
+	audit   AuditRecorder
 }
 
 // NewDeleteWebhook creates a new DeleteWebhook use case.
-func NewDeleteWebhook(storage Storage, secrets SecretsProvider) *DeleteWebhook {
-	return &DeleteWebhook{storage: storage, secrets: secrets}
+func NewDeleteWebhook(storage Storage, secrets SecretsProvider, audit AuditRecorder) *DeleteWebhook {
+	return &DeleteWebhook{storage: storage, secrets: secrets, audit: audit}
 }
 
 // Execute deletes the webhook matching the given ID and workspace.
@@ -43,8 +44,24 @@ func (uc *DeleteWebhook) Execute(ctx context.Context, params DeleteWebhookParams
 		_ = uc.secrets.DeleteSecret(ctx, webhook.Secret) // non-fatal
 	}
 
-	return uc.storage.Webhooks().Delete(ctx, &WebhookFilter{
+	if err := uc.storage.Webhooks().Delete(ctx, &WebhookFilter{
 		ID:          filter.Equals(params.ID),
 		WorkspaceID: filter.Equals(params.WorkspaceID),
+	}); err != nil {
+		return err
+	}
+
+	uc.audit.Record(ctx, AuditEvent{
+		WorkspaceID:   params.WorkspaceID,
+		Action:        "delete",
+		ResourceType:  "webhook",
+		ResourceID:    webhook.ID,
+		ResourceLabel: webhook.URL,
+		Before: map[string]any{
+			"url":     webhook.URL,
+			"enabled": webhook.Enabled,
+		},
 	})
+
+	return nil
 }

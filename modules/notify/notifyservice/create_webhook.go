@@ -21,11 +21,12 @@ type CreateWebhookParams struct {
 type CreateWebhook struct {
 	storage Storage
 	secrets SecretsProvider
+	audit   AuditRecorder
 }
 
 // NewCreateWebhook creates a new CreateWebhook use case.
-func NewCreateWebhook(storage Storage, secrets SecretsProvider) *CreateWebhook {
-	return &CreateWebhook{storage: storage, secrets: secrets}
+func NewCreateWebhook(storage Storage, secrets SecretsProvider, audit AuditRecorder) *CreateWebhook {
+	return &CreateWebhook{storage: storage, secrets: secrets, audit: audit}
 }
 
 // Execute creates a webhook with the given parameters.
@@ -62,6 +63,19 @@ func (uc *CreateWebhook) Execute(ctx context.Context, params CreateWebhookParams
 	if err != nil {
 		return nil, fmt.Errorf("creating webhook: %w", err)
 	}
+
+	uc.audit.Record(ctx, AuditEvent{
+		WorkspaceID:   params.WorkspaceID,
+		Action:        "create",
+		ResourceType:  "webhook",
+		ResourceID:    created.ID,
+		ResourceLabel: created.URL,
+		After: map[string]any{
+			"url":     created.URL,
+			"events":  params.Events,
+			"enabled": created.Enabled,
+		},
+	})
 
 	return created, nil
 }
