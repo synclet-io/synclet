@@ -47,7 +47,9 @@ func (h *OIDCHTTPHandler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, authURL, http.StatusFound)
+	// authURL is built by the OIDC provider's oauth2Config from a finite
+	// server-configured provider set — not user-controlled.
+	http.Redirect(w, r, authURL, http.StatusFound) //nolint:gosec // G710: authURL is server-built from configured providers.
 }
 
 func (h *OIDCHTTPHandler) handleCallback(w http.ResponseWriter, r *http.Request) {

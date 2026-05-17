@@ -37,7 +37,9 @@ func SetAuthCookies(header http.Header, tokens *AuthTokens, cfg CookieConfig) {
 		refreshMaxAge = 0
 	}
 
-	setCookie(header, &http.Cookie{
+	// Secure is conditional via cfg — false only when serving HTTP in dev.
+	// HttpOnly is true except for the metadata cookie that must be JS-readable.
+	setCookie(header, &http.Cookie{ //nolint:gosec // G124: Secure intentionally driven by cfg for dev/prod parity.
 		Name:     accessTokenCookie,
 		Value:    tokens.AccessToken,
 		Path:     "/",
@@ -47,7 +49,7 @@ func SetAuthCookies(header http.Header, tokens *AuthTokens, cfg CookieConfig) {
 		SameSite: http.SameSiteLaxMode,
 	})
 
-	setCookie(header, &http.Cookie{
+	setCookie(header, &http.Cookie{ //nolint:gosec // G124: Secure intentionally driven by cfg for dev/prod parity.
 		Name:     refreshTokenCookie,
 		Value:    tokens.RefreshToken,
 		Path:     "/",
@@ -59,7 +61,7 @@ func SetAuthCookies(header http.Header, tokens *AuthTokens, cfg CookieConfig) {
 
 	metaValue := fmt.Sprintf("access_expires=%d&refresh_expires=%d",
 		tokens.ExpiresAt.Unix(), tokens.RefreshExpiresAt.Unix())
-	setCookie(header, &http.Cookie{
+	setCookie(header, &http.Cookie{ //nolint:gosec // G124: metadata cookie must be JS-readable; Secure driven by cfg.
 		Name:     authMetaCookie,
 		Value:    metaValue,
 		Path:     "/",

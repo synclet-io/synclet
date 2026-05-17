@@ -125,12 +125,13 @@ func TestDockerSyncWorker_Execute_ClaimsJobAndSpawnsGoroutine(t *testing.T) {
 	manager := jobutil.NewWorkerManager(nil)
 
 	worker := &DockerSyncWorker{
-		backend:         backend,
-		executor:        executor,
-		manager:         manager,
-		maxSyncDuration: 10 * time.Minute,
-		semaphore:       make(chan struct{}, 10),
-		workerID:        "test-worker",
+		backend:           backend,
+		executor:          executor,
+		manager:           manager,
+		maxSyncDuration:   10 * time.Minute,
+		heartbeatInterval: time.Second,
+		semaphore:         make(chan struct{}, 10),
+		workerID:          "test-worker",
 	}
 
 	err := worker.Execute(context.Background())

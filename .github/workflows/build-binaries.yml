@@ -58,10 +58,6 @@ jobs:
             goarch: arm64
             runner: macos-latest
             archive: tar.gz
-          - goos: windows
-            goarch: amd64
-            runner: ubuntu-latest
-            archive: zip
     steps:
       - uses: actions/checkout@v4
 
