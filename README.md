@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset=".github/assets/synclet-logo.svg">
-    <img src=".github/assets/synclet-logo-light.svg" alt="Synclet" width="220">
+    <img src=".github/assets/synclet-logo-light.svg" alt="Synclet" width="450">
   </picture>
 </p>
 
