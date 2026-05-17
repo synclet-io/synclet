@@ -64,6 +64,7 @@ func publicHTTPServerModule(options *RunAppOptions) fx.Option {
 		workspaceHTTPServerModule(),
 		pipelineHTTPServerModule(),
 		notifyHTTPServerModule(),
+		auditHTTPServerModule(),
 	)
 }
 

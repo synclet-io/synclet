@@ -1,0 +1,97 @@
+syntax = "proto3";
+
+package synclet.publicapi.audit.v1;
+
+option go_package = "synclet/gen/proto/synclet/publicapi/audit/v1;auditv1";
+
+import "google/protobuf/timestamp.proto";
+import "synclet/options/v1/options.proto";
+
+// AuditService exposes the workspace audit log. Admin-only.
+service AuditService {
+  rpc ListAuditEvents(ListAuditEventsRequest) returns (ListAuditEventsResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_ADMIN;
+  }
+  rpc GetAuditEvent(GetAuditEventRequest) returns (GetAuditEventResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_ADMIN;
+  }
+}
+
+enum AuditAction {
+  AUDIT_ACTION_UNSPECIFIED = 0;
+  AUDIT_ACTION_CREATE = 1;
+  AUDIT_ACTION_UPDATE = 2;
+  AUDIT_ACTION_DELETE = 3;
+  AUDIT_ACTION_ENABLE = 4;
+  AUDIT_ACTION_DISABLE = 5;
+  AUDIT_ACTION_TEST = 6;
+  AUDIT_ACTION_SYNC = 7;
+  AUDIT_ACTION_LOGIN = 8;
+  AUDIT_ACTION_LOGOUT = 9;
+}
+
+enum AuditResourceType {
+  AUDIT_RESOURCE_TYPE_UNSPECIFIED = 0;
+  AUDIT_RESOURCE_TYPE_SOURCE = 1;
+  AUDIT_RESOURCE_TYPE_DESTINATION = 2;
+  AUDIT_RESOURCE_TYPE_CONNECTION = 3;
+  AUDIT_RESOURCE_TYPE_CONNECTOR = 4;
+  AUDIT_RESOURCE_TYPE_REPOSITORY = 5;
+  AUDIT_RESOURCE_TYPE_NOTIFICATION_CHANNEL = 6;
+  AUDIT_RESOURCE_TYPE_NOTIFICATION_RULE = 7;
+  AUDIT_RESOURCE_TYPE_WEBHOOK = 8;
+  AUDIT_RESOURCE_TYPE_WORKSPACE = 9;
+  AUDIT_RESOURCE_TYPE_WORKSPACE_MEMBER = 10;
+  AUDIT_RESOURCE_TYPE_WORKSPACE_INVITE = 11;
+  AUDIT_RESOURCE_TYPE_API_KEY = 12;
+  AUDIT_RESOURCE_TYPE_USER = 13;
+}
+
+enum AuditActorType {
+  AUDIT_ACTOR_TYPE_UNSPECIFIED = 0;
+  AUDIT_ACTOR_TYPE_USER = 1;
+  AUDIT_ACTOR_TYPE_API_KEY = 2;
+  AUDIT_ACTOR_TYPE_SYSTEM = 3;
+}
+
+message AuditEvent {
+  string id = 1;
+  string workspace_id = 2;
+  AuditActorType actor_type = 3;
+  string actor_id = 4;
+  string actor_label = 5;
+  AuditAction action = 6;
+  AuditResourceType resource_type = 7;
+  string resource_id = 8;
+  string resource_label = 9;
+  // JSON-encoded array of FieldChange entries with secret-keyed fields
+  // replaced by a sentinel. Truncated when payload exceeds 8 KB.
+  string diff_json = 10;
+  bool diff_truncated = 11;
+  google.protobuf.Timestamp created_at = 12;
+}
+
+message ListAuditEventsRequest {
+  // Optional filters. Leaving a field unset means "any".
+  optional string actor_id = 1;
+  optional AuditResourceType resource_type = 2;
+  optional string resource_id = 3;
+  optional AuditAction action = 4;
+  optional google.protobuf.Timestamp since = 5;
+  optional google.protobuf.Timestamp until = 6;
+  // Pagination. 0 limit falls back to a server-side default of 50; max 200.
+  int32 limit = 7;
+  int32 offset = 8;
+}
+
+message ListAuditEventsResponse {
+  repeated AuditEvent events = 1;
+}
+
+message GetAuditEventRequest {
+  string id = 1;
+}
+
+message GetAuditEventResponse {
+  AuditEvent event = 1;
+}

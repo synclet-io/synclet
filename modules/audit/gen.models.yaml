@@ -1,0 +1,39 @@
+types:
+  enums:
+    - name: Action
+      values: [ Create, Update, Delete, Enable, Disable, Test, Sync, Login, Logout ]
+      helpers:
+        is_valid: true
+        stringer: true
+        is: true
+
+    - name: ResourceType
+      values: [ Source, Destination, Connection, Connector, Repository, NotificationChannel, NotificationRule, Webhook, Workspace, WorkspaceMember, WorkspaceInvite, APIKey, User ]
+      helpers:
+        is_valid: true
+        stringer: true
+        is: true
+
+    - name: ActorType
+      values: [ User, APIKey, System ]
+      helpers:
+        is_valid: true
+        stringer: true
+        is: true
+
+  models:
+    - name: AuditEvent
+      table_name: audit.audit_events
+      fields:
+        - { name: ID, type: uuid, filterable: true }
+        - { name: WorkspaceID, type: uuid, filterable: true }
+        - { name: ActorType, type: ActorType, filterable: true }
+        - { name: ActorID, type: uuid, filterable: true }
+        - { name: ActorLabel, type: string }
+        - { name: Action, type: Action, filterable: true }
+        - { name: ResourceType, type: ResourceType, filterable: true }
+        - { name: ResourceID, type: uuid, filterable: true }
+        - { name: ResourceLabel, type: string }
+        - { name: DiffJSON, type: string }
+        - { name: DiffTruncated, type: bool }
+        - { name: CreatedAt, type: timestamp, filterable: true }

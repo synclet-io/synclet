@@ -68,6 +68,7 @@ func NewFxAppOptions(options *RunAppOptions) fx.Option {
 		secretModule(),
 		pipelineModule(options),
 		notifyModule(),
+		auditModule(),
 		messagingModule(options),
 
 		// K8s executor
