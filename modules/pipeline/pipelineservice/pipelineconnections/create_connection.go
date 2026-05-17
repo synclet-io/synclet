@@ -32,11 +32,12 @@ type CreateConnectionParams struct {
 type CreateConnection struct {
 	storage pipelineservice.Storage
 	cfg     pipelineservice.Config
+	audit   pipelineservice.AuditRecorder
 }
 
 // NewCreateConnection creates a new CreateConnection use case.
-func NewCreateConnection(storage pipelineservice.Storage, cfg pipelineservice.Config) *CreateConnection {
-	return &CreateConnection{storage: storage, cfg: cfg}
+func NewCreateConnection(storage pipelineservice.Storage, cfg pipelineservice.Config, audit pipelineservice.AuditRecorder) *CreateConnection {
+	return &CreateConnection{storage: storage, cfg: cfg, audit: audit}
 }
 
 // Execute validates source/destination existence and creates the connection.
@@ -105,5 +106,47 @@ func (uc *CreateConnection) Execute(ctx context.Context, params CreateConnection
 		return nil, fmt.Errorf("creating connection: %w", err)
 	}
 
+	uc.audit.Record(ctx, pipelineservice.AuditEvent{
+		WorkspaceID:   params.WorkspaceID,
+		Action:        "create",
+		ResourceType:  "connection",
+		ResourceID:    created.ID,
+		ResourceLabel: created.Name,
+		Before:        nil,
+		After:         connectionToAuditPayload(created),
+	})
+
 	return created, nil
+}
+
+// connectionToAuditPayload reduces a Connection to a JSON-serialisable map
+// suitable for the audit diff. Internal fields (next_scheduled_at, status
+// timestamps) are excluded; the audit log records user-controlled fields
+// only.
+func connectionToAuditPayload(conn *pipelineservice.Connection) map[string]any {
+	if conn == nil {
+		return nil
+	}
+
+	payload := map[string]any{
+		"name":                 conn.Name,
+		"source_id":            conn.SourceID.String(),
+		"destination_id":       conn.DestinationID.String(),
+		"schema_change_policy": conn.SchemaChangePolicy.String(),
+		"max_attempts":         conn.MaxAttempts,
+		"namespace_definition": conn.NamespaceDefinition.String(),
+	}
+	if conn.Schedule != nil {
+		payload["schedule"] = *conn.Schedule
+	}
+
+	if conn.CustomNamespaceFormat != nil {
+		payload["custom_namespace_format"] = *conn.CustomNamespaceFormat
+	}
+
+	if conn.StreamPrefix != nil {
+		payload["stream_prefix"] = *conn.StreamPrefix
+	}
+
+	return payload
 }

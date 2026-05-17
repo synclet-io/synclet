@@ -161,7 +161,7 @@ func TestDeleteConnection(t *testing.T) {
 		conn := &pipelineservice.Connection{ID: uuid.New(), WorkspaceID: ws}
 		seedConnection(t, store, conn)
 
-		uc := pipelineconnections.NewDeleteConnection(store)
+		uc := pipelineconnections.NewDeleteConnection(store, pipelineservice.NoopAuditRecorder{})
 		err := uc.Execute(context.Background(), pipelineconnections.DeleteConnectionParams{
 			ID:          conn.ID,
 			WorkspaceID: ws,
@@ -179,7 +179,7 @@ func TestDeleteConnection(t *testing.T) {
 		conn := &pipelineservice.Connection{ID: uuid.New(), WorkspaceID: otherWs}
 		seedConnection(t, store, conn)
 
-		uc := pipelineconnections.NewDeleteConnection(store)
+		uc := pipelineconnections.NewDeleteConnection(store, pipelineservice.NoopAuditRecorder{})
 		err := uc.Execute(context.Background(), pipelineconnections.DeleteConnectionParams{
 			ID:          conn.ID,
 			WorkspaceID: ws,
@@ -206,7 +206,7 @@ func TestUpdateConnection(t *testing.T) {
 
 		newName := "new"
 		newAttempts := 7
-		uc := pipelineconnections.NewUpdateConnection(store)
+		uc := pipelineconnections.NewUpdateConnection(store, pipelineservice.NoopAuditRecorder{})
 		updated, err := uc.Execute(context.Background(), pipelineconnections.UpdateConnectionParams{
 			ID:          original.ID,
 			WorkspaceID: ws,
@@ -228,7 +228,7 @@ func TestUpdateConnection(t *testing.T) {
 
 		invalid := "every blue moon"
 		invalidPtr := &invalid
-		uc := pipelineconnections.NewUpdateConnection(store)
+		uc := pipelineconnections.NewUpdateConnection(store, pipelineservice.NoopAuditRecorder{})
 		_, err := uc.Execute(context.Background(), pipelineconnections.UpdateConnectionParams{
 			ID:          conn.ID,
 			WorkspaceID: ws,
@@ -245,7 +245,7 @@ func TestUpdateConnection(t *testing.T) {
 		seedConnection(t, store, conn)
 
 		newName := "x"
-		uc := pipelineconnections.NewUpdateConnection(store)
+		uc := pipelineconnections.NewUpdateConnection(store, pipelineservice.NoopAuditRecorder{})
 		_, err := uc.Execute(context.Background(), pipelineconnections.UpdateConnectionParams{
 			ID:          conn.ID,
 			WorkspaceID: ws,
@@ -265,7 +265,7 @@ func TestEnableDisableConnection(t *testing.T) {
 
 		getter := pipelineconnections.NewGetConnection(store)
 		statusUC := pipelineconnections.NewUpdateConnectionStatus(store)
-		uc := pipelineconnections.NewEnableConnection(getter, statusUC)
+		uc := pipelineconnections.NewEnableConnection(getter, statusUC, pipelineservice.NoopAuditRecorder{})
 		out, err := uc.Execute(context.Background(), pipelineconnections.EnableConnectionParams{
 			ConnectionID: conn.ID,
 			WorkspaceID:  ws,
@@ -281,7 +281,7 @@ func TestEnableDisableConnection(t *testing.T) {
 
 		getter := pipelineconnections.NewGetConnection(store)
 		statusUC := pipelineconnections.NewUpdateConnectionStatus(store)
-		uc := pipelineconnections.NewDisableConnection(getter, statusUC)
+		uc := pipelineconnections.NewDisableConnection(getter, statusUC, pipelineservice.NoopAuditRecorder{})
 		out, err := uc.Execute(context.Background(), pipelineconnections.DisableConnectionParams{
 			ConnectionID: conn.ID,
 			WorkspaceID:  ws,
@@ -297,7 +297,7 @@ func TestEnableDisableConnection(t *testing.T) {
 
 		getter := pipelineconnections.NewGetConnection(store)
 		statusUC := pipelineconnections.NewUpdateConnectionStatus(store)
-		uc := pipelineconnections.NewEnableConnection(getter, statusUC)
+		uc := pipelineconnections.NewEnableConnection(getter, statusUC, pipelineservice.NoopAuditRecorder{})
 		_, err := uc.Execute(context.Background(), pipelineconnections.EnableConnectionParams{
 			ConnectionID: conn.ID,
 			WorkspaceID:  ws,

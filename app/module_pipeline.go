@@ -126,6 +126,7 @@ func pipelineDependenciesModule() fx.Option {
 			fx.Annotate(pipelineadapt.NewDBImageValidator, fx.As(new(pipelineservice.ConnectorImageValidator))),
 			fx.Annotate(pipelineadapt.NewConnectorSpecFetcherAdapter, fx.As(new(pipelineservice.ConnectorSpecFetcher))),
 			fx.Annotate(pipelineadapt.NewImagePullerAdapter, fx.As(new(pipelineservice.ImagePuller))),
+			fx.Annotate(pipelineadapt.NewAuditRecorder, fx.As(new(pipelineservice.AuditRecorder))),
 		),
 
 		// Storage

@@ -45,7 +45,7 @@ func TestCreateConnection_DoesNotCarryStateFromAnotherConnection(t *testing.T) {
 		StateBlob:    `[{"type":"STREAM","stream":{"stream_descriptor":{"name":"users"},"stream_state":{"cursor":"100"}}}]`,
 	}
 
-	uc := pipelineconnections.NewCreateConnection(store, pipelineservice.Config{DefaultMaxAttempts: 3})
+	uc := pipelineconnections.NewCreateConnection(store, pipelineservice.Config{DefaultMaxAttempts: 3}, pipelineservice.NoopAuditRecorder{})
 	created, err := uc.Execute(context.Background(), pipelineconnections.CreateConnectionParams{
 		WorkspaceID:   workspaceID,
 		Name:          "original (copy)",

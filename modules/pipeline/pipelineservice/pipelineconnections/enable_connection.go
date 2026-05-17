@@ -19,13 +19,15 @@ type EnableConnectionParams struct {
 type EnableConnection struct {
 	getConnection          *GetConnection
 	updateConnectionStatus *UpdateConnectionStatus
+	audit                  pipelineservice.AuditRecorder
 }
 
 // NewEnableConnection creates a new EnableConnection use case.
-func NewEnableConnection(getConnection *GetConnection, updateConnectionStatus *UpdateConnectionStatus) *EnableConnection {
+func NewEnableConnection(getConnection *GetConnection, updateConnectionStatus *UpdateConnectionStatus, audit pipelineservice.AuditRecorder) *EnableConnection {
 	return &EnableConnection{
 		getConnection:          getConnection,
 		updateConnectionStatus: updateConnectionStatus,
+		audit:                  audit,
 	}
 }
 
@@ -45,6 +47,14 @@ func (uc *EnableConnection) Execute(ctx context.Context, params EnableConnection
 	if err != nil {
 		return nil, fmt.Errorf("enabling connection: %w", err)
 	}
+
+	uc.audit.Record(ctx, pipelineservice.AuditEvent{
+		WorkspaceID:   params.WorkspaceID,
+		Action:        "enable",
+		ResourceType:  "connection",
+		ResourceID:    conn.ID,
+		ResourceLabel: conn.Name,
+	})
 
 	return conn, nil
 }

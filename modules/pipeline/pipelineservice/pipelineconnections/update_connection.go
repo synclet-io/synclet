@@ -27,11 +27,12 @@ type UpdateConnectionParams struct {
 // UpdateConnection updates an existing connection within a workspace.
 type UpdateConnection struct {
 	storage pipelineservice.Storage
+	audit   pipelineservice.AuditRecorder
 }
 
 // NewUpdateConnection creates a new UpdateConnection use case.
-func NewUpdateConnection(storage pipelineservice.Storage) *UpdateConnection {
-	return &UpdateConnection{storage: storage}
+func NewUpdateConnection(storage pipelineservice.Storage, audit pipelineservice.AuditRecorder) *UpdateConnection {
+	return &UpdateConnection{storage: storage, audit: audit}
 }
 
 // Execute finds the connection by ID and workspace, applies updates, and persists.
@@ -43,6 +44,8 @@ func (uc *UpdateConnection) Execute(ctx context.Context, params UpdateConnection
 	if err != nil {
 		return nil, fmt.Errorf("getting connection: %w", err)
 	}
+
+	before := connectionToAuditPayload(conn)
 
 	if params.Name != nil {
 		conn.Name = *params.Name
@@ -86,6 +89,16 @@ func (uc *UpdateConnection) Execute(ctx context.Context, params UpdateConnection
 	if err != nil {
 		return nil, fmt.Errorf("updating connection: %w", err)
 	}
+
+	uc.audit.Record(ctx, pipelineservice.AuditEvent{
+		WorkspaceID:   params.WorkspaceID,
+		Action:        "update",
+		ResourceType:  "connection",
+		ResourceID:    updated.ID,
+		ResourceLabel: updated.Name,
+		Before:        before,
+		After:         connectionToAuditPayload(updated),
+	})
 
 	return updated, nil
 }

@@ -19,13 +19,15 @@ type DisableConnectionParams struct {
 type DisableConnection struct {
 	getConnection          *GetConnection
 	updateConnectionStatus *UpdateConnectionStatus
+	audit                  pipelineservice.AuditRecorder
 }
 
 // NewDisableConnection creates a new DisableConnection use case.
-func NewDisableConnection(getConnection *GetConnection, updateConnectionStatus *UpdateConnectionStatus) *DisableConnection {
+func NewDisableConnection(getConnection *GetConnection, updateConnectionStatus *UpdateConnectionStatus, audit pipelineservice.AuditRecorder) *DisableConnection {
 	return &DisableConnection{
 		getConnection:          getConnection,
 		updateConnectionStatus: updateConnectionStatus,
+		audit:                  audit,
 	}
 }
 
@@ -45,6 +47,14 @@ func (uc *DisableConnection) Execute(ctx context.Context, params DisableConnecti
 	if err != nil {
 		return nil, fmt.Errorf("disabling connection: %w", err)
 	}
+
+	uc.audit.Record(ctx, pipelineservice.AuditEvent{
+		WorkspaceID:   params.WorkspaceID,
+		Action:        "disable",
+		ResourceType:  "connection",
+		ResourceID:    conn.ID,
+		ResourceLabel: conn.Name,
+	})
 
 	return conn, nil
 }
