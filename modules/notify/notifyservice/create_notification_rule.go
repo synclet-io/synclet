@@ -21,11 +21,12 @@ type CreateNotificationRuleParams struct {
 // CreateNotificationRule creates a new notification rule.
 type CreateNotificationRule struct {
 	storage Storage
+	audit   AuditRecorder
 }
 
 // NewCreateNotificationRule creates a new CreateNotificationRule use case.
-func NewCreateNotificationRule(storage Storage) *CreateNotificationRule {
-	return &CreateNotificationRule{storage: storage}
+func NewCreateNotificationRule(storage Storage, audit AuditRecorder) *CreateNotificationRule {
+	return &CreateNotificationRule{storage: storage, audit: audit}
 }
 
 // Execute creates a notification rule with the given parameters.
@@ -55,6 +56,20 @@ func (uc *CreateNotificationRule) Execute(ctx context.Context, params CreateNoti
 	if err != nil {
 		return nil, fmt.Errorf("creating notification rule: %w", err)
 	}
+
+	uc.audit.Record(ctx, AuditEvent{
+		WorkspaceID:  params.WorkspaceID,
+		Action:       "create",
+		ResourceType: "notification_rule",
+		ResourceID:   created.ID,
+		After: map[string]any{
+			"channel_id":      created.ChannelID.String(),
+			"connection_id":   created.ConnectionID.String(),
+			"condition":       created.Condition.String(),
+			"condition_value": created.ConditionValue,
+			"enabled":         created.Enabled,
+		},
+	})
 
 	return created, nil
 }

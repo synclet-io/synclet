@@ -18,15 +18,22 @@ type DeleteChannelParams struct {
 type DeleteChannel struct {
 	storage Storage
 	secrets SecretsProvider
+	audit   AuditRecorder
 }
 
 // NewDeleteChannel creates a new DeleteChannel use case.
-func NewDeleteChannel(storage Storage, secrets SecretsProvider) *DeleteChannel {
-	return &DeleteChannel{storage: storage, secrets: secrets}
+func NewDeleteChannel(storage Storage, secrets SecretsProvider, audit AuditRecorder) *DeleteChannel {
+	return &DeleteChannel{storage: storage, secrets: secrets, audit: audit}
 }
 
 // Execute deletes the notification channel and its rules.
 func (uc *DeleteChannel) Execute(ctx context.Context, params DeleteChannelParams) error {
+	// Load before deleting so we can capture name + type in the audit record.
+	existing, lookupErr := uc.storage.NotificationChannels().First(ctx, &NotificationChannelFilter{
+		ID:          filter.Equals(params.ID),
+		WorkspaceID: filter.Equals(params.WorkspaceID),
+	})
+
 	// Clean up all encrypted secrets for this channel.
 	_ = uc.secrets.DeleteByOwner(ctx, "channel", params.ID) // non-fatal
 
@@ -38,8 +45,26 @@ func (uc *DeleteChannel) Execute(ctx context.Context, params DeleteChannelParams
 		return fmt.Errorf("deleting associated notification rules: %w", err)
 	}
 
-	return uc.storage.NotificationChannels().Delete(ctx, &NotificationChannelFilter{
+	if err := uc.storage.NotificationChannels().Delete(ctx, &NotificationChannelFilter{
 		ID:          filter.Equals(params.ID),
 		WorkspaceID: filter.Equals(params.WorkspaceID),
-	})
+	}); err != nil {
+		return err
+	}
+
+	if lookupErr == nil && existing != nil {
+		uc.audit.Record(ctx, AuditEvent{
+			WorkspaceID:   params.WorkspaceID,
+			Action:        "delete",
+			ResourceType:  "notification_channel",
+			ResourceID:    existing.ID,
+			ResourceLabel: existing.Name,
+			Before: map[string]any{
+				"name":         existing.Name,
+				"channel_type": existing.ChannelType.String(),
+			},
+		})
+	}
+
+	return nil
 }

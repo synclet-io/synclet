@@ -25,11 +25,12 @@ type UpdateChannelParams struct {
 type UpdateChannel struct {
 	storage Storage
 	secrets SecretsProvider
+	audit   AuditRecorder
 }
 
 // NewUpdateChannel creates a new UpdateChannel use case.
-func NewUpdateChannel(storage Storage, secrets SecretsProvider) *UpdateChannel {
-	return &UpdateChannel{storage: storage, secrets: secrets}
+func NewUpdateChannel(storage Storage, secrets SecretsProvider, audit AuditRecorder) *UpdateChannel {
+	return &UpdateChannel{storage: storage, secrets: secrets, audit: audit}
 }
 
 // Execute updates the notification channel matching the given ID and workspace.
@@ -40,6 +41,11 @@ func (uc *UpdateChannel) Execute(ctx context.Context, params UpdateChannelParams
 	})
 	if err != nil {
 		return nil, fmt.Errorf("getting notification channel: %w", err)
+	}
+
+	before := map[string]any{
+		"name":    channel.Name,
+		"enabled": channel.Enabled,
 	}
 
 	if params.Name != nil {
@@ -92,6 +98,19 @@ func (uc *UpdateChannel) Execute(ctx context.Context, params UpdateChannelParams
 	if err != nil {
 		return nil, fmt.Errorf("updating notification channel: %w", err)
 	}
+
+	uc.audit.Record(ctx, AuditEvent{
+		WorkspaceID:   params.WorkspaceID,
+		Action:        "update",
+		ResourceType:  "notification_channel",
+		ResourceID:    updated.ID,
+		ResourceLabel: updated.Name,
+		Before:        before,
+		After: map[string]any{
+			"name":    updated.Name,
+			"enabled": updated.Enabled,
+		},
+	})
 
 	return updated, nil
 }

@@ -23,11 +23,12 @@ type CreateChannelParams struct {
 type CreateChannel struct {
 	storage Storage
 	secrets SecretsProvider
+	audit   AuditRecorder
 }
 
 // NewCreateChannel creates a new CreateChannel use case.
-func NewCreateChannel(storage Storage, secrets SecretsProvider) *CreateChannel {
-	return &CreateChannel{storage: storage, secrets: secrets}
+func NewCreateChannel(storage Storage, secrets SecretsProvider, audit AuditRecorder) *CreateChannel {
+	return &CreateChannel{storage: storage, secrets: secrets, audit: audit}
 }
 
 // Execute creates a notification channel with the given parameters.
@@ -89,6 +90,19 @@ func (uc *CreateChannel) Execute(ctx context.Context, params CreateChannelParams
 	if err != nil {
 		return nil, fmt.Errorf("creating notification channel: %w", err)
 	}
+
+	uc.audit.Record(ctx, AuditEvent{
+		WorkspaceID:   params.WorkspaceID,
+		Action:        "create",
+		ResourceType:  "notification_channel",
+		ResourceID:    created.ID,
+		ResourceLabel: created.Name,
+		After: map[string]any{
+			"name":         created.Name,
+			"channel_type": created.ChannelType.String(),
+			"enabled":      created.Enabled,
+		},
+	})
 
 	return created, nil
 }

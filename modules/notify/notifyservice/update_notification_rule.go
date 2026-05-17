@@ -21,11 +21,12 @@ type UpdateNotificationRuleParams struct {
 // UpdateNotificationRule updates an existing notification rule.
 type UpdateNotificationRule struct {
 	storage Storage
+	audit   AuditRecorder
 }
 
 // NewUpdateNotificationRule creates a new UpdateNotificationRule use case.
-func NewUpdateNotificationRule(storage Storage) *UpdateNotificationRule {
-	return &UpdateNotificationRule{storage: storage}
+func NewUpdateNotificationRule(storage Storage, audit AuditRecorder) *UpdateNotificationRule {
+	return &UpdateNotificationRule{storage: storage, audit: audit}
 }
 
 // Execute updates the notification rule matching the given ID and workspace.
@@ -36,6 +37,12 @@ func (uc *UpdateNotificationRule) Execute(ctx context.Context, params UpdateNoti
 	})
 	if err != nil {
 		return nil, fmt.Errorf("getting notification rule: %w", err)
+	}
+
+	before := map[string]any{
+		"condition":       rule.Condition.String(),
+		"condition_value": rule.ConditionValue,
+		"enabled":         rule.Enabled,
 	}
 
 	if params.Condition != nil {
@@ -65,6 +72,19 @@ func (uc *UpdateNotificationRule) Execute(ctx context.Context, params UpdateNoti
 	if err != nil {
 		return nil, fmt.Errorf("updating notification rule: %w", err)
 	}
+
+	uc.audit.Record(ctx, AuditEvent{
+		WorkspaceID:  params.WorkspaceID,
+		Action:       "update",
+		ResourceType: "notification_rule",
+		ResourceID:   updated.ID,
+		Before:       before,
+		After: map[string]any{
+			"condition":       updated.Condition.String(),
+			"condition_value": updated.ConditionValue,
+			"enabled":         updated.Enabled,
+		},
+	})
 
 	return updated, nil
 }
