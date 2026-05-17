@@ -18,12 +18,13 @@ import (
 type UpdateSource struct {
 	storage pipelineservice.Storage
 	secrets pipelineservice.SecretsProvider
+	audit   pipelineservice.AuditRecorder
 	logger  *logging.Logger
 }
 
 // NewUpdateSource creates a new UpdateSource use case.
-func NewUpdateSource(storage pipelineservice.Storage, secrets pipelineservice.SecretsProvider, logger *logging.Logger) *UpdateSource {
-	return &UpdateSource{storage: storage, secrets: secrets, logger: logger.Named("update-source")}
+func NewUpdateSource(storage pipelineservice.Storage, secrets pipelineservice.SecretsProvider, audit pipelineservice.AuditRecorder, logger *logging.Logger) *UpdateSource {
+	return &UpdateSource{storage: storage, secrets: secrets, audit: audit, logger: logger.Named("update-source")}
 }
 
 // UpdateSourceParams holds parameters for updating a source.
@@ -44,6 +45,8 @@ func (uc *UpdateSource) Execute(ctx context.Context, params UpdateSourceParams) 
 	if err != nil {
 		return nil, fmt.Errorf("getting source: %w", err)
 	}
+
+	beforeName := src.Name
 
 	if params.Name != nil {
 		src.Name = *params.Name
@@ -89,6 +92,16 @@ func (uc *UpdateSource) Execute(ctx context.Context, params UpdateSourceParams) 
 	if err != nil {
 		return nil, fmt.Errorf("updating source: %w", err)
 	}
+
+	uc.audit.Record(ctx, pipelineservice.AuditEvent{
+		WorkspaceID:   params.WorkspaceID,
+		Action:        "update",
+		ResourceType:  "source",
+		ResourceID:    updated.ID,
+		ResourceLabel: updated.Name,
+		Before:        map[string]any{"name": beforeName},
+		After:         map[string]any{"name": updated.Name},
+	})
 
 	return updated, nil
 }

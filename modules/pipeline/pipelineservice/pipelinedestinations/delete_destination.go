@@ -14,11 +14,12 @@ import (
 type DeleteDestination struct {
 	storage pipelineservice.Storage
 	secrets pipelineservice.SecretsProvider
+	audit   pipelineservice.AuditRecorder
 }
 
 // NewDeleteDestination creates a new DeleteDestination use case.
-func NewDeleteDestination(storage pipelineservice.Storage, secrets pipelineservice.SecretsProvider) *DeleteDestination {
-	return &DeleteDestination{storage: storage, secrets: secrets}
+func NewDeleteDestination(storage pipelineservice.Storage, secrets pipelineservice.SecretsProvider, audit pipelineservice.AuditRecorder) *DeleteDestination {
+	return &DeleteDestination{storage: storage, secrets: secrets, audit: audit}
 }
 
 // DeleteDestinationParams holds parameters for deleting a destination.
@@ -50,6 +51,18 @@ func (uc *DeleteDestination) Execute(ctx context.Context, params DeleteDestinati
 	if err != nil {
 		return fmt.Errorf("deleting destination: %w", err)
 	}
+
+	uc.audit.Record(ctx, pipelineservice.AuditEvent{
+		WorkspaceID:   params.WorkspaceID,
+		Action:        "delete",
+		ResourceType:  "destination",
+		ResourceID:    dest.ID,
+		ResourceLabel: dest.Name,
+		Before: map[string]any{
+			"name":                 dest.Name,
+			"managed_connector_id": dest.ManagedConnectorID.String(),
+		},
+	})
 
 	return nil
 }

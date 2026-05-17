@@ -18,14 +18,16 @@ import (
 type CreateDestination struct {
 	storage pipelineservice.Storage
 	secrets pipelineservice.SecretsProvider
+	audit   pipelineservice.AuditRecorder
 	logger  *logging.Logger
 }
 
 // NewCreateDestination creates a new CreateDestination use case.
-func NewCreateDestination(storage pipelineservice.Storage, secrets pipelineservice.SecretsProvider, logger *logging.Logger) *CreateDestination {
+func NewCreateDestination(storage pipelineservice.Storage, secrets pipelineservice.SecretsProvider, audit pipelineservice.AuditRecorder, logger *logging.Logger) *CreateDestination {
 	return &CreateDestination{
 		storage: storage,
 		secrets: secrets,
+		audit:   audit,
 		logger:  logger.Named("create-destination"),
 	}
 }
@@ -75,6 +77,18 @@ func (uc *CreateDestination) Execute(ctx context.Context, params CreateDestinati
 	if err != nil {
 		return nil, fmt.Errorf("creating destination: %w", err)
 	}
+
+	uc.audit.Record(ctx, pipelineservice.AuditEvent{
+		WorkspaceID:   params.WorkspaceID,
+		Action:        "create",
+		ResourceType:  "destination",
+		ResourceID:    created.ID,
+		ResourceLabel: created.Name,
+		After: map[string]any{
+			"name":                 created.Name,
+			"managed_connector_id": created.ManagedConnectorID.String(),
+		},
+	})
 
 	return created, nil
 }

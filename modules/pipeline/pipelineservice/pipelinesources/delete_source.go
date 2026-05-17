@@ -14,11 +14,12 @@ import (
 type DeleteSource struct {
 	storage pipelineservice.Storage
 	secrets pipelineservice.SecretsProvider
+	audit   pipelineservice.AuditRecorder
 }
 
 // NewDeleteSource creates a new DeleteSource use case.
-func NewDeleteSource(storage pipelineservice.Storage, secrets pipelineservice.SecretsProvider) *DeleteSource {
-	return &DeleteSource{storage: storage, secrets: secrets}
+func NewDeleteSource(storage pipelineservice.Storage, secrets pipelineservice.SecretsProvider, audit pipelineservice.AuditRecorder) *DeleteSource {
+	return &DeleteSource{storage: storage, secrets: secrets, audit: audit}
 }
 
 // DeleteSourceParams holds parameters for deleting a source.
@@ -50,6 +51,18 @@ func (uc *DeleteSource) Execute(ctx context.Context, params DeleteSourceParams) 
 	if err != nil {
 		return fmt.Errorf("deleting source: %w", err)
 	}
+
+	uc.audit.Record(ctx, pipelineservice.AuditEvent{
+		WorkspaceID:   params.WorkspaceID,
+		Action:        "delete",
+		ResourceType:  "source",
+		ResourceID:    src.ID,
+		ResourceLabel: src.Name,
+		Before: map[string]any{
+			"name":                 src.Name,
+			"managed_connector_id": src.ManagedConnectorID.String(),
+		},
+	})
 
 	return nil
 }

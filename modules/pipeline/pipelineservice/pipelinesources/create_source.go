@@ -18,14 +18,16 @@ import (
 type CreateSource struct {
 	storage pipelineservice.Storage
 	secrets pipelineservice.SecretsProvider
+	audit   pipelineservice.AuditRecorder
 	logger  *logging.Logger
 }
 
 // NewCreateSource creates a new CreateSource use case.
-func NewCreateSource(storage pipelineservice.Storage, secrets pipelineservice.SecretsProvider, logger *logging.Logger) *CreateSource {
+func NewCreateSource(storage pipelineservice.Storage, secrets pipelineservice.SecretsProvider, audit pipelineservice.AuditRecorder, logger *logging.Logger) *CreateSource {
 	return &CreateSource{
 		storage: storage,
 		secrets: secrets,
+		audit:   audit,
 		logger:  logger.Named("create-source"),
 	}
 }
@@ -75,6 +77,18 @@ func (uc *CreateSource) Execute(ctx context.Context, params CreateSourceParams) 
 	if err != nil {
 		return nil, fmt.Errorf("creating source: %w", err)
 	}
+
+	uc.audit.Record(ctx, pipelineservice.AuditEvent{
+		WorkspaceID:   params.WorkspaceID,
+		Action:        "create",
+		ResourceType:  "source",
+		ResourceID:    created.ID,
+		ResourceLabel: created.Name,
+		After: map[string]any{
+			"name":                 created.Name,
+			"managed_connector_id": created.ManagedConnectorID.String(),
+		},
+	})
 
 	return created, nil
 }

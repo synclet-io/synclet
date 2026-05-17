@@ -18,12 +18,13 @@ import (
 type UpdateDestination struct {
 	storage pipelineservice.Storage
 	secrets pipelineservice.SecretsProvider
+	audit   pipelineservice.AuditRecorder
 	logger  *logging.Logger
 }
 
 // NewUpdateDestination creates a new UpdateDestination use case.
-func NewUpdateDestination(storage pipelineservice.Storage, secrets pipelineservice.SecretsProvider, logger *logging.Logger) *UpdateDestination {
-	return &UpdateDestination{storage: storage, secrets: secrets, logger: logger.Named("update-destination")}
+func NewUpdateDestination(storage pipelineservice.Storage, secrets pipelineservice.SecretsProvider, audit pipelineservice.AuditRecorder, logger *logging.Logger) *UpdateDestination {
+	return &UpdateDestination{storage: storage, secrets: secrets, audit: audit, logger: logger.Named("update-destination")}
 }
 
 // UpdateDestinationParams holds parameters for updating a destination.
@@ -44,6 +45,8 @@ func (uc *UpdateDestination) Execute(ctx context.Context, params UpdateDestinati
 	if err != nil {
 		return nil, fmt.Errorf("getting destination: %w", err)
 	}
+
+	beforeName := dest.Name
 
 	if params.Name != nil {
 		dest.Name = *params.Name
@@ -89,6 +92,16 @@ func (uc *UpdateDestination) Execute(ctx context.Context, params UpdateDestinati
 	if err != nil {
 		return nil, fmt.Errorf("updating destination: %w", err)
 	}
+
+	uc.audit.Record(ctx, pipelineservice.AuditEvent{
+		WorkspaceID:   params.WorkspaceID,
+		Action:        "update",
+		ResourceType:  "destination",
+		ResourceID:    updated.ID,
+		ResourceLabel: updated.Name,
+		Before:        map[string]any{"name": beforeName},
+		After:         map[string]any{"name": updated.Name},
+	})
 
 	return updated, nil
 }
