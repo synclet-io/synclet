@@ -1,4 +1,5 @@
 import { createClient } from '@connectrpc/connect'
+import { AuditService } from '@/gen/synclet/publicapi/audit/v1/audit_pb'
 import { AuthService } from '@/gen/synclet/publicapi/auth/v1/auth_pb'
 
 import { NotificationService } from '@/gen/synclet/publicapi/notify/v1/notify_pb'
@@ -18,6 +19,7 @@ export const connectorTaskClient = createClient(ConnectorTaskService, transport)
 export const notificationClient = createClient(NotificationService, transport)
 export const registryClient = createClient(ConnectorRegistryService, transport)
 export const webhookClient = createClient(WebhookService, transport)
+export const auditClient = createClient(AuditService, transport)
 
 export { create } from '@bufbuild/protobuf'
 export { ConfiguredStreamSchema }

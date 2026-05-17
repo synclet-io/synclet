@@ -22,6 +22,7 @@ const tabs = computed<Tab[]>(() => {
     { name: 'Connectors', to: { name: 'settings-connectors' } },
     { name: 'Notifications', to: { name: 'settings-notifications' } },
     { name: 'Webhooks', to: { name: 'settings-webhooks' } },
+    { name: 'Audit log', to: { name: 'settings-audit' } },
     { name: 'API Keys', to: { name: 'settings-api-keys' } },
     { name: 'Account', to: { name: 'settings-account' } },
   ]
@@ -29,7 +30,7 @@ const tabs = computed<Tab[]>(() => {
   if (isSingleWorkspace.value)
     visible = visible.filter(t => t.name !== 'Members')
   if (!isAdmin.value)
-    visible = visible.filter(t => t.name !== 'Webhooks')
+    visible = visible.filter(t => t.name !== 'Webhooks' && t.name !== 'Audit log')
   return visible
 })
 </script>

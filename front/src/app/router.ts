@@ -177,6 +177,12 @@ export const router = createRouter({
               meta: { requiresAdmin: true },
             },
             {
+              path: 'audit',
+              name: 'settings-audit',
+              component: () => import('@pages/settings/AuditLogPage.vue'),
+              meta: { requiresAdmin: true },
+            },
+            {
               path: 'api-keys',
               name: 'settings-api-keys',
               component: () => import('@pages/settings/APIKeysPage.vue'),
