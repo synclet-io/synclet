@@ -5,7 +5,7 @@ import { useSystemInfo } from '@entities/system'
 import { GlobalSearchModal } from '@features/global-search'
 import { DarkModeToggle, SyncletLogo } from '@shared/ui'
 import SDropdown from '@shared/ui/SDropdown.vue'
-import { ArrowRightLeft, ChevronDown, Database, History, LayoutDashboard, LogOut, Menu, Search, Server, Settings } from 'lucide-vue-next'
+import { ArrowRightLeft, ChevronDown, Database, History, LayoutDashboard, LogOut, Menu, Network, Search, Server, Settings } from 'lucide-vue-next'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 
@@ -43,6 +43,7 @@ const navItems = [
   { name: 'Sources', to: '/sources', icon: Database },
   { name: 'Destinations', to: '/destinations', icon: Server },
   { name: 'Connections', to: '/connections', icon: ArrowRightLeft },
+  { name: 'Topology', to: '/topology', icon: Network },
   { name: 'Jobs', to: '/jobs', icon: History },
 ]
 

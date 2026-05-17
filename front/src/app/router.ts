@@ -133,6 +133,11 @@ export const router = createRouter({
           component: () => import('@pages/JobsPage.vue'),
         },
         {
+          path: 'topology',
+          name: 'topology',
+          component: () => import('@pages/TopologyPage.vue'),
+        },
+        {
           path: 'jobs/:id',
           name: 'job-detail',
           component: () => import('@pages/JobDetailPage.vue'),
