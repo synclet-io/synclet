@@ -16,7 +16,7 @@ func TestRemoveMember_Removes(t *testing.T) {
 	store := newFakeStorage()
 	store.seedMember(&WorkspaceMember{ID: uuid.New(), WorkspaceID: wsID, UserID: userID, Role: MemberRoleEditor})
 
-	require.NoError(t, NewRemoveMember(store).Execute(ctx, wsID, userID))
+	require.NoError(t, NewRemoveMember(store, NoopAuditRecorder{}).Execute(ctx, wsID, userID))
 
 	rows, err := store.WorkspaceMembers().Find(ctx, &WorkspaceMemberFilter{})
 	require.NoError(t, err)
@@ -25,6 +25,6 @@ func TestRemoveMember_Removes(t *testing.T) {
 
 func TestRemoveMember_IdempotentWhenMissing(t *testing.T) {
 	ctx := context.Background()
-	err := NewRemoveMember(newFakeStorage()).Execute(ctx, uuid.New(), uuid.New())
+	err := NewRemoveMember(newFakeStorage(), NoopAuditRecorder{}).Execute(ctx, uuid.New(), uuid.New())
 	assert.NoError(t, err)
 }

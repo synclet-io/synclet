@@ -19,7 +19,7 @@ func TestUpdateMemberRole_PromotesEditorToAdmin(t *testing.T) {
 	store.seedMember(&WorkspaceMember{ID: uuid.New(), WorkspaceID: workspaceID, UserID: uuid.New(), Role: MemberRoleAdmin})
 	store.seedMember(&WorkspaceMember{ID: targetID, WorkspaceID: workspaceID, UserID: targetUserID, Role: MemberRoleEditor})
 
-	require.NoError(t, NewUpdateMemberRole(store).Execute(ctx, workspaceID, targetUserID, MemberRoleAdmin))
+	require.NoError(t, NewUpdateMemberRole(store, NoopAuditRecorder{}).Execute(ctx, workspaceID, targetUserID, MemberRoleAdmin))
 
 	got, err := store.WorkspaceMembers().First(ctx, &WorkspaceMemberFilter{ID: equalsUUID(targetID)})
 	require.NoError(t, err)
@@ -35,7 +35,7 @@ func TestUpdateMemberRole_LastAdminCannotBeDemoted(t *testing.T) {
 	store.seedMember(&WorkspaceMember{ID: uuid.New(), WorkspaceID: workspaceID, UserID: lonelyAdminID, Role: MemberRoleAdmin})
 	store.seedMember(&WorkspaceMember{ID: uuid.New(), WorkspaceID: workspaceID, UserID: uuid.New(), Role: MemberRoleEditor})
 
-	err := NewUpdateMemberRole(store).Execute(ctx, workspaceID, lonelyAdminID, MemberRoleEditor)
+	err := NewUpdateMemberRole(store, NoopAuditRecorder{}).Execute(ctx, workspaceID, lonelyAdminID, MemberRoleEditor)
 	require.ErrorIs(t, err, ErrLastAdminCannotBeDemoted)
 
 	// Member role must remain Admin after the guard fired.
@@ -54,7 +54,7 @@ func TestUpdateMemberRole_TwoAdminsAllowsDemotion(t *testing.T) {
 	store.seedMember(&WorkspaceMember{ID: uuid.New(), WorkspaceID: workspaceID, UserID: adminAID, Role: MemberRoleAdmin})
 	store.seedMember(&WorkspaceMember{ID: uuid.New(), WorkspaceID: workspaceID, UserID: adminBID, Role: MemberRoleAdmin})
 
-	require.NoError(t, NewUpdateMemberRole(store).Execute(ctx, workspaceID, adminAID, MemberRoleViewer))
+	require.NoError(t, NewUpdateMemberRole(store, NoopAuditRecorder{}).Execute(ctx, workspaceID, adminAID, MemberRoleViewer))
 
 	got, err := store.WorkspaceMembers().First(ctx, &WorkspaceMemberFilter{UserID: equalsUUID(adminAID)})
 	require.NoError(t, err)
@@ -63,13 +63,13 @@ func TestUpdateMemberRole_TwoAdminsAllowsDemotion(t *testing.T) {
 
 func TestUpdateMemberRole_NotAMember(t *testing.T) {
 	ctx := context.Background()
-	err := NewUpdateMemberRole(newFakeStorage()).Execute(ctx, uuid.New(), uuid.New(), MemberRoleEditor)
+	err := NewUpdateMemberRole(newFakeStorage(), NoopAuditRecorder{}).Execute(ctx, uuid.New(), uuid.New(), MemberRoleEditor)
 	require.ErrorIs(t, err, ErrWorkspaceMemberNotFound)
 }
 
 func TestUpdateMemberRole_InvalidRole(t *testing.T) {
 	ctx := context.Background()
-	err := NewUpdateMemberRole(newFakeStorage()).Execute(ctx, uuid.New(), uuid.New(), MemberRole(0))
+	err := NewUpdateMemberRole(newFakeStorage(), NoopAuditRecorder{}).Execute(ctx, uuid.New(), uuid.New(), MemberRole(0))
 	require.ErrorIs(t, err, ErrInvalidMemberRole)
 }
 
@@ -82,7 +82,7 @@ func TestUpdateMemberRole_NoOpWhenRoleUnchanged(t *testing.T) {
 	store := newFakeStorage()
 	store.seedMember(&WorkspaceMember{ID: memberID, WorkspaceID: workspaceID, UserID: userID, Role: MemberRoleEditor})
 
-	require.NoError(t, NewUpdateMemberRole(store).Execute(ctx, workspaceID, userID, MemberRoleEditor))
+	require.NoError(t, NewUpdateMemberRole(store, NoopAuditRecorder{}).Execute(ctx, workspaceID, userID, MemberRoleEditor))
 
 	got, err := store.WorkspaceMembers().First(ctx, &WorkspaceMemberFilter{ID: equalsUUID(memberID)})
 	require.NoError(t, err)

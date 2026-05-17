@@ -72,6 +72,7 @@ func workspaceDependenciesModule() fx.Option {
 		fx.Annotate(newWorkspaceStorage, fx.As(new(workspaceservice.Storage))),
 		fx.Annotate(workspaceadapt.NewEmailSenderAdapter, fx.As(new(workspaceservice.EmailSender))),
 		fx.Annotate(workspaceadapt.NewUserLookupAdapter, fx.As(new(workspaceservice.UserLookup))),
+		fx.Annotate(workspaceadapt.NewAuditRecorder, fx.As(new(workspaceservice.AuditRecorder))),
 		workspaceadapt.NewMembershipChecker,
 	)
 }
