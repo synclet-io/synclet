@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.4.0](https://github.com/synclet-io/synclet/compare/synclet-v0.3.2...synclet-v0.4.0) (2026-05-17)
+
+
+### Features
+
+* **app:** set default environment variables ([bcb1824](https://github.com/synclet-io/synclet/commit/bcb18248b2c7f38d94fad460be75e1f49f357a0d))
+* **connection:** surface GetSchemaChanges in the UI ([85fbc8d](https://github.com/synclet-io/synclet/commit/85fbc8dea47bb0e091989daa2ef76137eb8550e9))
+* **front:** connector catalog browse page (Phase 1) ([aef778b](https://github.com/synclet-io/synclet/commit/aef778be7ff9e23aca9128b736d3b0a1c72c6d51))
+* **front:** guided onboarding checklist on the dashboard ([895b1d9](https://github.com/synclet-io/synclet/commit/895b1d90c665612c648fa848deed64725db82411))
+* **webhook:** add management UI and TestWebhook RPC ([6c50c4b](https://github.com/synclet-io/synclet/commit/6c50c4b0b49693269a29775309de76b92b22f904))
+* **workspace,pipeline:** seed Airbyte OSS + Synclet registries on workspace creation ([32c93b7](https://github.com/synclet-io/synclet/commit/32c93b7b6ffde79f87c90ff053f92cafdb6526d2))
+* **workspace:** add UpdateMemberRole RPC end-to-end ([2305bdd](https://github.com/synclet-io/synclet/commit/2305bdd76ad7a0c1fdba6033e277f8c8c5c80510))
+* **workspace:** finish workspace event publishing through the outbox ([570b09d](https://github.com/synclet-io/synclet/commit/570b09d72190b7a18e7e5c6464ea7ca8f97d77af))
+* **workspace:** return caller's role from ListWorkspaces ([54eebfa](https://github.com/synclet-io/synclet/commit/54eebfa956a34d63c11d085d5bb7f2190363ce47))
+
+
+### Bug Fixes
+
+* docs link ([d6d1b4f](https://github.com/synclet-io/synclet/commit/d6d1b4fdbb6061eeb9dab40b05aa693fade50a4f))
+* **front:** catalog browse aggregates connectors from all repositories ([946d6f0](https://github.com/synclet-io/synclet/commit/946d6f0aeaf703e5bc92c7ba5ac3326d2ee7d175))
+* **front:** replace window.confirm with SConfirmDialog; surface stream-config failures ([ff13762](https://github.com/synclet-io/synclet/commit/ff137623fe7e186940e56dfbcf38d4248a59472c))
+* **front:** tab highlight, repo dropdown size, responsive checklist ([15137fe](https://github.com/synclet-io/synclet/commit/15137fe0e938dd4c36988320d1959e375375a3bd))
+* **front:** use console.warn instead of console.debug in StreamConfigPage ([ebca853](https://github.com/synclet-io/synclet/commit/ebca8538430db5e120c12578e78f4ec9123b970a))
+* **pipeline:** make connector scratch dir host-mountable in Docker-in-Docker ([1f66ed2](https://github.com/synclet-io/synclet/commit/1f66ed2f34ad75e89c405eb313ff64613f81f5b2))
+* **security:** allow https: in img-src for connector catalog icons ([cd69da6](https://github.com/synclet-io/synclet/commit/cd69da646b78e1184cb3c97d0cd4b1711b95cce4))
+* **synclet-helm:** bump appVersion to match synclet release ([07c7707](https://github.com/synclet-io/synclet/commit/07c7707339a4d127fc8bb8952094895027359d0f))
+* **workspace:** emit workspace.created from bootstrap so default registries seed ([3a567cd](https://github.com/synclet-io/synclet/commit/3a567cd3d19eb8a1b93e2a1929f6a0587bc332e6))
+
 ## [0.3.2](https://github.com/synclet-io/synclet/compare/synclet-v0.3.1...synclet-v0.3.2) (2026-04-01)
 
 
