@@ -18,11 +18,12 @@ type UpdateWorkspaceParams struct {
 // UpdateWorkspace updates a workspace's settings.
 type UpdateWorkspace struct {
 	storage Storage
+	audit   AuditRecorder
 }
 
 // NewUpdateWorkspace creates a new UpdateWorkspace use case.
-func NewUpdateWorkspace(storage Storage) *UpdateWorkspace {
-	return &UpdateWorkspace{storage: storage}
+func NewUpdateWorkspace(storage Storage, audit AuditRecorder) *UpdateWorkspace {
+	return &UpdateWorkspace{storage: storage, audit: audit}
 }
 
 // Execute updates the workspace fields specified in params and publishes
@@ -54,6 +55,16 @@ func (uc *UpdateWorkspace) Execute(ctx context.Context, params UpdateWorkspacePa
 	}); err != nil {
 		return nil, fmt.Errorf("publishing workspace.updated event: %w", err)
 	}
+
+	uc.audit.Record(ctx, AuditEvent{
+		WorkspaceID:   updated.ID,
+		Action:        "update",
+		ResourceType:  "workspace",
+		ResourceID:    updated.ID,
+		ResourceLabel: updated.Name,
+		Before:        map[string]any{"name": oldData.Name},
+		After:         map[string]any{"name": updated.Name},
+	})
 
 	return updated, nil
 }

@@ -14,7 +14,7 @@ import (
 func newCreateInvite(store *fakeStorage, lookup *fakeUserLookup, email *fakeEmailSender) *CreateInvite {
 	cfg := Config{InviteTTL: 24 * time.Hour, FrontendURL: "https://app.example.com"}
 
-	return NewCreateInvite(store, email, lookup, cfg, nil)
+	return NewCreateInvite(store, email, lookup, NoopAuditRecorder{}, cfg, nil)
 }
 
 func TestCreateInvite_NewInviteForUnknownUser(t *testing.T) {

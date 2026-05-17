@@ -18,7 +18,7 @@ func TestUpdateWorkspace_UpdatesName(t *testing.T) {
 	store.seedWorkspace(&Workspace{ID: wsID, Name: "Old", Slug: "old", CreatedAt: originalCreatedAt})
 
 	name := "New"
-	got, err := NewUpdateWorkspace(store).Execute(ctx, UpdateWorkspaceParams{ID: wsID, Name: &name})
+	got, err := NewUpdateWorkspace(store, NoopAuditRecorder{}).Execute(ctx, UpdateWorkspaceParams{ID: wsID, Name: &name})
 	require.NoError(t, err)
 	require.NotNil(t, got)
 	assert.Equal(t, "New", got.Name)
@@ -32,7 +32,7 @@ func TestUpdateWorkspace_LeavesNameWhenNil(t *testing.T) {
 	store := newFakeStorage()
 	store.seedWorkspace(&Workspace{ID: wsID, Name: "Same", Slug: "same"})
 
-	got, err := NewUpdateWorkspace(store).Execute(ctx, UpdateWorkspaceParams{ID: wsID})
+	got, err := NewUpdateWorkspace(store, NoopAuditRecorder{}).Execute(ctx, UpdateWorkspaceParams{ID: wsID})
 	require.NoError(t, err)
 	assert.Equal(t, "Same", got.Name)
 }
@@ -40,7 +40,7 @@ func TestUpdateWorkspace_LeavesNameWhenNil(t *testing.T) {
 func TestUpdateWorkspace_NotFound(t *testing.T) {
 	ctx := context.Background()
 	name := "x"
-	_, err := NewUpdateWorkspace(newFakeStorage()).Execute(ctx, UpdateWorkspaceParams{ID: uuid.New(), Name: &name})
+	_, err := NewUpdateWorkspace(newFakeStorage(), NoopAuditRecorder{}).Execute(ctx, UpdateWorkspaceParams{ID: uuid.New(), Name: &name})
 	require.ErrorIs(t, err, ErrWorkspaceNotFound)
 }
 
@@ -51,7 +51,7 @@ func TestUpdateWorkspace_EmitsUpdatedEvent(t *testing.T) {
 	store.seedWorkspace(&Workspace{ID: wsID, Name: "Old", Slug: "old"})
 
 	name := "New"
-	_, err := NewUpdateWorkspace(store).Execute(ctx, UpdateWorkspaceParams{ID: wsID, Name: &name})
+	_, err := NewUpdateWorkspace(store, NoopAuditRecorder{}).Execute(ctx, UpdateWorkspaceParams{ID: wsID, Name: &name})
 	require.NoError(t, err)
 
 	require.Len(t, store.events, 1)

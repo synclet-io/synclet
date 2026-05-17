@@ -19,6 +19,7 @@ type CreateInvite struct {
 	storage     Storage
 	emailSender EmailSender
 	userLookup  UserLookup
+	audit       AuditRecorder
 	inviteTTL   time.Duration
 	frontendURL string
 	logger      *logging.Logger
@@ -29,6 +30,7 @@ func NewCreateInvite(
 	storage Storage,
 	emailSender EmailSender,
 	userLookup UserLookup,
+	audit AuditRecorder,
 	cfg Config,
 	logger *logging.Logger,
 ) *CreateInvite {
@@ -36,6 +38,7 @@ func NewCreateInvite(
 		storage:     storage,
 		emailSender: emailSender,
 		userLookup:  userLookup,
+		audit:       audit,
 		inviteTTL:   cfg.InviteTTL,
 		frontendURL: cfg.FrontendURL,
 		logger:      logger.Named("create-invite"),
@@ -134,6 +137,18 @@ func (uc *CreateInvite) Execute(ctx context.Context, params CreateInviteParams) 
 
 	// Send email asynchronously to avoid blocking the request.
 	uc.sendInviteEmailAsync(ctx, invite, params.InviterUserID)
+
+	uc.audit.Record(ctx, AuditEvent{
+		WorkspaceID:   params.WorkspaceID,
+		Action:        "create",
+		ResourceType:  "workspace_invite",
+		ResourceID:    invite.ID,
+		ResourceLabel: invite.Email,
+		After: map[string]any{
+			"email": invite.Email,
+			"role":  invite.Role.String(),
+		},
+	})
 
 	return invite, nil
 }
