@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.5.0](https://github.com/synclet-io/synclet/compare/synclet-v0.4.0...synclet-v0.5.0) (2026-06-03)
+
+
+### Features
+
+* **audit:** add Audit Log module skeleton (table + RPC + use cases) ([6625185](https://github.com/synclet-io/synclet/commit/6625185d4da76ed8169b4af5bd690ca768e1dea8))
+* **audit:** add Audit log page under Settings (admin-only) ([a385887](https://github.com/synclet-io/synclet/commit/a385887e5566d2e437aad897bb878b7b9da9228e))
+* **auditutil:** pure-Go redaction + diff + truncation helpers for the audit module ([ab7e3e2](https://github.com/synclet-io/synclet/commit/ab7e3e203fa9496fe2a92279dbd0b51a8b45e4ae))
+* **connections:** add Duplicate, multi-select, and Pause/Resume all ([6fda367](https://github.com/synclet-io/synclet/commit/6fda3678bd793a8a6b36738f0917429b1261a7d6))
+* **notify:** instrument channel + notification rule mutations with audit events ([44d7bc7](https://github.com/synclet-io/synclet/commit/44d7bc74f4446bcaafb5e33240a70ec7d87f6703))
+* **notify:** instrument webhook mutations with audit events ([5542b65](https://github.com/synclet-io/synclet/commit/5542b6558f07737d54f1a304dc0d7fedcdc13714))
+* **pipeline:** instrument connection mutations with audit events ([cb32ae8](https://github.com/synclet-io/synclet/commit/cb32ae8f83d41917842891aa81d6702d082814a4))
+* **pipeline:** instrument source + destination mutations with audit events ([aa5e8f7](https://github.com/synclet-io/synclet/commit/aa5e8f7ef5d542d5b2cca640e86e6f669f990224))
+* **search:** add Cmd+K global search palette ([88cbe3f](https://github.com/synclet-io/synclet/commit/88cbe3fc6c62963a50e0c58ce3351f651e697370))
+* **topology:** add Topology view for source→connection→destination DAG ([bae146b](https://github.com/synclet-io/synclet/commit/bae146b1bf84d3c495398c5ec7be071f083d996c))
+* **workspace:** instrument member role + remove with audit events ([33609c8](https://github.com/synclet-io/synclet/commit/33609c855372944c343028bee82c40965b9de78f))
+* **workspace:** instrument workspace update + invite creation with audit events ([18fc690](https://github.com/synclet-io/synclet/commit/18fc6903683e1f6fdf1c8392212ade6318c78b38))
+
 ## [0.4.0](https://github.com/synclet-io/synclet/compare/synclet-v0.3.2...synclet-v0.4.0) (2026-05-17)
 
 
