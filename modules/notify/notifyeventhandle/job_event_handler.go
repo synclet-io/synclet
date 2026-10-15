@@ -5,6 +5,7 @@
 package notifyeventhandle
 
 import (
+	"context"
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -23,9 +24,17 @@ import (
 // ignored so notification consumers only see end-of-sync signals.
 type JobEventHandler struct {
 	logger              *logging.Logger
-	deliverWebhook      *notifyservice.DeliverWebhook
-	deliverNotification *notifyservice.DeliverNotification
+	deliverWebhook      webhookDeliverer
+	deliverNotification notificationDeliverer
 	jobInfoLoader       notifyservice.JobInfoLoader
+}
+
+type webhookDeliverer interface {
+	Execute(ctx context.Context, params notifyservice.DeliverWebhookParams) error
+}
+
+type notificationDeliverer interface {
+	Execute(ctx context.Context, params notifyservice.DeliverNotificationParams) error
 }
 
 var _ pnpwatermill.Handler = (*JobEventHandler)(nil)
