@@ -11,18 +11,18 @@ import (
 )
 
 type dbAuditEvent struct {
-	ID            uuid.UUID `gorm:"column:id;"`
-	WorkspaceID   uuid.UUID `gorm:"column:workspace_id;"`
-	ActorType     string    `gorm:"column:actor_type;type:text;"`
-	ActorID       uuid.UUID `gorm:"column:actor_id;"`
-	ActorLabel    string    `gorm:"column:actor_label;type:text;"`
-	Action        string    `gorm:"column:action;type:text;"`
-	ResourceType  string    `gorm:"column:resource_type;type:text;"`
-	ResourceID    uuid.UUID `gorm:"column:resource_id;"`
-	ResourceLabel string    `gorm:"column:resource_label;type:text;"`
-	DiffJSON      string    `gorm:"column:diff_json;type:text;"`
-	DiffTruncated bool      `gorm:"column:diff_truncated;"`
-	CreatedAt     time.Time `gorm:"column:created_at;"`
+	ID            uuid.UUID `gorm:"column:id"`
+	WorkspaceID   uuid.UUID `gorm:"column:workspace_id"`
+	ActorType     string    `gorm:"column:actor_type;type:text"`
+	ActorID       uuid.UUID `gorm:"column:actor_id"`
+	ActorLabel    string    `gorm:"column:actor_label;type:text"`
+	Action        string    `gorm:"column:action;type:text"`
+	ResourceType  string    `gorm:"column:resource_type;type:text"`
+	ResourceID    uuid.UUID `gorm:"column:resource_id"`
+	ResourceLabel string    `gorm:"column:resource_label;type:text"`
+	DiffJSON      string    `gorm:"column:diff_json;type:text"`
+	DiffTruncated bool      `gorm:"column:diff_truncated"`
+	CreatedAt     time.Time `gorm:"column:created_at"`
 }
 
 func convertAuditEventToDB(src *auditservice.AuditEvent) (*dbAuditEvent, error) {

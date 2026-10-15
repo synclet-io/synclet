@@ -11,11 +11,11 @@ import (
 )
 
 type dbUser struct {
-	ID           uuid.UUID `gorm:"column:id;"`
-	Email        string    `gorm:"column:email;type:text;"`
-	PasswordHash string    `gorm:"column:password_hash;type:text;"`
-	Name         string    `gorm:"column:name;type:text;"`
-	CreatedAt    time.Time `gorm:"column:created_at;"`
+	ID           uuid.UUID `gorm:"column:id"`
+	Email        string    `gorm:"column:email;type:text"`
+	PasswordHash string    `gorm:"column:password_hash;type:text"`
+	Name         string    `gorm:"column:name;type:text"`
+	CreatedAt    time.Time `gorm:"column:created_at"`
 }
 
 func convertUserToDB(src *authservice.User) (*dbUser, error) {
@@ -42,11 +42,11 @@ func (a dbUser) TableName() string {
 }
 
 type dbRefreshToken struct {
-	ID        uuid.UUID `gorm:"column:id;"`
-	UserID    uuid.UUID `gorm:"column:user_id;"`
-	TokenHash string    `gorm:"column:token_hash;type:text;"`
-	ExpiresAt time.Time `gorm:"column:expires_at;"`
-	CreatedAt time.Time `gorm:"column:created_at;"`
+	ID        uuid.UUID `gorm:"column:id"`
+	UserID    uuid.UUID `gorm:"column:user_id"`
+	TokenHash string    `gorm:"column:token_hash;type:text"`
+	ExpiresAt time.Time `gorm:"column:expires_at"`
+	CreatedAt time.Time `gorm:"column:created_at"`
 }
 
 func convertRefreshTokenToDB(src *authservice.RefreshToken) (*dbRefreshToken, error) {
@@ -73,14 +73,14 @@ func (a dbRefreshToken) TableName() string {
 }
 
 type dbAPIKey struct {
-	ID          uuid.UUID  `gorm:"column:id;"`
-	WorkspaceID uuid.UUID  `gorm:"column:workspace_id;"`
-	UserID      uuid.UUID  `gorm:"column:user_id;"`
-	Name        string     `gorm:"column:name;type:text;"`
-	KeyHash     string     `gorm:"column:key_hash;type:text;"`
-	LastUsedAt  *time.Time `gorm:"column:last_used_at;"`
-	ExpiresAt   *time.Time `gorm:"column:expires_at;"`
-	CreatedAt   time.Time  `gorm:"column:created_at;"`
+	ID          uuid.UUID  `gorm:"column:id"`
+	WorkspaceID uuid.UUID  `gorm:"column:workspace_id"`
+	UserID      uuid.UUID  `gorm:"column:user_id"`
+	Name        string     `gorm:"column:name;type:text"`
+	KeyHash     string     `gorm:"column:key_hash;type:text"`
+	LastUsedAt  *time.Time `gorm:"column:last_used_at"`
+	ExpiresAt   *time.Time `gorm:"column:expires_at"`
+	CreatedAt   time.Time  `gorm:"column:created_at"`
 }
 
 func convertAPIKeyToDB(src *authservice.APIKey) (*dbAPIKey, error) {
@@ -129,13 +129,13 @@ func (a dbAPIKey) TableName() string {
 }
 
 type dbOIDCIdentity struct {
-	ID           uuid.UUID `gorm:"column:id;"`
-	UserID       uuid.UUID `gorm:"column:user_id;"`
-	ProviderSlug string    `gorm:"column:provider_slug;type:text;"`
-	Subject      string    `gorm:"column:subject;type:text;"`
-	Email        string    `gorm:"column:email;type:text;"`
-	CreatedAt    time.Time `gorm:"column:created_at;"`
-	LastLoginAt  time.Time `gorm:"column:last_login_at;"`
+	ID           uuid.UUID `gorm:"column:id"`
+	UserID       uuid.UUID `gorm:"column:user_id"`
+	ProviderSlug string    `gorm:"column:provider_slug;type:text"`
+	Subject      string    `gorm:"column:subject;type:text"`
+	Email        string    `gorm:"column:email;type:text"`
+	CreatedAt    time.Time `gorm:"column:created_at"`
+	LastLoginAt  time.Time `gorm:"column:last_login_at"`
 }
 
 func convertOIDCIdentityToDB(src *authservice.OIDCIdentity) (*dbOIDCIdentity, error) {
@@ -166,12 +166,12 @@ func (a dbOIDCIdentity) TableName() string {
 }
 
 type dbOIDCState struct {
-	ID           uuid.UUID `gorm:"column:id;"`
-	State        string    `gorm:"column:state;type:text;"`
-	Verifier     string    `gorm:"column:verifier;type:text;"`
-	ProviderSlug string    `gorm:"column:provider_slug;type:text;"`
-	ExpiresAt    time.Time `gorm:"column:expires_at;"`
-	CreatedAt    time.Time `gorm:"column:created_at;"`
+	ID           uuid.UUID `gorm:"column:id"`
+	State        string    `gorm:"column:state;type:text"`
+	Verifier     string    `gorm:"column:verifier;type:text"`
+	ProviderSlug string    `gorm:"column:provider_slug;type:text"`
+	ExpiresAt    time.Time `gorm:"column:expires_at"`
+	CreatedAt    time.Time `gorm:"column:created_at"`
 }
 
 func convertOIDCStateToDB(src *authservice.OIDCState) (*dbOIDCState, error) {

@@ -11,14 +11,14 @@ import (
 )
 
 type dbWebhook struct {
-	ID          uuid.UUID `gorm:"column:id;"`
-	WorkspaceID uuid.UUID `gorm:"column:workspace_id;"`
-	URL         string    `gorm:"column:url;type:text;"`
-	Events      jsonb     `gorm:"column:events;"`
-	Secret      string    `gorm:"column:secret;type:text;"`
-	Enabled     bool      `gorm:"column:enabled;"`
-	CreatedAt   time.Time `gorm:"column:created_at;"`
-	UpdatedAt   time.Time `gorm:"column:updated_at;"`
+	ID          uuid.UUID `gorm:"column:id"`
+	WorkspaceID uuid.UUID `gorm:"column:workspace_id"`
+	URL         string    `gorm:"column:url;type:text"`
+	Events      jsonb     `gorm:"column:events"`
+	Secret      string    `gorm:"column:secret;type:text"`
+	Enabled     bool      `gorm:"column:enabled"`
+	CreatedAt   time.Time `gorm:"column:created_at"`
+	UpdatedAt   time.Time `gorm:"column:updated_at"`
 }
 
 func convertWebhookToDB(src *notifyservice.Webhook) (*dbWebhook, error) {
@@ -51,14 +51,14 @@ func (a dbWebhook) TableName() string {
 }
 
 type dbNotificationChannel struct {
-	ID          uuid.UUID `gorm:"column:id;"`
-	WorkspaceID uuid.UUID `gorm:"column:workspace_id;"`
-	Name        string    `gorm:"column:name;type:text;"`
-	ChannelType string    `gorm:"column:channel_type;type:text;"`
-	Config      jsonb     `gorm:"column:config;"`
-	Enabled     bool      `gorm:"column:enabled;"`
-	CreatedAt   time.Time `gorm:"column:created_at;"`
-	UpdatedAt   time.Time `gorm:"column:updated_at;"`
+	ID          uuid.UUID `gorm:"column:id"`
+	WorkspaceID uuid.UUID `gorm:"column:workspace_id"`
+	Name        string    `gorm:"column:name;type:text"`
+	ChannelType string    `gorm:"column:channel_type;type:text"`
+	Config      jsonb     `gorm:"column:config"`
+	Enabled     bool      `gorm:"column:enabled"`
+	CreatedAt   time.Time `gorm:"column:created_at"`
+	UpdatedAt   time.Time `gorm:"column:updated_at"`
 }
 
 func convertNotificationChannelToDB(src *notifyservice.NotificationChannel) (*dbNotificationChannel, error) {
@@ -99,15 +99,15 @@ func (a dbNotificationChannel) TableName() string {
 }
 
 type dbNotificationRule struct {
-	ID             uuid.UUID `gorm:"column:id;"`
-	WorkspaceID    uuid.UUID `gorm:"column:workspace_id;"`
-	ChannelID      uuid.UUID `gorm:"column:channel_id;"`
-	ConnectionID   uuid.UUID `gorm:"column:connection_id;"`
-	Condition      string    `gorm:"column:condition;type:text;"`
-	ConditionValue int       `gorm:"column:condition_value;"`
-	Enabled        bool      `gorm:"column:enabled;"`
-	CreatedAt      time.Time `gorm:"column:created_at;"`
-	UpdatedAt      time.Time `gorm:"column:updated_at;"`
+	ID             uuid.UUID `gorm:"column:id"`
+	WorkspaceID    uuid.UUID `gorm:"column:workspace_id"`
+	ChannelID      uuid.UUID `gorm:"column:channel_id"`
+	ConnectionID   uuid.UUID `gorm:"column:connection_id"`
+	Condition      string    `gorm:"column:condition;type:text"`
+	ConditionValue int       `gorm:"column:condition_value"`
+	Enabled        bool      `gorm:"column:enabled"`
+	CreatedAt      time.Time `gorm:"column:created_at"`
+	UpdatedAt      time.Time `gorm:"column:updated_at"`
 }
 
 func convertNotificationRuleToDB(src *notifyservice.NotificationRule) (*dbNotificationRule, error) {

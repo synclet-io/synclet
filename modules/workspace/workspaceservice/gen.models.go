@@ -10,6 +10,7 @@ import (
 	// end user code 'imports'
 )
 
+//sumtype:decl
 type WorkspaceEventData interface {
 	isWorkspaceEventData()
 	WorkspaceEventDataEquals(WorkspaceEventData) bool

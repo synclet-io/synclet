@@ -12,11 +12,11 @@ import (
 )
 
 type dbWorkspace struct {
-	ID        uuid.UUID `gorm:"column:id;"`
-	Name      string    `gorm:"column:name;type:text;"`
-	Slug      string    `gorm:"column:slug;type:text;"`
-	CreatedAt time.Time `gorm:"column:created_at;"`
-	UpdatedAt time.Time `gorm:"column:updated_at;"`
+	ID        uuid.UUID `gorm:"column:id"`
+	Name      string    `gorm:"column:name;type:text"`
+	Slug      string    `gorm:"column:slug;type:text"`
+	CreatedAt time.Time `gorm:"column:created_at"`
+	UpdatedAt time.Time `gorm:"column:updated_at"`
 }
 
 func convertWorkspaceToDB(src *workspaceservice.Workspace) (*dbWorkspace, error) {
@@ -43,11 +43,11 @@ func (a dbWorkspace) TableName() string {
 }
 
 type dbWorkspaceMember struct {
-	ID          uuid.UUID `gorm:"column:id;"`
-	WorkspaceID uuid.UUID `gorm:"column:workspace_id;"`
-	UserID      uuid.UUID `gorm:"column:user_id;"`
-	Role        string    `gorm:"column:role;type:text;"`
-	JoinedAt    time.Time `gorm:"column:joined_at;"`
+	ID          uuid.UUID `gorm:"column:id"`
+	WorkspaceID uuid.UUID `gorm:"column:workspace_id"`
+	UserID      uuid.UUID `gorm:"column:user_id"`
+	Role        string    `gorm:"column:role;type:text"`
+	JoinedAt    time.Time `gorm:"column:joined_at"`
 }
 
 func convertWorkspaceMemberToDB(src *workspaceservice.WorkspaceMember) (*dbWorkspaceMember, error) {
@@ -82,16 +82,16 @@ func (a dbWorkspaceMember) TableName() string {
 }
 
 type dbWorkspaceInvite struct {
-	ID            uuid.UUID `gorm:"column:id;"`
-	WorkspaceID   uuid.UUID `gorm:"column:workspace_id;"`
-	InviterUserID uuid.UUID `gorm:"column:inviter_user_id;"`
-	Email         string    `gorm:"column:email;type:text;"`
-	Role          string    `gorm:"column:role;type:text;"`
-	Token         string    `gorm:"column:token;type:text;"`
-	Status        string    `gorm:"column:status;type:text;"`
-	ExpiresAt     time.Time `gorm:"column:expires_at;"`
-	CreatedAt     time.Time `gorm:"column:created_at;"`
-	UpdatedAt     time.Time `gorm:"column:updated_at;"`
+	ID            uuid.UUID `gorm:"column:id"`
+	WorkspaceID   uuid.UUID `gorm:"column:workspace_id"`
+	InviterUserID uuid.UUID `gorm:"column:inviter_user_id"`
+	Email         string    `gorm:"column:email;type:text"`
+	Role          string    `gorm:"column:role;type:text"`
+	Token         string    `gorm:"column:token;type:text"`
+	Status        string    `gorm:"column:status;type:text"`
+	ExpiresAt     time.Time `gorm:"column:expires_at"`
+	CreatedAt     time.Time `gorm:"column:created_at"`
+	UpdatedAt     time.Time `gorm:"column:updated_at"`
 }
 
 func convertWorkspaceInviteToDB(src *workspaceservice.WorkspaceInvite) (*dbWorkspaceInvite, error) {
@@ -144,8 +144,8 @@ func (a dbWorkspaceInvite) TableName() string {
 }
 
 type dbWorkspaceEvent struct {
-	EventType string                  `gorm:"column:event_type;type:text;"`
-	Data      *jsonWorkspaceEventData `gorm:"column:data;"`
+	EventType string                  `gorm:"column:event_type;type:text"`
+	Data      *jsonWorkspaceEventData `gorm:"column:data"`
 }
 
 func convertWorkspaceEventToDB(src *workspaceservice.WorkspaceEvent) (*dbWorkspaceEvent, error) {

@@ -10,6 +10,7 @@ import (
 	// end user code 'imports'
 )
 
+//sumtype:decl
 type ConnectorTaskPayload interface {
 	isConnectorTaskPayload()
 	ConnectorTaskPayloadEquals(ConnectorTaskPayload) bool
@@ -85,6 +86,7 @@ func copyConnectorTaskPayload(val ConnectorTaskPayload) ConnectorTaskPayload {
 	panic("called copyConnectorTaskPayload with invalid type")
 }
 
+//sumtype:decl
 type ConnectorTaskResult interface {
 	isConnectorTaskResult()
 	ConnectorTaskResultEquals(ConnectorTaskResult) bool
@@ -160,6 +162,7 @@ func copyConnectorTaskResult(val ConnectorTaskResult) ConnectorTaskResult {
 	panic("called copyConnectorTaskResult with invalid type")
 }
 
+//sumtype:decl
 type PipelineEventData interface {
 	isPipelineEventData()
 	PipelineEventDataEquals(PipelineEventData) bool

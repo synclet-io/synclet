@@ -11,15 +11,15 @@ import (
 )
 
 type dbSecret struct {
-	ID             uuid.UUID        `gorm:"column:id;"`
-	EncryptedValue sliceValue[byte] `gorm:"column:encrypted_value;"`
-	Salt           sliceValue[byte] `gorm:"column:salt;"`
-	Nonce          sliceValue[byte] `gorm:"column:nonce;"`
-	KeyVersion     int              `gorm:"column:key_version;"`
-	OwnerType      string           `gorm:"column:owner_type;type:text;"`
-	OwnerID        uuid.UUID        `gorm:"column:owner_id;"`
-	CreatedAt      time.Time        `gorm:"column:created_at;"`
-	UpdatedAt      time.Time        `gorm:"column:updated_at;"`
+	ID             uuid.UUID        `gorm:"column:id"`
+	EncryptedValue sliceValue[byte] `gorm:"column:encrypted_value"`
+	Salt           sliceValue[byte] `gorm:"column:salt"`
+	Nonce          sliceValue[byte] `gorm:"column:nonce"`
+	KeyVersion     int              `gorm:"column:key_version"`
+	OwnerType      string           `gorm:"column:owner_type;type:text"`
+	OwnerID        uuid.UUID        `gorm:"column:owner_id"`
+	CreatedAt      time.Time        `gorm:"column:created_at"`
+	UpdatedAt      time.Time        `gorm:"column:updated_at"`
 }
 
 func convertSecretToDB(src *secretservice.Secret) (*dbSecret, error) {

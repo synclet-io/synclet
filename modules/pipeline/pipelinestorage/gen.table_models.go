@@ -13,16 +13,16 @@ import (
 )
 
 type dbManagedConnector struct {
-	ID            uuid.UUID  `gorm:"column:id;"`
-	WorkspaceID   uuid.UUID  `gorm:"column:workspace_id;"`
-	DockerImage   string     `gorm:"column:docker_image;type:text;"`
-	DockerTag     string     `gorm:"column:docker_tag;type:text;"`
-	Name          string     `gorm:"column:name;type:text;"`
-	ConnectorType string     `gorm:"column:connector_type;type:text;"`
-	Spec          jsonb      `gorm:"column:spec;"`
-	CreatedAt     time.Time  `gorm:"column:created_at;"`
-	UpdatedAt     time.Time  `gorm:"column:updated_at;"`
-	RepositoryID  *uuid.UUID `gorm:"column:repository_id;"`
+	ID            uuid.UUID  `gorm:"column:id"`
+	WorkspaceID   uuid.UUID  `gorm:"column:workspace_id"`
+	DockerImage   string     `gorm:"column:docker_image;type:text"`
+	DockerTag     string     `gorm:"column:docker_tag;type:text"`
+	Name          string     `gorm:"column:name;type:text"`
+	ConnectorType string     `gorm:"column:connector_type;type:text"`
+	Spec          jsonb      `gorm:"column:spec"`
+	CreatedAt     time.Time  `gorm:"column:created_at"`
+	UpdatedAt     time.Time  `gorm:"column:updated_at"`
+	RepositoryID  *uuid.UUID `gorm:"column:repository_id"`
 }
 
 func convertManagedConnectorToDB(src *pipelineservice.ManagedConnector) (*dbManagedConnector, error) {
@@ -75,17 +75,17 @@ func (a dbManagedConnector) TableName() string {
 }
 
 type dbRepository struct {
-	ID             uuid.UUID  `gorm:"column:id;"`
-	WorkspaceID    uuid.UUID  `gorm:"column:workspace_id;"`
-	Name           string     `gorm:"column:name;type:text;"`
-	URL            string     `gorm:"column:url;type:text;"`
-	AuthHeader     *string    `gorm:"column:auth_header;type:text;"`
-	Status         string     `gorm:"column:status;type:text;"`
-	LastSyncedAt   *time.Time `gorm:"column:last_synced_at;"`
-	ConnectorCount int        `gorm:"column:connector_count;"`
-	LastError      *string    `gorm:"column:last_error;type:text;"`
-	CreatedAt      time.Time  `gorm:"column:created_at;"`
-	UpdatedAt      time.Time  `gorm:"column:updated_at;"`
+	ID             uuid.UUID  `gorm:"column:id"`
+	WorkspaceID    uuid.UUID  `gorm:"column:workspace_id"`
+	Name           string     `gorm:"column:name;type:text"`
+	URL            string     `gorm:"column:url;type:text"`
+	AuthHeader     *string    `gorm:"column:auth_header;type:text"`
+	Status         string     `gorm:"column:status;type:text"`
+	LastSyncedAt   *time.Time `gorm:"column:last_synced_at"`
+	ConnectorCount int        `gorm:"column:connector_count"`
+	LastError      *string    `gorm:"column:last_error;type:text"`
+	CreatedAt      time.Time  `gorm:"column:created_at"`
+	UpdatedAt      time.Time  `gorm:"column:updated_at"`
 }
 
 func convertRepositoryToDB(src *pipelineservice.Repository) (*dbRepository, error) {
@@ -156,20 +156,20 @@ func (a dbRepository) TableName() string {
 }
 
 type dbRepositoryConnector struct {
-	ID               uuid.UUID                       `gorm:"column:id;"`
-	RepositoryID     uuid.UUID                       `gorm:"column:repository_id;"`
-	DockerRepository string                          `gorm:"column:docker_repository;type:text;"`
-	DockerImageTag   string                          `gorm:"column:docker_image_tag;type:text;"`
-	Name             string                          `gorm:"column:name;type:text;"`
-	ConnectorType    string                          `gorm:"column:connector_type;type:text;"`
-	DocumentationURL string                          `gorm:"column:documentation_url;type:text;"`
-	ReleaseStage     string                          `gorm:"column:release_stage;type:text;"`
-	IconURL          string                          `gorm:"column:icon_url;type:text;"`
-	Spec             jsonb                           `gorm:"column:spec;"`
-	SupportLevel     string                          `gorm:"column:support_level;type:text;"`
-	License          string                          `gorm:"column:license;type:text;"`
-	SourceType       string                          `gorm:"column:source_type;type:text;"`
-	Metadata         jsonRepositoryConnectorMetadata `gorm:"column:metadata;"`
+	ID               uuid.UUID                       `gorm:"column:id"`
+	RepositoryID     uuid.UUID                       `gorm:"column:repository_id"`
+	DockerRepository string                          `gorm:"column:docker_repository;type:text"`
+	DockerImageTag   string                          `gorm:"column:docker_image_tag;type:text"`
+	Name             string                          `gorm:"column:name;type:text"`
+	ConnectorType    string                          `gorm:"column:connector_type;type:text"`
+	DocumentationURL string                          `gorm:"column:documentation_url;type:text"`
+	ReleaseStage     string                          `gorm:"column:release_stage;type:text"`
+	IconURL          string                          `gorm:"column:icon_url;type:text"`
+	Spec             jsonb                           `gorm:"column:spec"`
+	SupportLevel     string                          `gorm:"column:support_level;type:text"`
+	License          string                          `gorm:"column:license;type:text"`
+	SourceType       string                          `gorm:"column:source_type;type:text"`
+	Metadata         jsonRepositoryConnectorMetadata `gorm:"column:metadata"`
 }
 
 func convertRepositoryConnectorToDB(src *pipelineservice.RepositoryConnector) (*dbRepositoryConnector, error) {
@@ -255,14 +255,14 @@ func (a dbRepositoryConnector) TableName() string {
 }
 
 type dbSource struct {
-	ID                 uuid.UUID `gorm:"column:id;"`
-	WorkspaceID        uuid.UUID `gorm:"column:workspace_id;"`
-	Name               string    `gorm:"column:name;type:text;"`
-	ManagedConnectorID uuid.UUID `gorm:"column:managed_connector_id;"`
-	Config             jsonb     `gorm:"column:config;"`
-	CreatedAt          time.Time `gorm:"column:created_at;"`
-	UpdatedAt          time.Time `gorm:"column:updated_at;"`
-	RuntimeConfig      *jsonb    `gorm:"column:runtime_config;"`
+	ID                 uuid.UUID `gorm:"column:id"`
+	WorkspaceID        uuid.UUID `gorm:"column:workspace_id"`
+	Name               string    `gorm:"column:name;type:text"`
+	ManagedConnectorID uuid.UUID `gorm:"column:managed_connector_id"`
+	Config             jsonb     `gorm:"column:config"`
+	CreatedAt          time.Time `gorm:"column:created_at"`
+	UpdatedAt          time.Time `gorm:"column:updated_at"`
+	RuntimeConfig      *jsonb    `gorm:"column:runtime_config"`
 }
 
 func convertSourceToDB(src *pipelineservice.Source) (*dbSource, error) {
@@ -303,14 +303,14 @@ func (a dbSource) TableName() string {
 }
 
 type dbDestination struct {
-	ID                 uuid.UUID `gorm:"column:id;"`
-	WorkspaceID        uuid.UUID `gorm:"column:workspace_id;"`
-	Name               string    `gorm:"column:name;type:text;"`
-	ManagedConnectorID uuid.UUID `gorm:"column:managed_connector_id;"`
-	Config             jsonb     `gorm:"column:config;"`
-	CreatedAt          time.Time `gorm:"column:created_at;"`
-	UpdatedAt          time.Time `gorm:"column:updated_at;"`
-	RuntimeConfig      *jsonb    `gorm:"column:runtime_config;"`
+	ID                 uuid.UUID `gorm:"column:id"`
+	WorkspaceID        uuid.UUID `gorm:"column:workspace_id"`
+	Name               string    `gorm:"column:name;type:text"`
+	ManagedConnectorID uuid.UUID `gorm:"column:managed_connector_id"`
+	Config             jsonb     `gorm:"column:config"`
+	CreatedAt          time.Time `gorm:"column:created_at"`
+	UpdatedAt          time.Time `gorm:"column:updated_at"`
+	RuntimeConfig      *jsonb    `gorm:"column:runtime_config"`
 }
 
 func convertDestinationToDB(src *pipelineservice.Destination) (*dbDestination, error) {
@@ -351,21 +351,21 @@ func (a dbDestination) TableName() string {
 }
 
 type dbConnection struct {
-	ID                    uuid.UUID  `gorm:"column:id;"`
-	WorkspaceID           uuid.UUID  `gorm:"column:workspace_id;"`
-	Name                  string     `gorm:"column:name;type:text;"`
-	Status                string     `gorm:"column:status;type:text;"`
-	SourceID              uuid.UUID  `gorm:"column:source_id;"`
-	DestinationID         uuid.UUID  `gorm:"column:destination_id;"`
-	Schedule              *string    `gorm:"column:schedule;type:text;"`
-	SchemaChangePolicy    string     `gorm:"column:schema_change_policy;type:text;"`
-	MaxAttempts           int        `gorm:"column:max_attempts;"`
-	NamespaceDefinition   string     `gorm:"column:namespace_definition;type:text;"`
-	CustomNamespaceFormat *string    `gorm:"column:custom_namespace_format;type:text;"`
-	StreamPrefix          *string    `gorm:"column:stream_prefix;type:text;"`
-	NextScheduledAt       *time.Time `gorm:"column:next_scheduled_at;"`
-	CreatedAt             time.Time  `gorm:"column:created_at;"`
-	UpdatedAt             time.Time  `gorm:"column:updated_at;"`
+	ID                    uuid.UUID  `gorm:"column:id"`
+	WorkspaceID           uuid.UUID  `gorm:"column:workspace_id"`
+	Name                  string     `gorm:"column:name;type:text"`
+	Status                string     `gorm:"column:status;type:text"`
+	SourceID              uuid.UUID  `gorm:"column:source_id"`
+	DestinationID         uuid.UUID  `gorm:"column:destination_id"`
+	Schedule              *string    `gorm:"column:schedule;type:text"`
+	SchemaChangePolicy    string     `gorm:"column:schema_change_policy;type:text"`
+	MaxAttempts           int        `gorm:"column:max_attempts"`
+	NamespaceDefinition   string     `gorm:"column:namespace_definition;type:text"`
+	CustomNamespaceFormat *string    `gorm:"column:custom_namespace_format;type:text"`
+	StreamPrefix          *string    `gorm:"column:stream_prefix;type:text"`
+	NextScheduledAt       *time.Time `gorm:"column:next_scheduled_at"`
+	CreatedAt             time.Time  `gorm:"column:created_at"`
+	UpdatedAt             time.Time  `gorm:"column:updated_at"`
 }
 
 func convertConnectionToDB(src *pipelineservice.Connection) (*dbConnection, error) {
@@ -468,21 +468,21 @@ func (a dbConnection) TableName() string {
 }
 
 type dbJob struct {
-	ID            uuid.UUID  `gorm:"column:id;"`
-	ConnectionID  uuid.UUID  `gorm:"column:connection_id;"`
-	Status        string     `gorm:"column:status;type:text;"`
-	JobType       string     `gorm:"column:job_type;type:text;"`
-	ScheduledAt   time.Time  `gorm:"column:scheduled_at;"`
-	StartedAt     *time.Time `gorm:"column:started_at;"`
-	CompletedAt   *time.Time `gorm:"column:completed_at;"`
-	Error         *string    `gorm:"column:error;type:text;"`
-	Attempt       int        `gorm:"column:attempt;"`
-	MaxAttempts   int        `gorm:"column:max_attempts;"`
-	WorkerID      *string    `gorm:"column:worker_id;type:text;"`
-	HeartbeatAt   *time.Time `gorm:"column:heartbeat_at;"`
-	K8sJobName    *string    `gorm:"column:k8s_job_name;type:text;"`
-	FailureReason *string    `gorm:"column:failure_reason;type:text;"`
-	CreatedAt     time.Time  `gorm:"column:created_at;"`
+	ID            uuid.UUID  `gorm:"column:id"`
+	ConnectionID  uuid.UUID  `gorm:"column:connection_id"`
+	Status        string     `gorm:"column:status;type:text"`
+	JobType       string     `gorm:"column:job_type;type:text"`
+	ScheduledAt   time.Time  `gorm:"column:scheduled_at"`
+	StartedAt     *time.Time `gorm:"column:started_at"`
+	CompletedAt   *time.Time `gorm:"column:completed_at"`
+	Error         *string    `gorm:"column:error;type:text"`
+	Attempt       int        `gorm:"column:attempt"`
+	MaxAttempts   int        `gorm:"column:max_attempts"`
+	WorkerID      *string    `gorm:"column:worker_id;type:text"`
+	HeartbeatAt   *time.Time `gorm:"column:heartbeat_at"`
+	K8sJobName    *string    `gorm:"column:k8s_job_name;type:text"`
+	FailureReason *string    `gorm:"column:failure_reason;type:text"`
+	CreatedAt     time.Time  `gorm:"column:created_at"`
 }
 
 func convertJobToDB(src *pipelineservice.Job) (*dbJob, error) {
@@ -601,13 +601,13 @@ func (a dbJob) TableName() string {
 }
 
 type dbJobAttempt struct {
-	ID            uuid.UUID  `gorm:"column:id;"`
-	JobID         uuid.UUID  `gorm:"column:job_id;"`
-	AttemptNumber int        `gorm:"column:attempt_number;"`
-	StartedAt     time.Time  `gorm:"column:started_at;"`
-	CompletedAt   *time.Time `gorm:"column:completed_at;"`
-	Error         *string    `gorm:"column:error;type:text;"`
-	SyncStatsJSON jsonb      `gorm:"column:sync_stats_json;"`
+	ID            uuid.UUID  `gorm:"column:id"`
+	JobID         uuid.UUID  `gorm:"column:job_id"`
+	AttemptNumber int        `gorm:"column:attempt_number"`
+	StartedAt     time.Time  `gorm:"column:started_at"`
+	CompletedAt   *time.Time `gorm:"column:completed_at"`
+	Error         *string    `gorm:"column:error;type:text"`
+	SyncStatsJSON jsonb      `gorm:"column:sync_stats_json"`
 }
 
 func convertJobAttemptToDB(src *pipelineservice.JobAttempt) (*dbJobAttempt, error) {
@@ -654,11 +654,11 @@ func (a dbJobAttempt) TableName() string {
 }
 
 type dbCatalogDiscovery struct {
-	ID           uuid.UUID `gorm:"column:id;"`
-	SourceID     uuid.UUID `gorm:"column:source_id;"`
-	Version      int       `gorm:"column:version;"`
-	CatalogJSON  jsonb     `gorm:"column:catalog_json;"`
-	DiscoveredAt time.Time `gorm:"column:discovered_at;"`
+	ID           uuid.UUID `gorm:"column:id"`
+	SourceID     uuid.UUID `gorm:"column:source_id"`
+	Version      int       `gorm:"column:version"`
+	CatalogJSON  jsonb     `gorm:"column:catalog_json"`
+	DiscoveredAt time.Time `gorm:"column:discovered_at"`
 }
 
 func convertCatalogDiscoveryToDB(src *pipelineservice.CatalogDiscovery) (*dbCatalogDiscovery, error) {
@@ -685,11 +685,11 @@ func (a dbCatalogDiscovery) TableName() string {
 }
 
 type dbConfiguredCatalog struct {
-	ID           uuid.UUID `gorm:"column:id;"`
-	ConnectionID uuid.UUID `gorm:"column:connection_id;"`
-	StreamsJSON  jsonb     `gorm:"column:streams_json;"`
-	CreatedAt    time.Time `gorm:"column:created_at;"`
-	UpdatedAt    time.Time `gorm:"column:updated_at;"`
+	ID           uuid.UUID `gorm:"column:id"`
+	ConnectionID uuid.UUID `gorm:"column:connection_id"`
+	StreamsJSON  jsonb     `gorm:"column:streams_json"`
+	CreatedAt    time.Time `gorm:"column:created_at"`
+	UpdatedAt    time.Time `gorm:"column:updated_at"`
 }
 
 func convertConfiguredCatalogToDB(src *pipelineservice.ConfiguredCatalog) (*dbConfiguredCatalog, error) {
@@ -717,9 +717,9 @@ func (a dbConfiguredCatalog) TableName() string {
 
 type dbJobLog struct {
 	ID        int64     `gorm:"column:id;primaryKey"`
-	JobID     uuid.UUID `gorm:"column:job_id;"`
-	LogLine   string    `gorm:"column:log_line;type:text;"`
-	CreatedAt time.Time `gorm:"column:created_at;"`
+	JobID     uuid.UUID `gorm:"column:job_id"`
+	LogLine   string    `gorm:"column:log_line;type:text"`
+	CreatedAt time.Time `gorm:"column:created_at"`
 }
 
 func convertJobLogToDB(src *pipelineservice.JobLog) (*dbJobLog, error) {
@@ -745,9 +745,9 @@ func (a dbJobLog) TableName() string {
 
 type dbConnectionState struct {
 	ConnectionID uuid.UUID `gorm:"column:connection_id;primaryKey"`
-	StateType    string    `gorm:"column:state_type;type:text;"`
-	StateBlob    jsonb     `gorm:"column:state_blob;"`
-	UpdatedAt    time.Time `gorm:"column:updated_at;"`
+	StateType    string    `gorm:"column:state_type;type:text"`
+	StateBlob    jsonb     `gorm:"column:state_blob"`
+	UpdatedAt    time.Time `gorm:"column:updated_at"`
 }
 
 func convertConnectionStateToDB(src *pipelineservice.ConnectionState) (*dbConnectionState, error) {
@@ -773,9 +773,9 @@ func (a dbConnectionState) TableName() string {
 
 type dbWorkspaceSettings struct {
 	WorkspaceID         uuid.UUID `gorm:"column:workspace_id;primaryKey"`
-	MaxJobsPerWorkspace int       `gorm:"column:max_jobs_per_workspace;"`
-	CreatedAt           time.Time `gorm:"column:created_at;"`
-	UpdatedAt           time.Time `gorm:"column:updated_at;"`
+	MaxJobsPerWorkspace int       `gorm:"column:max_jobs_per_workspace"`
+	CreatedAt           time.Time `gorm:"column:created_at"`
+	UpdatedAt           time.Time `gorm:"column:updated_at"`
 }
 
 func convertWorkspaceSettingsToDB(src *pipelineservice.WorkspaceSettings) (*dbWorkspaceSettings, error) {
@@ -800,17 +800,17 @@ func (a dbWorkspaceSettings) TableName() string {
 }
 
 type dbConnectorTask struct {
-	ID           uuid.UUID                 `gorm:"column:id;"`
-	WorkspaceID  uuid.UUID                 `gorm:"column:workspace_id;"`
-	TaskType     string                    `gorm:"column:task_type;type:text;"`
-	Status       string                    `gorm:"column:status;type:text;"`
-	Payload      *jsonConnectorTaskPayload `gorm:"column:payload;"`
-	Result       *jsonConnectorTaskResult  `gorm:"column:result;"`
-	ErrorMessage *string                   `gorm:"column:error_message;type:text;"`
-	WorkerID     *string                   `gorm:"column:worker_id;type:text;"`
-	CreatedAt    time.Time                 `gorm:"column:created_at;"`
-	UpdatedAt    time.Time                 `gorm:"column:updated_at;"`
-	CompletedAt  *time.Time                `gorm:"column:completed_at;"`
+	ID           uuid.UUID                 `gorm:"column:id"`
+	WorkspaceID  uuid.UUID                 `gorm:"column:workspace_id"`
+	TaskType     string                    `gorm:"column:task_type;type:text"`
+	Status       string                    `gorm:"column:status;type:text"`
+	Payload      *jsonConnectorTaskPayload `gorm:"column:payload"`
+	Result       *jsonConnectorTaskResult  `gorm:"column:result"`
+	ErrorMessage *string                   `gorm:"column:error_message;type:text"`
+	WorkerID     *string                   `gorm:"column:worker_id;type:text"`
+	CreatedAt    time.Time                 `gorm:"column:created_at"`
+	UpdatedAt    time.Time                 `gorm:"column:updated_at"`
+	CompletedAt  *time.Time                `gorm:"column:completed_at"`
 }
 
 func convertConnectorTaskToDB(src *pipelineservice.ConnectorTask) (*dbConnectorTask, error) {
@@ -916,8 +916,8 @@ type dbStreamGeneration struct {
 	ConnectionID    uuid.UUID `gorm:"column:connection_id;primaryKey"`
 	StreamNamespace string    `gorm:"column:stream_namespace;type:text;primaryKey"`
 	StreamName      string    `gorm:"column:stream_name;type:text;primaryKey"`
-	GenerationID    int64     `gorm:"column:generation_id;"`
-	UpdatedAt       time.Time `gorm:"column:updated_at;"`
+	GenerationID    int64     `gorm:"column:generation_id"`
+	UpdatedAt       time.Time `gorm:"column:updated_at"`
 }
 
 func convertStreamGenerationToDB(src *pipelineservice.StreamGeneration) (*dbStreamGeneration, error) {
@@ -944,8 +944,8 @@ func (a dbStreamGeneration) TableName() string {
 }
 
 type dbPipelineEvent struct {
-	EventType string                 `gorm:"column:event_type;type:text;"`
-	Data      *jsonPipelineEventData `gorm:"column:data;"`
+	EventType string                 `gorm:"column:event_type;type:text"`
+	Data      *jsonPipelineEventData `gorm:"column:data"`
 }
 
 func convertPipelineEventToDB(src *pipelineservice.PipelineEvent) (*dbPipelineEvent, error) {
