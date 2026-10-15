@@ -32,6 +32,15 @@ type RunOptions struct {
 	NetworkMode   string
 	Name          string
 	Labels        map[string]string
+	// ExtraMounts is a list of additional host-path bind mounts (Docker only, K8s ignores).
+	ExtraMounts []BindMount
+}
+
+// BindMount describes an extra host-path bind mount.
+type BindMount struct {
+	HostPath      string
+	ContainerPath string
+	ReadOnly      bool
 }
 
 // RunResult holds handles to a running container's I/O and lifecycle.

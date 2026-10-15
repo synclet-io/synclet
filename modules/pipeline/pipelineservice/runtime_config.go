@@ -12,14 +12,28 @@ import (
 // RuntimeConfig holds container runtime configuration for a source or destination.
 // All fields are optional -- empty string means "use global default".
 type RuntimeConfig struct {
-	CPURequest         string          `json:"cpu_request,omitempty"`
-	CPULimit           string          `json:"cpu_limit,omitempty"`
-	MemoryRequest      string          `json:"memory_request,omitempty"`
-	MemoryLimit        string          `json:"memory_limit,omitempty"`
+	// Common (apply to all executors).
+	CPURequest    string `json:"cpu_request,omitempty"`
+	CPULimit      string `json:"cpu_limit,omitempty"`
+	MemoryRequest string `json:"memory_request,omitempty"`
+	MemoryLimit   string `json:"memory_limit,omitempty"`
+
+	// Docker-specific.
+	DockerNetwork string         `json:"docker_network,omitempty"`
+	DockerVolumes []DockerVolume `json:"docker_volumes,omitempty"`
+
+	// Kubernetes-specific.
 	Tolerations        json.RawMessage `json:"tolerations,omitempty"`
 	NodeSelector       json.RawMessage `json:"node_selector,omitempty"`
 	Affinity           json.RawMessage `json:"affinity,omitempty"`
 	ServiceAccountName string          `json:"service_account_name,omitempty"`
+}
+
+// DockerVolume describes a host-path bind mount for a Docker container.
+type DockerVolume struct {
+	HostPath      string `json:"host_path"`
+	ContainerPath string `json:"container_path"`
+	ReadOnly      bool   `json:"read_only,omitempty"`
 }
 
 // RuntimeDefaults holds global default resource values loaded from env vars.
@@ -93,6 +107,14 @@ func ResolveRuntimeConfig(defaults RuntimeDefaults, override *RuntimeConfig) Run
 		result.ServiceAccountName = override.ServiceAccountName
 	}
 
+	if override.DockerNetwork != "" {
+		result.DockerNetwork = override.DockerNetwork
+	}
+
+	if len(override.DockerVolumes) > 0 {
+		result.DockerVolumes = override.DockerVolumes
+	}
+
 	return result
 }
 
@@ -147,6 +169,22 @@ func ValidateRuntimeConfig(cfg *RuntimeConfig) error {
 		var affinity corev1.Affinity
 		if err := json.Unmarshal(cfg.Affinity, &affinity); err != nil {
 			errs = append(errs, fmt.Sprintf("affinity: %v", err))
+		}
+	}
+
+	for i, vol := range cfg.DockerVolumes {
+		if vol.HostPath == "" {
+			errs = append(errs, fmt.Sprintf("docker_volumes[%d]: host_path is required", i))
+		}
+
+		if vol.ContainerPath == "" {
+			errs = append(errs, fmt.Sprintf("docker_volumes[%d]: container_path is required", i))
+		}
+
+		// Containers run with /tmp as the connector working dir for synclet-managed files.
+		// Reject mounts that would collide with this.
+		if vol.ContainerPath == "/tmp" || strings.HasPrefix(vol.ContainerPath, "/tmp/") {
+			errs = append(errs, fmt.Sprintf("docker_volumes[%d]: container_path cannot start with /tmp (reserved)", i))
 		}
 	}
 

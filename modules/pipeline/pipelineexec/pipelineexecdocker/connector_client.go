@@ -28,10 +28,13 @@ func NewConnectorClient(runner pkgcontainer.Runner) *ConnectorClient {
 	return &ConnectorClient{runner: runner}
 }
 
-// ResourceLimits holds memory and CPU limits for a container.
+// ResourceLimits holds memory and CPU limits for a container,
+// plus Docker-specific runtime options such as network and volumes.
 type ResourceLimits struct {
 	MemoryLimit int64
 	CPULimit    float64
+	NetworkMode string
+	ExtraMounts []pkgcontainer.BindMount
 }
 
 // Spec runs the connector's spec command and returns its specification.
@@ -116,6 +119,11 @@ func (c *ConnectorClient) Read(ctx context.Context, image string, config json.Ra
 		cmd = append(cmd, "--state", "/tmp/state.json")
 	}
 
+	networkMode := limits.NetworkMode
+	if networkMode == "" {
+		networkMode = "bridge"
+	}
+
 	result, err := c.runWithAutoPull(ctx, pkgcontainer.RunOptions{
 		Image:       image,
 		Command:     cmd,
@@ -124,8 +132,9 @@ func (c *ConnectorClient) Read(ctx context.Context, image string, config json.Ra
 		StateFile:   stateBytes,
 		MemoryLimit: limits.MemoryLimit,
 		CPULimit:    limits.CPULimit,
-		NetworkMode: "bridge",
+		NetworkMode: networkMode,
 		Labels:      labels,
+		ExtraMounts: limits.ExtraMounts,
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("read: %w", err)
@@ -154,6 +163,11 @@ func (c *ConnectorClient) Write(ctx context.Context, image string, config json.R
 		return nil, nil, fmt.Errorf("write: marshaling catalog: %w", err)
 	}
 
+	networkMode := limits.NetworkMode
+	if networkMode == "" {
+		networkMode = "bridge"
+	}
+
 	result, err := c.runWithAutoPull(ctx, pkgcontainer.RunOptions{
 		Image:       image,
 		Command:     []string{"write", "--config", "/tmp/config.json", "--catalog", "/tmp/catalog.json"},
@@ -162,8 +176,9 @@ func (c *ConnectorClient) Write(ctx context.Context, image string, config json.R
 		Stdin:       stdin,
 		MemoryLimit: limits.MemoryLimit,
 		CPULimit:    limits.CPULimit,
-		NetworkMode: "bridge",
+		NetworkMode: networkMode,
 		Labels:      labels,
+		ExtraMounts: limits.ExtraMounts,
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("write: %w", err)

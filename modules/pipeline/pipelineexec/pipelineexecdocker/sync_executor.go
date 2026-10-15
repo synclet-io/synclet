@@ -15,7 +15,26 @@ import (
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinejobs"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinelogs"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinestate"
+	pkgcontainer "github.com/synclet-io/synclet/pkg/container"
 )
+
+// dockerVolumesToMounts converts user-defined docker volumes into bind mounts.
+func dockerVolumesToMounts(volumes []pipelineservice.DockerVolume) []pkgcontainer.BindMount {
+	if len(volumes) == 0 {
+		return nil
+	}
+
+	mounts := make([]pkgcontainer.BindMount, 0, len(volumes))
+	for _, v := range volumes {
+		mounts = append(mounts, pkgcontainer.BindMount{
+			HostPath:      v.HostPath,
+			ContainerPath: v.ContainerPath,
+			ReadOnly:      v.ReadOnly,
+		})
+	}
+
+	return mounts
+}
 
 // DockerSyncExecutor orchestrates a sync job using pre-loaded data from SyncBundle.
 // It no longer accesses storage for data loading — all data arrives via the bundle.
@@ -74,6 +93,8 @@ func (e *DockerSyncExecutor) Execute(ctx context.Context, bundle *pipelineexec.S
 	sourceStdout, sourceCleanup, err := e.client.Read(ctx, bundle.SourceImage, bundle.SourceConfig, catalog, bundle.StateBlob, labels, ResourceLimits{
 		MemoryLimit: srcMemLimit,
 		CPULimit:    srcCPULimit,
+		NetworkMode: srcRuntimeCfg.DockerNetwork,
+		ExtraMounts: dockerVolumesToMounts(srcRuntimeCfg.DockerVolumes),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("starting source read: %w", err)
@@ -102,6 +123,8 @@ func (e *DockerSyncExecutor) Execute(ctx context.Context, bundle *pipelineexec.S
 	destStdout, destCleanup, err := e.client.Write(ctx, bundle.DestImage, bundle.DestConfig, destCatalog, srcPipeReader, labels, ResourceLimits{
 		MemoryLimit: destMemLimit,
 		CPULimit:    destCPULimit,
+		NetworkMode: destRuntimeCfg.DockerNetwork,
+		ExtraMounts: dockerVolumesToMounts(destRuntimeCfg.DockerVolumes),
 	})
 	if err != nil {
 		_ = srcPipeWriter.Close()
