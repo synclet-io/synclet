@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"time"
 
 	"github.com/google/uuid"
 
@@ -79,21 +78,20 @@ func (a *UseCaseExecutorBackend) ClaimJob(ctx context.Context, workerID string) 
 
 // UpdateJobStatus reports job completion or failure.
 func (a *UseCaseExecutorBackend) UpdateJobStatus(ctx context.Context, params pipelineexec.UpdateJobStatusParams) error {
-	var syncErr error
-	if !params.Success {
-		syncErr = fmt.Errorf("%s", params.ErrorMessage)
+	// ReportCompletionParams requires the job's connection id.
+	job, err := a.getJob.Execute(ctx, pipelinejobs.GetJobParams{ID: params.JobID})
+	if err != nil {
+		return fmt.Errorf("getting job for completion report: %w", err)
 	}
 
-	stats := &pipelineservice.SyncStats{
-		RecordsRead: params.RecordsRead,
-		BytesSynced: params.BytesSynced,
-		Duration:    time.Duration(params.DurationMs) * time.Millisecond,
-	}
-
-	return a.updateJobStatus.Execute(ctx, pipelinejobs.UpdateJobStatusParams{
-		ID:        params.JobID,
-		SyncErr:   syncErr,
-		SyncStats: stats,
+	return a.reportCompletion.Execute(ctx, pipelinejobs.ReportCompletionParams{
+		JobID:        params.JobID,
+		ConnectionID: job.ConnectionID,
+		Success:      params.Success,
+		ErrorMessage: params.ErrorMessage,
+		RecordsRead:  params.RecordsRead,
+		BytesSynced:  params.BytesSynced,
+		DurationMs:   params.DurationMs,
 	})
 }
 

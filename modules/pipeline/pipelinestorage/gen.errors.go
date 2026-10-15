@@ -299,3 +299,22 @@ func wrapStreamGenerationQueryError(err error) error {
 
 	return err
 }
+func wrapPipelineEventQueryError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return errors.WithStack(errors1.Join(pipelinesvc.ErrPipelineEventNotFound, err))
+	}
+
+	var pgErr *pgconn.PgError
+
+	if errors.As(err, &pgErr) {
+		if pgErr.Code == "23505" {
+			return errors.WithStack(errors1.Join(pipelinesvc.ErrPipelineEventAlreadyExists, err))
+		}
+	}
+
+	return err
+}

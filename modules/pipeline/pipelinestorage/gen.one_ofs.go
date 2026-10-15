@@ -285,3 +285,111 @@ func convertConnectorTaskResultFromDB(val *jsonConnectorTaskResult) (pipelineser
 
 	panic("implement me")
 }
+
+type jsonPipelineEventData struct {
+	Val         any    `json:"value"`
+	OneOfType   string `json:"@type"`
+	OneOfTypeID uint   `json:"@type_id"`
+}
+
+func (p *jsonPipelineEventData) UnmarshalJSON(bytes []byte) error {
+	tmp := struct {
+		OneOfTypeID uint   `json:"@type_id"`
+		OneOfType   string `json:"@type"`
+	}{}
+	if err := json.Unmarshal(bytes, &tmp); err != nil {
+		return fmt.Errorf("unmarshal OneOfType: %w", err)
+	}
+
+	switch tmp.OneOfTypeID {
+	case 40001:
+		var value struct {
+			Value jsonJobCreatedEventData `json:"value"`
+		}
+		if err := json.Unmarshal(bytes, &value); err != nil {
+			return err
+		}
+		p.Val = &value.Value
+	case 40002:
+		var value struct {
+			Value jsonJobUpdatedEventData `json:"value"`
+		}
+		if err := json.Unmarshal(bytes, &value); err != nil {
+			return err
+		}
+		p.Val = &value.Value
+	}
+	return nil
+}
+func (p *jsonPipelineEventData) Scan(value any) error {
+	return json.Unmarshal(value.([]byte), p)
+}
+
+func (p jsonPipelineEventData) Value() (driver.Value, error) {
+	return json.Marshal(p)
+}
+
+func convertPipelineEventDataToDB(val pipelineservice.PipelineEventData) (*jsonPipelineEventData, error) {
+	if val == nil {
+		return nil, nil
+	}
+	result := &jsonPipelineEventData{}
+	switch v := val.(type) {
+	case *pipelineservice.JobCreatedEventData:
+		if v != nil {
+			tmp, err := convertJobCreatedEventDataToJsonModel(v)
+			if err != nil {
+				return nil, errors.Wrap(err, "convert JobCreatedEventData to db")
+			}
+			result.Val = tmp
+		} else {
+			result.Val = nil
+		}
+		result.OneOfType = "JobCreatedEventData"
+		result.OneOfTypeID = 40001
+
+		return result, nil
+	case *pipelineservice.JobUpdatedEventData:
+		if v != nil {
+			tmp, err := convertJobUpdatedEventDataToJsonModel(v)
+			if err != nil {
+				return nil, errors.Wrap(err, "convert JobUpdatedEventData to db")
+			}
+			result.Val = tmp
+		} else {
+			result.Val = nil
+		}
+		result.OneOfType = "JobUpdatedEventData"
+		result.OneOfTypeID = 40002
+
+		return result, nil
+	}
+	return nil, fmt.Errorf("invalid PipelineEventData value type: %T", val)
+}
+
+func convertPipelineEventDataFromDB(val *jsonPipelineEventData) (pipelineservice.PipelineEventData, error) {
+	if val == nil {
+		return nil, nil
+	}
+
+	switch v := (*val).Val.(type) {
+	case *jsonJobCreatedEventData:
+		v1, err := convertJobCreatedEventDataFromJsonModel(v)
+		if err != nil {
+			return nil, fmt.Errorf("convert JobCreatedEventData from db: %w", err)
+		}
+
+		return v1, nil
+	case *jsonJobUpdatedEventData:
+		v1, err := convertJobUpdatedEventDataFromJsonModel(v)
+		if err != nil {
+			return nil, fmt.Errorf("convert JobUpdatedEventData from db: %w", err)
+		}
+
+		return v1, nil
+	default:
+		return nil, fmt.Errorf("invalid PipelineEventData value type: %T", *val)
+	}
+
+	panic("implement me")
+}

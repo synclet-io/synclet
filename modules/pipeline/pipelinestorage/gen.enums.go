@@ -505,3 +505,30 @@ func convertSyncStatusFromDB(syncStatusValue string) (pipelineservice.SyncStatus
 	}
 	return result, nil
 }
+
+const (
+	pipelineEventTypeJobCreated = "job_created"
+	pipelineEventTypeJobUpdated = "job_updated"
+)
+
+func convertPipelineEventTypeToDB(pipelineEventTypeValue pipelineservice.PipelineEventType) (string, error) {
+	result, ok := map[pipelineservice.PipelineEventType]string{
+		pipelineservice.PipelineEventTypeJobCreated: pipelineEventTypeJobCreated,
+		pipelineservice.PipelineEventTypeJobUpdated: pipelineEventTypeJobUpdated,
+	}[pipelineEventTypeValue]
+	if !ok {
+		return "", fmt.Errorf("unknown PipelineEventType value: %d", pipelineEventTypeValue)
+	}
+	return result, nil
+}
+
+func convertPipelineEventTypeFromDB(pipelineEventTypeValue string) (pipelineservice.PipelineEventType, error) {
+	result, ok := map[string]pipelineservice.PipelineEventType{
+		pipelineEventTypeJobCreated: pipelineservice.PipelineEventTypeJobCreated,
+		pipelineEventTypeJobUpdated: pipelineservice.PipelineEventTypeJobUpdated,
+	}[pipelineEventTypeValue]
+	if !ok {
+		return 0, fmt.Errorf("unknown PipelineEventType db value: %s", pipelineEventTypeValue)
+	}
+	return result, nil
+}

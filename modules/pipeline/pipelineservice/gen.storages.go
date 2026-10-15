@@ -5,6 +5,7 @@ import (
 
 	dbutil "github.com/saturn4er/boilerplate-go/lib/dbutil"
 	idempotency "github.com/saturn4er/boilerplate-go/lib/idempotency"
+	txoutbox "github.com/saturn4er/boilerplate-go/lib/txoutbox"
 
 	// user code 'imports'
 	"github.com/google/uuid"
@@ -27,6 +28,7 @@ type Storage interface {
 	WorkspaceSettings() WorkspaceSettingsStorage
 	ConnectorTasks() ConnectorTasksStorage
 	StreamGenerations() StreamGenerationsStorage
+	PipelineEvents() PipelineEventsOutbox
 	IdempotencyKeys() idempotency.Storage
 	ExecuteInTransaction(ctx context.Context, cb func(ctx context.Context, tx Storage) error) error
 	WithAdvisoryLock(ctx context.Context, scope string, lockID int64) error
@@ -91,3 +93,4 @@ type ConnectorTasksStorage interface {
 // user code 'ConnectorTask definitions'
 // end user code 'ConnectorTask definitions'
 type StreamGenerationsStorage dbutil.EntityStorage[StreamGeneration, StreamGenerationFilter]
+type PipelineEventsOutbox txoutbox.Outbox[PipelineEvent]

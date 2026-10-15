@@ -5,6 +5,7 @@ modules:
   pipeline:
     imports:
       - "./pipeline/gen.models.yaml"
+      - "./pipeline/gen.events.yaml"
   workspace:
     imports:
       - "./workspace/gen.models.yaml"

@@ -942,3 +942,38 @@ func convertStreamGenerationFromDB(src *dbStreamGeneration) (*pipelineservice.St
 func (a dbStreamGeneration) TableName() string {
 	return "pipeline.stream_generations"
 }
+
+type dbPipelineEvent struct {
+	EventType string                 `gorm:"column:event_type;type:text;"`
+	Data      *jsonPipelineEventData `gorm:"column:data;"`
+}
+
+func convertPipelineEventToDB(src *pipelineservice.PipelineEvent) (*dbPipelineEvent, error) {
+	result := &dbPipelineEvent{}
+	tmp, err := convertPipelineEventTypeToDB(src.EventType)
+	if err != nil {
+		return nil, err
+	}
+	result.EventType = tmp
+	tmp1, err := convertPipelineEventDataToDB(src.Data)
+	if err != nil {
+		return nil, err
+	}
+	result.Data = tmp1
+	return result, nil
+}
+
+func convertPipelineEventFromDB(src *dbPipelineEvent) (*pipelineservice.PipelineEvent, error) {
+	result := &pipelineservice.PipelineEvent{}
+	tmp2, err := convertPipelineEventTypeFromDB(src.EventType)
+	if err != nil {
+		return nil, err
+	}
+	result.EventType = tmp2
+	tmp3, err := convertPipelineEventDataFromDB(src.Data)
+	if err != nil {
+		return nil, fmt.Errorf("convert PipelineEventData to service type: %w", err)
+	}
+	result.Data = tmp3
+	return result, nil
+}

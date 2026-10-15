@@ -31,17 +31,21 @@ func NewCancelJob(storage pipelineservice.Storage, logger *logging.Logger) *Canc
 }
 
 // Execute cancels the job with the given ID. Only pending or running jobs can be cancelled.
+// Publishes a JobUpdated event in the same transaction.
 func (uc *CancelJob) Execute(ctx context.Context, params CancelJobParams) error {
-	job, err := uc.storage.Jobs().First(ctx, &pipelineservice.JobFilter{
+	prev, err := uc.storage.Jobs().First(ctx, &pipelineservice.JobFilter{
 		ID: filter.Equals(params.ID),
 	})
 	if err != nil {
 		return fmt.Errorf("getting job: %w", err)
 	}
 
-	if job.Status != pipelineservice.JobStatusScheduled && job.Status != pipelineservice.JobStatusStarting && job.Status != pipelineservice.JobStatusRunning {
-		return &pipelineservice.ValidationError{Message: fmt.Sprintf("cannot cancel job with status %s", job.Status)}
+	if prev.Status != pipelineservice.JobStatusScheduled && prev.Status != pipelineservice.JobStatusStarting && prev.Status != pipelineservice.JobStatusRunning {
+		return &pipelineservice.ValidationError{Message: fmt.Sprintf("cannot cancel job with status %s", prev.Status)}
 	}
+
+	oldJob := *prev
+	job := prev
 
 	job.Status = pipelineservice.JobStatusCancelled
 	now := time.Now()
@@ -49,9 +53,30 @@ func (uc *CancelJob) Execute(ctx context.Context, params CancelJobParams) error 
 	reason := "cancelled by user"
 	job.FailureReason = &reason
 
-	if _, err := uc.storage.Jobs().Update(ctx, job); err != nil {
-		return fmt.Errorf("updating job: %w", err)
-	}
+	return uc.storage.ExecuteInTransaction(ctx, func(ctx context.Context, tx pipelineservice.Storage) error {
+		if _, err := tx.Jobs().Update(ctx, job); err != nil {
+			return fmt.Errorf("updating job: %w", err)
+		}
 
-	return nil
+		conn, err := tx.Connections().First(ctx, &pipelineservice.ConnectionFilter{
+			ID: filter.Equals(job.ConnectionID),
+		})
+		if err != nil {
+			return fmt.Errorf("loading connection for cancel event: %w", err)
+		}
+
+		newJob := *job
+		if err := tx.PipelineEvents().Send(ctx, &pipelineservice.PipelineEvent{
+			EventType: pipelineservice.PipelineEventTypeJobUpdated,
+			Data: &pipelineservice.JobUpdatedEventData{
+				WorkspaceID: conn.WorkspaceID,
+				OldData:     &oldJob,
+				NewData:     &newJob,
+			},
+		}); err != nil {
+			return fmt.Errorf("publishing job.updated event: %w", err)
+		}
+
+		return nil
+	})
 }

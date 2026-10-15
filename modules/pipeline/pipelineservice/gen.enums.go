@@ -557,3 +557,22 @@ func (s SyncStatus) String() string {
 
 	return names[indexes[s-1]:indexes[s]]
 }
+
+type PipelineEventType byte
+
+const (
+	PipelineEventTypeJobCreated PipelineEventType = iota + 1
+	PipelineEventTypeJobUpdated
+)
+
+// user code 'PipelineEventType methods'
+// end user code 'PipelineEventType methods'
+func (p PipelineEventType) IsValid() bool {
+	return p > 0 && p < 3
+}
+func (p PipelineEventType) IsJobCreated() bool {
+	return p == PipelineEventTypeJobCreated
+}
+func (p PipelineEventType) IsJobUpdated() bool {
+	return p == PipelineEventTypeJobUpdated
+}

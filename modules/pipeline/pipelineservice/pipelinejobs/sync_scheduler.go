@@ -96,7 +96,9 @@ func (s *SyncScheduler) Execute(ctx context.Context) error {
 				ScheduledAt:  now,
 				MaxAttempts:  conn.MaxAttempts,
 			}
-			if _, err := tx.Jobs().Create(ctx, job); err != nil {
+
+			createdJob, err := tx.Jobs().Create(ctx, job)
+			if err != nil {
 				s.logger.WithError(err).WithField("connection_id", conn.ConnectionID.String()).Error(ctx, "creating scheduled job")
 
 				continue
@@ -109,6 +111,18 @@ func (s *SyncScheduler) Execute(ctx context.Context) error {
 
 				if _, err := tx.Connections().Update(ctx, connRecord); err != nil {
 					s.logger.WithError(err).WithField("connection_id", conn.ConnectionID.String()).Error(ctx, "advancing next_scheduled_at")
+				}
+			}
+
+			if connRecord != nil {
+				if err := tx.PipelineEvents().Send(ctx, &pipelineservice.PipelineEvent{
+					EventType: pipelineservice.PipelineEventTypeJobCreated,
+					Data: &pipelineservice.JobCreatedEventData{
+						WorkspaceID: connRecord.WorkspaceID,
+						Job:         createdJob,
+					},
+				}); err != nil {
+					s.logger.WithError(err).WithField("connection_id", conn.ConnectionID.String()).Error(ctx, "publishing job.created event")
 				}
 			}
 

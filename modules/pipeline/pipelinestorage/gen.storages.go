@@ -72,6 +72,9 @@ func (s Storages) ConnectorTasks() pipelinesvc.ConnectorTasksStorage {
 func (s Storages) StreamGenerations() pipelinesvc.StreamGenerationsStorage {
 	return NewStreamGenerationsStorage(s.db, s.logger)
 }
+func (s Storages) PipelineEvents() pipelinesvc.PipelineEventsOutbox {
+	return NewPipelineEventsOutbox(s.db, s.processors)
+}
 
 func (s Storages) IdempotencyKeys() idempotency.Storage {
 	return idempotency.GormStorage{
@@ -507,5 +510,12 @@ func NewStreamGenerationsStorage(db *gorm.DB, logger *logging.Logger) pipelinesv
 			pipelinesvc.StreamGenerationFieldUpdatedAt:       {Name: "updated_at"},
 		},
 		LockScope: "pipeline.StreamGenerations",
+	}
+}
+func NewPipelineEventsOutbox(db *gorm.DB, processors []txoutbox.MessageProcessor) pipelinesvc.PipelineEventsOutbox {
+	return txoutbox.GormStorage[pipelinesvc.PipelineEvent]{
+		DB:                db,
+		BuildMessage:      buildPipelineEventMessage,
+		MessageProcessors: processors,
 	}
 }

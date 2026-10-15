@@ -1,0 +1,33 @@
+types:
+  one_ofs:
+    - name: PipelineEventData
+      values:
+        - JobCreatedEventData
+        - JobUpdatedEventData
+  enums:
+    - name: PipelineEventType
+      values: [ JobCreated, JobUpdated ]
+      helpers:
+        is_valid: true
+        is: true
+  models:
+    - name: PipelineEvent
+      storage_type: tx_outbox
+      fields:
+        - { name: EventType, type: "PipelineEventType" }
+        - { name: Data, type: "PipelineEventData" }
+
+    - name: JobCreatedEventData
+      id: 40001
+      do_not_persists: true
+      fields:
+        - { name: WorkspaceID, type: uuid }
+        - { name: Job, type: "*Job" }
+
+    - name: JobUpdatedEventData
+      id: 40002
+      do_not_persists: true
+      fields:
+        - { name: WorkspaceID, type: uuid }
+        - { name: OldData, type: "*Job" }
+        - { name: NewData, type: "*Job" }

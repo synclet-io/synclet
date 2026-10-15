@@ -79,9 +79,25 @@ func (uc *QueueJob) Execute(ctx context.Context, params QueueJobParams) (*pipeli
 		CreatedAt:    time.Now(),
 	}
 
-	created, err := uc.storage.Jobs().Create(ctx, job)
-	if err != nil {
-		return nil, fmt.Errorf("creating job: %w", err)
+	var created *pipelineservice.Job
+
+	if err := uc.storage.ExecuteInTransaction(ctx, func(ctx context.Context, tx pipelineservice.Storage) error {
+		createdJob, err := tx.Jobs().Create(ctx, job)
+		if err != nil {
+			return fmt.Errorf("creating job: %w", err)
+		}
+
+		created = createdJob
+
+		return tx.PipelineEvents().Send(ctx, &pipelineservice.PipelineEvent{
+			EventType: pipelineservice.PipelineEventTypeJobCreated,
+			Data: &pipelineservice.JobCreatedEventData{
+				WorkspaceID: conn.WorkspaceID,
+				Job:         createdJob,
+			},
+		})
+	}); err != nil {
+		return nil, err
 	}
 
 	return created, nil

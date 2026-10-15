@@ -20,29 +20,6 @@ type ConnectorImageValidator interface {
 	ValidateImage(ctx context.Context, dockerRepository string) error
 }
 
-// SyncEventEmitter emits events when sync jobs complete or fail.
-type SyncEventEmitter interface {
-	EmitSyncCompleted(ctx context.Context, event SyncCompletedEvent) error
-	EmitSyncFailed(ctx context.Context, event SyncFailedEvent) error
-}
-
-// SyncCompletedEvent contains info about a completed sync.
-type SyncCompletedEvent struct {
-	ConnectionID uuid.UUID
-	WorkspaceID  uuid.UUID
-	JobID        uuid.UUID
-	RecordsRead  int64
-	Duration     time.Duration
-}
-
-// SyncFailedEvent contains info about a failed sync.
-type SyncFailedEvent struct {
-	ConnectionID uuid.UUID
-	WorkspaceID  uuid.UUID
-	JobID        uuid.UUID
-	Error        string
-}
-
 // SyncStats holds sync execution statistics.
 type SyncStats struct {
 	RecordsRead int64         `json:"records_read"`

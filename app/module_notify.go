@@ -7,6 +7,7 @@ import (
 	"github.com/go-pnp/go-pnp/config/configutil"
 	"github.com/go-pnp/go-pnp/connectrpc/pnpconnectrpchandling"
 	"github.com/go-pnp/go-pnp/logging"
+	"github.com/go-pnp/go-pnp/watermill/pnpwatermill"
 	"github.com/saturn4er/boilerplate-go/lib/txoutbox"
 	"go.uber.org/fx"
 	"gorm.io/gorm"
@@ -16,6 +17,7 @@ import (
 	"github.com/synclet-io/synclet/modules/notify/notifyadapt"
 	"github.com/synclet-io/synclet/modules/notify/notifyconnect"
 	_ "github.com/synclet-io/synclet/modules/notify/notifydbstate"
+	"github.com/synclet-io/synclet/modules/notify/notifyeventhandle"
 	"github.com/synclet-io/synclet/modules/notify/notifyservice"
 	"github.com/synclet-io/synclet/modules/notify/notifystorage"
 )
@@ -43,6 +45,16 @@ func notifyModule() fx.Option {
 		notifyConfigModule(),
 		notifyDependenciesModule(),
 		notifyUseCasesModule(),
+		notifyEventHandlersModule(),
+	)
+}
+
+func notifyEventHandlersModule() fx.Option {
+	return fx.Options(
+		fx.Provide(
+			fx.Annotate(notifyadapt.NewJobInfoLoader, fx.As(new(notifyservice.JobInfoLoader))),
+			pnpwatermill.HandlerProvider(notifyeventhandle.NewJobEventHandler),
+		),
 	)
 }
 

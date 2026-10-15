@@ -106,6 +106,19 @@ func (w *mockSchedulerStorageWrapper) Jobs() pipelineservice.JobsStorage {
 	return &mockSchedulerJobsStorageWrapper{mock: w.mock}
 }
 
+func (w *mockSchedulerStorageWrapper) PipelineEvents() pipelineservice.PipelineEventsOutbox {
+	return &mockPipelineEventsOutbox{}
+}
+
+// mockPipelineEventsOutbox is a no-op implementation used in tests.
+type mockPipelineEventsOutbox struct {
+	pipelineservice.PipelineEventsOutbox
+}
+
+func (m *mockPipelineEventsOutbox) Send(_ context.Context, _ *pipelineservice.PipelineEvent) error {
+	return nil
+}
+
 // mockSchedulerJobsStorageWrapper implements pipelineservice.JobsStorage for test.
 type mockSchedulerJobsStorageWrapper struct {
 	pipelineservice.JobsStorage

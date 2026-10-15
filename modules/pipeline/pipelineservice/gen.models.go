@@ -160,6 +160,62 @@ func copyConnectorTaskResult(val ConnectorTaskResult) ConnectorTaskResult {
 	panic("called copyConnectorTaskResult with invalid type")
 }
 
+type PipelineEventData interface {
+	isPipelineEventData()
+	PipelineEventDataEquals(PipelineEventData) bool
+	// user code 'PipelineEventData methods'
+	// end user code 'PipelineEventData methods'
+}
+
+func (*JobCreatedEventData) isPipelineEventData() {}
+func (j *JobCreatedEventData) PipelineEventDataEquals(to PipelineEventData) bool {
+	if (j == nil) != (to == nil) {
+		return false
+	}
+	if j == nil && to == nil {
+		return true
+	}
+
+	toTyped, ok := to.(*JobCreatedEventData)
+	if !ok {
+		return false
+	}
+
+	return j.Equals(toTyped)
+}
+func (*JobUpdatedEventData) isPipelineEventData() {}
+func (j *JobUpdatedEventData) PipelineEventDataEquals(to PipelineEventData) bool {
+	if (j == nil) != (to == nil) {
+		return false
+	}
+	if j == nil && to == nil {
+		return true
+	}
+
+	toTyped, ok := to.(*JobUpdatedEventData)
+	if !ok {
+		return false
+	}
+
+	return j.Equals(toTyped)
+}
+
+func copyPipelineEventData(val PipelineEventData) PipelineEventData {
+	if val == nil {
+		return nil
+	}
+
+	switch val := val.(type) {
+	case *JobCreatedEventData:
+		valCopy := val.Copy()
+		return &valCopy
+	case *JobUpdatedEventData:
+		valCopy := val.Copy()
+		return &valCopy
+	}
+	panic("called copyPipelineEventData with invalid type")
+}
+
 type ManagedConnectorField byte
 
 const (
@@ -2461,6 +2517,174 @@ func (s *StreamGeneration) Equals(to *StreamGeneration) bool {
 	}
 	if s.UpdatedAt != to.UpdatedAt {
 		return false
+	}
+
+	return true
+}
+
+type PipelineEventField byte
+
+const (
+	PipelineEventFieldEventType PipelineEventField = iota + 1
+	PipelineEventFieldData
+)
+
+type PipelineEventFilter struct {
+	Or  []*PipelineEventFilter
+	And []*PipelineEventFilter
+}
+type PipelineEventOrder order.Order[PipelineEventField]
+
+type PipelineEvent struct {
+	EventType PipelineEventType
+	Data      PipelineEventData
+}
+
+// user code 'PipelineEvent methods'
+// end user code 'PipelineEvent methods'
+
+func (p *PipelineEvent) Copy() PipelineEvent {
+	var result PipelineEvent
+	result.EventType = p.EventType // enum
+	result.Data = copyPipelineEventData(p.Data)
+
+	return result
+}
+func (p *PipelineEvent) Equals(to *PipelineEvent) bool {
+	if (p == nil) != (to == nil) {
+		return false
+	}
+	if p == nil && to == nil {
+		return true
+	}
+	if p.EventType != to.EventType {
+		return false
+	}
+	if !p.Data.PipelineEventDataEquals(to.Data) {
+		return false
+	}
+
+	return true
+}
+
+type JobCreatedEventDataField byte
+
+const (
+	JobCreatedEventDataFieldWorkspaceID JobCreatedEventDataField = iota + 1
+	JobCreatedEventDataFieldJob
+)
+
+type JobCreatedEventDataFilter struct {
+	Or  []*JobCreatedEventDataFilter
+	And []*JobCreatedEventDataFilter
+}
+type JobCreatedEventDataOrder order.Order[JobCreatedEventDataField]
+
+type JobCreatedEventData struct {
+	WorkspaceID uuid.UUID
+	Job         *Job
+}
+
+// user code 'JobCreatedEventData methods'
+// end user code 'JobCreatedEventData methods'
+
+func (j *JobCreatedEventData) Copy() JobCreatedEventData {
+	var result JobCreatedEventData
+	result.WorkspaceID = j.WorkspaceID
+	if j.Job != nil {
+		var tmp Job
+		tmp = (*j.Job).Copy() // model
+		result.Job = &tmp
+	}
+
+	return result
+}
+func (j *JobCreatedEventData) Equals(to *JobCreatedEventData) bool {
+	if (j == nil) != (to == nil) {
+		return false
+	}
+	if j == nil && to == nil {
+		return true
+	}
+	if j.WorkspaceID != to.WorkspaceID {
+		return false
+	}
+	if (j.Job == nil) != (to.Job == nil) {
+		return false
+	}
+	if j.Job != nil && to.Job != nil {
+		if !(*j.Job).Equals(&(*to.Job)) {
+			return false
+		}
+	}
+
+	return true
+}
+
+type JobUpdatedEventDataField byte
+
+const (
+	JobUpdatedEventDataFieldWorkspaceID JobUpdatedEventDataField = iota + 1
+	JobUpdatedEventDataFieldOldData
+	JobUpdatedEventDataFieldNewData
+)
+
+type JobUpdatedEventDataFilter struct {
+	Or  []*JobUpdatedEventDataFilter
+	And []*JobUpdatedEventDataFilter
+}
+type JobUpdatedEventDataOrder order.Order[JobUpdatedEventDataField]
+
+type JobUpdatedEventData struct {
+	WorkspaceID uuid.UUID
+	OldData     *Job
+	NewData     *Job
+}
+
+// user code 'JobUpdatedEventData methods'
+// end user code 'JobUpdatedEventData methods'
+
+func (j *JobUpdatedEventData) Copy() JobUpdatedEventData {
+	var result JobUpdatedEventData
+	result.WorkspaceID = j.WorkspaceID
+	if j.OldData != nil {
+		var tmp Job
+		tmp = (*j.OldData).Copy() // model
+		result.OldData = &tmp
+	}
+	if j.NewData != nil {
+		var tmp1 Job
+		tmp1 = (*j.NewData).Copy() // model
+		result.NewData = &tmp1
+	}
+
+	return result
+}
+func (j *JobUpdatedEventData) Equals(to *JobUpdatedEventData) bool {
+	if (j == nil) != (to == nil) {
+		return false
+	}
+	if j == nil && to == nil {
+		return true
+	}
+	if j.WorkspaceID != to.WorkspaceID {
+		return false
+	}
+	if (j.OldData == nil) != (to.OldData == nil) {
+		return false
+	}
+	if j.OldData != nil && to.OldData != nil {
+		if !(*j.OldData).Equals(&(*to.OldData)) {
+			return false
+		}
+	}
+	if (j.NewData == nil) != (to.NewData == nil) {
+		return false
+	}
+	if j.NewData != nil && to.NewData != nil {
+		if !(*j.NewData).Equals(&(*to.NewData)) {
+			return false
+		}
 	}
 
 	return true

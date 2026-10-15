@@ -1546,3 +1546,151 @@ func convertStreamGenerationFromJsonModel(src *jsonStreamGeneration) (*pipelines
 	result.UpdatedAt = src.UpdatedAt
 	return result, nil
 }
+
+type jsonPipelineEvent struct {
+	EventType string                 `json:"event_type"`
+	Data      *jsonPipelineEventData `json:"data"`
+}
+
+func (p *jsonPipelineEvent) Scan(value any) error {
+	return json.Unmarshal(value.([]byte), p)
+}
+
+func (p jsonPipelineEvent) Value() (driver.Value, error) {
+	return json.Marshal(p)
+}
+
+func convertPipelineEventToJsonModel(src *pipelineservice.PipelineEvent) (*jsonPipelineEvent, error) {
+	result := &jsonPipelineEvent{}
+	tmp, err := convertPipelineEventTypeToDB(src.EventType)
+	if err != nil {
+		return nil, err
+	}
+	result.EventType = tmp
+	tmp1, err := convertPipelineEventDataToDB(src.Data)
+	if err != nil {
+		return nil, err
+	}
+	result.Data = tmp1
+	return result, nil
+}
+
+func convertPipelineEventFromJsonModel(src *jsonPipelineEvent) (*pipelineservice.PipelineEvent, error) {
+	result := &pipelineservice.PipelineEvent{}
+	tmp2, err := convertPipelineEventTypeFromDB(src.EventType)
+	if err != nil {
+		return nil, err
+	}
+	result.EventType = tmp2
+	tmp3, err := convertPipelineEventDataFromDB(src.Data)
+	if err != nil {
+		return nil, fmt.Errorf("convert PipelineEventData to service type: %w", err)
+	}
+	result.Data = tmp3
+	return result, nil
+}
+
+type jsonJobCreatedEventData struct {
+	WorkspaceID uuid.UUID `json:"workspace_id"`
+	Job         *jsonJob  `json:"job"`
+}
+
+func (j *jsonJobCreatedEventData) Scan(value any) error {
+	return json.Unmarshal(value.([]byte), j)
+}
+
+func (j jsonJobCreatedEventData) Value() (driver.Value, error) {
+	return json.Marshal(j)
+}
+
+func convertJobCreatedEventDataToJsonModel(src *pipelineservice.JobCreatedEventData) (*jsonJobCreatedEventData, error) {
+	result := &jsonJobCreatedEventData{}
+	result.WorkspaceID = src.WorkspaceID
+	if src.Job != nil {
+		tmp1, err := convertJobToJsonModel(src.Job)
+		if err != nil {
+			return nil, errors.Wrap(err, "convert Job to db")
+		}
+		result.Job = tmp1
+	} else {
+		result.Job = nil
+	}
+	return result, nil
+}
+
+func convertJobCreatedEventDataFromJsonModel(src *jsonJobCreatedEventData) (*pipelineservice.JobCreatedEventData, error) {
+	result := &pipelineservice.JobCreatedEventData{}
+	result.WorkspaceID = src.WorkspaceID
+	if src.Job != nil {
+		tmp3, err := convertJobFromJsonModel(src.Job)
+		if err != nil {
+			return nil, err
+		}
+		result.Job = tmp3
+	} else {
+		result.Job = nil
+	}
+	return result, nil
+}
+
+type jsonJobUpdatedEventData struct {
+	WorkspaceID uuid.UUID `json:"workspace_id"`
+	OldData     *jsonJob  `json:"old_data"`
+	NewData     *jsonJob  `json:"new_data"`
+}
+
+func (j *jsonJobUpdatedEventData) Scan(value any) error {
+	return json.Unmarshal(value.([]byte), j)
+}
+
+func (j jsonJobUpdatedEventData) Value() (driver.Value, error) {
+	return json.Marshal(j)
+}
+
+func convertJobUpdatedEventDataToJsonModel(src *pipelineservice.JobUpdatedEventData) (*jsonJobUpdatedEventData, error) {
+	result := &jsonJobUpdatedEventData{}
+	result.WorkspaceID = src.WorkspaceID
+	if src.OldData != nil {
+		tmp1, err := convertJobToJsonModel(src.OldData)
+		if err != nil {
+			return nil, errors.Wrap(err, "convert Job to db")
+		}
+		result.OldData = tmp1
+	} else {
+		result.OldData = nil
+	}
+	if src.NewData != nil {
+		tmp2, err := convertJobToJsonModel(src.NewData)
+		if err != nil {
+			return nil, errors.Wrap(err, "convert Job to db")
+		}
+		result.NewData = tmp2
+	} else {
+		result.NewData = nil
+	}
+	return result, nil
+}
+
+func convertJobUpdatedEventDataFromJsonModel(src *jsonJobUpdatedEventData) (*pipelineservice.JobUpdatedEventData, error) {
+	result := &pipelineservice.JobUpdatedEventData{}
+	result.WorkspaceID = src.WorkspaceID
+	if src.OldData != nil {
+		tmp4, err := convertJobFromJsonModel(src.OldData)
+		if err != nil {
+			return nil, err
+		}
+		result.OldData = tmp4
+	} else {
+		result.OldData = nil
+	}
+	if src.NewData != nil {
+		tmp5, err := convertJobFromJsonModel(src.NewData)
+		if err != nil {
+			return nil, err
+		}
+		result.NewData = tmp5
+	} else {
+		result.NewData = nil
+	}
+	return result, nil
+}

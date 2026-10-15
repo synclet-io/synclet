@@ -126,3 +126,15 @@ const (
 	ErrStreamGenerationNotFound      = NotFoundError("StreamGeneration")
 	ErrStreamGenerationAlreadyExists = AlreadyExistsError("StreamGeneration")
 )
+const (
+	ErrPipelineEventNotFound      = NotFoundError("PipelineEvent")
+	ErrPipelineEventAlreadyExists = AlreadyExistsError("PipelineEvent")
+)
+const (
+	ErrJobCreatedEventDataNotFound      = NotFoundError("JobCreatedEventData")
+	ErrJobCreatedEventDataAlreadyExists = AlreadyExistsError("JobCreatedEventData")
+)
+const (
+	ErrJobUpdatedEventDataNotFound      = NotFoundError("JobUpdatedEventData")
+	ErrJobUpdatedEventDataAlreadyExists = AlreadyExistsError("JobUpdatedEventData")
+)

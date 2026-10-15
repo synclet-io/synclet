@@ -3,7 +3,6 @@ package pipelineconnect
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	"connectrpc.com/connect"
@@ -28,7 +27,6 @@ type ExecutorHandler struct {
 	handleConfigUpdate *pipelinejobs.HandleConfigUpdate
 	saveSyncState      *pipelinestate.SaveSyncState
 	claimJobBundle     *pipelinejobs.ClaimJobBundle
-	updateJobStatus    *pipelinejobs.UpdateJobStatus
 	checkJobCancelled  *pipelinejobs.CheckJobCancelled
 	getJob             *pipelinejobs.GetJob
 	batchAppendLogs    *pipelinelogs.BatchAppendJobLogs
@@ -45,7 +43,6 @@ func NewExecutorHandler(
 	handleConfigUpdate *pipelinejobs.HandleConfigUpdate,
 	saveSyncState *pipelinestate.SaveSyncState,
 	claimJobBundle *pipelinejobs.ClaimJobBundle,
-	updateJobStatus *pipelinejobs.UpdateJobStatus,
 	checkJobCancelled *pipelinejobs.CheckJobCancelled,
 	getJob *pipelinejobs.GetJob,
 	batchAppendLogs *pipelinelogs.BatchAppendJobLogs,
@@ -60,7 +57,6 @@ func NewExecutorHandler(
 		handleConfigUpdate: handleConfigUpdate,
 		saveSyncState:      saveSyncState,
 		claimJobBundle:     claimJobBundle,
-		updateJobStatus:    updateJobStatus,
 		checkJobCancelled:  checkJobCancelled,
 		getJob:             getJob,
 		batchAppendLogs:    batchAppendLogs,
@@ -240,21 +236,22 @@ func (h *ExecutorHandler) UpdateJobStatus(ctx context.Context, req *connect.Requ
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid job_id: %w", err))
 	}
 
-	// Build SyncStats from request.
-	stats := &pipelineservice.SyncStats{
-		RecordsRead: req.Msg.GetRecordsRead(),
-		BytesSynced: req.Msg.GetBytesSynced(),
+	job, err := h.getJob.Execute(ctx, pipelinejobs.GetJobParams{ID: jobID})
+	if err != nil {
+		h.logger.WithError(err).Error(ctx, "executor: get job for completion report failed",
+			"job_id", req.Msg.GetJobId())
+
+		return nil, mapError(err)
 	}
 
-	var syncErr error
-	if !req.Msg.GetSuccess() {
-		syncErr = fmt.Errorf("%s", req.Msg.GetErrorMessage())
-	}
-
-	if err := h.updateJobStatus.Execute(ctx, pipelinejobs.UpdateJobStatusParams{
-		ID:        jobID,
-		SyncErr:   syncErr,
-		SyncStats: stats,
+	if err := h.reportCompletion.Execute(ctx, pipelinejobs.ReportCompletionParams{
+		JobID:        jobID,
+		ConnectionID: job.ConnectionID,
+		Success:      req.Msg.GetSuccess(),
+		ErrorMessage: req.Msg.GetErrorMessage(),
+		RecordsRead:  req.Msg.GetRecordsRead(),
+		BytesSynced:  req.Msg.GetBytesSynced(),
+		DurationMs:   req.Msg.GetDurationMs(),
 	}); err != nil {
 		h.logger.WithError(err).Error(ctx, "executor: update job status failed",
 			"job_id", req.Msg.GetJobId())
@@ -349,14 +346,19 @@ func (h *ExecutorHandler) FailJob(ctx context.Context, req *connect.Request[exec
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid job_id: %w", err))
 	}
 
-	var syncErr error
-	if req.Msg.GetReason() != "" {
-		syncErr = errors.New(req.Msg.GetReason())
+	job, err := h.getJob.Execute(ctx, pipelinejobs.GetJobParams{ID: jobID})
+	if err != nil {
+		h.logger.WithError(err).Error(ctx, "executor: get job for fail report failed",
+			"job_id", req.Msg.GetJobId())
+
+		return nil, mapError(err)
 	}
 
-	if err := h.updateJobStatus.Execute(ctx, pipelinejobs.UpdateJobStatusParams{
-		ID:      jobID,
-		SyncErr: syncErr,
+	if err := h.reportCompletion.Execute(ctx, pipelinejobs.ReportCompletionParams{
+		JobID:        jobID,
+		ConnectionID: job.ConnectionID,
+		Success:      false,
+		ErrorMessage: req.Msg.GetReason(),
 	}); err != nil {
 		h.logger.WithError(err).Error(ctx, "executor: fail job failed",
 			"job_id", req.Msg.GetJobId())

@@ -876,3 +876,44 @@ func buildStreamGenerationFilterExpr(filter *pipelineservice.StreamGenerationFil
 		}),
 	)
 }
+func buildPipelineEventFilterExpr(filter *pipelineservice.PipelineEventFilter, options ...func(*filterOptions)) (clause.Expression, error) {
+	if filter == nil {
+		return nil, nil
+	}
+
+	opts := &filterOptions{}
+	for _, opt := range options {
+		opt(opts)
+	}
+
+	return dbutil.BuildFilterExpression(
+		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
+			if filter.Or == nil {
+				return nil, nil
+			}
+			exprs := make([]clause.Expression, 0, len(filter.Or))
+			for _, orFilter := range filter.Or {
+				expr, err := buildPipelineEventFilterExpr(orFilter)
+				if err != nil {
+					return nil, err
+				}
+				exprs = append(exprs, expr)
+			}
+			return clause.Or(exprs...), nil
+		}),
+		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
+			if filter.And == nil {
+				return nil, nil
+			}
+			exprs := make([]clause.Expression, 0, len(filter.And))
+			for _, andFilter := range filter.And {
+				expr, err := buildPipelineEventFilterExpr(andFilter)
+				if err != nil {
+					return nil, err
+				}
+				exprs = append(exprs, expr)
+			}
+			return clause.And(exprs...), nil
+		}),
+	)
+}

@@ -34,13 +34,19 @@ func NewUpdateJobStatus(storage pipelineservice.Storage) *UpdateJobStatus {
 
 // Execute updates the job status after execution. It handles success, failure,
 // and retry logic including linear backoff based on connection retry config.
+// Publishes a JobUpdated event to the outbox in the same transaction.
 func (uc *UpdateJobStatus) Execute(ctx context.Context, params UpdateJobStatusParams) error {
-	job, err := uc.storage.Jobs().First(ctx, &pipelineservice.JobFilter{
+	prevJob, err := uc.storage.Jobs().First(ctx, &pipelineservice.JobFilter{
 		ID: filter.Equals(params.ID),
 	})
 	if err != nil {
 		return fmt.Errorf("getting job: %w", err)
 	}
+
+	// Snapshot the previous state for the event before mutating.
+	oldJob := *prevJob
+
+	job := prevJob
 
 	now := time.Now()
 	job.CompletedAt = &now
@@ -110,21 +116,33 @@ func (uc *UpdateJobStatus) Execute(ctx context.Context, params UpdateJobStatusPa
 			return fmt.Errorf("creating job attempt: %w", err)
 		}
 
+		conn, connErr := tx.Connections().First(ctx, &pipelineservice.ConnectionFilter{
+			ID: filter.Equals(job.ConnectionID),
+		})
+		if connErr != nil {
+			return fmt.Errorf("getting connection for event emission: %w", connErr)
+		}
+
 		// Recompute next_scheduled_at when job reaches final status (completed or permanent failure).
 		// Skip if job is being retried (status == Scheduled means retry in progress).
 		if job.Status == pipelineservice.JobStatusCompleted || job.Status == pipelineservice.JobStatusFailed {
-			conn, connErr := tx.Connections().First(ctx, &pipelineservice.ConnectionFilter{
-				ID: filter.Equals(job.ConnectionID),
-			})
-			if connErr != nil {
-				return fmt.Errorf("getting connection for schedule recompute: %w", connErr)
-			}
-
 			pipelineservice.RecomputeNextScheduledAt(conn, time.Now())
 
 			if _, updateErr := tx.Connections().Update(ctx, conn); updateErr != nil {
 				return fmt.Errorf("updating connection next_scheduled_at: %w", updateErr)
 			}
+		}
+
+		newJob := *job
+		if err := tx.PipelineEvents().Send(ctx, &pipelineservice.PipelineEvent{
+			EventType: pipelineservice.PipelineEventTypeJobUpdated,
+			Data: &pipelineservice.JobUpdatedEventData{
+				WorkspaceID: conn.WorkspaceID,
+				OldData:     &oldJob,
+				NewData:     &newJob,
+			},
+		}); err != nil {
+			return fmt.Errorf("publishing job.updated event: %w", err)
 		}
 
 		return nil

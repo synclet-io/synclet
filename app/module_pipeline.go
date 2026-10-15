@@ -132,7 +132,6 @@ func pipelineDependenciesModule() fx.Option {
 		// Storage
 		fx.Provide(
 			fx.Annotate(newPipelineStorage, fx.As(new(pipelineservice.Storage))),
-			fx.Annotate(pipelineadapt.NewEventEmitterAdapter, fx.As(new(pipelineservice.SyncEventEmitter))),
 			fx.Annotate(pipelinestorage.NewJobRetentionStorage, fx.As(new(pipelineservice.JobRetentionStorage))),
 			fx.Annotate(pipelinestorage.NewWorkspaceSettingsWriter, fx.As(new(pipelinesettings.WorkspaceSettingsWriter))),
 		),

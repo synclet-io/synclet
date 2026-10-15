@@ -24,12 +24,11 @@ type ReportCompletionParams struct {
 	DurationMs   int64
 }
 
-// ReportCompletion handles job completion reports from the orchestrator.
-// It updates the job status and emits sync events.
+// ReportCompletion records a job's final result and triggers retention cleanup
+// for the job's workspace.
 type ReportCompletion struct {
 	wg              sync.WaitGroup
 	updateJobStatus *UpdateJobStatus
-	eventEmitter    pipelineservice.SyncEventEmitter
 	storage         pipelineservice.Storage
 	cleanupOldJobs  *CleanupOldJobs
 	logger          *logging.Logger
@@ -39,7 +38,6 @@ type ReportCompletion struct {
 // NewReportCompletion creates a new ReportCompletion use case.
 func NewReportCompletion(
 	updateJobStatus *UpdateJobStatus,
-	eventEmitter pipelineservice.SyncEventEmitter,
 	storage pipelineservice.Storage,
 	cleanupOldJobs *CleanupOldJobs,
 	logger *logging.Logger,
@@ -47,7 +45,6 @@ func NewReportCompletion(
 ) *ReportCompletion {
 	return &ReportCompletion{
 		updateJobStatus: updateJobStatus,
-		eventEmitter:    eventEmitter,
 		storage:         storage,
 		cleanupOldJobs:  cleanupOldJobs,
 		logger:          logger.Named("report-completion"),
@@ -60,7 +57,8 @@ func (uc *ReportCompletion) Wait() {
 	uc.wg.Wait()
 }
 
-// Execute updates job status and emits the appropriate sync event.
+// Execute updates the job status and starts best-effort retention cleanup in
+// the background.
 func (uc *ReportCompletion) Execute(ctx context.Context, params ReportCompletionParams) error {
 	stats := &pipelineservice.SyncStats{
 		RecordsRead: params.RecordsRead,
@@ -81,78 +79,33 @@ func (uc *ReportCompletion) Execute(ctx context.Context, params ReportCompletion
 		return fmt.Errorf("updating job status: %w", err)
 	}
 
-	// Look up connection to get WorkspaceID for event emission and retention cleanup.
-	var workspaceID uuid.UUID
-
-	conn, connErr := uc.storage.Connections().First(ctx, &pipelineservice.ConnectionFilter{
-		ID: filter.Equals(params.ConnectionID),
-	})
-	if connErr != nil {
-		uc.logger.WithError(connErr).Warn(ctx, "failed to look up connection for workspace ID, using nil")
-	} else {
-		workspaceID = conn.WorkspaceID
-	}
-
-	// Emit sync events asynchronously with WaitGroup tracking for graceful shutdown.
-	if params.Success {
-		uc.wg.Add(1)
-
-		go func() { //nolint:gosec // intentional background context for fire-and-forget event emission
-			defer uc.wg.Done()
-
-			ctx, cancel := context.WithTimeout(context.Background(), uc.cfg.EventEmitTimeout)
-			defer cancel()
-
-			if emitErr := uc.eventEmitter.EmitSyncCompleted(ctx, pipelineservice.SyncCompletedEvent{
-				ConnectionID: params.ConnectionID,
-				WorkspaceID:  workspaceID,
-				JobID:        params.JobID,
-				RecordsRead:  params.RecordsRead,
-				Duration:     stats.Duration,
-			}); emitErr != nil {
-				uc.logger.WithError(emitErr).Warn(ctx, "emit sync.completed event failed")
-			}
-		}()
-	} else {
-		uc.wg.Add(1)
-
-		go func() { //nolint:gosec // intentional background context for fire-and-forget event emission
-			defer uc.wg.Done()
-
-			ctx, cancel := context.WithTimeout(context.Background(), uc.cfg.EventEmitTimeout)
-			defer cancel()
-
-			if emitErr := uc.eventEmitter.EmitSyncFailed(ctx, pipelineservice.SyncFailedEvent{
-				ConnectionID: params.ConnectionID,
-				WorkspaceID:  workspaceID,
-				JobID:        params.JobID,
-				Error:        params.ErrorMessage,
-			}); emitErr != nil {
-				uc.logger.WithError(emitErr).Warn(ctx, "emit sync.failed event failed")
-			}
-		}()
-	}
-
 	uc.logger.Info(ctx, "job completed",
 		"job_id", params.JobID.String(),
 		"success", params.Success,
 		"records_read", params.RecordsRead)
 
 	// Trigger retention cleanup for this workspace (best-effort, non-blocking).
-	if conn != nil {
-		uc.wg.Add(1)
+	conn, connErr := uc.storage.Connections().First(ctx, &pipelineservice.ConnectionFilter{
+		ID: filter.Equals(params.ConnectionID),
+	})
+	if connErr != nil || conn == nil {
+		uc.logger.WithError(connErr).Warn(ctx, "could not load connection for retention cleanup; skipping")
 
-		go func() { //nolint:gosec // intentional background context for async cleanup
-			defer uc.wg.Done()
-
-			ctx, cancel := context.WithTimeout(context.Background(), uc.cfg.EventEmitTimeout)
-			defer cancel()
-
-			if cleanupErr := uc.cleanupOldJobs.ExecuteForWorkspace(ctx, conn.WorkspaceID); cleanupErr != nil {
-				uc.logger.WithError(cleanupErr).Warn(ctx, "post-completion retention cleanup failed")
-			}
-		}()
+		return nil
 	}
+
+	uc.wg.Add(1)
+
+	go func() { //nolint:gosec // intentional background context for async cleanup
+		defer uc.wg.Done()
+
+		bgCtx, cancel := context.WithTimeout(context.Background(), uc.cfg.EventEmitTimeout)
+		defer cancel()
+
+		if cleanupErr := uc.cleanupOldJobs.ExecuteForWorkspace(bgCtx, conn.WorkspaceID); cleanupErr != nil {
+			uc.logger.WithError(cleanupErr).Warn(bgCtx, "post-completion retention cleanup failed")
+		}
+	}()
 
 	return nil
 }
