@@ -13,11 +13,12 @@ import (
 // CreateWorkspace creates a new workspace and adds the owner as admin member.
 type CreateWorkspace struct {
 	storage Storage
+	audit   AuditRecorder
 }
 
 // NewCreateWorkspace creates a new CreateWorkspace use case.
-func NewCreateWorkspace(storage Storage) *CreateWorkspace {
-	return &CreateWorkspace{storage: storage}
+func NewCreateWorkspace(storage Storage, audit AuditRecorder) *CreateWorkspace {
+	return &CreateWorkspace{storage: storage, audit: audit}
 }
 
 // Execute creates a workspace, adds the owner as admin, and publishes the
@@ -59,6 +60,15 @@ func (uc *CreateWorkspace) Execute(ctx context.Context, name string, ownerUserID
 	}); err != nil {
 		return nil, fmt.Errorf("publishing workspace.created event: %w", err)
 	}
+
+	uc.audit.Record(ctx, AuditEvent{
+		WorkspaceID:   created.ID,
+		Action:        "create",
+		ResourceType:  "workspace",
+		ResourceID:    created.ID,
+		ResourceLabel: created.Name,
+		After:         map[string]any{"name": created.Name, "slug": created.Slug},
+	})
 
 	return created, nil
 }

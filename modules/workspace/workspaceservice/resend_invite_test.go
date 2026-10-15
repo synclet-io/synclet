@@ -13,7 +13,7 @@ import (
 func newResendInvite(store *fakeStorage, lookup *fakeUserLookup, email *fakeEmailSender) *ResendInvite {
 	cfg := Config{InviteTTL: 24 * time.Hour, FrontendURL: "https://app.example.com"}
 
-	return NewResendInvite(store, email, lookup, cfg, nil)
+	return NewResendInvite(store, email, lookup, cfg, nil, NoopAuditRecorder{})
 }
 
 func TestResendInvite_RefreshesExpiration(t *testing.T) {

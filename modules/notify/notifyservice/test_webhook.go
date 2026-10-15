@@ -36,14 +36,16 @@ type TestWebhook struct {
 	storage    Storage
 	secrets    SecretsProvider
 	httpClient *http.Client
+	audit      AuditRecorder
 }
 
 // NewTestWebhook creates a new TestWebhook use case.
-func NewTestWebhook(storage Storage, secrets SecretsProvider, cfg Config) *TestWebhook {
+func NewTestWebhook(storage Storage, secrets SecretsProvider, cfg Config, audit AuditRecorder) *TestWebhook {
 	return &TestWebhook{
 		storage:    storage,
 		secrets:    secrets,
 		httpClient: &http.Client{Timeout: cfg.WebhookHTTPTimeout},
+		audit:      audit,
 	}
 }
 
@@ -93,17 +95,31 @@ func (uc *TestWebhook) Execute(ctx context.Context, params TestWebhookParams) (T
 		req.Header.Set("X-Synclet-Signature", hex.EncodeToString(mac.Sum(nil)))
 	}
 
+	var result TestWebhookResult
+
 	resp, err := uc.httpClient.Do(req)
 	if err != nil {
-		return TestWebhookResult{StatusCode: 0, DeliveryError: err.Error()}, nil
+		result.DeliveryError = err.Error()
+	} else {
+		defer func() { _ = resp.Body.Close() }()
+
+		result.StatusCode = resp.StatusCode
+		if resp.StatusCode >= 300 {
+			result.DeliveryError = fmt.Sprintf("endpoint returned status %d", resp.StatusCode)
+		}
 	}
 
-	defer func() { _ = resp.Body.Close() }()
-
-	result := TestWebhookResult{StatusCode: resp.StatusCode}
-	if resp.StatusCode >= 300 {
-		result.DeliveryError = fmt.Sprintf("endpoint returned status %d", resp.StatusCode)
-	}
+	uc.audit.Record(ctx, AuditEvent{
+		WorkspaceID:   params.WorkspaceID,
+		Action:        "test",
+		ResourceType:  "webhook",
+		ResourceID:    webhook.ID,
+		ResourceLabel: webhook.URL,
+		After: map[string]any{
+			"status_code":    result.StatusCode,
+			"delivery_error": result.DeliveryError,
+		},
+	})
 
 	return result, nil
 }

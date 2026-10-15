@@ -19,7 +19,7 @@ func TestDeclineInvite_TransitionsToDeclined(t *testing.T) {
 		Token: "tok", Status: InviteStatusPending, ExpiresAt: time.Now().Add(time.Hour),
 	})
 
-	require.NoError(t, NewDeclineInvite(store).Execute(ctx, "tok"))
+	require.NoError(t, NewDeclineInvite(store, NoopAuditRecorder{}).Execute(ctx, "tok"))
 
 	got, err := store.WorkspaceInvites().First(ctx, &WorkspaceInviteFilter{ID: equalsUUID(inviteID)})
 	require.NoError(t, err)
@@ -28,7 +28,7 @@ func TestDeclineInvite_TransitionsToDeclined(t *testing.T) {
 
 func TestDeclineInvite_TokenNotFound(t *testing.T) {
 	ctx := context.Background()
-	err := NewDeclineInvite(newFakeStorage()).Execute(ctx, "missing")
+	err := NewDeclineInvite(newFakeStorage(), NoopAuditRecorder{}).Execute(ctx, "missing")
 	require.Error(t, err)
 }
 
@@ -40,7 +40,7 @@ func TestDeclineInvite_AlreadyAcceptedRejected(t *testing.T) {
 		ExpiresAt: time.Now().Add(time.Hour),
 	})
 
-	err := NewDeclineInvite(store).Execute(ctx, "tok")
+	err := NewDeclineInvite(store, NoopAuditRecorder{}).Execute(ctx, "tok")
 	require.Error(t, err)
 }
 
@@ -52,6 +52,6 @@ func TestDeclineInvite_ExpiredRejected(t *testing.T) {
 		ExpiresAt: time.Now().Add(-time.Hour),
 	})
 
-	err := NewDeclineInvite(store).Execute(ctx, "tok")
+	err := NewDeclineInvite(store, NoopAuditRecorder{}).Execute(ctx, "tok")
 	require.Error(t, err)
 }

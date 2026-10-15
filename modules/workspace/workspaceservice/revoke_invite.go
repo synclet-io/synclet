@@ -12,11 +12,12 @@ import (
 // RevokeInvite revokes a pending workspace invite (D-06).
 type RevokeInvite struct {
 	storage Storage
+	audit   AuditRecorder
 }
 
 // NewRevokeInvite creates a new RevokeInvite use case.
-func NewRevokeInvite(storage Storage) *RevokeInvite {
-	return &RevokeInvite{storage: storage}
+func NewRevokeInvite(storage Storage, audit AuditRecorder) *RevokeInvite {
+	return &RevokeInvite{storage: storage, audit: audit}
 }
 
 // Execute revokes a pending invite by ID and workspace ID.
@@ -43,6 +44,15 @@ func (uc *RevokeInvite) Execute(ctx context.Context, inviteID, workspaceID uuid.
 	if _, err := uc.storage.WorkspaceInvites().Update(ctx, invite); err != nil {
 		return fmt.Errorf("revoking invite: %w", err)
 	}
+
+	uc.audit.Record(ctx, AuditEvent{
+		WorkspaceID:   invite.WorkspaceID,
+		Action:        "delete",
+		ResourceType:  "workspace_invite",
+		ResourceID:    invite.ID,
+		ResourceLabel: invite.Email,
+		Before:        map[string]any{"email": invite.Email, "role": invite.Role.String()},
+	})
 
 	return nil
 }

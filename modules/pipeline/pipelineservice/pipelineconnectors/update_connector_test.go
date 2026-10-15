@@ -186,7 +186,7 @@ func matchRepoConnectorFilter(repoConnector *pipelineservice.RepositoryConnector
 
 func TestUpdateManagedConnector_Success(t *testing.T) {
 	store := newMockStorage()
-	useCase := pipelineconnectors.NewUpdateManagedConnector(store)
+	useCase := pipelineconnectors.NewUpdateManagedConnector(store, pipelineservice.NoopAuditRecorder{})
 
 	workspaceID := uuid.New()
 	repoID := uuid.New()
@@ -229,7 +229,7 @@ func TestUpdateManagedConnector_Success(t *testing.T) {
 
 func TestUpdateManagedConnector_NoRepository(t *testing.T) {
 	store := newMockStorage()
-	useCase := pipelineconnectors.NewUpdateManagedConnector(store)
+	useCase := pipelineconnectors.NewUpdateManagedConnector(store, pipelineservice.NoopAuditRecorder{})
 
 	workspaceID := uuid.New()
 	connectorID := uuid.New()
@@ -258,7 +258,7 @@ func TestUpdateManagedConnector_NoRepository(t *testing.T) {
 
 func TestUpdateManagedConnector_AlreadyUpToDate(t *testing.T) {
 	store := newMockStorage()
-	useCase := pipelineconnectors.NewUpdateManagedConnector(store)
+	useCase := pipelineconnectors.NewUpdateManagedConnector(store, pipelineservice.NoopAuditRecorder{})
 
 	workspaceID := uuid.New()
 	repoID := uuid.New()

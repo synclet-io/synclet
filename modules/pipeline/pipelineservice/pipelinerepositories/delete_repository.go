@@ -15,11 +15,12 @@ import (
 type DeleteRepository struct {
 	storage pipelineservice.Storage
 	secrets pipelineservice.SecretsProvider
+	audit   pipelineservice.AuditRecorder
 }
 
 // NewDeleteRepository creates a new DeleteRepository use case.
-func NewDeleteRepository(storage pipelineservice.Storage, secrets pipelineservice.SecretsProvider) *DeleteRepository {
-	return &DeleteRepository{storage: storage, secrets: secrets}
+func NewDeleteRepository(storage pipelineservice.Storage, secrets pipelineservice.SecretsProvider, audit pipelineservice.AuditRecorder) *DeleteRepository {
+	return &DeleteRepository{storage: storage, secrets: secrets, audit: audit}
 }
 
 // DeleteRepositoryParams holds parameters for deleting a repository.
@@ -68,6 +69,15 @@ func (uc *DeleteRepository) Execute(ctx context.Context, params DeleteRepository
 	if err := uc.storage.Repositories().Delete(ctx, repoFilter); err != nil {
 		return nil, fmt.Errorf("deleting repository: %w", err)
 	}
+
+	uc.audit.Record(ctx, pipelineservice.AuditEvent{
+		WorkspaceID:   params.WorkspaceID,
+		Action:        "delete",
+		ResourceType:  "repository",
+		ResourceID:    repo.ID,
+		ResourceLabel: repo.Name,
+		Before:        repositoryToAuditPayload(repo),
+	})
 
 	return &DeleteRepositoryResult{AffectedConnectors: affectedCount}, nil
 }

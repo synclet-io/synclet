@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelineconnections"
 )
 
@@ -19,22 +20,25 @@ type ResetConnectionStateParams struct {
 type ResetConnectionState struct {
 	getConnection  *pipelineconnections.GetConnection
 	clearSyncState *ClearSyncState
+	audit          pipelineservice.AuditRecorder
 }
 
 // NewResetConnectionState creates a new ResetConnectionState use case.
-func NewResetConnectionState(getConnection *pipelineconnections.GetConnection, clearSyncState *ClearSyncState) *ResetConnectionState {
+func NewResetConnectionState(getConnection *pipelineconnections.GetConnection, clearSyncState *ClearSyncState, audit pipelineservice.AuditRecorder) *ResetConnectionState {
 	return &ResetConnectionState{
 		getConnection:  getConnection,
 		clearSyncState: clearSyncState,
+		audit:          audit,
 	}
 }
 
 // Execute verifies the connection belongs to the workspace and clears all state.
 func (uc *ResetConnectionState) Execute(ctx context.Context, params ResetConnectionStateParams) error {
-	if _, err := uc.getConnection.Execute(ctx, pipelineconnections.GetConnectionParams{
+	conn, err := uc.getConnection.Execute(ctx, pipelineconnections.GetConnectionParams{
 		ID:          params.ConnectionID,
 		WorkspaceID: params.WorkspaceID,
-	}); err != nil {
+	})
+	if err != nil {
 		return fmt.Errorf("connection not found in workspace: %w", err)
 	}
 
@@ -43,6 +47,15 @@ func (uc *ResetConnectionState) Execute(ctx context.Context, params ResetConnect
 	}); err != nil {
 		return fmt.Errorf("clearing connection state: %w", err)
 	}
+
+	uc.audit.Record(ctx, pipelineservice.AuditEvent{
+		WorkspaceID:   params.WorkspaceID,
+		Action:        "update",
+		ResourceType:  "connection",
+		ResourceID:    conn.ID,
+		ResourceLabel: conn.Name,
+		After:         map[string]any{"state_reset": "connection"},
+	})
 
 	return nil
 }

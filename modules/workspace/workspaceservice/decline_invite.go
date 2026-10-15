@@ -11,11 +11,12 @@ import (
 // DeclineInvite declines a workspace invite by token (D-10).
 type DeclineInvite struct {
 	storage Storage
+	audit   AuditRecorder
 }
 
 // NewDeclineInvite creates a new DeclineInvite use case.
-func NewDeclineInvite(storage Storage) *DeclineInvite {
-	return &DeclineInvite{storage: storage}
+func NewDeclineInvite(storage Storage, audit AuditRecorder) *DeclineInvite {
+	return &DeclineInvite{storage: storage, audit: audit}
 }
 
 // Execute declines an invite. The invite is marked as declined (not deleted).
@@ -45,6 +46,15 @@ func (uc *DeclineInvite) Execute(ctx context.Context, token string) error {
 	if _, err := uc.storage.WorkspaceInvites().Update(ctx, invite); err != nil {
 		return fmt.Errorf("declining invite: %w", err)
 	}
+
+	uc.audit.Record(ctx, AuditEvent{
+		WorkspaceID:   invite.WorkspaceID,
+		Action:        "update",
+		ResourceType:  "workspace_invite",
+		ResourceID:    invite.ID,
+		ResourceLabel: invite.Email,
+		After:         map[string]any{"status": "declined"},
+	})
 
 	return nil
 }

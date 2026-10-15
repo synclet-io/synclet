@@ -34,7 +34,7 @@ func TestUpdateWorkspaceSettings_Upserts(t *testing.T) {
 		WorkspaceID: wsID, MaxJobsPerWorkspace: 100,
 	}, nil)
 
-	uc := pipelinesettings.NewUpdateWorkspaceSettings(writer)
+	uc := pipelinesettings.NewUpdateWorkspaceSettings(newNotFoundReader(), writer, pipelineservice.NoopAuditRecorder{})
 	result, err := uc.Execute(context.Background(), pipelinesettings.UpdateWorkspaceSettingsParams{
 		WorkspaceID: wsID, MaxJobsPerWorkspace: &maxJobs,
 	})
@@ -47,7 +47,7 @@ func TestUpdateWorkspaceSettings_Upserts(t *testing.T) {
 func TestUpdateWorkspaceSettings_RejectsNegative(t *testing.T) {
 	writer := &mockWriter{}
 	negative := -1
-	uc := pipelinesettings.NewUpdateWorkspaceSettings(writer)
+	uc := pipelinesettings.NewUpdateWorkspaceSettings(newNotFoundReader(), writer, pipelineservice.NoopAuditRecorder{})
 
 	_, err := uc.Execute(context.Background(), pipelinesettings.UpdateWorkspaceSettingsParams{
 		WorkspaceID: uuid.New(), MaxJobsPerWorkspace: &negative,
@@ -66,11 +66,17 @@ func TestUpdateWorkspaceSettings_ZeroIsValid(t *testing.T) {
 		WorkspaceID: wsID, MaxJobsPerWorkspace: 0,
 	}, nil)
 
-	uc := pipelinesettings.NewUpdateWorkspaceSettings(writer)
+	uc := pipelinesettings.NewUpdateWorkspaceSettings(newNotFoundReader(), writer, pipelineservice.NoopAuditRecorder{})
 	result, err := uc.Execute(context.Background(), pipelinesettings.UpdateWorkspaceSettingsParams{
 		WorkspaceID: wsID, MaxJobsPerWorkspace: &zero,
 	})
 
 	require.NoError(t, err)
 	assert.Equal(t, 0, result.MaxJobsPerWorkspace)
+}
+
+func newNotFoundReader() *pipelinesettings.GetWorkspaceSettings {
+	return pipelinesettings.NewGetWorkspaceSettings(&mockStorage{
+		workspaceSettings: &mockWorkspaceSettingsStorage{firstErr: pipelineservice.ErrWorkspaceSettingsNotFound},
+	})
 }

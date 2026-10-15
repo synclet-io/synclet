@@ -12,11 +12,12 @@ import (
 // DeleteWorkspace deletes a workspace by ID.
 type DeleteWorkspace struct {
 	storage Storage
+	audit   AuditRecorder
 }
 
 // NewDeleteWorkspace creates a new DeleteWorkspace use case.
-func NewDeleteWorkspace(storage Storage) *DeleteWorkspace {
-	return &DeleteWorkspace{storage: storage}
+func NewDeleteWorkspace(storage Storage, audit AuditRecorder) *DeleteWorkspace {
+	return &DeleteWorkspace{storage: storage, audit: audit}
 }
 
 // Execute deletes the workspace with the given ID and publishes the
@@ -49,6 +50,15 @@ func (uc *DeleteWorkspace) Execute(ctx context.Context, id uuid.UUID) error {
 	}); err != nil {
 		return fmt.Errorf("publishing workspace.deleted event: %w", err)
 	}
+
+	uc.audit.Record(ctx, AuditEvent{
+		WorkspaceID:   workspace.ID,
+		Action:        "delete",
+		ResourceType:  "workspace",
+		ResourceID:    workspace.ID,
+		ResourceLabel: workspace.Name,
+		Before:        map[string]any{"name": workspace.Name, "slug": workspace.Slug},
+	})
 
 	return nil
 }

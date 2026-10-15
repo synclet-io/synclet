@@ -20,11 +20,12 @@ type SyncRepository struct {
 	fetcher *RegistryFetcher
 	secrets pipelineservice.SecretsProvider
 	logger  *logging.Logger
+	audit   pipelineservice.AuditRecorder
 }
 
 // NewSyncRepository creates a new SyncRepository use case.
-func NewSyncRepository(storage pipelineservice.Storage, fetcher *RegistryFetcher, secrets pipelineservice.SecretsProvider, logger *logging.Logger) *SyncRepository {
-	return &SyncRepository{storage: storage, fetcher: fetcher, secrets: secrets, logger: logger}
+func NewSyncRepository(storage pipelineservice.Storage, fetcher *RegistryFetcher, secrets pipelineservice.SecretsProvider, logger *logging.Logger, audit pipelineservice.AuditRecorder) *SyncRepository {
+	return &SyncRepository{storage: storage, fetcher: fetcher, secrets: secrets, logger: logger, audit: audit}
 }
 
 // SyncRepositoryParams holds parameters for syncing a repository.
@@ -38,7 +39,10 @@ type SyncRepositoryParams struct {
 // The entire operation runs in a transaction with FOR UPDATE on the repository row to prevent concurrent syncs.
 // Returns the updated repository so callers don't need post-UC storage access.
 func (uc *SyncRepository) Execute(ctx context.Context, params SyncRepositoryParams) (*pipelineservice.Repository, error) {
-	var result *pipelineservice.Repository
+	var (
+		result        *pipelineservice.Repository
+		previousCount int
+	)
 
 	if err := uc.storage.ExecuteInTransaction(ctx, func(ctx context.Context, tx pipelineservice.Storage) error {
 		// Load repository scoped to workspace with row lock.
@@ -49,6 +53,8 @@ func (uc *SyncRepository) Execute(ctx context.Context, params SyncRepositoryPara
 		if err != nil {
 			return fmt.Errorf("loading repository: %w", err)
 		}
+
+		previousCount = repo.ConnectorCount
 
 		// Decrypt auth header if it's a secret reference (backward compatible with plaintext).
 		authHeader := repo.AuthHeader
@@ -107,6 +113,19 @@ func (uc *SyncRepository) Execute(ctx context.Context, params SyncRepositoryPara
 		return nil
 	}); err != nil {
 		return nil, err
+	}
+
+	// Syncs run hourly in the background; only a changed connector set is audited.
+	if result.ConnectorCount != previousCount {
+		uc.audit.Record(ctx, pipelineservice.AuditEvent{
+			WorkspaceID:   params.WorkspaceID,
+			Action:        "sync",
+			ResourceType:  "repository",
+			ResourceID:    result.ID,
+			ResourceLabel: result.Name,
+			Before:        map[string]any{"connector_count": previousCount},
+			After:         map[string]any{"connector_count": result.ConnectorCount},
+		})
 	}
 
 	return result, nil

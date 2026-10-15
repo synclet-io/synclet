@@ -19,13 +19,15 @@ type TestChannelParams struct {
 type TestChannel struct {
 	storage    Storage
 	deliverers map[ChannelType]ChannelDeliverer
+	audit      AuditRecorder
 }
 
 // NewTestChannel creates a new TestChannel use case.
-func NewTestChannel(storage Storage, deliverers map[ChannelType]ChannelDeliverer) *TestChannel {
+func NewTestChannel(storage Storage, deliverers map[ChannelType]ChannelDeliverer, audit AuditRecorder) *TestChannel {
 	return &TestChannel{
 		storage:    storage,
 		deliverers: deliverers,
+		audit:      audit,
 	}
 }
 
@@ -49,8 +51,24 @@ func (uc *TestChannel) Execute(ctx context.Context, params TestChannelParams) er
 		Timestamp: time.Now(),
 	}
 
-	if err := deliverer.Deliver(ctx, channel, testEvent); err != nil {
-		return fmt.Errorf("test delivery failed: %w", err)
+	deliverErr := deliverer.Deliver(ctx, channel, testEvent)
+
+	after := map[string]any{"delivered": deliverErr == nil}
+	if deliverErr != nil {
+		after["delivery_error"] = deliverErr.Error()
+	}
+
+	uc.audit.Record(ctx, AuditEvent{
+		WorkspaceID:   params.WorkspaceID,
+		Action:        "test",
+		ResourceType:  "notification_channel",
+		ResourceID:    channel.ID,
+		ResourceLabel: channel.Name,
+		After:         after,
+	})
+
+	if deliverErr != nil {
+		return fmt.Errorf("test delivery failed: %w", deliverErr)
 	}
 
 	return nil

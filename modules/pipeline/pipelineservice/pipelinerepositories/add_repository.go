@@ -17,11 +17,12 @@ type AddRepository struct {
 	storage  pipelineservice.Storage
 	syncRepo *SyncRepository
 	secrets  pipelineservice.SecretsProvider
+	audit    pipelineservice.AuditRecorder
 }
 
 // NewAddRepository creates a new AddRepository use case.
-func NewAddRepository(storage pipelineservice.Storage, syncRepo *SyncRepository, secrets pipelineservice.SecretsProvider) *AddRepository {
-	return &AddRepository{storage: storage, syncRepo: syncRepo, secrets: secrets}
+func NewAddRepository(storage pipelineservice.Storage, syncRepo *SyncRepository, secrets pipelineservice.SecretsProvider, audit pipelineservice.AuditRecorder) *AddRepository {
+	return &AddRepository{storage: storage, syncRepo: syncRepo, secrets: secrets, audit: audit}
 }
 
 // AddRepositoryParams holds parameters for creating a repository.
@@ -74,5 +75,21 @@ func (uc *AddRepository) Execute(ctx context.Context, params AddRepositoryParams
 		return nil, fmt.Errorf("initial sync failed: %w", err)
 	}
 
+	uc.audit.Record(ctx, pipelineservice.AuditEvent{
+		WorkspaceID:   params.WorkspaceID,
+		Action:        "create",
+		ResourceType:  "repository",
+		ResourceID:    syncedRepo.ID,
+		ResourceLabel: syncedRepo.Name,
+		After:         repositoryToAuditPayload(syncedRepo),
+	})
+
 	return syncedRepo, nil
+}
+
+func repositoryToAuditPayload(repo *pipelineservice.Repository) map[string]any {
+	return map[string]any{
+		"name": repo.Name,
+		"url":  repo.URL,
+	}
 }

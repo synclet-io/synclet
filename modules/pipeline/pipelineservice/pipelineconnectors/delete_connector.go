@@ -13,11 +13,12 @@ import (
 // DeleteConnector removes a managed connector.
 type DeleteConnector struct {
 	storage pipelineservice.Storage
+	audit   pipelineservice.AuditRecorder
 }
 
 // NewDeleteConnector creates a new DeleteConnector use case.
-func NewDeleteConnector(storage pipelineservice.Storage) *DeleteConnector {
-	return &DeleteConnector{storage: storage}
+func NewDeleteConnector(storage pipelineservice.Storage, audit pipelineservice.AuditRecorder) *DeleteConnector {
+	return &DeleteConnector{storage: storage, audit: audit}
 }
 
 // DeleteConnectorParams holds parameters for deleting a connector.
@@ -68,6 +69,15 @@ func (uc *DeleteConnector) Execute(ctx context.Context, params DeleteConnectorPa
 	}); err != nil {
 		return fmt.Errorf("deleting managed connector: %w", err)
 	}
+
+	uc.audit.Record(ctx, pipelineservice.AuditEvent{
+		WorkspaceID:   params.WorkspaceID,
+		Action:        "delete",
+		ResourceType:  "connector",
+		ResourceID:    connector.ID,
+		ResourceLabel: connector.Name,
+		Before:        connectorToAuditPayload(connector),
+	})
 
 	return nil
 }

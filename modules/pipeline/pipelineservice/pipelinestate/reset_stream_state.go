@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelineconnections"
 )
 
@@ -21,22 +22,25 @@ type ResetStreamStateParams struct {
 type ResetStreamState struct {
 	getConnection  *pipelineconnections.GetConnection
 	clearSyncState *ClearSyncState
+	audit          pipelineservice.AuditRecorder
 }
 
 // NewResetStreamState creates a new ResetStreamState use case.
-func NewResetStreamState(getConnection *pipelineconnections.GetConnection, clearSyncState *ClearSyncState) *ResetStreamState {
+func NewResetStreamState(getConnection *pipelineconnections.GetConnection, clearSyncState *ClearSyncState, audit pipelineservice.AuditRecorder) *ResetStreamState {
 	return &ResetStreamState{
 		getConnection:  getConnection,
 		clearSyncState: clearSyncState,
+		audit:          audit,
 	}
 }
 
 // Execute verifies the connection belongs to the workspace and clears the stream's state.
 func (uc *ResetStreamState) Execute(ctx context.Context, params ResetStreamStateParams) error {
-	if _, err := uc.getConnection.Execute(ctx, pipelineconnections.GetConnectionParams{
+	conn, err := uc.getConnection.Execute(ctx, pipelineconnections.GetConnectionParams{
 		ID:          params.ConnectionID,
 		WorkspaceID: params.WorkspaceID,
-	}); err != nil {
+	})
+	if err != nil {
 		return fmt.Errorf("connection not found in workspace: %w", err)
 	}
 
@@ -47,6 +51,20 @@ func (uc *ResetStreamState) Execute(ctx context.Context, params ResetStreamState
 	}); err != nil {
 		return fmt.Errorf("clearing stream state: %w", err)
 	}
+
+	stream := params.StreamName
+	if params.StreamNamespace != "" {
+		stream = params.StreamNamespace + "." + params.StreamName
+	}
+
+	uc.audit.Record(ctx, pipelineservice.AuditEvent{
+		WorkspaceID:   params.WorkspaceID,
+		Action:        "update",
+		ResourceType:  "connection",
+		ResourceID:    conn.ID,
+		ResourceLabel: conn.Name,
+		After:         map[string]any{"state_reset": stream},
+	})
 
 	return nil
 }

@@ -14,11 +14,12 @@ import (
 // AcceptInvite accepts a workspace invite and creates a membership.
 type AcceptInvite struct {
 	storage Storage
+	audit   AuditRecorder
 }
 
 // NewAcceptInvite creates a new AcceptInvite use case.
-func NewAcceptInvite(storage Storage) *AcceptInvite {
-	return &AcceptInvite{storage: storage}
+func NewAcceptInvite(storage Storage, audit AuditRecorder) *AcceptInvite {
+	return &AcceptInvite{storage: storage, audit: audit}
 }
 
 // AcceptInviteResult holds the result of accepting an invite.
@@ -114,6 +115,15 @@ func (uc *AcceptInvite) Execute(ctx context.Context, token string, userID uuid.U
 	}); err != nil {
 		return nil, err
 	}
+
+	uc.audit.Record(ctx, AuditEvent{
+		WorkspaceID:   invite.WorkspaceID,
+		Action:        "create",
+		ResourceType:  "workspace_member",
+		ResourceID:    userID,
+		ResourceLabel: invite.Email,
+		After:         map[string]any{"email": invite.Email, "role": invite.Role.String()},
+	})
 
 	return &AcceptInviteResult{WorkspaceID: workspace.ID, WorkspaceName: workspace.Name}, nil
 }

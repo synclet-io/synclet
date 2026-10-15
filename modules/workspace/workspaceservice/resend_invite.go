@@ -19,6 +19,7 @@ type ResendInvite struct {
 	inviteTTL   time.Duration
 	frontendURL string
 	logger      *logging.Logger
+	audit       AuditRecorder
 }
 
 // NewResendInvite creates a new ResendInvite use case.
@@ -28,6 +29,7 @@ func NewResendInvite(
 	userLookup UserLookup,
 	cfg Config,
 	logger *logging.Logger,
+	audit AuditRecorder,
 ) *ResendInvite {
 	return &ResendInvite{
 		storage:     storage,
@@ -36,6 +38,7 @@ func NewResendInvite(
 		inviteTTL:   cfg.InviteTTL,
 		frontendURL: cfg.FrontendURL,
 		logger:      logger.Named("resend-invite"),
+		audit:       audit,
 	}
 }
 
@@ -66,6 +69,15 @@ func (uc *ResendInvite) Execute(ctx context.Context, inviteID, workspaceID uuid.
 	if err != nil {
 		return fmt.Errorf("updating invite TTL: %w", err)
 	}
+
+	uc.audit.Record(ctx, AuditEvent{
+		WorkspaceID:   invite.WorkspaceID,
+		Action:        "update",
+		ResourceType:  "workspace_invite",
+		ResourceID:    invite.ID,
+		ResourceLabel: invite.Email,
+		After:         map[string]any{"resent": true},
+	})
 
 	// Send email asynchronously.
 	workspace, err := uc.storage.Workspaces().First(ctx, &WorkspaceFilter{

@@ -14,7 +14,7 @@ func TestCreateWorkspace_CreatesWorkspaceAndAdminMember(t *testing.T) {
 	ownerID := uuid.New()
 	store := newFakeStorage()
 
-	ws, err := NewCreateWorkspace(store).Execute(ctx, "Acme Corp", ownerID)
+	ws, err := NewCreateWorkspace(store, NoopAuditRecorder{}).Execute(ctx, "Acme Corp", ownerID)
 	require.NoError(t, err)
 	require.NotNil(t, ws)
 
@@ -34,7 +34,7 @@ func TestCreateWorkspace_EmitsCreatedEvent(t *testing.T) {
 	ctx := context.Background()
 	store := newFakeStorage()
 
-	ws, err := NewCreateWorkspace(store).Execute(ctx, "Acme Corp", uuid.New())
+	ws, err := NewCreateWorkspace(store, NoopAuditRecorder{}).Execute(ctx, "Acme Corp", uuid.New())
 	require.NoError(t, err)
 
 	require.Len(t, store.events, 1, "exactly one workspace event must be emitted")
@@ -52,6 +52,31 @@ func TestCreateWorkspace_DuplicateSlugFails(t *testing.T) {
 	store := newFakeStorage()
 	store.seedWorkspace(&Workspace{ID: uuid.New(), Name: "Acme", Slug: "acme"})
 
-	_, err := NewCreateWorkspace(store).Execute(ctx, "acme", uuid.New())
+	_, err := NewCreateWorkspace(store, NoopAuditRecorder{}).Execute(ctx, "acme", uuid.New())
 	require.Error(t, err)
+}
+
+type capturingAuditRecorder struct {
+	events []AuditEvent
+}
+
+func (r *capturingAuditRecorder) Record(_ context.Context, event AuditEvent) {
+	r.events = append(r.events, event)
+}
+
+func TestCreateWorkspace_RecordsAuditEvent(t *testing.T) {
+	ctx := context.Background()
+	recorder := &capturingAuditRecorder{}
+
+	ws, err := NewCreateWorkspace(newFakeStorage(), recorder).Execute(ctx, "Acme Corp", uuid.New())
+	require.NoError(t, err)
+
+	require.Len(t, recorder.events, 1)
+	event := recorder.events[0]
+	assert.Equal(t, ws.ID, event.WorkspaceID)
+	assert.Equal(t, "create", event.Action)
+	assert.Equal(t, "workspace", event.ResourceType)
+	assert.Equal(t, ws.ID, event.ResourceID)
+	assert.Equal(t, "Acme Corp", event.ResourceLabel)
+	assert.Equal(t, map[string]any{"name": "Acme Corp", "slug": "acme-corp"}, event.After)
 }

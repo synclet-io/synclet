@@ -85,6 +85,8 @@ func mapResourceType(t string) auditservice.ResourceType {
 		return auditservice.ResourceTypeConnector
 	case "repository":
 		return auditservice.ResourceTypeRepository
+	case "workspace":
+		return auditservice.ResourceTypeWorkspace
 	default:
 		return auditservice.ResourceType(0)
 	}

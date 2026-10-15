@@ -15,11 +15,12 @@ import (
 // to the latest from its repository connector. No Docker pull needed (D-09).
 type UpdateManagedConnector struct {
 	storage pipelineservice.Storage
+	audit   pipelineservice.AuditRecorder
 }
 
 // NewUpdateManagedConnector creates a new UpdateManagedConnector use case.
-func NewUpdateManagedConnector(storage pipelineservice.Storage) *UpdateManagedConnector {
-	return &UpdateManagedConnector{storage: storage}
+func NewUpdateManagedConnector(storage pipelineservice.Storage, audit pipelineservice.AuditRecorder) *UpdateManagedConnector {
+	return &UpdateManagedConnector{storage: storage, audit: audit}
 }
 
 // UpdateManagedConnectorParams holds parameters for updating a managed connector.
@@ -54,6 +55,8 @@ func (uc *UpdateManagedConnector) Execute(ctx context.Context, params UpdateMana
 		return nil, fmt.Errorf("loading repository connector: %w", err)
 	}
 
+	before := connectorToAuditPayload(connector)
+
 	// 4. Update managed connector.
 	connector.DockerTag = repoConn.DockerImageTag
 
@@ -69,6 +72,16 @@ func (uc *UpdateManagedConnector) Execute(ctx context.Context, params UpdateMana
 	if err != nil {
 		return nil, fmt.Errorf("updating managed connector: %w", err)
 	}
+
+	uc.audit.Record(ctx, pipelineservice.AuditEvent{
+		WorkspaceID:   params.WorkspaceID,
+		Action:        "update",
+		ResourceType:  "connector",
+		ResourceID:    updated.ID,
+		ResourceLabel: updated.Name,
+		Before:        before,
+		After:         connectorToAuditPayload(updated),
+	})
 
 	return updated, nil
 }

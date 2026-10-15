@@ -20,7 +20,7 @@ func TestRevokeInvite_TransitionsToRevoked(t *testing.T) {
 		Status: InviteStatusPending, ExpiresAt: time.Now().Add(time.Hour),
 	})
 
-	require.NoError(t, NewRevokeInvite(store).Execute(ctx, inviteID, wsID))
+	require.NoError(t, NewRevokeInvite(store, NoopAuditRecorder{}).Execute(ctx, inviteID, wsID))
 
 	got, err := store.WorkspaceInvites().First(ctx, &WorkspaceInviteFilter{ID: equalsUUID(inviteID)})
 	require.NoError(t, err)
@@ -29,7 +29,7 @@ func TestRevokeInvite_TransitionsToRevoked(t *testing.T) {
 
 func TestRevokeInvite_InviteNotFound(t *testing.T) {
 	ctx := context.Background()
-	err := NewRevokeInvite(newFakeStorage()).Execute(ctx, uuid.New(), uuid.New())
+	err := NewRevokeInvite(newFakeStorage(), NoopAuditRecorder{}).Execute(ctx, uuid.New(), uuid.New())
 	require.Error(t, err)
 }
 
@@ -43,6 +43,6 @@ func TestRevokeInvite_NotPendingRejected(t *testing.T) {
 		Status: InviteStatusRevoked, ExpiresAt: time.Now().Add(time.Hour),
 	})
 
-	err := NewRevokeInvite(store).Execute(ctx, inviteID, wsID)
+	err := NewRevokeInvite(store, NoopAuditRecorder{}).Execute(ctx, inviteID, wsID)
 	require.Error(t, err)
 }

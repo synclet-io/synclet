@@ -27,7 +27,7 @@ func TestAcceptInvite_CreatesMembershipAndMarksAccepted(t *testing.T) {
 		ExpiresAt:   time.Now().Add(time.Hour),
 	})
 
-	got, err := NewAcceptInvite(store).Execute(ctx, "token-xyz", userID, "PERSON@example.com")
+	got, err := NewAcceptInvite(store, NoopAuditRecorder{}).Execute(ctx, "token-xyz", userID, "PERSON@example.com")
 	require.NoError(t, err)
 	require.NotNil(t, got)
 	assert.Equal(t, wsID, got.WorkspaceID)
@@ -60,7 +60,7 @@ func TestAcceptInvite_AlreadyMemberMarksInviteAcceptedWithoutDuplicate(t *testin
 		ExpiresAt:   time.Now().Add(time.Hour),
 	})
 
-	got, err := NewAcceptInvite(store).Execute(ctx, "t", userID, "x@example.com")
+	got, err := NewAcceptInvite(store, NoopAuditRecorder{}).Execute(ctx, "t", userID, "x@example.com")
 	require.NoError(t, err)
 	assert.Equal(t, wsID, got.WorkspaceID)
 
@@ -72,7 +72,7 @@ func TestAcceptInvite_AlreadyMemberMarksInviteAcceptedWithoutDuplicate(t *testin
 
 func TestAcceptInvite_TokenNotFound(t *testing.T) {
 	ctx := context.Background()
-	_, err := NewAcceptInvite(newFakeStorage()).Execute(ctx, "missing", uuid.New(), "x@example.com")
+	_, err := NewAcceptInvite(newFakeStorage(), NoopAuditRecorder{}).Execute(ctx, "missing", uuid.New(), "x@example.com")
 	require.Error(t, err)
 }
 
@@ -83,7 +83,7 @@ func TestAcceptInvite_NotPendingRejected(t *testing.T) {
 		ID: uuid.New(), WorkspaceID: uuid.New(), Email: "x@example.com",
 		Token: "t", Status: InviteStatusDeclined, ExpiresAt: time.Now().Add(time.Hour),
 	})
-	_, err := NewAcceptInvite(store).Execute(ctx, "t", uuid.New(), "x@example.com")
+	_, err := NewAcceptInvite(store, NoopAuditRecorder{}).Execute(ctx, "t", uuid.New(), "x@example.com")
 	require.Error(t, err)
 }
 
@@ -94,7 +94,7 @@ func TestAcceptInvite_ExpiredRejected(t *testing.T) {
 		ID: uuid.New(), WorkspaceID: uuid.New(), Email: "x@example.com",
 		Token: "t", Status: InviteStatusPending, ExpiresAt: time.Now().Add(-time.Hour),
 	})
-	_, err := NewAcceptInvite(store).Execute(ctx, "t", uuid.New(), "x@example.com")
+	_, err := NewAcceptInvite(store, NoopAuditRecorder{}).Execute(ctx, "t", uuid.New(), "x@example.com")
 	require.Error(t, err)
 }
 
@@ -105,6 +105,6 @@ func TestAcceptInvite_EmailMismatchRejected(t *testing.T) {
 		ID: uuid.New(), WorkspaceID: uuid.New(), Email: "owner@example.com",
 		Token: "t", Status: InviteStatusPending, ExpiresAt: time.Now().Add(time.Hour),
 	})
-	_, err := NewAcceptInvite(store).Execute(ctx, "t", uuid.New(), "imposter@example.com")
+	_, err := NewAcceptInvite(store, NoopAuditRecorder{}).Execute(ctx, "t", uuid.New(), "imposter@example.com")
 	require.Error(t, err)
 }

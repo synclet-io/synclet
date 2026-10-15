@@ -17,11 +17,12 @@ type AddConnector struct {
 	storage           pipelineservice.Storage
 	createSpecTask    *pipelinetasks.CreateSpecTask
 	waitForTaskResult *pipelinetasks.WaitForTaskResult
+	audit             pipelineservice.AuditRecorder
 }
 
 // NewAddConnector creates a new AddConnector use case.
-func NewAddConnector(storage pipelineservice.Storage, createSpecTask *pipelinetasks.CreateSpecTask, waitForTaskResult *pipelinetasks.WaitForTaskResult) *AddConnector {
-	return &AddConnector{storage: storage, createSpecTask: createSpecTask, waitForTaskResult: waitForTaskResult}
+func NewAddConnector(storage pipelineservice.Storage, createSpecTask *pipelinetasks.CreateSpecTask, waitForTaskResult *pipelinetasks.WaitForTaskResult, audit pipelineservice.AuditRecorder) *AddConnector {
+	return &AddConnector{storage: storage, createSpecTask: createSpecTask, waitForTaskResult: waitForTaskResult, audit: audit}
 }
 
 // AddConnectorParams holds parameters for adding a managed connector.
@@ -88,15 +89,31 @@ func (uc *AddConnector) Execute(ctx context.Context, params AddConnectorParams) 
 		created.Spec = specJSON
 		created.UpdatedAt = time.Now()
 
-		updated, err := uc.storage.ManagedConnectors().Update(ctx, created)
+		created, err = uc.storage.ManagedConnectors().Update(ctx, created)
 		if err != nil {
 			return nil, fmt.Errorf("updating connector spec: %w", err)
 		}
-
-		return updated, nil
 	}
 
+	uc.audit.Record(ctx, pipelineservice.AuditEvent{
+		WorkspaceID:   params.WorkspaceID,
+		Action:        "create",
+		ResourceType:  "connector",
+		ResourceID:    created.ID,
+		ResourceLabel: created.Name,
+		After:         connectorToAuditPayload(created),
+	})
+
 	return created, nil
+}
+
+func connectorToAuditPayload(connector *pipelineservice.ManagedConnector) map[string]any {
+	return map[string]any{
+		"name":           connector.Name,
+		"docker_image":   connector.DockerImage,
+		"docker_tag":     connector.DockerTag,
+		"connector_type": connector.ConnectorType.String(),
+	}
 }
 
 // specResultToJSON converts typed SpecResult fields back to a JSON string

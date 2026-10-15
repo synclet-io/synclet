@@ -20,25 +20,29 @@ type TriggerSyncParams struct {
 type TriggerSync struct {
 	getConnection *pipelineconnections.GetConnection
 	queueJob      *QueueJob
+	audit         pipelineservice.AuditRecorder
 }
 
 // NewTriggerSync creates a new TriggerSync use case.
 func NewTriggerSync(
 	getConnection *pipelineconnections.GetConnection,
 	queueJob *QueueJob,
+	audit pipelineservice.AuditRecorder,
 ) *TriggerSync {
 	return &TriggerSync{
 		getConnection: getConnection,
 		queueJob:      queueJob,
+		audit:         audit,
 	}
 }
 
 // Execute verifies workspace ownership and queues a sync job.
 func (uc *TriggerSync) Execute(ctx context.Context, params TriggerSyncParams) (*pipelineservice.Job, error) {
-	if _, err := uc.getConnection.Execute(ctx, pipelineconnections.GetConnectionParams{
+	conn, err := uc.getConnection.Execute(ctx, pipelineconnections.GetConnectionParams{
 		ID:          params.ConnectionID,
 		WorkspaceID: params.WorkspaceID,
-	}); err != nil {
+	})
+	if err != nil {
 		return nil, fmt.Errorf("connection not found in workspace: %w", err)
 	}
 
@@ -49,6 +53,15 @@ func (uc *TriggerSync) Execute(ctx context.Context, params TriggerSyncParams) (*
 	if err != nil {
 		return nil, fmt.Errorf("queuing job: %w", err)
 	}
+
+	uc.audit.Record(ctx, pipelineservice.AuditEvent{
+		WorkspaceID:   params.WorkspaceID,
+		Action:        "sync",
+		ResourceType:  "connection",
+		ResourceID:    conn.ID,
+		ResourceLabel: conn.Name,
+		After:         map[string]any{"job_id": job.ID},
+	})
 
 	return job, nil
 }
