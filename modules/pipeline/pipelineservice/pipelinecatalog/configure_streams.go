@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -25,16 +26,24 @@ type ConfigureStreamsParams struct {
 // ConfigureStreams validates and stores the configured streams for a connection.
 type ConfigureStreams struct {
 	storage pipelineservice.Storage
+	audit   pipelineservice.AuditRecorder
 }
 
 // NewConfigureStreams creates a new ConfigureStreams use case.
-func NewConfigureStreams(storage pipelineservice.Storage) *ConfigureStreams {
-	return &ConfigureStreams{storage: storage}
+func NewConfigureStreams(storage pipelineservice.Storage, audit pipelineservice.AuditRecorder) *ConfigureStreams {
+	return &ConfigureStreams{storage: storage, audit: audit}
 }
 
 // Execute validates the configured streams against the latest discovered catalog
 // and creates or updates the configured catalog for the connection.
 func (uc *ConfigureStreams) Execute(ctx context.Context, params ConfigureStreamsParams) error {
+	conn, err := uc.storage.Connections().First(ctx, &pipelineservice.ConnectionFilter{
+		ID: filter.Equals(params.ConnectionID),
+	})
+	if err != nil {
+		return fmt.Errorf("getting connection: %w", err)
+	}
+
 	// Get the latest discovered catalog to validate against.
 	latestRecord, err := uc.storage.CatalogDiscoveries().First(ctx, &pipelineservice.CatalogDiscoveryFilter{
 		SourceID: filter.Equals(params.SourceID),
@@ -137,7 +146,6 @@ func (uc *ConfigureStreams) Execute(ctx context.Context, params ConfigureStreams
 			return fmt.Errorf("getting configured catalog: %w", err)
 		}
 
-		// Not found -- create new.
 		record := &pipelineservice.ConfiguredCatalog{
 			ID:           uuid.New(),
 			ConnectionID: params.ConnectionID,
@@ -150,10 +158,16 @@ func (uc *ConfigureStreams) Execute(ctx context.Context, params ConfigureStreams
 			return fmt.Errorf("creating configured catalog: %w", err)
 		}
 
+		uc.recordAudit(ctx, conn, nil, params.Streams)
+
 		return nil
 	}
 
-	// Update existing.
+	var previousStreams []protocol.ConfiguredAirbyteStream
+	if err := json.Unmarshal([]byte(existing.StreamsJSON), &previousStreams); err != nil {
+		previousStreams = nil
+	}
+
 	existing.StreamsJSON = string(streamsJSON)
 	existing.UpdatedAt = now
 
@@ -161,7 +175,42 @@ func (uc *ConfigureStreams) Execute(ctx context.Context, params ConfigureStreams
 		return fmt.Errorf("updating configured catalog: %w", err)
 	}
 
+	uc.recordAudit(ctx, conn, previousStreams, params.Streams)
+
 	return nil
+}
+
+func (uc *ConfigureStreams) recordAudit(
+	ctx context.Context,
+	conn *pipelineservice.Connection,
+	before, after []protocol.ConfiguredAirbyteStream,
+) {
+	uc.audit.Record(ctx, pipelineservice.AuditEvent{
+		WorkspaceID:   conn.WorkspaceID,
+		Action:        "update",
+		ResourceType:  "connection",
+		ResourceID:    conn.ID,
+		ResourceLabel: conn.Name,
+		Before:        streamsAuditPayload(before),
+		After:         streamsAuditPayload(after),
+	})
+}
+
+// streamsAuditPayload lists configured streams as sorted
+// "namespace.name:sync_mode/destination_sync_mode" entries.
+func streamsAuditPayload(streams []protocol.ConfiguredAirbyteStream) map[string]any {
+	entries := make([]string, len(streams))
+	for i, stream := range streams {
+		entries[i] = fmt.Sprintf("%s:%s/%s",
+			streamKey(stream.Stream.Namespace, stream.Stream.Name),
+			stream.SyncMode,
+			stream.DestinationSyncMode,
+		)
+	}
+
+	slices.Sort(entries)
+
+	return map[string]any{"streams": entries}
 }
 
 // streamKey returns a unique key for a stream based on namespace and name.

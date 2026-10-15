@@ -16,11 +16,12 @@ import (
 type CreateCheckTask struct {
 	storage pipelineservice.Storage
 	secrets pipelineservice.SecretsProvider
+	audit   pipelineservice.AuditRecorder
 }
 
 // NewCreateCheckTask creates a new CreateCheckTask use case.
-func NewCreateCheckTask(storage pipelineservice.Storage, secrets pipelineservice.SecretsProvider) *CreateCheckTask {
-	return &CreateCheckTask{storage: storage, secrets: secrets}
+func NewCreateCheckTask(storage pipelineservice.Storage, secrets pipelineservice.SecretsProvider, audit pipelineservice.AuditRecorder) *CreateCheckTask {
+	return &CreateCheckTask{storage: storage, secrets: secrets, audit: audit}
 }
 
 // CreateCheckTaskParams holds parameters for creating a check task.
@@ -36,7 +37,8 @@ type CreateCheckTaskParams struct {
 	Config             json.RawMessage // Plaintext config from the frontend.
 }
 
-// Execute creates a connector check task and returns the task ID.
+// Execute creates a connector check task and returns the task ID. Checks of a
+// stored source or destination are recorded as a "test" audit event.
 func (uc *CreateCheckTask) Execute(ctx context.Context, params CreateCheckTaskParams) (*CreateTaskResult, error) {
 	hasEntityRef := params.SourceID != nil || params.DestinationID != nil
 	hasDirectConfig := params.ManagedConnectorID != nil && len(params.Config) > 0
@@ -47,6 +49,8 @@ func (uc *CreateCheckTask) Execute(ctx context.Context, params CreateCheckTaskPa
 
 	taskID := uuid.New()
 	payload := &pipelineservice.CheckPayload{}
+
+	var auditEvent *pipelineservice.AuditEvent
 
 	if hasDirectConfig {
 		// Direct config path: encrypt secrets and store config in the payload.
@@ -78,6 +82,7 @@ func (uc *CreateCheckTask) Execute(ctx context.Context, params CreateCheckTaskPa
 
 			payload.SourceID = params.SourceID
 			payload.ManagedConnectorID = src.ManagedConnectorID
+			auditEvent = &pipelineservice.AuditEvent{ResourceType: "source", ResourceID: src.ID, ResourceLabel: src.Name}
 		} else {
 			dst, err := uc.storage.Destinations().First(ctx, &pipelineservice.DestinationFilter{
 				ID:          filter.Equals(*params.DestinationID),
@@ -89,6 +94,7 @@ func (uc *CreateCheckTask) Execute(ctx context.Context, params CreateCheckTaskPa
 
 			payload.DestinationID = params.DestinationID
 			payload.ManagedConnectorID = dst.ManagedConnectorID
+			auditEvent = &pipelineservice.AuditEvent{ResourceType: "destination", ResourceID: dst.ID, ResourceLabel: dst.Name}
 		}
 	}
 
@@ -102,6 +108,12 @@ func (uc *CreateCheckTask) Execute(ctx context.Context, params CreateCheckTaskPa
 
 	if _, err := uc.storage.ConnectorTasks().Create(ctx, task); err != nil {
 		return nil, fmt.Errorf("creating check task: %w", err)
+	}
+
+	if auditEvent != nil {
+		auditEvent.WorkspaceID = params.WorkspaceID
+		auditEvent.Action = "test"
+		uc.audit.Record(ctx, *auditEvent)
 	}
 
 	return &CreateTaskResult{TaskID: task.ID}, nil
