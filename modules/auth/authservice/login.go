@@ -12,11 +12,12 @@ import (
 type Login struct {
 	storage Storage
 	config  Config
+	audit   AuditRecorder
 }
 
 // NewLogin creates a new Login use case.
-func NewLogin(storage Storage, config Config) *Login {
-	return &Login{storage: storage, config: config}
+func NewLogin(storage Storage, config Config, audit AuditRecorder) *Login {
+	return &Login{storage: storage, config: config, audit: audit}
 }
 
 // Execute authenticates a user by email and password.
@@ -43,5 +44,23 @@ func (uc *Login) Execute(ctx context.Context, email, password string) (*TokenPai
 		return nil, ErrInvalidCredentials
 	}
 
-	return generateTokenPair(ctx, uc.storage, uc.config, user)
+	tokens, err := generateTokenPair(ctx, uc.storage, uc.config, user)
+	if err != nil {
+		return nil, err
+	}
+
+	recordLogin(ctx, uc.audit, user)
+
+	return tokens, nil
+}
+
+func recordLogin(ctx context.Context, audit AuditRecorder, user *User) {
+	audit.Record(ctx, AuditEvent{
+		ActorID:       user.ID,
+		ActorLabel:    user.Email,
+		Action:        "login",
+		ResourceType:  "user",
+		ResourceID:    user.ID,
+		ResourceLabel: user.Email,
+	})
 }

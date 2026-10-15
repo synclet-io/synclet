@@ -19,17 +19,19 @@ type HandleOIDCCallback struct {
 	storage               Storage
 	config                Config
 	workspaceAutoAssigner WorkspaceAutoAssigner
+	audit                 AuditRecorder
 	logger                *logging.Logger
 }
 
 // NewHandleOIDCCallback creates a new HandleOIDCCallback use case.
-func NewHandleOIDCCallback(providers map[string]*OIDCProvider, stateStore *StateStore, storage Storage, config Config, workspaceAutoAssigner WorkspaceAutoAssigner, logger *logging.Logger) *HandleOIDCCallback {
+func NewHandleOIDCCallback(providers map[string]*OIDCProvider, stateStore *StateStore, storage Storage, config Config, workspaceAutoAssigner WorkspaceAutoAssigner, audit AuditRecorder, logger *logging.Logger) *HandleOIDCCallback {
 	return &HandleOIDCCallback{
 		providers:             providers,
 		stateStore:            stateStore,
 		storage:               storage,
 		config:                config,
 		workspaceAutoAssigner: workspaceAutoAssigner,
+		audit:                 audit,
 		logger:                logger,
 	}
 }
@@ -99,8 +101,14 @@ func (uc *HandleOIDCCallback) Execute(ctx context.Context, providerSlug, code, s
 		return nil, fmt.Errorf("find or create user: %w", err)
 	}
 
-	// Issue Synclet JWT tokens.
-	return generateTokenPair(ctx, uc.storage, uc.config, user)
+	tokens, err := generateTokenPair(ctx, uc.storage, uc.config, user)
+	if err != nil {
+		return nil, err
+	}
+
+	recordLogin(ctx, uc.audit, user)
+
+	return tokens, nil
 }
 
 // findOrCreateUser links an OIDC identity to a Synclet user.
@@ -167,6 +175,8 @@ func (uc *HandleOIDCCallback) findOrCreateUser(ctx context.Context, cfg OIDCProv
 				return nil, fmt.Errorf("auto-assigning to default workspace: %w", err)
 			}
 		}
+
+		recordUserCreated(ctx, uc.audit, user)
 	}
 
 	// Create OIDC identity link.

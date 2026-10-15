@@ -13,11 +13,12 @@ import (
 // CreateAPIKey creates a new API key for a workspace.
 type CreateAPIKey struct {
 	storage Storage
+	audit   AuditRecorder
 }
 
 // NewCreateAPIKey creates a new CreateAPIKey use case.
-func NewCreateAPIKey(storage Storage) *CreateAPIKey {
-	return &CreateAPIKey{storage: storage}
+func NewCreateAPIKey(storage Storage, audit AuditRecorder) *CreateAPIKey {
+	return &CreateAPIKey{storage: storage, audit: audit}
 }
 
 // Execute generates a new API key, stores its hash, and returns the raw key and record.
@@ -43,6 +44,16 @@ func (uc *CreateAPIKey) Execute(ctx context.Context, workspaceID, userID uuid.UU
 	if err != nil {
 		return "", nil, fmt.Errorf("creating API key: %w", err)
 	}
+
+	uc.audit.Record(ctx, AuditEvent{
+		WorkspaceID:   created.WorkspaceID,
+		ActorID:       userID,
+		Action:        "create",
+		ResourceType:  "api_key",
+		ResourceID:    created.ID,
+		ResourceLabel: created.Name,
+		After:         map[string]any{"name": created.Name, "expires_at": created.ExpiresAt},
+	})
 
 	return rawKey, created, nil
 }

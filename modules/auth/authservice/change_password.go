@@ -12,11 +12,12 @@ import (
 type ChangePassword struct {
 	storage Storage
 	cfg     Config
+	audit   AuditRecorder
 }
 
 // NewChangePassword creates a new ChangePassword use case.
-func NewChangePassword(storage Storage, cfg Config) *ChangePassword {
-	return &ChangePassword{storage: storage, cfg: cfg}
+func NewChangePassword(storage Storage, cfg Config, audit AuditRecorder) *ChangePassword {
+	return &ChangePassword{storage: storage, cfg: cfg, audit: audit}
 }
 
 // Execute verifies the current password and updates to the new password.
@@ -51,6 +52,15 @@ func (uc *ChangePassword) Execute(ctx context.Context, userID uuid.UUID, current
 	if _, err := uc.storage.Users().Update(ctx, user); err != nil {
 		return fmt.Errorf("updating password: %w", err)
 	}
+
+	uc.audit.Record(ctx, AuditEvent{
+		ActorID:       user.ID,
+		ActorLabel:    user.Email,
+		Action:        "update",
+		ResourceType:  "user",
+		ResourceID:    user.ID,
+		ResourceLabel: user.Email,
+	})
 
 	return nil
 }

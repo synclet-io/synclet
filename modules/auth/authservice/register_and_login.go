@@ -30,15 +30,17 @@ type RegisterAndLogin struct {
 	register              *Register
 	login                 *Login
 	workspaceAutoAssigner WorkspaceAutoAssigner
+	audit                 AuditRecorder
 	config                Config
 }
 
 // NewRegisterAndLogin creates a new RegisterAndLogin use case.
-func NewRegisterAndLogin(register *Register, login *Login, workspaceAutoAssigner WorkspaceAutoAssigner, config Config) *RegisterAndLogin {
+func NewRegisterAndLogin(register *Register, login *Login, workspaceAutoAssigner WorkspaceAutoAssigner, audit AuditRecorder, config Config) *RegisterAndLogin {
 	return &RegisterAndLogin{
 		register:              register,
 		login:                 login,
 		workspaceAutoAssigner: workspaceAutoAssigner,
+		audit:                 audit,
 		config:                config,
 	}
 }
@@ -60,6 +62,8 @@ func (uc *RegisterAndLogin) Execute(ctx context.Context, params RegisterAndLogin
 		}
 	}
 
+	recordUserCreated(ctx, uc.audit, user)
+
 	tokens, err := uc.login.Execute(ctx, params.Email, params.Password)
 	if err != nil {
 		return nil, fmt.Errorf("auto-login after registration: %w", err)
@@ -69,4 +73,16 @@ func (uc *RegisterAndLogin) Execute(ctx context.Context, params RegisterAndLogin
 		Tokens: tokens,
 		User:   user,
 	}, nil
+}
+
+func recordUserCreated(ctx context.Context, audit AuditRecorder, user *User) {
+	audit.Record(ctx, AuditEvent{
+		ActorID:       user.ID,
+		ActorLabel:    user.Email,
+		Action:        "create",
+		ResourceType:  "user",
+		ResourceID:    user.ID,
+		ResourceLabel: user.Email,
+		After:         map[string]any{"email": user.Email, "name": user.Name},
+	})
 }
