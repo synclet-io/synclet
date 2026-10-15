@@ -127,12 +127,10 @@ const columns: Column[] = [
         description="Schema drift is detected on every sync. Use Refresh from source to re-run discovery now."
         :icon="CheckCircle2"
       >
-        <template #actions>
-          <SButton :loading="discoverMutation.isPending.value" @click="refreshFromSource">
-            <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': discoverMutation.isPending.value }" />
-            Refresh from source
-          </SButton>
-        </template>
+        <SButton :loading="discoverMutation.isPending.value" @click="refreshFromSource">
+          <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': discoverMutation.isPending.value }" />
+          Refresh from source
+        </SButton>
       </SEmptyState>
     </template>
   </div>

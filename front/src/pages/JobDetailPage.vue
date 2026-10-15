@@ -1,9 +1,13 @@
 <script setup lang="ts">
+import type { JobAttempt } from '@entities/job'
 import { useJob, useJobLogs } from '@entities/job'
 import { formatDuration } from '@shared/lib/format'
 import { PageHeader, SAlert, SCard, SLogViewer, SSkeleton, StatusBadge } from '@shared/ui'
+import { CheckCircle2, ChevronDown, ChevronRight, Clock, Loader2, PlayCircle, XCircle } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+
+const LOG_TIMESTAMP_RE = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?/
 
 const route = useRoute()
 const jobId = computed(() => route.params.id as string)
@@ -19,15 +23,132 @@ const latestAttempt = computed(() => {
 const isActive = computed(() => job.value?.status === 'running' || job.value?.status === 'scheduled' || job.value?.status === 'starting')
 
 const jobIdRef = ref(jobId.value)
-// Keep jobIdRef in sync with route param
 watch(jobId, (val) => {
   jobIdRef.value = val
 }, { immediate: true })
 
 const { lines, isLoading: logsLoading } = useJobLogs(jobIdRef, isActive)
 
+const expanded = ref<Record<string, boolean>>({})
+function toggle(id: string) {
+  expanded.value[id] = !expanded.value[id]
+}
+
 function formatDate(d: Date | undefined): string {
   return d ? d.toLocaleString() : '-'
+}
+
+function durationBetween(start: Date | undefined, end: Date | undefined): string {
+  if (!start)
+    return '-'
+  const endTime = end?.getTime() ?? Date.now()
+  return formatDuration(endTime - start.getTime())
+}
+
+function attemptStatus(att: JobAttempt): { label: string, variant: 'success' | 'danger' | 'info' | 'gray' } {
+  if (att.error)
+    return { label: 'Failed', variant: 'danger' }
+  if (att.completedAt)
+    return { label: 'Succeeded', variant: 'success' }
+  return { label: 'Running', variant: 'info' }
+}
+
+interface TimelineEvent {
+  id: string
+  label: string
+  at: Date | undefined
+  duration?: string
+  icon: typeof Clock
+  iconColor: string
+  details?: string
+  attempt?: JobAttempt
+}
+
+const timeline = computed<TimelineEvent[]>(() => {
+  if (!job.value)
+    return []
+  const events: TimelineEvent[] = []
+
+  if (job.value.scheduledAt) {
+    events.push({
+      id: 'scheduled',
+      label: 'Scheduled',
+      at: job.value.scheduledAt,
+      duration: job.value.startedAt ? durationBetween(job.value.scheduledAt, job.value.startedAt) : undefined,
+      icon: Clock,
+      iconColor: 'text-text-muted',
+      details: job.value.startedAt ? 'Waited in queue' : 'Waiting in queue…',
+    })
+  }
+
+  if (job.value.startedAt) {
+    events.push({
+      id: 'started',
+      label: 'Job started',
+      at: job.value.startedAt,
+      icon: PlayCircle,
+      iconColor: 'text-primary',
+    })
+  }
+
+  for (const att of job.value.attempts ?? []) {
+    const status = attemptStatus(att)
+    events.push({
+      id: `attempt-${att.id}`,
+      label: `Attempt ${att.attemptNumber}`,
+      at: att.startedAt,
+      duration: att.startedAt ? durationBetween(att.startedAt, att.completedAt) : undefined,
+      icon: status.variant === 'success' ? CheckCircle2 : status.variant === 'danger' ? XCircle : Loader2,
+      iconColor: status.variant === 'success'
+        ? 'text-success'
+        : status.variant === 'danger' ? 'text-danger' : 'text-primary',
+      details: att.error || (att.syncStats ? `${att.syncStats.recordsRead.toLocaleString()} records, ${formatDuration(att.syncStats.durationMs)}` : 'In progress…'),
+      attempt: att,
+    })
+  }
+
+  if (job.value.completedAt) {
+    const status = job.value.status
+    events.push({
+      id: 'completed',
+      label: status === 'failed' ? 'Job failed' : status === 'cancelled' ? 'Job cancelled' : 'Job completed',
+      at: job.value.completedAt,
+      duration: job.value.startedAt ? durationBetween(job.value.startedAt, job.value.completedAt) : undefined,
+      icon: status === 'completed' ? CheckCircle2 : XCircle,
+      iconColor: status === 'completed' ? 'text-success' : 'text-danger',
+      details: job.value.error || undefined,
+    })
+  }
+
+  return events
+})
+
+// Logs aren't tagged by attempt at the storage layer, so we approximate by time.
+function logsForAttempt(attempt: JobAttempt): string[] {
+  if (!attempt.startedAt)
+    return []
+  const start = attempt.startedAt.getTime()
+  const end = attempt.completedAt?.getTime() ?? Date.now()
+  const result: string[] = []
+  for (const line of lines.value) {
+    const ts = parseLogTimestamp(line)
+    if (ts === null) {
+      result.push(line)
+      continue
+    }
+    if (ts >= start && ts <= end)
+      result.push(line)
+  }
+  return result
+}
+
+// Try to parse an ISO-ish timestamp from the start of a log line.
+function parseLogTimestamp(line: string): number | null {
+  const match = line.match(LOG_TIMESTAMP_RE)
+  if (!match)
+    return null
+  const t = Date.parse(match[0])
+  return Number.isNaN(t) ? null : t
 }
 </script>
 
@@ -39,21 +160,18 @@ function formatDate(d: Date | undefined): string {
       back-label="Back to connection"
     />
 
-    <!-- Loading state -->
     <div v-if="isLoading" class="space-y-4">
       <SSkeleton class="h-32" />
       <SSkeleton class="h-64" />
     </div>
 
-    <!-- Error state -->
     <SAlert v-else-if="error" variant="danger">
       Failed to load job details.
     </SAlert>
 
-    <!-- Content -->
     <div v-else-if="job" class="space-y-6">
       <!-- Metadata grid -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
         <SCard>
           <div class="text-sm text-text-muted mb-1">
             Status
@@ -62,39 +180,78 @@ function formatDate(d: Date | undefined): string {
         </SCard>
         <SCard>
           <div class="text-sm text-text-muted mb-1">
-            Duration
+            Total duration
           </div>
           <div class="text-heading font-semibold">
-            {{ formatDuration(latestAttempt?.syncStats?.durationMs) }}
+            {{ durationBetween(job.startedAt, job.completedAt) }}
           </div>
         </SCard>
         <SCard>
           <div class="text-sm text-text-muted mb-1">
-            Records Read
+            Records (latest)
           </div>
           <div class="text-heading font-semibold">
-            {{ latestAttempt?.syncStats?.recordsRead ?? '-' }}
+            {{ latestAttempt?.syncStats?.recordsRead?.toLocaleString() ?? '-' }}
+          </div>
+        </SCard>
+        <SCard>
+          <div class="text-sm text-text-muted mb-1">
+            Attempt
+          </div>
+          <div class="text-heading font-semibold">
+            {{ job.attempt }} / {{ job.maxAttempts }}
           </div>
         </SCard>
       </div>
 
-      <!-- Failure reason -->
       <SAlert v-if="job.status === 'failed' && job.error" variant="danger">
         {{ job.error }}
       </SAlert>
 
       <!-- Timeline -->
       <SCard title="Timeline">
-        <div class="grid grid-cols-2 gap-4 text-sm">
-          <div><span class="text-text-muted">Started:</span> {{ formatDate(job.startedAt) }}</div>
-          <div><span class="text-text-muted">Completed:</span> {{ formatDate(job.completedAt) }}</div>
-          <div><span class="text-text-muted">Attempt:</span> {{ job.attempt }} / {{ job.maxAttempts }}</div>
-          <div><span class="text-text-muted">Type:</span> {{ job.jobType }}</div>
-        </div>
+        <ol class="space-y-1">
+          <li v-for="ev in timeline" :key="ev.id" class="relative">
+            <div class="flex items-start gap-3 py-2">
+              <div class="mt-0.5 shrink-0">
+                <component :is="ev.icon" class="w-5 h-5" :class="ev.iconColor" />
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-baseline gap-3 flex-wrap">
+                  <span class="font-medium text-heading text-sm">{{ ev.label }}</span>
+                  <span v-if="ev.duration" class="text-xs text-text-muted">{{ ev.duration }}</span>
+                  <button
+                    v-if="ev.attempt"
+                    type="button"
+                    class="ml-auto inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                    @click="toggle(ev.id)"
+                  >
+                    <component :is="expanded[ev.id] ? ChevronDown : ChevronRight" class="w-3.5 h-3.5" />
+                    {{ expanded[ev.id] ? 'Hide attempt logs' : 'View attempt logs' }}
+                  </button>
+                </div>
+                <div class="text-xs text-text-muted mt-0.5">
+                  {{ formatDate(ev.at) }}<span v-if="ev.details"> · {{ ev.details }}</span>
+                </div>
+
+                <div v-if="ev.attempt && expanded[ev.id]" class="mt-3">
+                  <SLogViewer
+                    :lines="logsForAttempt(ev.attempt)"
+                    :loading="logsLoading && logsForAttempt(ev.attempt).length === 0"
+                  />
+                </div>
+              </div>
+            </div>
+            <div v-if="ev !== timeline[timeline.length - 1]" class="absolute left-[9px] top-7 w-px h-[calc(100%-12px)] bg-border" />
+          </li>
+        </ol>
       </SCard>
 
-      <!-- Log viewer -->
-      <SCard title="Logs">
+      <!-- Full unified log viewer -->
+      <SCard title="All logs">
+        <p class="text-xs text-text-muted mb-3">
+          Combined log stream across all attempts. Use the timeline above to expand a specific attempt.
+        </p>
         <SLogViewer
           :lines="lines"
           :loading="logsLoading"

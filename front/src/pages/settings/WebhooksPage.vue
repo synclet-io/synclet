@@ -22,7 +22,7 @@ import {
   STable,
   useToast,
 } from '@shared/ui'
-import { Pencil, Send, Trash2, Webhook as WebhookIcon } from 'lucide-vue-next'
+import { Pencil, Power, Send, Trash2, Webhook as WebhookIcon } from 'lucide-vue-next'
 import { computed, reactive, ref } from 'vue'
 
 const LOCAL_URL_RE = /^http:\/\/(?:localhost|127\.\d{1,3}\.\d{1,3}\.\d{1,3})(?::\d+)?(?:$|\/)/
@@ -193,7 +193,7 @@ function eventLabel(value: WebhookEvent): string {
 </script>
 
 <template>
-  <div class="max-w-3xl space-y-6">
+  <div class="space-y-6">
     <div class="flex items-center justify-between">
       <h2 class="text-lg font-semibold text-heading">
         Webhooks
@@ -221,11 +221,9 @@ function eventLabel(value: WebhookEvent): string {
         description="Forward sync and schema events to your tooling. Webhooks deliver a signed POST when configured events fire."
         :icon="WebhookIcon"
       >
-        <template #actions>
-          <SButton @click="openCreate">
-            Create webhook
-          </SButton>
-        </template>
+        <SButton @click="openCreate">
+          Create webhook
+        </SButton>
       </SEmptyState>
     </template>
 
@@ -261,6 +259,15 @@ function eventLabel(value: WebhookEvent): string {
       </template>
       <template #cell-actions="{ row }">
         <div class="flex items-center justify-end gap-1">
+          <button
+            class="p-1 transition-colors"
+            :class="row.enabled ? 'text-success hover:text-warning' : 'text-text-muted hover:text-success'"
+            :title="row.enabled ? 'Disable webhook' : 'Enable webhook'"
+            :disabled="updateMutation.isPending.value"
+            @click="toggleEnabled(row)"
+          >
+            <Power class="w-4 h-4" />
+          </button>
           <button
             class="p-1 text-text-muted hover:text-text-primary transition-colors"
             title="Test delivery"

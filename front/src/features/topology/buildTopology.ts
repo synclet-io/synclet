@@ -127,16 +127,16 @@ export function buildTopology(input: BuildTopologyInput): TopologyData {
 export function nodeHealthColor(h: TopologyNode['health']): { fill: string, stroke: string, text: string } {
   switch (h) {
     case 'healthy':
-      return { fill: 'fill-green-500/15', stroke: 'stroke-green-500', text: 'text-green-700 dark:text-green-300' }
+      return { fill: 'fill-green-500/15', stroke: 'stroke-green-500', text: 'text-green-700 dark:text-green-200' }
     case 'warning':
-      return { fill: 'fill-amber-500/15', stroke: 'stroke-amber-500', text: 'text-amber-700 dark:text-amber-300' }
+      return { fill: 'fill-amber-500/15', stroke: 'stroke-amber-500', text: 'text-amber-700 dark:text-amber-200' }
     case 'failing':
-      return { fill: 'fill-red-500/15', stroke: 'stroke-red-500', text: 'text-red-700 dark:text-red-300' }
+      return { fill: 'fill-red-500/15', stroke: 'stroke-red-500', text: 'text-red-700 dark:text-red-200' }
     case 'disabled':
-      return { fill: 'fill-slate-400/15', stroke: 'stroke-slate-400', text: 'text-text-secondary' }
+      return { fill: 'fill-slate-400/15', stroke: 'stroke-slate-400', text: 'text-slate-700 dark:text-slate-200' }
     case 'never':
     default:
-      return { fill: 'fill-slate-300/15', stroke: 'stroke-slate-300', text: 'text-text-muted' }
+      return { fill: 'fill-slate-300/15', stroke: 'stroke-slate-300', text: 'text-slate-600 dark:text-slate-300' }
   }
 }
 

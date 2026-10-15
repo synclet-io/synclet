@@ -209,14 +209,14 @@ const isEmpty = computed(() => data.value.sources.length === 0 && data.value.des
         <text
           :x="placed.x + 12"
           :y="placed.y + 22"
-          class="text-[12px] font-medium fill-current text-heading"
+          class="text-[12px] font-medium fill-current text-heading pointer-events-none"
         >
           {{ placed.node.name.length > 24 ? `${placed.node.name.slice(0, 24)}…` : placed.node.name }}
         </text>
         <text
           :x="placed.x + 12"
           :y="placed.y + 40"
-          class="text-[10px] uppercase tracking-wider"
+          class="text-[10px] uppercase tracking-wider pointer-events-none"
           :class="nodeHealthColor(placed.node.health).text"
         >
           {{ placed.node.health }}

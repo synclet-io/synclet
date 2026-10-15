@@ -134,7 +134,7 @@ async function handleResetRuntimeConfig() {
       :back-to="{ name: 'sources' }"
     >
       <template #actions>
-        <SButton variant="secondary" size="sm" :loading="catalogStatus === 'discovering'" @click="handleRefreshCatalog">
+        <SButton variant="secondary" :loading="catalogStatus === 'discovering'" @click="handleRefreshCatalog">
           <RefreshCw class="w-4 h-4" /> Refresh Catalog
         </SButton>
         <SButton variant="secondary" :to="`/sources/${source.id}/edit`">

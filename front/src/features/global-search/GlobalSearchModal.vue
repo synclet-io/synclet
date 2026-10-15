@@ -2,7 +2,7 @@
 import type { SearchResult, SearchResultKind } from './useGlobalSearch'
 import { useAuth } from '@entities/auth'
 import { ArrowRightLeft, Cog, Database, GitBranch, Search, Server } from 'lucide-vue-next'
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useGlobalSearch } from './useGlobalSearch'
 import { useRecentHistory } from './useRecentHistory'
@@ -24,6 +24,22 @@ const history = useRecentHistory({
 
 const showHistory = computed(() => !query.value.trim() && (history.searches.value.length > 0 || history.visits.value.length > 0))
 
+// Unified flat list for keyboard navigation: history items when in history view, results otherwise.
+const historyVisitResults = computed<SearchResult[]>(() =>
+  history.visits.value.map(v => ({
+    id: v.id,
+    kind: v.kind as SearchResultKind,
+    label: v.label,
+    to: v.to,
+  })),
+)
+
+const navList = computed<SearchResult[]>(() => {
+  if (showHistory.value)
+    return historyVisitResults.value
+  return flatResults.value
+})
+
 const activeIndex = ref(0)
 
 watch(() => props.open, async (open) => {
@@ -36,9 +52,13 @@ watch(() => props.open, async (open) => {
   }
 })
 
-watch(flatResults, (results) => {
-  if (activeIndex.value >= results.length)
-    activeIndex.value = Math.max(0, results.length - 1)
+watch(navList, (list) => {
+  if (activeIndex.value >= list.length)
+    activeIndex.value = Math.max(0, list.length - 1)
+})
+
+watch(() => query.value, () => {
+  activeIndex.value = 0
 })
 
 function activate(result: SearchResult) {
@@ -50,7 +70,7 @@ function activate(result: SearchResult) {
 }
 
 function activateAtIndex(idx: number) {
-  const r = flatResults.value[idx]
+  const r = navList.value[idx]
   if (r)
     activate(r)
 }
@@ -60,7 +80,7 @@ function onKeydown(e: KeyboardEvent) {
     return
   if (e.key === 'ArrowDown') {
     e.preventDefault()
-    activeIndex.value = Math.min(activeIndex.value + 1, flatResults.value.length - 1)
+    activeIndex.value = Math.min(activeIndex.value + 1, navList.value.length - 1)
   }
   else if (e.key === 'ArrowUp') {
     e.preventDefault()
@@ -74,6 +94,10 @@ function onKeydown(e: KeyboardEvent) {
 
 onMounted(() => {
   document.addEventListener('keydown', onKeydown)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', onKeydown)
 })
 
 const ICONS: Record<SearchResultKind, typeof Database> = {
@@ -133,9 +157,11 @@ function pickRecentSearch(q: string) {
                   Recently visited
                 </p>
                 <button
-                  v-for="visit in history.visits.value"
+                  v-for="(visit, vi) in history.visits.value"
                   :key="`${visit.kind}-${visit.id}`"
-                  class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-heading hover:bg-surface-hover transition-colors text-left"
+                  class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors text-left"
+                  :class="vi === activeIndex ? 'bg-primary/15 text-primary' : 'text-heading hover:bg-surface-hover'"
+                  @mouseenter="activeIndex = vi"
                   @click="activate({ id: visit.id, kind: visit.kind as SearchResultKind, label: visit.label, to: visit.to })"
                 >
                   <component :is="ICONS[visit.kind as SearchResultKind] ?? Cog" class="w-4 h-4 text-text-muted shrink-0" />

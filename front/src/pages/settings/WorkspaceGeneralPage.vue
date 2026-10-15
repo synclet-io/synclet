@@ -160,7 +160,7 @@ async function handleImportConfirm() {
 </script>
 
 <template>
-  <div class="max-w-2xl space-y-8">
+  <div class="space-y-8">
     <div v-if="loading" class="text-text-secondary">
       Loading...
     </div>

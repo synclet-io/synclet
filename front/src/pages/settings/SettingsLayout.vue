@@ -1,13 +1,9 @@
 <script setup lang="ts">
 import type { Tab } from '@shared/ui'
 import { useAuth } from '@entities/auth'
-import { useSystemInfo } from '@entities/system'
 import { STabs } from '@shared/ui'
 import { computed } from 'vue'
 import { RouterView } from 'vue-router'
-
-const { data: systemInfo } = useSystemInfo()
-const isSingleWorkspace = computed(() => systemInfo.value?.workspacesMode === 'single')
 
 const auth = useAuth()
 const isAdmin = computed(() => {
@@ -27,8 +23,6 @@ const tabs = computed<Tab[]>(() => {
     { name: 'Account', to: { name: 'settings-account' } },
   ]
   let visible = allTabs
-  if (isSingleWorkspace.value)
-    visible = visible.filter(t => t.name !== 'Members')
   if (!isAdmin.value)
     visible = visible.filter(t => t.name !== 'Webhooks' && t.name !== 'Audit log')
   return visible

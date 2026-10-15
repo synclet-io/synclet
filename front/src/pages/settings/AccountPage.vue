@@ -57,7 +57,7 @@ async function handleChangePassword() {
 </script>
 
 <template>
-  <div class="max-w-2xl space-y-8">
+  <div class="space-y-8">
     <SCard title="Profile">
       <SAlert v-if="profileError" variant="danger" class="mb-4" dismissible @dismiss="profileError = ''">
         {{ profileError }}

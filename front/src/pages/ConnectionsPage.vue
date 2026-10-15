@@ -10,7 +10,7 @@ import { statusVariant } from '@shared/lib/format'
 import { connectionKeys } from '@shared/lib/queryKeys'
 import { PageHeader, SAlert, SBadge, SButton, SConfirmDialog, SEmptyState, SPagination, STable, useToast } from '@shared/ui'
 import { useQueryClient } from '@tanstack/vue-query'
-import { Pause, Play, Plus, Trash2 } from 'lucide-vue-next'
+import { Copy, Pause, Play, Plus, Trash2 } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
 
 const currentPage = ref(1)
@@ -202,9 +202,18 @@ const columns: Column[] = [
       <span class="text-sm text-text-secondary">{{ row.createdAt?.toLocaleDateString() ?? '-' }}</span>
     </template>
     <template #cell-actions="{ row }">
-      <button class="p-1.5 text-text-muted hover:text-danger transition-colors" title="Delete" @click="requestDeleteSingle(row.id, row.name)">
-        <Trash2 class="w-4 h-4" />
-      </button>
+      <div class="flex items-center justify-end gap-1">
+        <RouterLink
+          :to="`/connections/new?cloneFrom=${row.id}`"
+          class="p-1.5 text-text-muted hover:text-primary transition-colors inline-flex"
+          title="Duplicate"
+        >
+          <Copy class="w-4 h-4" />
+        </RouterLink>
+        <button class="p-1.5 text-text-muted hover:text-danger transition-colors" title="Delete" @click="requestDeleteSingle(row.id, row.name)">
+          <Trash2 class="w-4 h-4" />
+        </button>
+      </div>
     </template>
   </STable>
 

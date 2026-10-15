@@ -236,7 +236,7 @@ router.beforeEach(async (to) => {
 
   // Block workspace-management routes in single-workspace mode (D-09).
   if (cachedSystemInfo?.workspacesMode === 'single') {
-    const blockedRoutes = ['create-workspace', 'invite', 'settings-members']
+    const blockedRoutes = ['create-workspace', 'invite']
     if (blockedRoutes.includes(to.name as string)) {
       return { name: 'dashboard' }
     }
