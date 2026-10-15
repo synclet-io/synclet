@@ -19,6 +19,11 @@ tasks:
     cmds:
       - go test ./...
 
+  test:coverage:
+    desc: Enforce per-package coverage minimums from scripts/coverage-thresholds.txt
+    cmds:
+      - ./scripts/coverage-gate.sh
+
   lint:
     desc: Run golangci-lint
     cmds:

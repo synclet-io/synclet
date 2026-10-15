@@ -1,0 +1,11 @@
+# Per-package minimum line coverage enforced by scripts/coverage-gate.sh (task test:coverage, CI).
+# Format: <package path> <minimum percent>
+./modules/pipeline/pipelineservice/pipelinecatalog 60
+./modules/pipeline/pipelineservice/pipelineconnections 60
+./modules/pipeline/pipelineservice/pipelinesources 60
+./modules/pipeline/pipelineservice/pipelinedestinations 60
+./modules/pipeline/pipelineservice/pipelinestats 60
+./modules/pipeline/pipelineservice/pipelinetasks 60
+./modules/pipeline/pipelineservice/pipelinelogs 60
+./modules/workspace/workspaceservice 60
+./modules/secret/secretservice 60
