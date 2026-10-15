@@ -15,6 +15,12 @@ service AuditService {
   rpc GetAuditEvent(GetAuditEventRequest) returns (GetAuditEventResponse) {
     option (synclet.options.v1.required_role) = REQUIRED_ROLE_ADMIN;
   }
+  rpc GetAuditRetention(GetAuditRetentionRequest) returns (GetAuditRetentionResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_ADMIN;
+  }
+  rpc UpdateAuditRetention(UpdateAuditRetentionRequest) returns (UpdateAuditRetentionResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_ADMIN;
+  }
 }
 
 enum AuditAction {
@@ -94,4 +100,26 @@ message GetAuditEventRequest {
 
 message GetAuditEventResponse {
   AuditEvent event = 1;
+}
+
+message AuditRetention {
+  // Effective number of days audit events are kept for the workspace.
+  int32 retention_days = 1;
+  // Hard ceiling an admin may configure; retention_days never exceeds it.
+  int32 max_retention_days = 2;
+}
+
+message GetAuditRetentionRequest {}
+
+message GetAuditRetentionResponse {
+  AuditRetention retention = 1;
+}
+
+message UpdateAuditRetentionRequest {
+  // Must be between 1 and max_retention_days inclusive.
+  int32 retention_days = 1;
+}
+
+message UpdateAuditRetentionResponse {
+  AuditRetention retention = 1;
 }

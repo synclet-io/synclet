@@ -31,3 +31,22 @@ func wrapAuditEventQueryError(err error) error {
 
 	return err
 }
+func wrapAuditRetentionSettingQueryError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return errors.WithStack(errors1.Join(auditsvc.ErrAuditRetentionSettingNotFound, err))
+	}
+
+	var pgErr *pgconn.PgError
+
+	if errors.As(err, &pgErr) {
+		if pgErr.Code == "23505" {
+			return errors.WithStack(errors1.Join(auditsvc.ErrAuditRetentionSettingAlreadyExists, err))
+		}
+	}
+
+	return err
+}

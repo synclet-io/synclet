@@ -122,3 +122,55 @@ func (a *AuditEvent) Equals(to *AuditEvent) bool {
 
 	return true
 }
+
+type AuditRetentionSettingField byte
+
+const (
+	AuditRetentionSettingFieldWorkspaceID AuditRetentionSettingField = iota + 1
+	AuditRetentionSettingFieldRetentionDays
+	AuditRetentionSettingFieldUpdatedAt
+)
+
+type AuditRetentionSettingFilter struct {
+	WorkspaceID filter.Filter[uuid.UUID]
+	Or          []*AuditRetentionSettingFilter
+	And         []*AuditRetentionSettingFilter
+}
+type AuditRetentionSettingOrder order.Order[AuditRetentionSettingField]
+
+type AuditRetentionSetting struct {
+	WorkspaceID   uuid.UUID
+	RetentionDays int
+	UpdatedAt     time.Time
+}
+
+// user code 'AuditRetentionSetting methods'
+// end user code 'AuditRetentionSetting methods'
+
+func (a *AuditRetentionSetting) Copy() AuditRetentionSetting {
+	var result AuditRetentionSetting
+	result.WorkspaceID = a.WorkspaceID
+	result.RetentionDays = a.RetentionDays
+	result.UpdatedAt = a.UpdatedAt
+
+	return result
+}
+func (a *AuditRetentionSetting) Equals(to *AuditRetentionSetting) bool {
+	if (a == nil) != (to == nil) {
+		return false
+	}
+	if a == nil && to == nil {
+		return true
+	}
+	if a.WorkspaceID != to.WorkspaceID {
+		return false
+	}
+	if a.RetentionDays != to.RetentionDays {
+		return false
+	}
+	if a.UpdatedAt != to.UpdatedAt {
+		return false
+	}
+
+	return true
+}

@@ -48,3 +48,8 @@ export interface ListAuditEventsParams {
   limit?: number
   offset?: number
 }
+
+export interface AuditRetention {
+  retentionDays: number
+  maxRetentionDays: number
+}

@@ -1,5 +1,5 @@
-import type { AuditAction, AuditActorType, AuditEvent, AuditFieldChange, AuditResourceType, ListAuditEventsParams } from './types'
-import type { AuditEvent as ProtoAuditEvent } from '@/gen/synclet/publicapi/audit/v1/audit_pb'
+import type { AuditAction, AuditActorType, AuditEvent, AuditFieldChange, AuditResourceType, AuditRetention, ListAuditEventsParams } from './types'
+import type { AuditEvent as ProtoAuditEvent, AuditRetention as ProtoAuditRetention } from '@/gen/synclet/publicapi/audit/v1/audit_pb'
 import { timestampFromDate } from '@bufbuild/protobuf/wkt'
 import { auditClient } from '@shared/api/services'
 import { tsToDate } from '@shared/lib/formatting'
@@ -128,4 +128,21 @@ export async function listAuditEvents(params: ListAuditEventsParams = {}): Promi
 export async function getAuditEvent(id: string): Promise<AuditEvent | undefined> {
   const res = await auditClient.getAuditEvent({ id })
   return res.event ? mapEvent(res.event) : undefined
+}
+
+function mapRetention(proto: ProtoAuditRetention | undefined): AuditRetention {
+  return {
+    retentionDays: proto?.retentionDays ?? 0,
+    maxRetentionDays: proto?.maxRetentionDays ?? 0,
+  }
+}
+
+export async function getAuditRetention(): Promise<AuditRetention> {
+  const res = await auditClient.getAuditRetention({})
+  return mapRetention(res.retention)
+}
+
+export async function updateAuditRetention(retentionDays: number): Promise<AuditRetention> {
+  const res = await auditClient.updateAuditRetention({ retentionDays })
+  return mapRetention(res.retention)
 }

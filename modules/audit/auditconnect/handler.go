@@ -6,6 +6,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
+	"github.com/samber/lo"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	auditv1 "github.com/synclet-io/synclet/gen/proto/synclet/publicapi/audit/v1"
@@ -14,17 +15,38 @@ import (
 	"github.com/synclet-io/synclet/pkg/connectutil"
 )
 
+func mapError(err error) error {
+	if notFoundErr, ok := lo.ErrorsAs[auditservice.NotFoundError](err); ok {
+		return connect.NewError(connect.CodeNotFound, notFoundErr)
+	}
+
+	if validationErr, ok := lo.ErrorsAs[*auditservice.ValidationError](err); ok {
+		return connect.NewError(connect.CodeInvalidArgument, validationErr)
+	}
+
+	return err
+}
+
 // Handler implements the AuditService ConnectRPC handler.
 type Handler struct {
 	auditv1connect.UnimplementedAuditServiceHandler
-	listAuditEvents *auditservice.ListAuditEvents
-	getAuditEvent   *auditservice.GetAuditEvent
+	listAuditEvents      *auditservice.ListAuditEvents
+	getAuditEvent        *auditservice.GetAuditEvent
+	getAuditRetention    *auditservice.GetAuditRetention
+	updateAuditRetention *auditservice.UpdateAuditRetention
 }
 
-func NewHandler(listAuditEvents *auditservice.ListAuditEvents, getAuditEvent *auditservice.GetAuditEvent) *Handler {
+func NewHandler(
+	listAuditEvents *auditservice.ListAuditEvents,
+	getAuditEvent *auditservice.GetAuditEvent,
+	getAuditRetention *auditservice.GetAuditRetention,
+	updateAuditRetention *auditservice.UpdateAuditRetention,
+) *Handler {
 	return &Handler{
-		listAuditEvents: listAuditEvents,
-		getAuditEvent:   getAuditEvent,
+		listAuditEvents:      listAuditEvents,
+		getAuditEvent:        getAuditEvent,
+		getAuditRetention:    getAuditRetention,
+		updateAuditRetention: updateAuditRetention,
 	}
 }
 
@@ -113,6 +135,44 @@ func (h *Handler) GetAuditEvent(ctx context.Context, req *connect.Request[auditv
 	}
 
 	return connect.NewResponse(&auditv1.GetAuditEventResponse{Event: eventToProto(event)}), nil
+}
+
+func (h *Handler) GetAuditRetention(ctx context.Context, _ *connect.Request[auditv1.GetAuditRetentionRequest]) (*connect.Response[auditv1.GetAuditRetentionResponse], error) {
+	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+	}
+
+	retention, err := h.getAuditRetention.Execute(ctx, workspaceID)
+	if err != nil {
+		return nil, mapError(err)
+	}
+
+	return connect.NewResponse(&auditv1.GetAuditRetentionResponse{Retention: retentionToProto(retention)}), nil
+}
+
+func (h *Handler) UpdateAuditRetention(ctx context.Context, req *connect.Request[auditv1.UpdateAuditRetentionRequest]) (*connect.Response[auditv1.UpdateAuditRetentionResponse], error) {
+	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+	}
+
+	retention, err := h.updateAuditRetention.Execute(ctx, auditservice.UpdateAuditRetentionParams{
+		WorkspaceID:   workspaceID,
+		RetentionDays: int(req.Msg.GetRetentionDays()),
+	})
+	if err != nil {
+		return nil, mapError(err)
+	}
+
+	return connect.NewResponse(&auditv1.UpdateAuditRetentionResponse{Retention: retentionToProto(retention)}), nil
+}
+
+func retentionToProto(retention auditservice.AuditRetention) *auditv1.AuditRetention {
+	return &auditv1.AuditRetention{
+		RetentionDays:    int32(retention.RetentionDays),    //nolint:gosec // bounded by config validation
+		MaxRetentionDays: int32(retention.MaxRetentionDays), //nolint:gosec // bounded by config validation
+	}
 }
 
 func eventToProto(event *auditservice.AuditEvent) *auditv1.AuditEvent {

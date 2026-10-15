@@ -85,3 +85,28 @@ func convertAuditEventFromDB(src *dbAuditEvent) (*auditservice.AuditEvent, error
 func (a dbAuditEvent) TableName() string {
 	return "audit.audit_events"
 }
+
+type dbAuditRetentionSetting struct {
+	WorkspaceID   uuid.UUID `gorm:"column:workspace_id;primaryKey"`
+	RetentionDays int       `gorm:"column:retention_days"`
+	UpdatedAt     time.Time `gorm:"column:updated_at"`
+}
+
+func convertAuditRetentionSettingToDB(src *auditservice.AuditRetentionSetting) (*dbAuditRetentionSetting, error) {
+	result := &dbAuditRetentionSetting{}
+	result.WorkspaceID = src.WorkspaceID
+	result.RetentionDays = src.RetentionDays
+	result.UpdatedAt = (src.UpdatedAt).UTC()
+	return result, nil
+}
+
+func convertAuditRetentionSettingFromDB(src *dbAuditRetentionSetting) (*auditservice.AuditRetentionSetting, error) {
+	result := &auditservice.AuditRetentionSetting{}
+	result.WorkspaceID = src.WorkspaceID
+	result.RetentionDays = src.RetentionDays
+	result.UpdatedAt = src.UpdatedAt
+	return result, nil
+}
+func (a dbAuditRetentionSetting) TableName() string {
+	return "audit.retention_settings"
+}

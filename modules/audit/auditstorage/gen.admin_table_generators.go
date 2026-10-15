@@ -308,5 +308,66 @@ func NewTableGenerators() table.GeneratorList {
 
 			return table
 		},
+		"audit_retention_setting": func(ctx *context.Context) table.Table {
+			tableConfig := table.DefaultConfigWithDriver("postgresql")
+			tableConfig.PrimaryKey.Type = db.UUID
+			tableConfig.PrimaryKey.Name = "workspace_id"
+			table := table.NewDefaultTable(ctx, tableConfig)
+			info := table.GetInfo()
+			formList := table.GetForm()
+			info.SetTable("audit\".\"retention_settings").SetTitle("AuditRetentionSetting").SetDescription("AuditRetentionSetting")
+			formList.SetTable("audit\".\"retention_settings").SetTitle("AuditRetentionSetting").SetDescription("AuditRetentionSetting")
+			info.AddField("WorkspaceID", "workspace_id", db.UUID)
+			info.FieldSortable()
+			info.FieldFilterable(types.FilterType{
+				FormType: form.Text,
+			},
+			)
+			formList.AddField("WorkspaceID", "workspace_id", db.UUID, form.Text)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+			info.AddField("RetentionDays", "retention_days", db.Int)
+			info.FieldSortable()
+			formList.AddField("RetentionDays", "retention_days", db.Int, form.Text)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+			info.AddField("UpdatedAt", "updated_at", db.Timestamp)
+			info.FieldSortable()
+			formList.AddField("UpdatedAt", "updated_at", db.Timestamp, form.Datetime)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+
+			return table
+		},
 	}
 }

@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { AuditAction, AuditResourceType, ListAuditEventsParams } from '@entities/audit'
-import { useAuditEvents } from '@entities/audit'
-import { PageHeader, SBadge, SCard, SEmptyState, SSelect, SSkeleton } from '@shared/ui'
+import { useAuditEvents, useAuditRetention, useUpdateAuditRetention } from '@entities/audit'
+import { getErrorMessage } from '@shared/lib/errorUtils'
+import { PageHeader, SBadge, SButton, SCard, SEmptyState, SInput, SSelect, SSkeleton, useToast } from '@shared/ui'
 import { ChevronDown, ChevronRight } from 'lucide-vue-next'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 const action = ref<AuditAction | ''>('')
 const resourceType = ref<AuditResourceType | ''>('')
@@ -16,6 +17,33 @@ const params = computed<ListAuditEventsParams>(() => ({
 }))
 
 const { data: events, isLoading, error } = useAuditEvents(params)
+
+const toast = useToast()
+const { data: retention } = useAuditRetention()
+const updateRetention = useUpdateAuditRetention()
+const retentionDays = ref<string | number>('')
+const retentionError = ref('')
+
+watch(retention, (value) => {
+  if (value)
+    retentionDays.value = value.retentionDays
+}, { immediate: true })
+
+async function saveRetention() {
+  retentionError.value = ''
+  const days = Number(retentionDays.value)
+  if (!Number.isInteger(days) || days < 1) {
+    retentionError.value = 'Enter a whole number of days, at least 1'
+    return
+  }
+  try {
+    await updateRetention.mutateAsync(days)
+    toast.success('Audit retention updated')
+  }
+  catch (e: unknown) {
+    retentionError.value = getErrorMessage(e)
+  }
+}
 
 const expanded = ref<Set<string>>(new Set())
 
@@ -84,7 +112,25 @@ function formatValue(v: unknown): string {
 </script>
 
 <template>
-  <PageHeader title="Audit log" description="Every configuration change in this workspace. Admin-only." />
+  <PageHeader title="Audit log" description="Every configuration change in this workspace. Admin-only.">
+    <template #actions>
+      <div class="flex flex-col items-end gap-1">
+        <form class="flex items-center gap-2" @submit.prevent="saveRetention">
+          <span class="text-sm text-text-secondary whitespace-nowrap">Retention (days)</span>
+          <SInput v-model="retentionDays" type="number" class="w-24" :disabled="!retention" />
+          <SButton type="submit" variant="secondary" :loading="updateRetention.isPending.value" :disabled="!retention">
+            Save
+          </SButton>
+        </form>
+        <p v-if="retentionError" class="text-xs text-danger">
+          {{ retentionError }}
+        </p>
+        <p v-else-if="retention" class="text-xs text-text-muted">
+          Events older than this are deleted. Max {{ retention.maxRetentionDays }} days.
+        </p>
+      </div>
+    </template>
+  </PageHeader>
 
   <div class="flex gap-3 mb-4">
     <SSelect v-model="action" :options="actionOptions" />

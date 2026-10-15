@@ -92,3 +92,33 @@ func convertAuditEventFromJsonModel(src *jsonAuditEvent) (*auditservice.AuditEve
 	result.CreatedAt = src.CreatedAt
 	return result, nil
 }
+
+type jsonAuditRetentionSetting struct {
+	WorkspaceID   uuid.UUID `json:"workspace_id"`
+	RetentionDays int       `json:"retention_days"`
+	UpdatedAt     time.Time `json:"updated_at"`
+}
+
+func (a *jsonAuditRetentionSetting) Scan(value any) error {
+	return json.Unmarshal(value.([]byte), a)
+}
+
+func (a jsonAuditRetentionSetting) Value() (driver.Value, error) {
+	return json.Marshal(a)
+}
+
+func convertAuditRetentionSettingToJsonModel(src *auditservice.AuditRetentionSetting) (*jsonAuditRetentionSetting, error) {
+	result := &jsonAuditRetentionSetting{}
+	result.WorkspaceID = src.WorkspaceID
+	result.RetentionDays = src.RetentionDays
+	result.UpdatedAt = (src.UpdatedAt).UTC()
+	return result, nil
+}
+
+func convertAuditRetentionSettingFromJsonModel(src *jsonAuditRetentionSetting) (*auditservice.AuditRetentionSetting, error) {
+	result := &auditservice.AuditRetentionSetting{}
+	result.WorkspaceID = src.WorkspaceID
+	result.RetentionDays = src.RetentionDays
+	result.UpdatedAt = src.UpdatedAt
+	return result, nil
+}

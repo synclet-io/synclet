@@ -11,8 +11,10 @@ import (
 
 type Storage interface {
 	AuditEvents() AuditEventsStorage
+	AuditRetentionSettings() AuditRetentionSettingsStorage
 	IdempotencyKeys() idempotency.Storage
 	ExecuteInTransaction(ctx context.Context, cb func(ctx context.Context, tx Storage) error) error
 	WithAdvisoryLock(ctx context.Context, scope string, lockID int64) error
 }
 type AuditEventsStorage dbutil.EntityStorage[AuditEvent, AuditEventFilter]
+type AuditRetentionSettingsStorage dbutil.EntityStorage[AuditRetentionSetting, AuditRetentionSettingFilter]

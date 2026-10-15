@@ -28,6 +28,9 @@ var _ auditsvc.Storage = &Storages{}
 func (s Storages) AuditEvents() auditsvc.AuditEventsStorage {
 	return NewAuditEventsStorage(s.db, s.logger)
 }
+func (s Storages) AuditRetentionSettings() auditsvc.AuditRetentionSettingsStorage {
+	return NewAuditRetentionSettingsStorage(s.db, s.logger)
+}
 
 func (s Storages) IdempotencyKeys() idempotency.Storage {
 	return idempotency.GormStorage{
@@ -85,5 +88,24 @@ func NewAuditEventsStorage(db *gorm.DB, logger *logging.Logger) auditsvc.AuditEv
 			auditsvc.AuditEventFieldCreatedAt:     {Name: "created_at"},
 		},
 		LockScope: "audit.AuditEvents",
+	}
+}
+
+func NewAuditRetentionSettingsStorage(db *gorm.DB, logger *logging.Logger) auditsvc.AuditRetentionSettingsStorage {
+	return dbutil.GormEntityStorage[auditsvc.AuditRetentionSetting, dbAuditRetentionSetting, auditsvc.AuditRetentionSettingFilter]{
+		Logger:            logger,
+		DB:                db,
+		DBErrorsWrapper:   wrapAuditRetentionSettingQueryError,
+		ConvertToInternal: convertAuditRetentionSettingToDB,
+		ConvertToExternal: convertAuditRetentionSettingFromDB,
+		BuildFilterExpression: func(filter *auditsvc.AuditRetentionSettingFilter) (clause.Expression, error) {
+			return buildAuditRetentionSettingFilterExpr(filter)
+		},
+		FieldMapping: map[any]clause.Column{
+			auditsvc.AuditRetentionSettingFieldWorkspaceID:   {Name: "workspace_id"},
+			auditsvc.AuditRetentionSettingFieldRetentionDays: {Name: "retention_days"},
+			auditsvc.AuditRetentionSettingFieldUpdatedAt:     {Name: "updated_at"},
+		},
+		LockScope: "audit.AuditRetentionSettings",
 	}
 }

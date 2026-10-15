@@ -37,3 +37,10 @@ types:
         - { name: DiffJSON, type: string }
         - { name: DiffTruncated, type: bool }
         - { name: CreatedAt, type: timestamp, filterable: true }
+
+    - name: AuditRetentionSetting
+      table_name: audit.retention_settings
+      fields:
+        - { name: WorkspaceID, type: uuid, primary_key: true, filterable: true }
+        - { name: RetentionDays, type: int }
+        - { name: UpdatedAt, type: timestamp }

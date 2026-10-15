@@ -595,6 +595,229 @@ func (x *GetAuditEventResponse) GetEvent() *AuditEvent {
 	return nil
 }
 
+type AuditRetention struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Effective number of days audit events are kept for the workspace.
+	RetentionDays int32 `protobuf:"varint,1,opt,name=retention_days,json=retentionDays,proto3" json:"retention_days,omitempty"`
+	// Hard ceiling an admin may configure; retention_days never exceeds it.
+	MaxRetentionDays int32 `protobuf:"varint,2,opt,name=max_retention_days,json=maxRetentionDays,proto3" json:"max_retention_days,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *AuditRetention) Reset() {
+	*x = AuditRetention{}
+	mi := &file_synclet_publicapi_audit_v1_audit_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AuditRetention) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AuditRetention) ProtoMessage() {}
+
+func (x *AuditRetention) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_publicapi_audit_v1_audit_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AuditRetention.ProtoReflect.Descriptor instead.
+func (*AuditRetention) Descriptor() ([]byte, []int) {
+	return file_synclet_publicapi_audit_v1_audit_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *AuditRetention) GetRetentionDays() int32 {
+	if x != nil {
+		return x.RetentionDays
+	}
+	return 0
+}
+
+func (x *AuditRetention) GetMaxRetentionDays() int32 {
+	if x != nil {
+		return x.MaxRetentionDays
+	}
+	return 0
+}
+
+type GetAuditRetentionRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetAuditRetentionRequest) Reset() {
+	*x = GetAuditRetentionRequest{}
+	mi := &file_synclet_publicapi_audit_v1_audit_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetAuditRetentionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAuditRetentionRequest) ProtoMessage() {}
+
+func (x *GetAuditRetentionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_publicapi_audit_v1_audit_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAuditRetentionRequest.ProtoReflect.Descriptor instead.
+func (*GetAuditRetentionRequest) Descriptor() ([]byte, []int) {
+	return file_synclet_publicapi_audit_v1_audit_proto_rawDescGZIP(), []int{6}
+}
+
+type GetAuditRetentionResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Retention     *AuditRetention        `protobuf:"bytes,1,opt,name=retention,proto3" json:"retention,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetAuditRetentionResponse) Reset() {
+	*x = GetAuditRetentionResponse{}
+	mi := &file_synclet_publicapi_audit_v1_audit_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetAuditRetentionResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAuditRetentionResponse) ProtoMessage() {}
+
+func (x *GetAuditRetentionResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_publicapi_audit_v1_audit_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAuditRetentionResponse.ProtoReflect.Descriptor instead.
+func (*GetAuditRetentionResponse) Descriptor() ([]byte, []int) {
+	return file_synclet_publicapi_audit_v1_audit_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *GetAuditRetentionResponse) GetRetention() *AuditRetention {
+	if x != nil {
+		return x.Retention
+	}
+	return nil
+}
+
+type UpdateAuditRetentionRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Must be between 1 and max_retention_days inclusive.
+	RetentionDays int32 `protobuf:"varint,1,opt,name=retention_days,json=retentionDays,proto3" json:"retention_days,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateAuditRetentionRequest) Reset() {
+	*x = UpdateAuditRetentionRequest{}
+	mi := &file_synclet_publicapi_audit_v1_audit_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateAuditRetentionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateAuditRetentionRequest) ProtoMessage() {}
+
+func (x *UpdateAuditRetentionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_publicapi_audit_v1_audit_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateAuditRetentionRequest.ProtoReflect.Descriptor instead.
+func (*UpdateAuditRetentionRequest) Descriptor() ([]byte, []int) {
+	return file_synclet_publicapi_audit_v1_audit_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *UpdateAuditRetentionRequest) GetRetentionDays() int32 {
+	if x != nil {
+		return x.RetentionDays
+	}
+	return 0
+}
+
+type UpdateAuditRetentionResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Retention     *AuditRetention        `protobuf:"bytes,1,opt,name=retention,proto3" json:"retention,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateAuditRetentionResponse) Reset() {
+	*x = UpdateAuditRetentionResponse{}
+	mi := &file_synclet_publicapi_audit_v1_audit_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateAuditRetentionResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateAuditRetentionResponse) ProtoMessage() {}
+
+func (x *UpdateAuditRetentionResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_publicapi_audit_v1_audit_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateAuditRetentionResponse.ProtoReflect.Descriptor instead.
+func (*UpdateAuditRetentionResponse) Descriptor() ([]byte, []int) {
+	return file_synclet_publicapi_audit_v1_audit_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *UpdateAuditRetentionResponse) GetRetention() *AuditRetention {
+	if x != nil {
+		return x.Retention
+	}
+	return nil
+}
+
 var File_synclet_publicapi_audit_v1_audit_proto protoreflect.FileDescriptor
 
 const file_synclet_publicapi_audit_v1_audit_proto_rawDesc = "" +
@@ -640,7 +863,17 @@ const file_synclet_publicapi_audit_v1_audit_proto_rawDesc = "" +
 	"\x14GetAuditEventRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"U\n" +
 	"\x15GetAuditEventResponse\x12<\n" +
-	"\x05event\x18\x01 \x01(\v2&.synclet.publicapi.audit.v1.AuditEventR\x05event*\x88\x02\n" +
+	"\x05event\x18\x01 \x01(\v2&.synclet.publicapi.audit.v1.AuditEventR\x05event\"e\n" +
+	"\x0eAuditRetention\x12%\n" +
+	"\x0eretention_days\x18\x01 \x01(\x05R\rretentionDays\x12,\n" +
+	"\x12max_retention_days\x18\x02 \x01(\x05R\x10maxRetentionDays\"\x1a\n" +
+	"\x18GetAuditRetentionRequest\"e\n" +
+	"\x19GetAuditRetentionResponse\x12H\n" +
+	"\tretention\x18\x01 \x01(\v2*.synclet.publicapi.audit.v1.AuditRetentionR\tretention\"D\n" +
+	"\x1bUpdateAuditRetentionRequest\x12%\n" +
+	"\x0eretention_days\x18\x01 \x01(\x05R\rretentionDays\"h\n" +
+	"\x1cUpdateAuditRetentionResponse\x12H\n" +
+	"\tretention\x18\x01 \x01(\v2*.synclet.publicapi.audit.v1.AuditRetentionR\tretention*\x88\x02\n" +
 	"\vAuditAction\x12\x1c\n" +
 	"\x18AUDIT_ACTION_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13AUDIT_ACTION_CREATE\x10\x01\x12\x17\n" +
@@ -672,10 +905,12 @@ const file_synclet_publicapi_audit_v1_audit_proto_rawDesc = "" +
 	"\x1cAUDIT_ACTOR_TYPE_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15AUDIT_ACTOR_TYPE_USER\x10\x01\x12\x1c\n" +
 	"\x18AUDIT_ACTOR_TYPE_API_KEY\x10\x02\x12\x1b\n" +
-	"\x17AUDIT_ACTOR_TYPE_SYSTEM\x10\x032\x8d\x02\n" +
+	"\x17AUDIT_ACTOR_TYPE_SYSTEM\x10\x032\xa8\x04\n" +
 	"\fAuditService\x12\x80\x01\n" +
 	"\x0fListAuditEvents\x122.synclet.publicapi.audit.v1.ListAuditEventsRequest\x1a3.synclet.publicapi.audit.v1.ListAuditEventsResponse\"\x04\x88\xb5\x18\x03\x12z\n" +
-	"\rGetAuditEvent\x120.synclet.publicapi.audit.v1.GetAuditEventRequest\x1a1.synclet.publicapi.audit.v1.GetAuditEventResponse\"\x04\x88\xb5\x18\x03B\x83\x02\n" +
+	"\rGetAuditEvent\x120.synclet.publicapi.audit.v1.GetAuditEventRequest\x1a1.synclet.publicapi.audit.v1.GetAuditEventResponse\"\x04\x88\xb5\x18\x03\x12\x86\x01\n" +
+	"\x11GetAuditRetention\x124.synclet.publicapi.audit.v1.GetAuditRetentionRequest\x1a5.synclet.publicapi.audit.v1.GetAuditRetentionResponse\"\x04\x88\xb5\x18\x03\x12\x8f\x01\n" +
+	"\x14UpdateAuditRetention\x127.synclet.publicapi.audit.v1.UpdateAuditRetentionRequest\x1a8.synclet.publicapi.audit.v1.UpdateAuditRetentionResponse\"\x04\x88\xb5\x18\x03B\x83\x02\n" +
 	"\x1ecom.synclet.publicapi.audit.v1B\n" +
 	"AuditProtoP\x01ZJgithub.com/synclet-io/synclet/gen/proto/synclet/publicapi/audit/v1;auditv1\xa2\x02\x03SPA\xaa\x02\x1aSynclet.Publicapi.Audit.V1\xca\x02\x1aSynclet\\Publicapi\\Audit\\V1\xe2\x02&Synclet\\Publicapi\\Audit\\V1\\GPBMetadata\xea\x02\x1dSynclet::Publicapi::Audit::V1b\x06proto3"
 
@@ -692,38 +927,49 @@ func file_synclet_publicapi_audit_v1_audit_proto_rawDescGZIP() []byte {
 }
 
 var file_synclet_publicapi_audit_v1_audit_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_synclet_publicapi_audit_v1_audit_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_synclet_publicapi_audit_v1_audit_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_synclet_publicapi_audit_v1_audit_proto_goTypes = []any{
-	(AuditAction)(0),                // 0: synclet.publicapi.audit.v1.AuditAction
-	(AuditResourceType)(0),          // 1: synclet.publicapi.audit.v1.AuditResourceType
-	(AuditActorType)(0),             // 2: synclet.publicapi.audit.v1.AuditActorType
-	(*AuditEvent)(nil),              // 3: synclet.publicapi.audit.v1.AuditEvent
-	(*ListAuditEventsRequest)(nil),  // 4: synclet.publicapi.audit.v1.ListAuditEventsRequest
-	(*ListAuditEventsResponse)(nil), // 5: synclet.publicapi.audit.v1.ListAuditEventsResponse
-	(*GetAuditEventRequest)(nil),    // 6: synclet.publicapi.audit.v1.GetAuditEventRequest
-	(*GetAuditEventResponse)(nil),   // 7: synclet.publicapi.audit.v1.GetAuditEventResponse
-	(*timestamppb.Timestamp)(nil),   // 8: google.protobuf.Timestamp
+	(AuditAction)(0),                     // 0: synclet.publicapi.audit.v1.AuditAction
+	(AuditResourceType)(0),               // 1: synclet.publicapi.audit.v1.AuditResourceType
+	(AuditActorType)(0),                  // 2: synclet.publicapi.audit.v1.AuditActorType
+	(*AuditEvent)(nil),                   // 3: synclet.publicapi.audit.v1.AuditEvent
+	(*ListAuditEventsRequest)(nil),       // 4: synclet.publicapi.audit.v1.ListAuditEventsRequest
+	(*ListAuditEventsResponse)(nil),      // 5: synclet.publicapi.audit.v1.ListAuditEventsResponse
+	(*GetAuditEventRequest)(nil),         // 6: synclet.publicapi.audit.v1.GetAuditEventRequest
+	(*GetAuditEventResponse)(nil),        // 7: synclet.publicapi.audit.v1.GetAuditEventResponse
+	(*AuditRetention)(nil),               // 8: synclet.publicapi.audit.v1.AuditRetention
+	(*GetAuditRetentionRequest)(nil),     // 9: synclet.publicapi.audit.v1.GetAuditRetentionRequest
+	(*GetAuditRetentionResponse)(nil),    // 10: synclet.publicapi.audit.v1.GetAuditRetentionResponse
+	(*UpdateAuditRetentionRequest)(nil),  // 11: synclet.publicapi.audit.v1.UpdateAuditRetentionRequest
+	(*UpdateAuditRetentionResponse)(nil), // 12: synclet.publicapi.audit.v1.UpdateAuditRetentionResponse
+	(*timestamppb.Timestamp)(nil),        // 13: google.protobuf.Timestamp
 }
 var file_synclet_publicapi_audit_v1_audit_proto_depIdxs = []int32{
 	2,  // 0: synclet.publicapi.audit.v1.AuditEvent.actor_type:type_name -> synclet.publicapi.audit.v1.AuditActorType
 	0,  // 1: synclet.publicapi.audit.v1.AuditEvent.action:type_name -> synclet.publicapi.audit.v1.AuditAction
 	1,  // 2: synclet.publicapi.audit.v1.AuditEvent.resource_type:type_name -> synclet.publicapi.audit.v1.AuditResourceType
-	8,  // 3: synclet.publicapi.audit.v1.AuditEvent.created_at:type_name -> google.protobuf.Timestamp
+	13, // 3: synclet.publicapi.audit.v1.AuditEvent.created_at:type_name -> google.protobuf.Timestamp
 	1,  // 4: synclet.publicapi.audit.v1.ListAuditEventsRequest.resource_type:type_name -> synclet.publicapi.audit.v1.AuditResourceType
 	0,  // 5: synclet.publicapi.audit.v1.ListAuditEventsRequest.action:type_name -> synclet.publicapi.audit.v1.AuditAction
-	8,  // 6: synclet.publicapi.audit.v1.ListAuditEventsRequest.since:type_name -> google.protobuf.Timestamp
-	8,  // 7: synclet.publicapi.audit.v1.ListAuditEventsRequest.until:type_name -> google.protobuf.Timestamp
+	13, // 6: synclet.publicapi.audit.v1.ListAuditEventsRequest.since:type_name -> google.protobuf.Timestamp
+	13, // 7: synclet.publicapi.audit.v1.ListAuditEventsRequest.until:type_name -> google.protobuf.Timestamp
 	3,  // 8: synclet.publicapi.audit.v1.ListAuditEventsResponse.events:type_name -> synclet.publicapi.audit.v1.AuditEvent
 	3,  // 9: synclet.publicapi.audit.v1.GetAuditEventResponse.event:type_name -> synclet.publicapi.audit.v1.AuditEvent
-	4,  // 10: synclet.publicapi.audit.v1.AuditService.ListAuditEvents:input_type -> synclet.publicapi.audit.v1.ListAuditEventsRequest
-	6,  // 11: synclet.publicapi.audit.v1.AuditService.GetAuditEvent:input_type -> synclet.publicapi.audit.v1.GetAuditEventRequest
-	5,  // 12: synclet.publicapi.audit.v1.AuditService.ListAuditEvents:output_type -> synclet.publicapi.audit.v1.ListAuditEventsResponse
-	7,  // 13: synclet.publicapi.audit.v1.AuditService.GetAuditEvent:output_type -> synclet.publicapi.audit.v1.GetAuditEventResponse
-	12, // [12:14] is the sub-list for method output_type
-	10, // [10:12] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	8,  // 10: synclet.publicapi.audit.v1.GetAuditRetentionResponse.retention:type_name -> synclet.publicapi.audit.v1.AuditRetention
+	8,  // 11: synclet.publicapi.audit.v1.UpdateAuditRetentionResponse.retention:type_name -> synclet.publicapi.audit.v1.AuditRetention
+	4,  // 12: synclet.publicapi.audit.v1.AuditService.ListAuditEvents:input_type -> synclet.publicapi.audit.v1.ListAuditEventsRequest
+	6,  // 13: synclet.publicapi.audit.v1.AuditService.GetAuditEvent:input_type -> synclet.publicapi.audit.v1.GetAuditEventRequest
+	9,  // 14: synclet.publicapi.audit.v1.AuditService.GetAuditRetention:input_type -> synclet.publicapi.audit.v1.GetAuditRetentionRequest
+	11, // 15: synclet.publicapi.audit.v1.AuditService.UpdateAuditRetention:input_type -> synclet.publicapi.audit.v1.UpdateAuditRetentionRequest
+	5,  // 16: synclet.publicapi.audit.v1.AuditService.ListAuditEvents:output_type -> synclet.publicapi.audit.v1.ListAuditEventsResponse
+	7,  // 17: synclet.publicapi.audit.v1.AuditService.GetAuditEvent:output_type -> synclet.publicapi.audit.v1.GetAuditEventResponse
+	10, // 18: synclet.publicapi.audit.v1.AuditService.GetAuditRetention:output_type -> synclet.publicapi.audit.v1.GetAuditRetentionResponse
+	12, // 19: synclet.publicapi.audit.v1.AuditService.UpdateAuditRetention:output_type -> synclet.publicapi.audit.v1.UpdateAuditRetentionResponse
+	16, // [16:20] is the sub-list for method output_type
+	12, // [12:16] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_synclet_publicapi_audit_v1_audit_proto_init() }
@@ -738,7 +984,7 @@ func file_synclet_publicapi_audit_v1_audit_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_synclet_publicapi_audit_v1_audit_proto_rawDesc), len(file_synclet_publicapi_audit_v1_audit_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   5,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

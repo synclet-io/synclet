@@ -39,12 +39,20 @@ const (
 	// AuditServiceGetAuditEventProcedure is the fully-qualified name of the AuditService's
 	// GetAuditEvent RPC.
 	AuditServiceGetAuditEventProcedure = "/synclet.publicapi.audit.v1.AuditService/GetAuditEvent"
+	// AuditServiceGetAuditRetentionProcedure is the fully-qualified name of the AuditService's
+	// GetAuditRetention RPC.
+	AuditServiceGetAuditRetentionProcedure = "/synclet.publicapi.audit.v1.AuditService/GetAuditRetention"
+	// AuditServiceUpdateAuditRetentionProcedure is the fully-qualified name of the AuditService's
+	// UpdateAuditRetention RPC.
+	AuditServiceUpdateAuditRetentionProcedure = "/synclet.publicapi.audit.v1.AuditService/UpdateAuditRetention"
 )
 
 // AuditServiceClient is a client for the synclet.publicapi.audit.v1.AuditService service.
 type AuditServiceClient interface {
 	ListAuditEvents(context.Context, *connect.Request[v1.ListAuditEventsRequest]) (*connect.Response[v1.ListAuditEventsResponse], error)
 	GetAuditEvent(context.Context, *connect.Request[v1.GetAuditEventRequest]) (*connect.Response[v1.GetAuditEventResponse], error)
+	GetAuditRetention(context.Context, *connect.Request[v1.GetAuditRetentionRequest]) (*connect.Response[v1.GetAuditRetentionResponse], error)
+	UpdateAuditRetention(context.Context, *connect.Request[v1.UpdateAuditRetentionRequest]) (*connect.Response[v1.UpdateAuditRetentionResponse], error)
 }
 
 // NewAuditServiceClient constructs a client for the synclet.publicapi.audit.v1.AuditService
@@ -70,13 +78,27 @@ func NewAuditServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(auditServiceMethods.ByName("GetAuditEvent")),
 			connect.WithClientOptions(opts...),
 		),
+		getAuditRetention: connect.NewClient[v1.GetAuditRetentionRequest, v1.GetAuditRetentionResponse](
+			httpClient,
+			baseURL+AuditServiceGetAuditRetentionProcedure,
+			connect.WithSchema(auditServiceMethods.ByName("GetAuditRetention")),
+			connect.WithClientOptions(opts...),
+		),
+		updateAuditRetention: connect.NewClient[v1.UpdateAuditRetentionRequest, v1.UpdateAuditRetentionResponse](
+			httpClient,
+			baseURL+AuditServiceUpdateAuditRetentionProcedure,
+			connect.WithSchema(auditServiceMethods.ByName("UpdateAuditRetention")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // auditServiceClient implements AuditServiceClient.
 type auditServiceClient struct {
-	listAuditEvents *connect.Client[v1.ListAuditEventsRequest, v1.ListAuditEventsResponse]
-	getAuditEvent   *connect.Client[v1.GetAuditEventRequest, v1.GetAuditEventResponse]
+	listAuditEvents      *connect.Client[v1.ListAuditEventsRequest, v1.ListAuditEventsResponse]
+	getAuditEvent        *connect.Client[v1.GetAuditEventRequest, v1.GetAuditEventResponse]
+	getAuditRetention    *connect.Client[v1.GetAuditRetentionRequest, v1.GetAuditRetentionResponse]
+	updateAuditRetention *connect.Client[v1.UpdateAuditRetentionRequest, v1.UpdateAuditRetentionResponse]
 }
 
 // ListAuditEvents calls synclet.publicapi.audit.v1.AuditService.ListAuditEvents.
@@ -89,10 +111,22 @@ func (c *auditServiceClient) GetAuditEvent(ctx context.Context, req *connect.Req
 	return c.getAuditEvent.CallUnary(ctx, req)
 }
 
+// GetAuditRetention calls synclet.publicapi.audit.v1.AuditService.GetAuditRetention.
+func (c *auditServiceClient) GetAuditRetention(ctx context.Context, req *connect.Request[v1.GetAuditRetentionRequest]) (*connect.Response[v1.GetAuditRetentionResponse], error) {
+	return c.getAuditRetention.CallUnary(ctx, req)
+}
+
+// UpdateAuditRetention calls synclet.publicapi.audit.v1.AuditService.UpdateAuditRetention.
+func (c *auditServiceClient) UpdateAuditRetention(ctx context.Context, req *connect.Request[v1.UpdateAuditRetentionRequest]) (*connect.Response[v1.UpdateAuditRetentionResponse], error) {
+	return c.updateAuditRetention.CallUnary(ctx, req)
+}
+
 // AuditServiceHandler is an implementation of the synclet.publicapi.audit.v1.AuditService service.
 type AuditServiceHandler interface {
 	ListAuditEvents(context.Context, *connect.Request[v1.ListAuditEventsRequest]) (*connect.Response[v1.ListAuditEventsResponse], error)
 	GetAuditEvent(context.Context, *connect.Request[v1.GetAuditEventRequest]) (*connect.Response[v1.GetAuditEventResponse], error)
+	GetAuditRetention(context.Context, *connect.Request[v1.GetAuditRetentionRequest]) (*connect.Response[v1.GetAuditRetentionResponse], error)
+	UpdateAuditRetention(context.Context, *connect.Request[v1.UpdateAuditRetentionRequest]) (*connect.Response[v1.UpdateAuditRetentionResponse], error)
 }
 
 // NewAuditServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -114,12 +148,28 @@ func NewAuditServiceHandler(svc AuditServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(auditServiceMethods.ByName("GetAuditEvent")),
 		connect.WithHandlerOptions(opts...),
 	)
+	auditServiceGetAuditRetentionHandler := connect.NewUnaryHandler(
+		AuditServiceGetAuditRetentionProcedure,
+		svc.GetAuditRetention,
+		connect.WithSchema(auditServiceMethods.ByName("GetAuditRetention")),
+		connect.WithHandlerOptions(opts...),
+	)
+	auditServiceUpdateAuditRetentionHandler := connect.NewUnaryHandler(
+		AuditServiceUpdateAuditRetentionProcedure,
+		svc.UpdateAuditRetention,
+		connect.WithSchema(auditServiceMethods.ByName("UpdateAuditRetention")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/synclet.publicapi.audit.v1.AuditService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AuditServiceListAuditEventsProcedure:
 			auditServiceListAuditEventsHandler.ServeHTTP(w, r)
 		case AuditServiceGetAuditEventProcedure:
 			auditServiceGetAuditEventHandler.ServeHTTP(w, r)
+		case AuditServiceGetAuditRetentionProcedure:
+			auditServiceGetAuditRetentionHandler.ServeHTTP(w, r)
+		case AuditServiceUpdateAuditRetentionProcedure:
+			auditServiceUpdateAuditRetentionHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -135,4 +185,12 @@ func (UnimplementedAuditServiceHandler) ListAuditEvents(context.Context, *connec
 
 func (UnimplementedAuditServiceHandler) GetAuditEvent(context.Context, *connect.Request[v1.GetAuditEventRequest]) (*connect.Response[v1.GetAuditEventResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("synclet.publicapi.audit.v1.AuditService.GetAuditEvent is not implemented"))
+}
+
+func (UnimplementedAuditServiceHandler) GetAuditRetention(context.Context, *connect.Request[v1.GetAuditRetentionRequest]) (*connect.Response[v1.GetAuditRetentionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("synclet.publicapi.audit.v1.AuditService.GetAuditRetention is not implemented"))
+}
+
+func (UnimplementedAuditServiceHandler) UpdateAuditRetention(context.Context, *connect.Request[v1.UpdateAuditRetentionRequest]) (*connect.Response[v1.UpdateAuditRetentionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("synclet.publicapi.audit.v1.AuditService.UpdateAuditRetention is not implemented"))
 }
