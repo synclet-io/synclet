@@ -61,6 +61,7 @@ func (uc *DeleteDestination) Execute(ctx context.Context, params DeleteDestinati
 		Before: map[string]any{
 			"name":                 dest.Name,
 			"managed_connector_id": dest.ManagedConnectorID.String(),
+			"config":               auditConfig(dest.Config),
 		},
 	})
 

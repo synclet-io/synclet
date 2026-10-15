@@ -46,7 +46,11 @@ func (uc *UpdateDestination) Execute(ctx context.Context, params UpdateDestinati
 		return nil, fmt.Errorf("getting destination: %w", err)
 	}
 
-	beforeName := dest.Name
+	before := map[string]any{
+		"name":           dest.Name,
+		"config":         auditConfig(dest.Config),
+		"runtime_config": auditRuntimeConfig(dest.RuntimeConfig),
+	}
 
 	if params.Name != nil {
 		dest.Name = *params.Name
@@ -60,15 +64,15 @@ func (uc *UpdateDestination) Execute(ctx context.Context, params UpdateDestinati
 			ID: filter.Equals(dest.ManagedConnectorID),
 		})
 		if specErr != nil {
-			uc.logger.WithError(specErr).WithField("managed_connector_id", dest.ManagedConnectorID).Warn(ctx, "connector spec not found, skipping secret encryption on update")
-		} else {
-			encryptedConfig, encErr := pipelinesecrets.UpdateConfigSecrets(ctx, uc.secrets, "destination", dest.ID, dest.Config, newConfig, connector.Spec)
-			if encErr != nil {
-				return nil, fmt.Errorf("encrypting destination config secrets: %w", encErr)
-			}
-
-			newConfig = encryptedConfig
+			return nil, fmt.Errorf("loading connector spec for secret encryption: %w", specErr)
 		}
+
+		encryptedConfig, encErr := pipelinesecrets.UpdateConfigSecrets(ctx, uc.secrets, "destination", dest.ID, dest.Config, newConfig, connector.Spec)
+		if encErr != nil {
+			return nil, fmt.Errorf("encrypting destination config secrets: %w", encErr)
+		}
+
+		newConfig = encryptedConfig
 
 		dest.Config = newConfig
 	}
@@ -99,8 +103,12 @@ func (uc *UpdateDestination) Execute(ctx context.Context, params UpdateDestinati
 		ResourceType:  "destination",
 		ResourceID:    updated.ID,
 		ResourceLabel: updated.Name,
-		Before:        map[string]any{"name": beforeName},
-		After:         map[string]any{"name": updated.Name},
+		Before:        before,
+		After: map[string]any{
+			"name":           updated.Name,
+			"config":         auditConfig(updated.Config),
+			"runtime_config": auditRuntimeConfig(updated.RuntimeConfig),
+		},
 	})
 
 	return updated, nil
@@ -147,15 +155,15 @@ func (uc *UpdateDestinationInternal) Execute(ctx context.Context, params UpdateD
 			ID: filter.Equals(dest.ManagedConnectorID),
 		})
 		if specErr != nil {
-			uc.logger.WithError(specErr).WithField("managed_connector_id", dest.ManagedConnectorID).Warn(ctx, "connector spec not found, skipping secret encryption on internal update")
-		} else {
-			encryptedConfig, encErr := pipelinesecrets.UpdateConfigSecrets(ctx, uc.secrets, "destination", dest.ID, dest.Config, newConfig, connector.Spec)
-			if encErr != nil {
-				return nil, fmt.Errorf("encrypting destination config secrets: %w", encErr)
-			}
-
-			newConfig = encryptedConfig
+			return nil, fmt.Errorf("loading connector spec for secret encryption: %w", specErr)
 		}
+
+		encryptedConfig, encErr := pipelinesecrets.UpdateConfigSecrets(ctx, uc.secrets, "destination", dest.ID, dest.Config, newConfig, connector.Spec)
+		if encErr != nil {
+			return nil, fmt.Errorf("encrypting destination config secrets: %w", encErr)
+		}
+
+		newConfig = encryptedConfig
 
 		dest.Config = newConfig
 	}

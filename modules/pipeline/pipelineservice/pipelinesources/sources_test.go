@@ -4,78 +4,13 @@ import (
 	"context"
 	"testing"
 
-	"github.com/go-pnp/go-pnp/pkg/optionutil"
 	"github.com/google/uuid"
-	"github.com/saturn4er/boilerplate-go/lib/dbutil"
-	"github.com/saturn4er/boilerplate-go/lib/filter"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinesources"
 )
-
-type srcStore struct {
-	pipelineservice.Storage
-	sources *srcStorage
-}
-
-func (s *srcStore) Sources() pipelineservice.SourcesStorage {
-	return s.sources
-}
-
-type srcStorage struct {
-	pipelineservice.SourcesStorage
-	records map[uuid.UUID]*pipelineservice.Source
-}
-
-func (s *srcStorage) First(_ context.Context, f *pipelineservice.SourceFilter, _ ...optionutil.Option[dbutil.SelectOptions]) (*pipelineservice.Source, error) {
-	for _, rec := range s.records {
-		if f.ID != nil {
-			if eq, ok := f.ID.(*filter.EqualsFilter[uuid.UUID]); ok && rec.ID != eq.Value {
-				continue
-			}
-		}
-
-		if f.WorkspaceID != nil {
-			if eq, ok := f.WorkspaceID.(*filter.EqualsFilter[uuid.UUID]); ok && rec.WorkspaceID != eq.Value {
-				continue
-			}
-		}
-
-		cp := *rec
-
-		return &cp, nil
-	}
-
-	return nil, pipelineservice.ErrSourceNotFound
-}
-
-func (s *srcStorage) Find(_ context.Context, f *pipelineservice.SourceFilter, _ ...optionutil.Option[dbutil.SelectOptions]) ([]*pipelineservice.Source, error) {
-	out := make([]*pipelineservice.Source, 0, len(s.records))
-
-	for _, rec := range s.records {
-		if f.WorkspaceID != nil {
-			if eq, ok := f.WorkspaceID.(*filter.EqualsFilter[uuid.UUID]); ok && rec.WorkspaceID != eq.Value {
-				continue
-			}
-		}
-
-		cp := *rec
-		out = append(out, &cp)
-	}
-
-	return out, nil
-}
-
-func newSrcStore(records ...*pipelineservice.Source) *srcStore {
-	m := make(map[uuid.UUID]*pipelineservice.Source, len(records))
-	for _, r := range records {
-		m[r.ID] = r
-	}
-
-	return &srcStore{sources: &srcStorage{records: m}}
-}
 
 func TestGetSource_WorkspaceScoping(t *testing.T) {
 	ws := uuid.New()
@@ -102,7 +37,18 @@ func TestGetSource_WorkspaceScoping(t *testing.T) {
 			ID:          src.ID,
 			WorkspaceID: ws,
 		})
-		require.Error(t, err)
+		require.ErrorIs(t, err, pipelineservice.ErrSourceNotFound)
+	})
+
+	t.Run("returns not found for an unknown id", func(t *testing.T) {
+		store := newSrcStore()
+
+		uc := pipelinesources.NewGetSource(store)
+		_, err := uc.Execute(context.Background(), pipelinesources.GetSourceParams{
+			ID:          uuid.New(),
+			WorkspaceID: ws,
+		})
+		require.ErrorIs(t, err, pipelineservice.ErrSourceNotFound)
 	})
 }
 

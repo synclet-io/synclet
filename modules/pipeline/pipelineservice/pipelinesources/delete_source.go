@@ -61,6 +61,7 @@ func (uc *DeleteSource) Execute(ctx context.Context, params DeleteSourceParams) 
 		Before: map[string]any{
 			"name":                 src.Name,
 			"managed_connector_id": src.ManagedConnectorID.String(),
+			"config":               auditConfig(src.Config),
 		},
 	})
 

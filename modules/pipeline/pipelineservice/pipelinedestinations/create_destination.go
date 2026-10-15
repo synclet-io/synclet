@@ -87,6 +87,7 @@ func (uc *CreateDestination) Execute(ctx context.Context, params CreateDestinati
 		After: map[string]any{
 			"name":                 created.Name,
 			"managed_connector_id": created.ManagedConnectorID.String(),
+			"config":               auditConfig(created.Config),
 		},
 	})
 
