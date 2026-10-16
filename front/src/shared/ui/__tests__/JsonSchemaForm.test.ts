@@ -92,8 +92,8 @@ describe('jsonSchemaForm', () => {
         properties: { host: { type: 'string' } },
         required: ['host'],
       })
-      expect(w.find('.text-danger-500').exists()).toBe(true)
-      expect(w.find('.text-danger-500').text()).toBe('*')
+      expect(w.find('.text-danger').exists()).toBe(true)
+      expect(w.find('.text-danger').text()).toBe('*')
     })
 
     it('shows description as help text', () => {

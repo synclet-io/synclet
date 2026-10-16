@@ -1,9 +1,9 @@
 <script setup lang="ts">
+import type { HealthStatus } from '@entities/stats'
 import type { Tab } from '@shared/ui'
 import { useConnection, useDisableConnection, useEnableConnection } from '@entities/connection'
 import { useActiveJob, useCancelJob, useTriggerSync } from '@entities/job'
 import { useConnectionStats } from '@entities/stats'
-import HealthBadge from '@features/connection-stats/HealthBadge.vue'
 import { getErrorMessage } from '@shared/lib/errorUtils'
 import { statusVariant } from '@shared/lib/format'
 import { PageHeader, SAlert, SBadge, SButton, SConfirmDialog, SSkeleton, STabs, useToast } from '@shared/ui'
@@ -22,6 +22,13 @@ const triggerSyncMutation = useTriggerSync()
 const enableConnectionMutation = useEnableConnection()
 const disableConnectionMutation = useDisableConnection()
 const cancelJobMutation = useCancelJob()
+
+const healthBadge: Record<HealthStatus, { variant: 'success' | 'warning' | 'danger' | 'gray', label: string }> = {
+  healthy: { variant: 'success', label: 'Healthy' },
+  warning: { variant: 'warning', label: 'Warning' },
+  failing: { variant: 'danger', label: 'Failing' },
+  disabled: { variant: 'gray', label: 'Disabled' },
+}
 
 const syncing = computed(() => triggerSyncMutation.isPending.value)
 const cancelling = computed(() => cancelJobMutation.isPending.value)
@@ -96,7 +103,9 @@ async function toggleEnabled() {
   <template v-else-if="connection">
     <PageHeader :title="connection.name" description="Connection details and sync history" back-label="Connections" :back-to="{ name: 'connections' }">
       <template #actions>
-        <HealthBadge v-if="connStats" :health="connStats.health" />
+        <SBadge v-if="connStats" :variant="healthBadge[connStats.health].variant" dot>
+          {{ healthBadge[connStats.health].label }}
+        </SBadge>
         <SBadge :variant="statusVariant(connection.status)" dot>
           {{ connection.status }}
         </SBadge>

@@ -19,7 +19,7 @@ const options: TimeRange[] = ['24h', '7d', '30d']
       :key="opt"
       class="rounded-md px-3 py-1 text-sm font-medium transition-colors"
       :class="modelValue === opt
-        ? 'bg-primary text-on-primary'
+        ? 'bg-primary-solid text-on-primary'
         : 'text-text-secondary hover:text-text-primary'"
       @click="emit('update:modelValue', opt)"
     >

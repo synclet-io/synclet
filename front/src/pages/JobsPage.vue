@@ -189,7 +189,7 @@ const columns = computed<Column[]>(() => [
         type="button"
         class="rounded-md px-3 py-1 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
         :class="statusFilter.value === option.value
-          ? 'bg-primary text-on-primary'
+          ? 'bg-primary-solid text-on-primary'
           : 'text-text-secondary hover:text-text-primary'"
         :aria-pressed="statusFilter.value === option.value"
         @click="setStatusFilter(option.value)"

@@ -20,7 +20,7 @@ defineEmits<{
       >
         <span
           class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium"
-          :class="i + 1 === currentStep ? 'bg-primary text-white' : i + 1 < currentStep ? 'bg-primary/20 text-primary' : 'bg-surface-raised text-text-muted'"
+          :class="i + 1 === currentStep ? 'bg-primary-solid text-on-primary' : i + 1 < currentStep ? 'bg-primary/20 text-primary' : 'bg-surface-raised text-text-muted'"
         >{{ i + 1 }}</span>
         <span
           class="text-sm hidden md:inline"
