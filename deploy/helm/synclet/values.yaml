@@ -242,6 +242,7 @@ k8s:
 ## @section Auth parameters
 auth:
   ## Secret used to sign JWT access and refresh tokens. Auto-generated if empty.
+  ## Must be at least 32 bytes long (e.g. `openssl rand -base64 32`); the server refuses to start otherwise.
   jwtSecret: ""
   ## Use a pre-created K8s Secret instead of the chart-managed one.
   existingSecret: ""
@@ -495,6 +496,8 @@ logArchive:
 ## 2. Inline value -> used directly (stored in chart-managed Secret)
 ## 3. existingSecret -> reference a pre-created K8s Secret (chart does NOT create one)
 
+## Encryption keys for stored connector secrets. Each must be a standard base64-encoded
+## 32-byte key (e.g. `openssl rand -base64 32`); the server refuses to start otherwise.
 encryption:
   key: ""
   keyPrevious: ""

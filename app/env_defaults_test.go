@@ -1,6 +1,7 @@
 package app
 
 import (
+	"encoding/base64"
 	"io"
 	"log/slog"
 	"os"
@@ -8,6 +9,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+)
+
+const (
+	validJWTSecret     = "e2e-test-jwt-secret-key-that-is-long-enough" //nolint:gosec // test fixture.
+	validEncryptionKey = "PjsJSmk5MpLbSjsXYdIeflREhQ57B7+Sz0b0/VreDRk="
 )
 
 func unsetEnv(t *testing.T, keys ...string) {
@@ -44,11 +50,57 @@ func TestEnsureSecrets(t *testing.T) {
 	})
 
 	t.Run("production with both secrets succeeds", func(t *testing.T) {
+		t.Setenv("AUTH_JWT_SECRET", validJWTSecret)
+		t.Setenv("SECRET_ENCRYPTION_KEY", validEncryptionKey)
+		t.Setenv("ENVIRONMENT", "production")
+
+		require.NoError(t, ensureSecrets(logger))
+	})
+
+	t.Run("encryption key that is not base64 fails naming the variable and format", func(t *testing.T) {
+		t.Setenv("AUTH_JWT_SECRET", validJWTSecret)
+		t.Setenv("SECRET_ENCRYPTION_KEY", "not base64!")
+		t.Setenv("ENVIRONMENT", "production")
+
+		err := ensureSecrets(logger)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "SECRET_ENCRYPTION_KEY")
+		assert.Contains(t, err.Error(), "base64-encoded 32-byte key")
+	})
+
+	t.Run("encryption key of the wrong length fails naming the variable and format", func(t *testing.T) {
+		t.Setenv("AUTH_JWT_SECRET", validJWTSecret)
+		t.Setenv("SECRET_ENCRYPTION_KEY", base64.StdEncoding.EncodeToString([]byte("short")))
+		t.Setenv("ENVIRONMENT", "production")
+
+		err := ensureSecrets(logger)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "SECRET_ENCRYPTION_KEY")
+		assert.Contains(t, err.Error(), "base64-encoded 32-byte key")
+		assert.Contains(t, err.Error(), "got 5 bytes")
+	})
+
+	t.Run("short JWT secret fails naming the variable and minimum length", func(t *testing.T) {
+		t.Setenv("AUTH_JWT_SECRET", "short-dummy-secret")
+		t.Setenv("SECRET_ENCRYPTION_KEY", validEncryptionKey)
+		t.Setenv("ENVIRONMENT", "production")
+
+		err := ensureSecrets(logger)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "AUTH_JWT_SECRET")
+		assert.Contains(t, err.Error(), "at least 32 bytes")
+		assert.NotContains(t, err.Error(), "SECRET_ENCRYPTION_KEY")
+	})
+
+	t.Run("both malformed secrets are reported together", func(t *testing.T) {
 		t.Setenv("AUTH_JWT_SECRET", "jwt")
 		t.Setenv("SECRET_ENCRYPTION_KEY", "key")
 		t.Setenv("ENVIRONMENT", "production")
 
-		require.NoError(t, ensureSecrets(logger))
+		err := ensureSecrets(logger)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "AUTH_JWT_SECRET")
+		assert.Contains(t, err.Error(), "SECRET_ENCRYPTION_KEY")
 	})
 
 	t.Run("development inside kubernetes refuses to generate", func(t *testing.T) {
@@ -143,7 +195,7 @@ func TestEnsureSecretsTreatsEmptyAsMissing(t *testing.T) {
 	})
 
 	t.Run("production with empty encryption key fails naming it", func(t *testing.T) {
-		t.Setenv("AUTH_JWT_SECRET", "jwt")
+		t.Setenv("AUTH_JWT_SECRET", validJWTSecret)
 		t.Setenv("SECRET_ENCRYPTION_KEY", "")
 		t.Setenv("ENVIRONMENT", "production")
 

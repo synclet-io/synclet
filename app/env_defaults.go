@@ -58,7 +58,7 @@ func ensureSecrets(logger *slog.Logger) error {
 	hasEncryptionKey := os.Getenv("SECRET_ENCRYPTION_KEY") != ""
 
 	if hasJWTSecret && hasEncryptionKey {
-		return nil
+		return validateSecrets()
 	}
 
 	if reason := secretGenerationForbiddenReason(); reason != "" {
@@ -96,7 +96,33 @@ func ensureSecrets(logger *slog.Logger) error {
 		logger.Warn("SECRET_ENCRYPTION_KEY not set; using persisted key — back this file up", slog.String("path", path))
 	}
 
-	return nil
+	return validateSecrets()
+}
+
+const (
+	minJWTSecretLen  = 32
+	encryptionKeyLen = 32
+)
+
+// validateSecrets checks AUTH_JWT_SECRET and SECRET_ENCRYPTION_KEY against the
+// formats the auth and secret modules require, reporting every malformed one.
+func validateSecrets() error {
+	var errs []error
+
+	if n := len(os.Getenv("AUTH_JWT_SECRET")); n < minJWTSecretLen {
+		errs = append(errs, fmt.Errorf("AUTH_JWT_SECRET must be at least %d bytes long, got %d (generate one with `openssl rand -base64 32`)", minJWTSecretLen, n))
+	}
+
+	key, err := base64.StdEncoding.DecodeString(os.Getenv("SECRET_ENCRYPTION_KEY"))
+
+	switch {
+	case err != nil:
+		errs = append(errs, errors.New("SECRET_ENCRYPTION_KEY must be a standard base64-encoded 32-byte key, got a value that is not valid base64 (generate one with `openssl rand -base64 32`)"))
+	case len(key) != encryptionKeyLen:
+		errs = append(errs, fmt.Errorf("SECRET_ENCRYPTION_KEY must be a standard base64-encoded %d-byte key, got %d bytes (generate one with `openssl rand -base64 32`)", encryptionKeyLen, len(key)))
+	}
+
+	return errors.Join(errs...)
 }
 
 // secretGenerationForbiddenReason returns why secrets must not be generated
