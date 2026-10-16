@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { resetStreamState, useUpdateStreamState } from '@entities/connection'
+import { useResetStreamState, useUpdateStreamState } from '@entities/connection'
 import { getErrorMessage } from '@shared/lib/errorUtils'
 import { SButton, SConfirmDialog, useToast } from '@shared/ui'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 const props = defineProps<{
   connectionId: string
@@ -14,11 +14,16 @@ const props = defineProps<{
 
 const toast = useToast()
 const updateStreamStateMutation = useUpdateStreamState()
+const resetStreamStateMutation = useResetStreamState()
 
 const editedState = ref(props.stateData ?? '')
 const confirmReset = ref(false)
 const saving = ref(false)
-const resetting = ref(false)
+const resetting = computed(() => resetStreamStateMutation.isPending.value)
+
+watch(() => props.stateData, (value) => {
+  editedState.value = value ?? ''
+})
 
 const isEdited = computed(() => editedState.value !== (props.stateData ?? ''))
 
@@ -61,10 +66,12 @@ async function handleSave() {
 
 async function handleReset() {
   confirmReset.value = false
-  resetting.value = true
   try {
-    await resetStreamState(props.connectionId, props.streamNamespace, props.streamName)
-    editedState.value = ''
+    await resetStreamStateMutation.mutateAsync({
+      connectionId: props.connectionId,
+      streamNamespace: props.streamNamespace,
+      streamName: props.streamName,
+    })
     const displayName = props.streamNamespace
       ? `${props.streamNamespace}.${props.streamName}`
       : props.streamName
@@ -72,9 +79,6 @@ async function handleReset() {
   }
   catch (e: unknown) {
     toast.error(getErrorMessage(e) || 'Failed to reset state')
-  }
-  finally {
-    resetting.value = false
   }
 }
 </script>

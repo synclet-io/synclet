@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { JobAttempt } from '@entities/job'
-import { useJob, useJobLogs } from '@entities/job'
+import { isActiveJobStatus, useJob, useJobLogs } from '@entities/job'
 import { formatDuration } from '@shared/lib/format'
 import { PageHeader, SAlert, SCard, SLogViewer, SSkeleton, StatusBadge } from '@shared/ui'
 import { CheckCircle2, ChevronDown, ChevronRight, Clock, Loader2, PlayCircle, XCircle } from 'lucide-vue-next'
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
 const LOG_TIMESTAMP_RE = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?/
@@ -20,14 +20,9 @@ const latestAttempt = computed(() => {
   return job.value.attempts.at(-1)
 })
 
-const isActive = computed(() => job.value?.status === 'running' || job.value?.status === 'scheduled' || job.value?.status === 'starting')
+const isActive = computed(() => isActiveJobStatus(job.value?.status))
 
-const jobIdRef = ref(jobId.value)
-watch(jobId, (val) => {
-  jobIdRef.value = val
-}, { immediate: true })
-
-const { lines, isLoading: logsLoading } = useJobLogs(jobIdRef, isActive)
+const { lines, isLoading: logsLoading } = useJobLogs(jobId, isActive)
 
 const expanded = ref<Record<string, boolean>>({})
 function toggle(id: string) {

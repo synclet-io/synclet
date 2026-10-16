@@ -27,6 +27,29 @@ export function useUpdateStreamState() {
   })
 }
 
+export function useResetStreamState() {
+  const qc = useQueryClient()
+  const { currentWorkspaceId } = useAuth()
+  return useMutation({
+    mutationFn: (params: { connectionId: string, streamNamespace: string, streamName: string }) =>
+      connectionApi.resetStreamState(params.connectionId, params.streamNamespace, params.streamName),
+    onSuccess: (_data, params) => {
+      qc.invalidateQueries({ queryKey: connectionKeys.streamStates(currentWorkspaceId.value ?? '', params.connectionId) })
+    },
+  })
+}
+
+export function useResetConnectionState() {
+  const qc = useQueryClient()
+  const { currentWorkspaceId } = useAuth()
+  return useMutation({
+    mutationFn: (connectionId: string) => connectionApi.resetConnectionState(connectionId),
+    onSuccess: (_data, connectionId) => {
+      qc.invalidateQueries({ queryKey: connectionKeys.streamStates(currentWorkspaceId.value ?? '', connectionId) })
+    },
+  })
+}
+
 export function useConnections(options?: { page?: Ref<number>, pageSize?: number }) {
   const { currentWorkspaceId } = useAuth()
   const page = options?.page

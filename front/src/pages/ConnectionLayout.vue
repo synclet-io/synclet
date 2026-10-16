@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Tab } from '@shared/ui'
 import { useConnection, useDisableConnection, useEnableConnection } from '@entities/connection'
-import { useCancelJob, useJobs, useTriggerSync } from '@entities/job'
+import { useActiveJob, useCancelJob, useTriggerSync } from '@entities/job'
 import { useConnectionStats } from '@entities/stats'
 import HealthBadge from '@features/connection-stats/HealthBadge.vue'
 import { getErrorMessage } from '@shared/lib/errorUtils'
@@ -16,7 +16,7 @@ const id = computed(() => route.params.id as string)
 const toast = useToast()
 
 const { data: connection, isLoading: loading, error } = useConnection(id)
-const { data: jobs } = useJobs(id)
+const { data: activeJob } = useActiveJob(id)
 const { data: connStats } = useConnectionStats(id, ref('24h'))
 const triggerSyncMutation = useTriggerSync()
 const enableConnectionMutation = useEnableConnection()
@@ -25,7 +25,6 @@ const cancelJobMutation = useCancelJob()
 
 const syncing = computed(() => triggerSyncMutation.isPending.value)
 const cancelling = computed(() => cancelJobMutation.isPending.value)
-const activeJob = computed(() => jobs.value?.items.find(j => j.status === 'running' || j.status === 'scheduled' || j.status === 'starting'))
 
 const tabs = computed<Tab[]>(() => [
   { name: 'Overview', to: { name: 'connection-detail', params: { id: id.value } } },

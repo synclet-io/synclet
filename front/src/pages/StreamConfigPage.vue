@@ -1,53 +1,21 @@
 <script setup lang="ts">
-import type { ConfiguredStream, DestinationSyncMode, SelectedField, SyncMode } from '@entities/connection'
+import type { ConfiguredStream, DestinationSyncMode, SyncMode } from '@entities/connection'
+import type { ConfiguredCatalogInput, DiscoveredCatalog } from '@features/stream-config/catalogStreams'
 import type { StreamRow } from '@features/stream-config/StreamExpandedRow.vue'
 import type { StreamValidationError } from '@features/stream-config/useStreamValidation'
-import { discoverSchema, getConfiguredCatalog, getDiscoveredCatalog, resetConnectionState, useConfigureStreams, useConnection, useStreamStates } from '@entities/connection'
+import { Code, ConnectError } from '@connectrpc/connect'
+import { discoverSchema, getConfiguredCatalog, getDiscoveredCatalog, useConfigureStreams, useConnection, useResetConnectionState, useStreamStates } from '@entities/connection'
 import { useConnectorTaskResult } from '@entities/connector-task'
 import { getSourceCatalog } from '@entities/source'
+import { mergeDiscoveredStreams, parseStreams, streamKey } from '@features/stream-config/catalogStreams'
 import { getLeafFields, parseJsonSchema } from '@features/stream-config/schemaParser'
 import StreamExpandedRow from '@features/stream-config/StreamExpandedRow.vue'
 import { useStreamValidation } from '@features/stream-config/useStreamValidation'
 import { getErrorMessage } from '@shared/lib/errorUtils'
 import { PageHeader, SAlert, SBadge, SButton, SConfirmDialog, SEmptyState, SInput, SSelect, SSkeleton, useToast } from '@shared/ui'
 import { AlertCircle, ChevronDown, ChevronRight, ChevronUp, RefreshCw, RotateCcw, Save } from 'lucide-vue-next'
-import { computed, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-
-interface DiscoveredCatalog {
-  streams: Array<{
-    stream: {
-      name: string
-      namespace?: string
-      json_schema?: Record<string, unknown>
-      jsonSchema?: Record<string, unknown>
-      supported_sync_modes?: string[]
-      source_defined_cursor?: boolean
-      default_cursor_field?: string[]
-      source_defined_primary_key?: string[][]
-    }
-    sync_mode?: string
-    destination_sync_mode?: string
-  }>
-}
-
-interface ConfiguredCatalogInput {
-  streams?: Array<{
-    stream?: { name?: string, namespace?: string }
-    name?: string
-    namespace?: string
-    sync_mode?: string
-    syncMode?: string
-    destination_sync_mode?: string
-    destinationSyncMode?: string
-    cursor_field?: string[]
-    cursorField?: string[]
-    primary_key?: Array<string[] | { field_path?: string[], fieldPath?: string[] }>
-    primaryKey?: Array<string[] | { field_path?: string[], fieldPath?: string[] }>
-    selected_fields?: Array<{ field_path?: string[], fieldPath?: string[] }>
-    selectedFields?: Array<{ field_path?: string[], fieldPath?: string[] }>
-  }>
-}
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 
 const route = useRoute()
 const router = useRouter()
@@ -61,12 +29,18 @@ interface NamespaceGroup {
   streams: { stream: StreamRow, index: number }[]
 }
 
-const catalog = ref<DiscoveredCatalog | null>(null)
+interface DiscoverySummary {
+  added: string[]
+  removed: string[]
+}
+
 const streams = ref<StreamRow[]>([])
 const loading = ref(true)
 const saving = ref(false)
 const discovering = ref(false)
 const error = ref('')
+const configuredCatalogError = ref('')
+const discoverySummary = ref<DiscoverySummary | null>(null)
 const searchQuery = ref('')
 
 const expandedStream = ref<string | null>(null)
@@ -74,22 +48,55 @@ const validationErrors = ref<StreamValidationError[]>([])
 const hasAttemptedSave = ref(false)
 const expandedNamespaces = ref(new Set<string>())
 const confirmResetAll = ref(false)
+const savedSnapshot = ref('')
+const pendingLeave = ref<string | null>(null)
 
 const discoverTaskId = ref<string | null>(null)
 const { data: discoverTaskResult } = useConnectorTaskResult(discoverTaskId)
 
-// Watch discover task result and extract catalog when complete
+function configSnapshot(rows: StreamRow[]): string {
+  return JSON.stringify(rows
+    .filter(s => s.enabled)
+    .map(s => [streamKey(s), s.syncMode, s.destinationSyncMode, s.cursorField, s.primaryKey, s.selectedFields]))
+}
+
+const isDirty = computed(() => !loading.value && configSnapshot(streams.value) !== savedSnapshot.value)
+const allEnabled = computed(() => streams.value.length > 0 && streams.value.every(s => s.enabled))
+const someEnabled = computed(() => streams.value.some(s => s.enabled))
+
+function setAllEnabled(enabled: boolean) {
+  for (const s of streams.value)
+    s.enabled = enabled
+  revalidateIfNeeded()
+}
+
+function expandAllNamespaces() {
+  expandedNamespaces.value = new Set(streams.value.map(s => s.namespace))
+}
+
+function setLoadedStreams(rows: StreamRow[]) {
+  streams.value = rows
+  savedSnapshot.value = configSnapshot(rows)
+  expandAllNamespaces()
+}
+
 watch(discoverTaskResult, (task) => {
   if (!task)
     return
   if (task.status === 'completed' && task.discoverResult) {
     const cat = task.discoverResult.catalog as unknown as DiscoveredCatalog | undefined
-    catalog.value = cat ?? null
-    if (cat)
-      parseStreams(cat)
+    if (cat) {
+      const { streams: merged, added, removed } = mergeDiscoveredStreams(streams.value, parseStreams(cat))
+      streams.value = merged
+      expandAllNamespaces()
+      revalidateIfNeeded()
+      discoverySummary.value = added.length > 0 || removed.length > 0 ? { added, removed } : null
+    }
     discovering.value = false
     discoverTaskId.value = null
-    toast.success('Schema discovered')
+    toast.success(discoverySummary.value
+      ? `Schema discovered: ${discoverySummary.value.added.length} added, ${discoverySummary.value.removed.length} removed`
+      : 'Schema discovered: no stream changes')
   }
   else if (task.status === 'failed') {
     error.value = task.errorMessage || 'Schema discovery failed. Check that the source connector is running and try again.'
@@ -99,152 +106,91 @@ watch(discoverTaskResult, (task) => {
 })
 
 const configureStreamsMutation = useConfigureStreams()
+const resetConnectionStateMutation = useResetConnectionState()
 const { validate } = useStreamValidation()
 const { data: streamStatesResult } = useStreamStates(id)
 
-function streamKey(s: StreamRow): string {
-  return s.namespace ? `${s.namespace}.${s.name}` : s.name
-}
-
-// Load catalog: try cached source catalog first, fall back to connection-scoped discover
-const hasLoadedCatalog = ref(false)
-watch(connection, async (conn) => {
-  if (!conn || hasLoadedCatalog.value || !loading.value)
-    return
-
-  // Try cached catalog from source first (avoids synchronous Docker)
-  if (conn.sourceId) {
+async function loadDiscoveredCatalog(sourceId: string | undefined): Promise<DiscoveredCatalog | undefined> {
+  if (sourceId) {
     try {
-      const cached = await getSourceCatalog(conn.sourceId)
-      if (cached && cached.catalog && Object.keys(cached.catalog).length > 0) {
-        catalog.value = cached.catalog as unknown as DiscoveredCatalog
-        let configuredCat: ConfiguredCatalogInput | undefined
-        try {
-          configuredCat = await getConfiguredCatalog(id) as ConfiguredCatalogInput | undefined
-        }
-        catch (e) {
-          // No configured catalog yet — fresh connection. Surface as warn
-          // (project ESLint only allows warn/error from console).
-          console.warn('[stream-config] getConfiguredCatalog failed (cached path)', e)
-        }
-        parseStreams(cached.catalog as unknown as DiscoveredCatalog, configuredCat)
-        hasLoadedCatalog.value = true
-        loading.value = false
-        return
-      }
+      const cached = await getSourceCatalog(sourceId)
+      if (cached?.catalog && Object.keys(cached.catalog).length > 0)
+        return cached.catalog as unknown as DiscoveredCatalog
     }
     catch (e) {
-      // Falling back to connection-scoped discover.
       console.warn('[stream-config] getSourceCatalog failed, falling back to connection discover', e)
     }
   }
+  return await getDiscoveredCatalog(id) as DiscoveredCatalog | undefined
+}
 
-  // Fallback: existing getDiscoveredCatalog (connection-scoped, synchronous Docker)
+async function loadConfiguredCatalog(): Promise<ConfiguredCatalogInput | undefined> {
   try {
-    const cat = await getDiscoveredCatalog(id) as DiscoveredCatalog | undefined
-    catalog.value = cat ?? null
-    let configuredCat: ConfiguredCatalogInput | undefined
-    try {
-      configuredCat = await getConfiguredCatalog(id) as ConfiguredCatalogInput | undefined
-    }
-    catch (e) {
-      console.warn('[stream-config] getConfiguredCatalog failed (fallback path)', e)
-    }
-    if (cat)
-      parseStreams(cat, configuredCat)
+    return await getConfiguredCatalog(id) as ConfiguredCatalogInput | undefined
   }
   catch (e) {
-    // Both the cached source catalog and the connection-scoped discover failed —
-    // user gets a blank page otherwise, so surface a recoverable error.
-    console.warn('[stream-config] getDiscoveredCatalog failed', e)
+    if (ConnectError.from(e).code === Code.NotFound)
+      return undefined
+    throw e
+  }
+}
+
+async function loadCatalog(sourceId: string | undefined) {
+  loading.value = true
+  error.value = ''
+  configuredCatalogError.value = ''
+  try {
+    const discovered = await loadDiscoveredCatalog(sourceId)
+    let configured: ConfiguredCatalogInput | undefined
+    try {
+      configured = await loadConfiguredCatalog()
+    }
+    catch (e) {
+      configuredCatalogError.value = getErrorMessage(e)
+      return
+    }
+    if (discovered)
+      setLoadedStreams(parseStreams(discovered, configured))
+  }
+  catch (e) {
     error.value = getErrorMessage(e) || 'Failed to load catalog. Try running schema discovery.'
   }
+  finally {
+    loading.value = false
+  }
+}
+
+const hasLoadedCatalog = ref(false)
+watch(connection, (conn) => {
+  if (!conn || hasLoadedCatalog.value)
+    return
   hasLoadedCatalog.value = true
-  loading.value = false
+  loadCatalog(conn.sourceId)
 }, { immediate: true })
 
-function parseStreams(cat: DiscoveredCatalog, configuredCat?: ConfiguredCatalogInput) {
-  if (!cat?.streams)
-    return
-
-  type ConfiguredEntry = NonNullable<ConfiguredCatalogInput['streams']>[number]
-  const configuredMap = new Map<string, ConfiguredEntry>()
-  if (configuredCat?.streams) {
-    for (const cs of configuredCat.streams) {
-      const stream = cs.stream || cs
-      const name = stream.name || ''
-      const namespace = stream.namespace || ''
-      const key = namespace ? `${namespace}.${name}` : name
-      configuredMap.set(key, cs)
-    }
-  }
-
-  const hasConfigured = configuredMap.size > 0
-
-  streams.value = cat.streams.map((s) => {
-    const stream = s.stream || s
-    const jsonSchema = stream.json_schema || stream.jsonSchema || {}
-    const name = stream.name || ''
-    const namespace = stream.namespace || ''
-    const key = namespace ? `${namespace}.${name}` : name
-
-    const configured = configuredMap.get(key)
-
-    if (configured) {
-      const cursorField = configured.cursor_field || configured.cursorField || []
-      const primaryKey = (configured.primary_key || configured.primaryKey || []).map((pk: string[] | { field_path?: string[], fieldPath?: string[] }) => {
-        if (Array.isArray(pk))
-          return pk
-        if (pk?.field_path || pk?.fieldPath)
-          return pk.field_path || pk.fieldPath || []
-        return []
-      })
-      const selectedFields = (configured.selected_fields || configured.selectedFields || []).map((sf: { field_path?: string[], fieldPath?: string[] }) => {
-        if (sf?.field_path || sf?.fieldPath)
-          return { fieldPath: sf.field_path || sf.fieldPath || [] }
-        return { fieldPath: [] as string[] }
-      })
-
-      return {
-        name,
-        namespace,
-        syncMode: (configured.sync_mode || configured.syncMode || 'full_refresh') as SyncMode,
-        destinationSyncMode: (configured.destination_sync_mode || configured.destinationSyncMode || 'overwrite') as DestinationSyncMode,
-        enabled: true,
-        supportedSyncModes: stream.supported_sync_modes || ['full_refresh', 'incremental'],
-        cursorField,
-        primaryKey,
-        selectedFields,
-        jsonSchema,
-        sourceDefinedCursor: !!stream.source_defined_cursor,
-        defaultCursorField: stream.default_cursor_field || [],
-        sourceDefinedPrimaryKey: stream.source_defined_primary_key || [],
-      } satisfies StreamRow
-    }
-
-    return {
-      name,
-      namespace,
-      syncMode: (s.sync_mode || 'full_refresh') as SyncMode,
-      destinationSyncMode: (s.destination_sync_mode || 'overwrite') as DestinationSyncMode,
-      enabled: !hasConfigured,
-      supportedSyncModes: stream.supported_sync_modes || ['full_refresh', 'incremental'],
-      cursorField: [] as string[],
-      primaryKey: [] as string[][],
-      selectedFields: [] as SelectedField[],
-      jsonSchema,
-      sourceDefinedCursor: !!stream.source_defined_cursor,
-      defaultCursorField: stream.default_cursor_field || [],
-      sourceDefinedPrimaryKey: stream.source_defined_primary_key || [],
-    } satisfies StreamRow
-  })
-
-  const namespaces = new Set<string>()
-  for (const s of streams.value) {
-    namespaces.add(s.namespace)
-  }
-  expandedNamespaces.value = namespaces
+function retryLoad() {
+  loadCatalog(connection.value?.sourceId)
 }
+
+onBeforeRouteLeave((to) => {
+  if (!isDirty.value || pendingLeave.value === to.fullPath)
+    return true
+  pendingLeave.value = to.fullPath
+  return false
+})
+
+function confirmLeave() {
+  if (pendingLeave.value)
+    router.push(pendingLeave.value)
+}
+
+function onBeforeUnload(e: BeforeUnloadEvent) {
+  if (isDirty.value)
+    e.preventDefault()
+}
+
+onMounted(() => window.addEventListener('beforeunload', onBeforeUnload))
+onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload))
 
 // Namespace grouping
 const groupedStreams = computed<NamespaceGroup[]>(() => {
@@ -413,7 +359,7 @@ async function resetAllState() {
   confirmResetAll.value = false
   error.value = ''
   try {
-    await resetConnectionState(id)
+    await resetConnectionStateMutation.mutateAsync(id)
     toast.success('All stream state reset')
   }
   catch (e: unknown) {
@@ -422,6 +368,8 @@ async function resetAllState() {
 }
 
 async function saveConfig() {
+  if (configuredCatalogError.value)
+    return
   hasAttemptedSave.value = true
   const errors = validate(streams.value)
   validationErrors.value = errors
@@ -447,6 +395,7 @@ async function saveConfig() {
         selectedFields: s.selectedFields,
       }))
     await configureStreamsMutation.mutateAsync({ connectionId: id, streams: configured })
+    savedSnapshot.value = configSnapshot(streams.value)
     router.push(`/connections/${id}`)
   }
   catch (e: unknown) {
@@ -466,13 +415,13 @@ async function saveConfig() {
     :back-to="`/connections/${id}`"
   >
     <template #actions>
-      <SButton variant="danger" @click="confirmResetAll = true">
+      <SButton variant="danger" :loading="resetConnectionStateMutation.isPending.value" @click="confirmResetAll = true">
         <RotateCcw class="w-4 h-4" /> Reset All State
       </SButton>
       <SButton variant="secondary" :loading="discovering" @click="handleDiscoverSchema">
         <RefreshCw class="w-4 h-4" /> Refresh Catalog
       </SButton>
-      <SButton :loading="saving" @click="saveConfig">
+      <SButton :loading="saving" :disabled="loading || !!configuredCatalogError" @click="saveConfig">
         <Save class="w-4 h-4" /> Save Configuration
       </SButton>
     </template>
@@ -482,10 +431,29 @@ async function saveConfig() {
     {{ error }}
   </SAlert>
 
+  <SAlert v-if="discoverySummary" variant="info" class="mb-4" dismissible @dismiss="discoverySummary = null">
+    <p v-if="discoverySummary.added.length > 0">
+      Added (disabled until you enable them): {{ discoverySummary.added.join(', ') }}
+    </p>
+    <p v-if="discoverySummary.removed.length > 0">
+      Removed from the source and dropped on save: {{ discoverySummary.removed.join(', ') }}
+    </p>
+  </SAlert>
+
   <!-- Loading state -->
   <div v-if="loading" class="bg-surface border border-border rounded-xl overflow-hidden p-5 space-y-3">
     <SSkeleton v-for="i in 5" :key="i" height="40px" />
   </div>
+
+  <SAlert v-else-if="configuredCatalogError" variant="danger">
+    <p>Could not load the saved stream configuration: {{ configuredCatalogError }}</p>
+    <p class="mt-1">
+      Editing is blocked so the saved configuration is not overwritten with defaults.
+    </p>
+    <SButton size="sm" variant="secondary" class="mt-3" @click="retryLoad">
+      <RefreshCw class="w-4 h-4" /> Retry
+    </SButton>
+  </SAlert>
 
   <!-- Empty state -->
   <div v-else-if="streams.length === 0" class="py-12">
@@ -511,7 +479,10 @@ async function saveConfig() {
               <input
                 type="checkbox"
                 class="w-3.5 h-3.5 rounded border-border text-primary focus:ring-primary/20 cursor-pointer"
-                @change="streams.forEach(s => s.enabled = ($event.target as HTMLInputElement).checked)"
+                aria-label="Enable all streams"
+                :checked="allEnabled"
+                :indeterminate="someEnabled && !allEnabled"
+                @change="setAllEnabled(($event.target as HTMLInputElement).checked)"
               >
             </th>
             <th class="px-3 py-2 text-left text-xs font-medium text-text-secondary uppercase">
@@ -618,5 +589,14 @@ async function saveConfig() {
     confirm-text="Reset"
     @confirm="resetAllState"
     @cancel="confirmResetAll = false"
+  />
+
+  <SConfirmDialog
+    :open="!!pendingLeave && isDirty"
+    title="Discard unsaved changes"
+    message="You have unsaved stream configuration changes. Leave this page and discard them?"
+    confirm-text="Discard changes"
+    @confirm="confirmLeave"
+    @cancel="pendingLeave = null"
   />
 </template>
