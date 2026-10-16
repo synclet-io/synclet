@@ -220,6 +220,15 @@ executor:
   nodeSelector: {}
   tolerations: []
   affinity: {}
+  ## Least-privilege account of the executor deployment (distributed mode). It is bound
+  ## to the connector-runner Role and nothing else, so cloud permissions granted to the
+  ## chart's serviceAccount (e.g. the log-archive bucket) do not reach the executor.
+  ## create=false with name="" keeps the executor on the chart's serviceAccount.
+  serviceAccount:
+    create: true
+    ## Defaults to <fullname>-executor when create is true; with create=false, an existing account.
+    name: ""
+    annotations: {}
 
 ## @section Kubernetes executor parameters
 ## NOTE: The connector namespace (k8s.namespace) must be pre-created by the cluster admin.
@@ -380,8 +389,21 @@ pipeline:
     cpuLimit: ""
     memoryRequest: ""
     memoryLimit: ""
-    ## K8s service account name for connector pods (e.g. for Workload Identity).
+    ## Existing K8s service account for connector pods; pipeline.serviceAccount takes precedence.
     serviceAccountName: ""
+
+  ## Shared ServiceAccount of connector pods (sync, check, spec, discover), created in
+  ## k8s.namespace (the release namespace when empty). Its name becomes the global default
+  ## PIPELINE_RUNTIME_SERVICE_ACCOUNT_NAME; a source or destination overrides it with
+  ## service_account_name in its runtime config (a sync pod takes the source's, else the
+  ## destination's). Annotate it so connectors reach the cloud through Workload Identity:
+  ##   GKE: iam.gke.io/gcp-service-account: <gsa>@<project>.iam.gserviceaccount.com
+  ##   EKS: eks.amazonaws.com/role-arn: arn:aws:iam::<account>:role/<role>
+  serviceAccount:
+    create: false
+    ## Defaults to <fullname>-connector when create is true; with create=false, an existing account.
+    name: ""
+    annotations: {}
 
 ## @section Job log archive
 ## Where the logs of finished jobs are stored. While a job runs its logs are always in Postgres.
@@ -584,9 +606,10 @@ vso:
     refreshAfter: 60s
 
 ## @section Service Account
-## Used by the server, jobs and executor deployments. Connector pods run in k8s.namespace
-## under pipeline.resources.serviceAccountName (or that namespace's default account), so
-## they do not get this account's cloud permissions.
+## Used by the server and jobs deployments, and by the executor only when
+## executor.serviceAccount.create is false and no executor.serviceAccount.name is set.
+## Connector pods run in k8s.namespace under pipeline.serviceAccount (or that namespace's
+## default account), so they do not get this account's cloud permissions.
 serviceAccount:
   create: true
   name: ""

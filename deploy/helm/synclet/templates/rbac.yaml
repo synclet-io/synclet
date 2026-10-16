@@ -1,4 +1,6 @@
-{{- if and .Values.serviceAccount.create (or .Values.executor.enabled (eq .Values.mode "standalone")) }}
+{{- $chartBinding := and .Values.serviceAccount.create (or .Values.executor.enabled (eq .Values.mode "standalone")) }}
+{{- $executorBinding := include "synclet.executor.ownServiceAccount" . }}
+{{- if or $chartBinding $executorBinding }}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -22,6 +24,8 @@ rules:
   - apiGroups: [""]
     resources: ["events"]
     verbs: ["create"]
+{{- end }}
+{{- if $chartBinding }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -37,5 +41,23 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: {{ include "synclet.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}
+{{- if $executorBinding }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "synclet.fullname" . }}-executor-connector-runner
+  namespace: {{ .Values.k8s.namespace }}
+  labels:
+    {{- include "synclet.executor.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "synclet.fullname" . }}-connector-runner
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "synclet.executor.serviceAccountName" . }}
     namespace: {{ .Release.Namespace }}
 {{- end }}

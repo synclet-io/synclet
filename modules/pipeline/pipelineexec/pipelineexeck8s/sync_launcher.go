@@ -32,7 +32,8 @@ func (a *K8sSyncLauncherAdapter) LaunchSyncJob(ctx context.Context, opts K8sSync
 		srcRuntimeConfigPtr = &opts.RuntimeConfig
 	}
 
-	srcRuntimeCfg := pipelineservice.ResolveRuntimeConfig(a.runtimeDefaults, pipelineservice.ParseRuntimeConfig(srcRuntimeConfigPtr))
+	srcOverride := pipelineservice.ParseRuntimeConfig(srcRuntimeConfigPtr)
+	srcRuntimeCfg := pipelineservice.ResolveRuntimeConfig(a.runtimeDefaults, srcOverride)
 	srcMemLimit, srcCPULimit, srcMemReq, srcCPUReq := pipelineservice.ToContainerResources(srcRuntimeCfg)
 
 	// Resolve runtime config for destination resource limits.
@@ -41,7 +42,8 @@ func (a *K8sSyncLauncherAdapter) LaunchSyncJob(ctx context.Context, opts K8sSync
 		destRuntimeConfigPtr = &opts.DestRuntimeConfig
 	}
 
-	destRuntimeCfg := pipelineservice.ResolveRuntimeConfig(a.runtimeDefaults, pipelineservice.ParseRuntimeConfig(destRuntimeConfigPtr))
+	destOverride := pipelineservice.ParseRuntimeConfig(destRuntimeConfigPtr)
+	destRuntimeCfg := pipelineservice.ResolveRuntimeConfig(a.runtimeDefaults, destOverride)
 	destMemLimit, destCPULimit, destMemReq, destCPUReq := pipelineservice.ToContainerResources(destRuntimeCfg)
 
 	// Parse K8s scheduling fields from source runtime config (pod-level scheduling).
@@ -100,11 +102,25 @@ func (a *K8sSyncLauncherAdapter) LaunchSyncJob(ctx context.Context, opts K8sSync
 		Tolerations:        tolerations,
 		NodeSelector:       nodeSelector,
 		Affinity:           affinity,
-		ServiceAccountName: srcRuntimeCfg.ServiceAccountName,
+		ServiceAccountName: syncServiceAccountName(srcOverride, destOverride, a.runtimeDefaults),
 	})
 	if err != nil {
 		return "", fmt.Errorf("launching k8s sync: %w", err)
 	}
 
 	return k8sJobName, nil
+}
+
+// syncServiceAccountName picks the account a sync pod runs as: the source's
+// override, else the destination's, else the global default.
+func syncServiceAccountName(src, dest *pipelineservice.RuntimeConfig, defaults pipelineservice.RuntimeDefaults) string {
+	if src != nil && src.ServiceAccountName != "" {
+		return src.ServiceAccountName
+	}
+
+	if dest != nil && dest.ServiceAccountName != "" {
+		return dest.ServiceAccountName
+	}
+
+	return defaults.ServiceAccountName
 }

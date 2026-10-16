@@ -104,6 +104,39 @@ ServiceAccount name.
 {{- end }}
 
 {{/*
+Whether the executor deployment runs under an account of its own.
+*/}}
+{{- define "synclet.executor.ownServiceAccount" -}}
+{{- if and (eq .Values.mode "distributed") .Values.executor.enabled (or .Values.executor.serviceAccount.create .Values.executor.serviceAccount.name) }}true{{- end }}
+{{- end }}
+
+{{/*
+ServiceAccount name of the executor deployment: its own account when one is
+created or named, else the chart's.
+*/}}
+{{- define "synclet.executor.serviceAccountName" -}}
+{{- if .Values.executor.serviceAccount.create }}
+{{- default (printf "%s-executor" (include "synclet.fullname" .)) .Values.executor.serviceAccount.name }}
+{{- else if .Values.executor.serviceAccount.name }}
+{{- .Values.executor.serviceAccount.name }}
+{{- else }}
+{{- include "synclet.serviceAccountName" . }}
+{{- end }}
+{{- end }}
+
+{{/*
+Default ServiceAccount name of connector pods; empty means the k8s.namespace
+default account.
+*/}}
+{{- define "synclet.pipeline.serviceAccountName" -}}
+{{- if .Values.pipeline.serviceAccount.create }}
+{{- default (printf "%s-connector" (include "synclet.fullname" .)) .Values.pipeline.serviceAccount.name }}
+{{- else }}
+{{- .Values.pipeline.serviceAccount.name | default .Values.pipeline.resources.serviceAccountName }}
+{{- end }}
+{{- end }}
+
+{{/*
 Full container image reference.
 */}}
 {{- define "synclet.image" -}}

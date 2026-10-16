@@ -30,7 +30,7 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "synclet.serviceAccountName" . }}
+      serviceAccountName: {{ include "synclet.executor.serviceAccountName" . }}
       terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
       {{- if .Values.executor.priorityClassName }}
       priorityClassName: {{ .Values.executor.priorityClassName }}

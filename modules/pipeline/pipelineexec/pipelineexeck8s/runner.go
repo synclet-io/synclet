@@ -413,6 +413,8 @@ type ConnectorTaskOptions struct {
 	TaskType string // "Check", "Spec", "Discover"
 	Image    string // Connector image
 	Config   []byte // Decrypted config JSON (nil for spec)
+
+	ServiceAccountName string
 }
 
 // LaunchConnectorTask creates a K8s Job with a 2-container pod (coordinator + connector)
@@ -569,6 +571,10 @@ func (r *SyncRunner) LaunchConnectorTask(ctx context.Context, opts ConnectorTask
 		RestartPolicy: corev1.RestartPolicyNever,
 		Containers:    []corev1.Container{coordinatorContainer, connectorContainer},
 		Volumes:       append([]corev1.Volume{sharedVolume}, taskSecretVolumes...),
+	}
+
+	if opts.ServiceAccountName != "" {
+		podSpec.ServiceAccountName = opts.ServiceAccountName
 	}
 
 	if r.config.ImagePullSecret != "" {

@@ -96,8 +96,8 @@ data:
   {{- if .Values.pipeline.resources.memoryLimit }}
   PIPELINE_RUNTIME_MEMORY_LIMIT: {{ .Values.pipeline.resources.memoryLimit | quote }}
   {{- end }}
-  {{- if .Values.pipeline.resources.serviceAccountName }}
-  PIPELINE_RUNTIME_SERVICE_ACCOUNT_NAME: {{ .Values.pipeline.resources.serviceAccountName | quote }}
+  {{- with include "synclet.pipeline.serviceAccountName" . }}
+  PIPELINE_RUNTIME_SERVICE_ACCOUNT_NAME: {{ . | quote }}
   {{- end }}
   ## OIDC (non-secret fields)
   {{- if .Values.oidc.providers }}
