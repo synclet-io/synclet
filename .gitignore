@@ -48,3 +48,6 @@ airbyte_oss_registry.json
 airbyte_oss_registry_schema.json
 # Root-level tool caches (vite/vitest run from repo root)
 /node_modules/
+
+# Playwright MCP scratch output (screenshots, console logs, downloads)
+.playwright-mcp/
