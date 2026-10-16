@@ -53,7 +53,8 @@ func newMigrateDownCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "down",
 		Aliases: []string{"d"},
-		Short:   "Roll back the last migration",
+		Short:   "Roll back the latest migration of one module (--module) or of every module (--all)",
+		Example: "synclet migrate down --module pipeline",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			dotEnvs, err := cmd.Flags().GetStringArray("dotenv")
 			if err != nil {
@@ -65,10 +66,26 @@ func newMigrateDownCommand() *cobra.Command {
 				return err
 			}
 
-			return app.RunMigrationDown(app.WithRunModule(module), app.WithDotEnvFiles(dotEnvs...))
+			all, err := cmd.Flags().GetBool("all")
+			if err != nil {
+				return err
+			}
+
+			confirmed, err := cmd.Flags().GetBool("yes")
+			if err != nil {
+				return err
+			}
+
+			return app.RunMigrationDown(app.MigrationDownTarget{
+				Module:    module,
+				All:       all,
+				Confirmed: confirmed,
+			}, app.WithDotEnvFiles(dotEnvs...))
 		},
 	}
-	cmd.Flags().String("module", "", "module name")
+	cmd.Flags().String("module", "", "module to roll back")
+	cmd.Flags().Bool("all", false, "roll back the latest migration of every module")
+	cmd.Flags().Bool("yes", false, "confirm the rollback when ENVIRONMENT is not development")
 
 	return cmd
 }

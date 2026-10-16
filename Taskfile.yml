@@ -62,9 +62,9 @@ tasks:
       - go run main.go --dotenv .env migrate up
 
   migrate:down:
-    desc: Rollback last migration
+    desc: "Roll back the latest migration of one module (task migrate:down -- --module pipeline; --all for every module)"
     cmds:
-      - go run main.go --dotenv .env migrate down
+      - go run main.go --dotenv .env migrate down {{.CLI_ARGS}}
 
   migrate:status:
     desc: Show migration status

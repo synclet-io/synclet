@@ -1,6 +1,9 @@
 package pipelineservice
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type baseErr string
 
@@ -25,6 +28,18 @@ func (e *ValidationError) Error() string {
 	}
 
 	return "validation error: " + e.Message
+}
+
+// InUseError reports a resource that connections still reference and so
+// cannot be deleted.
+type InUseError struct {
+	Resource        string
+	ConnectionNames []string
+}
+
+func (e *InUseError) Error() string {
+	return fmt.Sprintf("%s is used by connections: %s; delete those connections first",
+		e.Resource, strings.Join(e.ConnectionNames, ", "))
 }
 
 // ExitCodeError wraps a connector exit with a typed exit code for classification.

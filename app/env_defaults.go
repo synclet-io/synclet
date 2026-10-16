@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // envDefaults are applied for any var still unset after dotenv files have been loaded.
@@ -21,10 +22,19 @@ var envDefaults = map[string]string{
 	"INTERNAL_HTTP_SERVER_ADDR":    "0.0.0.0:8081",
 }
 
-// applyEnvDefaults fills required env vars that have no value yet. Plain
-// defaults come from envDefaults; secrets are generated (and persisted where
-// losing them would be destructive).
+// applyEnvDefaults fills plain defaults and the secrets the server and jobs
+// need. When a secret is missing and cannot be generated safely, it logs which
+// variable to set and exits the process with status 1.
 func applyEnvDefaults(logger *slog.Logger) {
+	applyPlainEnvDefaults()
+
+	if err := ensureSecrets(logger); err != nil {
+		logger.Error(err.Error())
+		os.Exit(1)
+	}
+}
+
+func applyPlainEnvDefaults() {
 	for key, value := range envDefaults {
 		if _, ok := os.LookupEnv(key); ok {
 			continue
@@ -32,28 +42,81 @@ func applyEnvDefaults(logger *slog.Logger) {
 
 		_ = os.Setenv(key, value)
 	}
+}
 
-	if _, ok := os.LookupEnv("AUTH_JWT_SECRET"); !ok {
+// ensureSecrets generates AUTH_JWT_SECRET and SECRET_ENCRYPTION_KEY only for
+// local development: ENVIRONMENT unset or "development", outside a container.
+// Anywhere else a missing secret is an error, because a generated JWT secret
+// differs per replica and restart, and a key persisted inside a container is
+// lost with it, leaving stored connector secrets unrecoverable.
+func ensureSecrets(logger *slog.Logger) error {
+	_, hasJWTSecret := os.LookupEnv("AUTH_JWT_SECRET")
+	_, hasEncryptionKey := os.LookupEnv("SECRET_ENCRYPTION_KEY")
+
+	if hasJWTSecret && hasEncryptionKey {
+		return nil
+	}
+
+	if reason := secretGenerationForbiddenReason(); reason != "" {
+		var missing []string
+		if !hasJWTSecret {
+			missing = append(missing, "AUTH_JWT_SECRET")
+		}
+
+		if !hasEncryptionKey {
+			missing = append(missing, "SECRET_ENCRYPTION_KEY")
+		}
+
+		return fmt.Errorf("set %s: %s", strings.Join(missing, " and "), reason)
+	}
+
+	if !hasJWTSecret {
 		secret, err := randomHex(32)
 		if err != nil {
-			logger.Error("can't generate default AUTH_JWT_SECRET", slog.Any("error", err))
-		} else {
-			_ = os.Setenv("AUTH_JWT_SECRET", secret)
-
-			logger.Warn("AUTH_JWT_SECRET not set; generated an ephemeral one — existing sessions will be invalidated on next restart")
+			return fmt.Errorf("generate AUTH_JWT_SECRET: %w", err)
 		}
+
+		_ = os.Setenv("AUTH_JWT_SECRET", secret)
+
+		logger.Warn("AUTH_JWT_SECRET not set; generated an ephemeral one — existing sessions will be invalidated on next restart")
 	}
 
-	if _, ok := os.LookupEnv("SECRET_ENCRYPTION_KEY"); !ok {
+	if !hasEncryptionKey {
 		key, path, err := loadOrCreateEncryptionKey()
 		if err != nil {
-			logger.Error("can't load or create SECRET_ENCRYPTION_KEY", slog.Any("error", err))
-		} else {
-			_ = os.Setenv("SECRET_ENCRYPTION_KEY", key)
-
-			logger.Warn("SECRET_ENCRYPTION_KEY not set; using persisted key — back this file up", slog.String("path", path))
+			return fmt.Errorf("SECRET_ENCRYPTION_KEY is not set and no local key could be loaded or created: %w", err)
 		}
+
+		_ = os.Setenv("SECRET_ENCRYPTION_KEY", key)
+
+		logger.Warn("SECRET_ENCRYPTION_KEY not set; using persisted key — back this file up", slog.String("path", path))
 	}
+
+	return nil
+}
+
+// secretGenerationForbiddenReason returns why secrets must not be generated
+// for this process, or "" when generating them is allowed.
+func secretGenerationForbiddenReason() string {
+	if env := os.Getenv("ENVIRONMENT"); env != "" && env != "development" {
+		return fmt.Sprintf("secrets are generated only when ENVIRONMENT is development, got %q", env)
+	}
+
+	if isRunningInContainer() {
+		return "secrets are never generated inside a container"
+	}
+
+	return ""
+}
+
+func isRunningInContainer() bool {
+	if isRunningInK8s() {
+		return true
+	}
+
+	_, err := os.Stat("/.dockerenv")
+
+	return err == nil
 }
 
 func randomHex(n int) (string, error) {

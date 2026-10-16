@@ -3,6 +3,7 @@ package pipelinedestinations
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/google/uuid"
 	"github.com/saturn4er/boilerplate-go/lib/filter"
@@ -28,7 +29,8 @@ type DeleteDestinationParams struct {
 	WorkspaceID uuid.UUID
 }
 
-// Execute deletes a destination.
+// Execute deletes a destination. It refuses with *pipelineservice.InUseError while
+// any connection still references the destination.
 func (uc *DeleteDestination) Execute(ctx context.Context, params DeleteDestinationParams) error {
 	// Get destination first to clean up secrets.
 	dest, err := uc.storage.Destinations().First(ctx, &pipelineservice.DestinationFilter{
@@ -37,6 +39,10 @@ func (uc *DeleteDestination) Execute(ctx context.Context, params DeleteDestinati
 	})
 	if err != nil {
 		return fmt.Errorf("getting destination for secret cleanup: %w", err)
+	}
+
+	if err := ensureDestinationUnused(ctx, uc.storage, dest); err != nil {
+		return err
 	}
 
 	// Clean up all associated secrets.
@@ -66,4 +72,27 @@ func (uc *DeleteDestination) Execute(ctx context.Context, params DeleteDestinati
 	})
 
 	return nil
+}
+
+func ensureDestinationUnused(ctx context.Context, storage pipelineservice.Storage, dest *pipelineservice.Destination) error {
+	connections, err := storage.Connections().Find(ctx, &pipelineservice.ConnectionFilter{
+		WorkspaceID:   filter.Equals(dest.WorkspaceID),
+		DestinationID: filter.Equals(dest.ID),
+	})
+	if err != nil {
+		return fmt.Errorf("listing connections using destination: %w", err)
+	}
+
+	if len(connections) == 0 {
+		return nil
+	}
+
+	names := make([]string, 0, len(connections))
+	for _, conn := range connections {
+		names = append(names, conn.Name)
+	}
+
+	slices.Sort(names)
+
+	return &pipelineservice.InUseError{Resource: "destination " + dest.Name, ConnectionNames: names}
 }

@@ -32,6 +32,10 @@ func mapError(err error) error {
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
+	if inUseErr, ok := lo.ErrorsAs[*pipelineservice.InUseError](err); ok {
+		return connect.NewError(connect.CodeFailedPrecondition, inUseErr)
+	}
+
 	if errors.Is(err, pipelineservice.ErrConnectorNotLinked) {
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	}

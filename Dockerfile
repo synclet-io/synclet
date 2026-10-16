@@ -16,6 +16,6 @@ COPY --from=frontend /app/front/dist ./front/dist
 RUN CGO_ENABLED=0 go build -o /synclet .
 
 # Stage 3: Runtime
-FROM gcr.io/distroless/base-debian12
+FROM gcr.io/distroless/base-debian12:nonroot
 COPY --from=backend /synclet /usr/local/bin/synclet
 ENTRYPOINT ["synclet"]

@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -30,32 +31,68 @@ func init() {
 }
 
 func RunMigrationUp(opts ...RunOption) error {
-	return runGooseCommand("up", func(db *sql.DB) error {
+	return runGooseCommand(nil, func(_ string, db *sql.DB) error {
 		return goose.Up(db, ".")
 	}, opts...)
 }
 
-func RunMigrationDown(opts ...RunOption) error {
-	return runGooseCommand("down", func(db *sql.DB) error {
-		if err := goose.Down(db, "."); err != nil {
-			if err.Error() == "no migration 0" {
-				return nil
-			}
+// MigrationDownTarget selects what `migrate down` rolls back: the latest
+// migration of one module, or of every module when All is set.
+type MigrationDownTarget struct {
+	Module string
+	All    bool
+	// Confirmed must be set to roll back when ENVIRONMENT is anything other
+	// than unset or "development".
+	Confirmed bool
+}
 
+func RunMigrationDown(target MigrationDownTarget, opts ...RunOption) error {
+	switch {
+	case target.Module != "" && target.All:
+		return errors.New("migrate down: --module and --all are mutually exclusive")
+	case target.Module == "" && !target.All:
+		return errors.New("migrate down: pass --module <name> to roll back one module, or --all to roll back every module")
+	case target.Module != "":
+		if err := validateMigrationModule(target.Module); err != nil {
 			return err
 		}
 
+		opts = append(opts, WithRunModule(target.Module))
+	}
+
+	confirm := func() error {
+		if env := os.Getenv("ENVIRONMENT"); env != "" && env != "development" && !target.Confirmed {
+			return fmt.Errorf("migrate down: ENVIRONMENT is %q, pass --yes to confirm the rollback", env)
+		}
+
 		return nil
+	}
+
+	return runGooseCommand(confirm, func(module string, sqlDB *sql.DB) error {
+		version, err := goose.GetDBVersion(sqlDB)
+		if err != nil {
+			return err
+		}
+
+		if version == 0 {
+			fmt.Printf("module %s: nothing to roll back\n", module)
+
+			return nil
+		}
+
+		fmt.Printf("module %s: rolling back version %d\n", module, version)
+
+		return goose.Down(sqlDB, ".")
 	}, opts...)
 }
 
 func RunMigrationStatus(opts ...RunOption) error {
-	return runGooseCommand("status", func(db *sql.DB) error {
+	return runGooseCommand(nil, func(_ string, db *sql.DB) error {
 		return goose.Status(db, ".")
 	}, opts...)
 }
 
-func runGooseCommand(_ string, proceed func(db *sql.DB) error, optionsList ...RunOption) error {
+func runGooseCommand(check func() error, proceed func(module string, db *sql.DB) error, optionsList ...RunOption) error {
 	bootLogger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 
 	options := optionutil.ApplyOptions(&RunAppOptions{
@@ -72,7 +109,13 @@ func runGooseCommand(_ string, proceed func(db *sql.DB) error, optionsList ...Ru
 		}
 	}
 
-	applyEnvDefaults(bootLogger)
+	applyPlainEnvDefaults()
+
+	if check != nil {
+		if err := check(); err != nil {
+			return err
+		}
+	}
 
 	return fxutil.RunJob2(func(ctx context.Context, logger *logging.Logger, db *gorm.DB) error {
 		sqlDB, err := db.DB()
@@ -94,7 +137,7 @@ func runGooseCommand(_ string, proceed func(db *sql.DB) error, optionsList ...Ru
 			goose.SetTableName(migration.Module + "_goose_db_version")
 			goose.SetBaseFS(migration.FS)
 
-			if err := proceed(sqlDB); err != nil {
+			if err := proceed(migration.Module, sqlDB); err != nil {
 				return fmt.Errorf("module %s: %w", migration.Module, err)
 			}
 		}
@@ -104,23 +147,8 @@ func runGooseCommand(_ string, proceed func(db *sql.DB) error, optionsList ...Ru
 }
 
 func RunMigrationsCreate(module, migrationName string) error {
-	found := false
-
-	for _, ms := range migrations.Sources() {
-		if ms.Module == module {
-			found = true
-
-			break
-		}
-	}
-
-	if !found {
-		names := make([]string, 0, len(migrations.Sources()))
-		for _, ms := range migrations.Sources() {
-			names = append(names, ms.Module)
-		}
-
-		return fmt.Errorf("invalid module '%s' (valid: %s)", module, strings.Join(names, ", "))
+	if err := validateMigrationModule(module); err != nil {
+		return err
 	}
 
 	migrationName = strings.ToLower(migrationName)
@@ -148,4 +176,17 @@ func RunMigrationsCreate(module, migrationName string) error {
 	fmt.Printf("Created migration: %s\n", migrationPath)
 
 	return nil
+}
+
+func validateMigrationModule(module string) error {
+	names := make([]string, 0, len(migrations.Sources()))
+	for _, ms := range migrations.Sources() {
+		if ms.Module == module {
+			return nil
+		}
+
+		names = append(names, ms.Module)
+	}
+
+	return fmt.Errorf("invalid module '%s' (valid: %s)", module, strings.Join(names, ", "))
 }

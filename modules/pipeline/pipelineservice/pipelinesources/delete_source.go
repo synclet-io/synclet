@@ -3,6 +3,7 @@ package pipelinesources
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/google/uuid"
 	"github.com/saturn4er/boilerplate-go/lib/filter"
@@ -28,7 +29,8 @@ type DeleteSourceParams struct {
 	WorkspaceID uuid.UUID
 }
 
-// Execute deletes a source.
+// Execute deletes a source. It refuses with *pipelineservice.InUseError while
+// any connection still references the source.
 func (uc *DeleteSource) Execute(ctx context.Context, params DeleteSourceParams) error {
 	// Get source first to clean up secrets.
 	src, err := uc.storage.Sources().First(ctx, &pipelineservice.SourceFilter{
@@ -37,6 +39,10 @@ func (uc *DeleteSource) Execute(ctx context.Context, params DeleteSourceParams) 
 	})
 	if err != nil {
 		return fmt.Errorf("getting source for secret cleanup: %w", err)
+	}
+
+	if err := ensureSourceUnused(ctx, uc.storage, src); err != nil {
+		return err
 	}
 
 	// Clean up all associated secrets.
@@ -66,4 +72,27 @@ func (uc *DeleteSource) Execute(ctx context.Context, params DeleteSourceParams) 
 	})
 
 	return nil
+}
+
+func ensureSourceUnused(ctx context.Context, storage pipelineservice.Storage, src *pipelineservice.Source) error {
+	connections, err := storage.Connections().Find(ctx, &pipelineservice.ConnectionFilter{
+		WorkspaceID: filter.Equals(src.WorkspaceID),
+		SourceID:    filter.Equals(src.ID),
+	})
+	if err != nil {
+		return fmt.Errorf("listing connections using source: %w", err)
+	}
+
+	if len(connections) == 0 {
+		return nil
+	}
+
+	names := make([]string, 0, len(connections))
+	for _, conn := range connections {
+		names = append(names, conn.Name)
+	}
+
+	slices.Sort(names)
+
+	return &pipelineservice.InUseError{Resource: "source " + src.Name, ConnectionNames: names}
 }

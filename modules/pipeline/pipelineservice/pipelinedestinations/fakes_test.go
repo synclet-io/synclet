@@ -34,10 +34,15 @@ type destStore struct {
 	pipelineservice.Storage
 	destinations *destStorage
 	connectors   *connectorStorage
+	connections  *connStorage
 }
 
 func (s *destStore) Destinations() pipelineservice.DestinationsStorage {
 	return s.destinations
+}
+
+func (s *destStore) Connections() pipelineservice.ConnectionsStorage {
+	return s.connections
 }
 
 func (s *destStore) ManagedConnectors() pipelineservice.ManagedConnectorsStorage {
@@ -173,6 +178,7 @@ func newDestStore(records ...*pipelineservice.Destination) *destStore {
 	return &destStore{
 		destinations: &destStorage{records: m},
 		connectors:   &connectorStorage{records: map[uuid.UUID]*pipelineservice.ManagedConnector{}},
+		connections:  &connStorage{},
 	}
 }
 
@@ -306,4 +312,33 @@ func newLogger() *logging.Logger {
 
 func ptr[T any](v T) *T {
 	return &v
+}
+
+type connStorage struct {
+	pipelineservice.ConnectionsStorage
+	records []*pipelineservice.Connection
+	findErr error
+}
+
+func (s *connStorage) Find(_ context.Context, f *pipelineservice.ConnectionFilter, _ ...optionutil.Option[dbutil.SelectOptions]) ([]*pipelineservice.Connection, error) {
+	if s.findErr != nil {
+		return nil, s.findErr
+	}
+
+	var out []*pipelineservice.Connection
+
+	for _, rec := range s.records {
+		if eq, ok := f.WorkspaceID.(*filter.EqualsFilter[uuid.UUID]); ok && rec.WorkspaceID != eq.Value {
+			continue
+		}
+
+		if eq, ok := f.DestinationID.(*filter.EqualsFilter[uuid.UUID]); ok && rec.DestinationID != eq.Value {
+			continue
+		}
+
+		cp := *rec
+		out = append(out, &cp)
+	}
+
+	return out, nil
 }

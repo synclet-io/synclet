@@ -114,4 +114,44 @@ func TestDeleteDestination(t *testing.T) {
 		require.ErrorIs(t, err, store.destinations.deleteErr)
 		assert.Empty(t, audit.events)
 	})
+
+	t.Run("refuses while connections reference the destination and keeps its secrets", func(t *testing.T) {
+		dest := newDestination(ws, `{"host":"a"}`)
+		store := newDestStore(dest)
+		store.connections.records = []*pipelineservice.Connection{
+			{ID: uuid.New(), WorkspaceID: ws, Name: "orders", DestinationID: dest.ID},
+			{ID: uuid.New(), WorkspaceID: ws, Name: "customers", DestinationID: dest.ID},
+			{ID: uuid.New(), WorkspaceID: ws, Name: "unrelated", DestinationID: uuid.New()},
+		}
+		secrets := newFakeSecrets()
+		secrets.seed(dest.ID, "pw")
+
+		audit := &captureAudit{}
+
+		uc := pipelinedestinations.NewDeleteDestination(store, secrets, audit)
+		err := uc.Execute(context.Background(), pipelinedestinations.DeleteDestinationParams{ID: dest.ID, WorkspaceID: ws})
+
+		var inUse *pipelineservice.InUseError
+		require.ErrorAs(t, err, &inUse)
+		assert.Equal(t, []string{"customers", "orders"}, inUse.ConnectionNames)
+		assert.Contains(t, err.Error(), "customers, orders")
+		assert.Contains(t, store.destinations.records, dest.ID)
+		assert.Equal(t, 1, secrets.countForOwner(dest.ID))
+		assert.Empty(t, secrets.deletedOwners)
+		assert.Empty(t, audit.events)
+	})
+
+	t.Run("fails when listing referencing connections fails", func(t *testing.T) {
+		dest := newDestination(ws, `{"host":"a"}`)
+		store := newDestStore(dest)
+		store.connections.findErr = errors.New("db down")
+		secrets := newFakeSecrets()
+		secrets.seed(dest.ID, "pw")
+
+		uc := pipelinedestinations.NewDeleteDestination(store, secrets, &captureAudit{})
+		err := uc.Execute(context.Background(), pipelinedestinations.DeleteDestinationParams{ID: dest.ID, WorkspaceID: ws})
+		require.ErrorIs(t, err, store.connections.findErr)
+		assert.Contains(t, store.destinations.records, dest.ID)
+		assert.Equal(t, 1, secrets.countForOwner(dest.ID))
+	})
 }
