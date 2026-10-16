@@ -1,4 +1,4 @@
-import type { AuditAction, AuditActorType, AuditEvent, AuditFieldChange, AuditResourceType, AuditRetention, ListAuditEventsParams } from './types'
+import type { AuditAction, AuditActorType, AuditEvent, AuditEventsPage, AuditFieldChange, AuditResourceType, AuditRetention, ListAuditEventsParams } from './types'
 import type { AuditEvent as ProtoAuditEvent, AuditRetention as ProtoAuditRetention } from '@/gen/synclet/publicapi/audit/v1/audit_pb'
 import { timestampFromDate } from '@bufbuild/protobuf/wkt'
 import { auditClient } from '@shared/api/services'
@@ -111,7 +111,10 @@ function mapEvent(proto: ProtoAuditEvent): AuditEvent {
   }
 }
 
-export async function listAuditEvents(params: ListAuditEventsParams = {}): Promise<AuditEvent[]> {
+export const AUDIT_PAGE_SIZE = 50
+
+export async function listAuditEvents(params: ListAuditEventsParams = {}): Promise<AuditEventsPage> {
+  const limit = params.limit ?? AUDIT_PAGE_SIZE
   const res = await auditClient.listAuditEvents({
     actorId: params.actorId,
     resourceType: params.resourceType ? toProtoResourceType(params.resourceType) : undefined,
@@ -119,10 +122,11 @@ export async function listAuditEvents(params: ListAuditEventsParams = {}): Promi
     action: params.action ? toProtoAction(params.action) : undefined,
     since: params.since ? timestampFromDate(params.since) : undefined,
     until: params.until ? timestampFromDate(params.until) : undefined,
-    limit: params.limit ?? 50,
+    limit: limit + 1,
     offset: params.offset ?? 0,
   })
-  return (res.events ?? []).map(mapEvent)
+  const events = (res.events ?? []).map(mapEvent)
+  return { events: events.slice(0, limit), hasMore: events.length > limit }
 }
 
 export async function getAuditEvent(id: string): Promise<AuditEvent | undefined> {

@@ -1,22 +1,96 @@
 <script setup lang="ts">
-import type { AuditAction, AuditResourceType, ListAuditEventsParams } from '@entities/audit'
-import { useAuditEvents, useAuditRetention, useUpdateAuditRetention } from '@entities/audit'
+import type { AuditAction, AuditEvent, AuditResourceType, ListAuditEventsParams } from '@entities/audit'
+import { AUDIT_PAGE_SIZE, useAuditEvents, useAuditRetention, useUpdateAuditRetention } from '@entities/audit'
 import { getErrorMessage } from '@shared/lib/errorUtils'
-import { PageHeader, SBadge, SButton, SCard, SEmptyState, SInput, SSelect, SSkeleton, useToast } from '@shared/ui'
-import { ChevronDown, ChevronRight } from 'lucide-vue-next'
+import { PageHeader, SAlert, SBadge, SButton, SCard, SEmptyState, SInput, SSelect, SSkeleton, useToast } from '@shared/ui'
+import { ChevronDown, ChevronRight, X } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
-const action = ref<AuditAction | ''>('')
-const resourceType = ref<AuditResourceType | ''>('')
+const route = useRoute()
+const router = useRouter()
+
+function queryString(key: string): string {
+  const value = route.query[key]
+  return typeof value === 'string' ? value : ''
+}
+
+function setQuery(patch: Record<string, string | undefined>, resetPage = true) {
+  const query: Record<string, string> = {}
+  for (const [key, value] of Object.entries({ ...route.query, ...(resetPage ? { page: undefined } : {}), ...patch })) {
+    if (typeof value === 'string' && value !== '')
+      query[key] = value
+  }
+  router.replace({ query })
+}
+
+function queryModel<T extends string>(key: string) {
+  return computed<T | ''>({
+    get: () => queryString(key) as T | '',
+    set: value => setQuery({ [key]: value || undefined }),
+  })
+}
+
+const action = queryModel<AuditAction>('action')
+const resourceType = queryModel<AuditResourceType>('resource')
+const since = queryModel('since')
+const until = queryModel('until')
+const actorId = computed(() => queryString('actor'))
+const actorLabel = computed(() => queryString('actorLabel'))
+const resourceId = computed(() => queryString('resourceId'))
+const resourceLabel = computed(() => queryString('resourceLabel'))
+
+const page = computed(() => {
+  const n = Number.parseInt(queryString('page'), 10)
+  return Number.isInteger(n) && n > 1 ? n : 1
+})
+
+function setPage(n: number) {
+  setQuery({ page: n > 1 ? String(n) : undefined }, false)
+}
+
+function startOfDay(date: string): Date | undefined {
+  return date ? new Date(`${date}T00:00:00`) : undefined
+}
+
+function endOfDay(date: string): Date | undefined {
+  if (!date)
+    return undefined
+  const d = new Date(`${date}T00:00:00`)
+  d.setDate(d.getDate() + 1)
+  return d
+}
 
 const params = computed<ListAuditEventsParams>(() => ({
   action: action.value || undefined,
   resourceType: resourceType.value || undefined,
-  limit: 50,
-  offset: 0,
+  actorId: actorId.value || undefined,
+  resourceId: resourceId.value || undefined,
+  since: startOfDay(since.value),
+  until: endOfDay(until.value),
+  limit: AUDIT_PAGE_SIZE,
+  offset: (page.value - 1) * AUDIT_PAGE_SIZE,
 }))
 
-const { data: events, isLoading, error } = useAuditEvents(params)
+const { data, isLoading, isFetching, error } = useAuditEvents(params)
+const events = computed(() => data.value?.events ?? [])
+const hasMore = computed(() => data.value?.hasMore ?? false)
+const rangeStart = computed(() => (page.value - 1) * AUDIT_PAGE_SIZE + 1)
+const rangeEnd = computed(() => rangeStart.value + events.value.length - 1)
+
+const hasFilters = computed(() => !!(action.value || resourceType.value || actorId.value || resourceId.value || since.value || until.value))
+
+function filterByActor(event: AuditEvent) {
+  setQuery({ actor: event.actorId, actorLabel: event.actorLabel || event.actorType })
+}
+
+function filterByResource(event: AuditEvent) {
+  setQuery({ resourceId: event.resourceId, resourceLabel: event.resourceLabel || event.resourceId })
+}
+
+function clearFilters() {
+  router.replace({ query: {} })
+}
 
 const toast = useToast()
 const { data: retention } = useAuditRetention()
@@ -132,21 +206,61 @@ function formatValue(v: unknown): string {
     </template>
   </PageHeader>
 
-  <div class="flex gap-3 mb-4">
+  <div class="flex flex-wrap items-end gap-3 mb-3">
     <SSelect v-model="action" :options="actionOptions" />
     <SSelect v-model="resourceType" :options="resourceOptions" />
+    <SInput v-model="since" type="date" label="From" />
+    <SInput v-model="until" type="date" label="To" />
+    <SButton v-if="hasFilters" variant="ghost" @click="clearFilters">
+      Clear filters
+    </SButton>
   </div>
 
-  <div v-if="error" class="text-sm text-danger mb-3">
-    {{ error.message }}
+  <div v-if="actorId || resourceId" class="flex flex-wrap gap-2 mb-3">
+    <SBadge v-if="actorId" variant="info">
+      Actor: {{ actorLabel || actorId }}
+      <button class="ml-1" title="Remove actor filter" @click="setQuery({ actor: undefined, actorLabel: undefined })">
+        <X class="w-3 h-3" />
+      </button>
+    </SBadge>
+    <SBadge v-if="resourceId" variant="info">
+      Resource: {{ resourceLabel || resourceId }}
+      <button class="ml-1" title="Remove resource filter" @click="setQuery({ resourceId: undefined, resourceLabel: undefined })">
+        <X class="w-3 h-3" />
+      </button>
+    </SBadge>
   </div>
+
+  <SAlert v-if="error" variant="danger" class="mb-3">
+    {{ getErrorMessage(error) }}
+  </SAlert>
 
   <div v-if="isLoading" class="space-y-2">
     <SSkeleton v-for="i in 5" :key="i" variant="rect" height="60px" />
   </div>
 
   <SEmptyState
-    v-else-if="!events || events.length === 0"
+    v-else-if="events.length === 0 && page > 1"
+    title="No more audit events"
+    description="This page is past the last event for the current filters."
+  >
+    <SButton variant="secondary" @click="setPage(1)">
+      Back to first page
+    </SButton>
+  </SEmptyState>
+
+  <SEmptyState
+    v-else-if="events.length === 0 && hasFilters"
+    title="No matching audit events"
+    description="No events match the current filters."
+  >
+    <SButton variant="secondary" @click="clearFilters">
+      Clear filters
+    </SButton>
+  </SEmptyState>
+
+  <SEmptyState
+    v-else-if="events.length === 0"
     title="No audit events"
     description="Configuration changes will appear here. Audit logging started when this feature was deployed; earlier changes are not recorded."
   />
@@ -172,6 +286,14 @@ function formatValue(v: unknown): string {
           </div>
         </button>
         <div v-if="expanded.has(event.id)" class="mt-3 pl-7">
+          <div class="flex flex-wrap gap-2 mb-3">
+            <SButton v-if="event.actorId && event.actorId !== actorId" size="sm" variant="secondary" @click="filterByActor(event)">
+              Only events by {{ event.actorLabel || event.actorType }}
+            </SButton>
+            <SButton v-if="event.resourceId && event.resourceId !== resourceId" size="sm" variant="secondary" @click="filterByResource(event)">
+              Only events for this {{ event.resourceType }}
+            </SButton>
+          </div>
           <div v-if="event.diffTruncated" class="text-xs text-amber-600 mb-2">
             Diff truncated to 8 KB.
           </div>
@@ -210,4 +332,16 @@ function formatValue(v: unknown): string {
       </li>
     </ul>
   </SCard>
+
+  <div v-if="events.length > 0 && (page > 1 || hasMore)" class="flex items-center justify-between mt-4">
+    <span class="text-xs text-text-muted">Showing {{ rangeStart }}–{{ rangeEnd }}</span>
+    <div class="flex gap-2">
+      <SButton variant="secondary" size="sm" :disabled="page <= 1 || isFetching" @click="setPage(page - 1)">
+        Previous
+      </SButton>
+      <SButton variant="secondary" size="sm" :disabled="!hasMore || isFetching" @click="setPage(page + 1)">
+        Next
+      </SButton>
+    </div>
+  </div>
 </template>

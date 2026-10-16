@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import SAlert from './SAlert.vue'
 import SButton from './SButton.vue'
 import SModal from './SModal.vue'
+
+defineOptions({ inheritAttrs: false })
 
 withDefaults(defineProps<{
   open: boolean
@@ -10,6 +13,7 @@ withDefaults(defineProps<{
   cancelText?: string
   variant?: 'primary' | 'danger'
   loading?: boolean
+  error?: string
 }>(), {
   title: 'Confirm',
   confirmText: 'Confirm',
@@ -29,6 +33,9 @@ defineEmits<{
     <p class="text-sm text-text-secondary">
       {{ message }}
     </p>
+    <SAlert v-if="error" variant="danger" class="mt-4">
+      {{ error }}
+    </SAlert>
     <template #footer>
       <SButton variant="secondary" @click="$emit('cancel')">
         {{ cancelText }}

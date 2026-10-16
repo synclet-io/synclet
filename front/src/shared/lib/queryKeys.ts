@@ -71,3 +71,9 @@ export const webhookKeys = {
   all: (workspaceId: string) => ['webhooks', workspaceId] as const,
   list: (workspaceId: string) => [...webhookKeys.all(workspaceId), 'list'] as const,
 } as const
+
+export const auditKeys = {
+  all: (workspaceId: string) => ['audit', workspaceId] as const,
+  list: (workspaceId: string, params: object) => [...auditKeys.all(workspaceId), 'list', params] as const,
+  retention: (workspaceId: string) => [...auditKeys.all(workspaceId), 'retention'] as const,
+} as const

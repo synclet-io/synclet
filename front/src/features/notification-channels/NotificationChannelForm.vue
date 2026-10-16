@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ChannelType, NotificationChannel } from '@entities/notification'
 import { useCreateChannel, useTestChannel, useUpdateChannel } from '@entities/notification'
+import { getErrorMessage } from '@shared/lib/errorUtils'
 import SAlert from '@shared/ui/SAlert.vue'
 import SButton from '@shared/ui/SButton.vue'
 import SInput from '@shared/ui/SInput.vue'
@@ -28,6 +29,7 @@ const channelType = ref<ChannelType>('slack')
 const name = ref('')
 const enabled = ref(true)
 const testError = ref('')
+const saveError = ref('')
 
 // Type-specific config
 const slackWebhookUrl = ref('')
@@ -49,6 +51,7 @@ watch(() => props.open, (val) => {
     name.value = props.channel.name
     enabled.value = props.channel.enabled
     testError.value = ''
+    saveError.value = ''
     const cfg = props.channel.config
     if (props.channel.channelType === 'slack') {
       slackWebhookUrl.value = cfg.webhook_url || ''
@@ -66,6 +69,7 @@ watch(() => props.open, (val) => {
     name.value = ''
     enabled.value = true
     testError.value = ''
+    saveError.value = ''
     slackWebhookUrl.value = ''
     emailRecipients.value = ''
     telegramBotToken.value = ''
@@ -88,22 +92,29 @@ const saving = computed(() => createMutation.isPending.value || updateMutation.i
 
 async function handleSave() {
   testError.value = ''
+  saveError.value = ''
   const config = getConfig()
-  if (isEdit.value && props.channel) {
-    await updateMutation.mutateAsync({
-      id: props.channel.id,
-      name: name.value,
-      config,
-      enabled: enabled.value,
-    })
+  try {
+    if (isEdit.value && props.channel) {
+      await updateMutation.mutateAsync({
+        id: props.channel.id,
+        name: name.value,
+        config,
+        enabled: enabled.value,
+      })
+    }
+    else {
+      await createMutation.mutateAsync({
+        name: name.value,
+        channelType: channelType.value,
+        config,
+        enabled: enabled.value,
+      })
+    }
   }
-  else {
-    await createMutation.mutateAsync({
-      name: name.value,
-      channelType: channelType.value,
-      config,
-      enabled: enabled.value,
-    })
+  catch (err: unknown) {
+    saveError.value = getErrorMessage(err) || 'Failed to save channel'
+    return
   }
   emit('saved')
   emit('close')
@@ -118,7 +129,7 @@ async function handleTest() {
     toast.success('Test notification sent successfully')
   }
   catch (err: unknown) {
-    testError.value = err instanceof Error ? err.message : 'Failed to send test notification'
+    testError.value = getErrorMessage(err) || 'Failed to send test notification'
   }
 }
 </script>
@@ -143,8 +154,11 @@ async function handleTest() {
       </div>
     </div>
 
-    <!-- Common fields -->
-    <div class="space-y-4">
+    <form id="notification-channel-form" class="space-y-4" @submit.prevent="handleSave">
+      <SAlert v-if="saveError" variant="danger" dismissible @dismiss="saveError = ''">
+        {{ saveError }}
+      </SAlert>
+
       <SInput v-model="name" label="Name" placeholder="My notification channel" required />
 
       <!-- Type-specific config -->
@@ -191,7 +205,7 @@ async function handleTest() {
       <SAlert v-if="testError" variant="danger" dismissible @dismiss="testError = ''">
         {{ testError }}
       </SAlert>
-    </div>
+    </form>
 
     <template #footer>
       <SButton
@@ -203,9 +217,10 @@ async function handleTest() {
         Send Test
       </SButton>
       <SButton
+        type="submit"
+        form="notification-channel-form"
         variant="primary"
         :loading="saving"
-        @click="handleSave"
       >
         {{ isEdit ? 'Save Changes' : 'Save Channel' }}
       </SButton>

@@ -49,6 +49,11 @@ export interface ListAuditEventsParams {
   offset?: number
 }
 
+export interface AuditEventsPage {
+  events: AuditEvent[]
+  hasMore: boolean
+}
+
 export interface AuditRetention {
   retentionDays: number
   maxRetentionDays: number

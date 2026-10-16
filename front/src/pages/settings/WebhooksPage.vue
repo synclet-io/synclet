@@ -44,6 +44,7 @@ const deleteMutation = useDeleteWebhook()
 const testMutation = useTestWebhook()
 
 const error = ref('')
+const dialogError = ref('')
 
 interface WebhookForm {
   url: string
@@ -78,7 +79,7 @@ function openCreate() {
   dialog.webhookId = ''
   dialog.form = newForm()
   dialog.open = true
-  error.value = ''
+  dialogError.value = ''
 }
 
 function openEdit(webhook: Webhook) {
@@ -91,7 +92,7 @@ function openEdit(webhook: Webhook) {
     enabled: webhook.enabled,
   }
   dialog.open = true
-  error.value = ''
+  dialogError.value = ''
 }
 
 function toggleEvent(value: WebhookEvent) {
@@ -120,8 +121,9 @@ function validateForm(): string | null {
 
 async function submitForm() {
   const validationError = validateForm()
+  dialogError.value = ''
   if (validationError) {
-    error.value = validationError
+    dialogError.value = validationError
     return
   }
 
@@ -146,7 +148,7 @@ async function submitForm() {
     dialog.open = false
   }
   catch (e: unknown) {
-    error.value = getErrorMessage(e) || 'Failed to save webhook'
+    dialogError.value = getErrorMessage(e) || 'Failed to save webhook'
   }
 }
 
@@ -297,6 +299,10 @@ function eventLabel(value: WebhookEvent): string {
     <!-- Create / Edit dialog -->
     <SModal :open="dialog.open" :title="dialog.mode === 'create' ? 'Create webhook' : 'Edit webhook'" size="lg" @close="dialog.open = false">
       <form class="space-y-4" @submit.prevent="submitForm">
+        <SAlert v-if="dialogError" variant="danger" dismissible @dismiss="dialogError = ''">
+          {{ dialogError }}
+        </SAlert>
+
         <div>
           <label class="block text-sm font-medium text-text-primary mb-1">URL</label>
           <SInput v-model="dialog.form.url" type="url" placeholder="https://example.com/webhook" required />

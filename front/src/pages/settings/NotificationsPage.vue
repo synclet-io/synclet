@@ -3,6 +3,7 @@ import type { ChannelType, NotificationChannel } from '@entities/notification'
 import type { Column } from '@shared/ui'
 import { useDeleteChannel, useNotificationChannels } from '@entities/notification'
 import NotificationChannelForm from '@features/notification-channels/NotificationChannelForm.vue'
+import { getErrorMessage } from '@shared/lib/errorUtils'
 import { SBadge, SButton, SCard, SConfirmDialog, SEmptyState, SSkeleton, STable } from '@shared/ui'
 import { Bell, Hash, Mail, Pencil, Plus, Send, Trash2 } from 'lucide-vue-next'
 import { ref } from 'vue'
@@ -14,6 +15,7 @@ const formOpen = ref(false)
 const editingChannel = ref<NotificationChannel | undefined>()
 const deleteDialogOpen = ref(false)
 const deletingChannel = ref<NotificationChannel | undefined>()
+const deleteError = ref('')
 
 const channelTypeIcons: Record<ChannelType, typeof Hash> = {
   slack: Hash,
@@ -46,13 +48,21 @@ function openEdit(channel: NotificationChannel) {
 
 function openDelete(channel: NotificationChannel) {
   deletingChannel.value = channel
+  deleteError.value = ''
   deleteDialogOpen.value = true
 }
 
 async function confirmDelete() {
   if (!deletingChannel.value)
     return
-  await deleteMutation.mutateAsync(deletingChannel.value.id)
+  deleteError.value = ''
+  try {
+    await deleteMutation.mutateAsync(deletingChannel.value.id)
+  }
+  catch (err: unknown) {
+    deleteError.value = getErrorMessage(err) || 'Failed to delete channel'
+    return
+  }
   deleteDialogOpen.value = false
   deletingChannel.value = undefined
 }
@@ -135,6 +145,7 @@ async function confirmDelete() {
       confirm-text="Delete Channel"
       variant="danger"
       :loading="deleteMutation.isPending.value"
+      :error="deleteError"
       @confirm="confirmDelete"
       @cancel="deleteDialogOpen = false"
     />

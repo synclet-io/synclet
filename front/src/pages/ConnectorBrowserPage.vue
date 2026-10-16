@@ -453,7 +453,7 @@ async function handleSyncRepo(repo: Repository) {
       confirm-text="Delete Repository"
       variant="danger"
       :loading="deleteRepoLoading"
-      @close="deleteRepoTarget = null"
+      @cancel="deleteRepoTarget = null"
       @confirm="handleDeleteRepo"
     />
   </template>

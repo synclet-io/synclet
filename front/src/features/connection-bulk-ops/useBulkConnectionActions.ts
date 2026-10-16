@@ -1,3 +1,4 @@
+import { getErrorMessage } from '@shared/lib/errorUtils'
 import { computed, ref } from 'vue'
 
 export interface BulkItemResult<T = unknown> {
@@ -69,7 +70,7 @@ export function useBulkConnectionActions() {
         }
         catch (e: unknown) {
           result.ok = false
-          result.error = e instanceof Error ? e.message : String(e)
+          result.error = getErrorMessage(e)
         }
         progress.value = {
           ...progress.value,
