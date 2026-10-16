@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
 
@@ -17,7 +18,7 @@ func serverDefaultOptions() *RunAppOptions {
 	}
 }
 
-func RunServer(optionsList ...RunOption) {
+func RunServer(optionsList ...RunOption) error {
 	bootLogger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	defaults := serverDefaultOptions()
 	defaults.fxOptions = []fx.Option{
@@ -27,9 +28,9 @@ func RunServer(optionsList ...RunOption) {
 	}
 	options := optionutil.ApplyOptions(defaults, optionsList...)
 
-	for _, file := range options.DotEnvFiles {
-		if err := godotenv.Load(file); err != nil {
-			bootLogger.Error("can't load dotenv file", slog.Any("file", file), slog.Any("error", err))
+	if len(options.DotEnvFiles) > 0 {
+		if err := godotenv.Load(options.DotEnvFiles...); err != nil {
+			return fmt.Errorf("loading dotenv files: %w", err)
 		}
 	}
 
@@ -39,4 +40,6 @@ func RunServer(optionsList ...RunOption) {
 		NewFxAppOptions(options),
 		fx.StopTimeout(shutdownTimeout),
 	).Run()
+
+	return nil
 }

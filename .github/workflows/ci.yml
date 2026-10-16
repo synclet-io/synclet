@@ -34,12 +34,39 @@ jobs:
       - name: Print coverage summary
         run: go tool cover -func=coverage.out | tail -1
       - name: Enforce per-package coverage minimums
-        run: ./scripts/coverage-gate.sh
+        run: ./scripts/coverage-gate.sh scripts/coverage-thresholds.txt coverage.out
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
         with:
           name: backend-coverage
           path: coverage.out
+
+  codegen-drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: oven-sh/setup-bun@v2
+      - run: cd front && bun install --frozen-lockfile
+      - name: Install generators
+        run: |
+          go install github.com/saturn4er/boilerplate-go/cmd/boilerplate-go@v1.7.0
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.11
+          go install connectrpc.com/connect/cmd/protoc-gen-connect-go@v1.19.1
+      - name: Regenerate protobuf
+        run: cd proto && ../front/node_modules/.bin/buf generate
+      - name: Regenerate domain models and storage
+        run: cd modules && boilerplate-go ./gen.yaml
+      - name: Fail on drift
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            git status --porcelain
+            git diff
+            echo "::error::generated code is out of date; run task proto && task boilerplate-go and commit the result"
+            exit 1
+          fi
 
   backend-lint:
     runs-on: ubuntu-latest

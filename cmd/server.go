@@ -10,20 +10,20 @@ func newServerCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "server",
 		Short: "Start the Synclet server",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			dotEnvs, err := cmd.Flags().GetStringArray("dotenv")
 			if err != nil {
-				panic(err)
+				return err
 			}
 
 			standalone, err := cmd.Flags().GetBool("standalone")
 			if err != nil {
-				panic(err)
+				return err
 			}
 
 			opts := append([]app.RunOption{app.WithDotEnvFiles(dotEnvs...)}, app.ServerCommandOptions(standalone)...)
 
-			app.RunServer(opts...)
+			return app.RunServer(opts...)
 		},
 	}
 

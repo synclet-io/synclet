@@ -10,13 +10,13 @@ func newJobsCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "jobs",
 		Short: "Run background jobs",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			dotEnvs, err := cmd.Flags().GetStringArray("dotenv")
 			if err != nil {
-				panic(err)
+				return err
 			}
 
-			app.RunJobs(append([]app.RunOption{app.WithDotEnvFiles(dotEnvs...)}, app.JobsCommandOptions()...)...)
+			return app.RunJobs(append([]app.RunOption{app.WithDotEnvFiles(dotEnvs...)}, app.JobsCommandOptions()...)...)
 		},
 	}
 }

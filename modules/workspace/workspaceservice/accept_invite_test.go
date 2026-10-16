@@ -22,7 +22,7 @@ func TestAcceptInvite_CreatesMembershipAndMarksAccepted(t *testing.T) {
 		WorkspaceID: wsID,
 		Email:       "person@example.com",
 		Role:        MemberRoleEditor,
-		Token:       "token-xyz",
+		Token:       hashInviteToken("token-xyz"),
 		Status:      InviteStatusPending,
 		ExpiresAt:   time.Now().Add(time.Hour),
 	})
@@ -55,7 +55,7 @@ func TestAcceptInvite_AlreadyMemberMarksInviteAcceptedWithoutDuplicate(t *testin
 		WorkspaceID: wsID,
 		Email:       "x@example.com",
 		Role:        MemberRoleViewer,
-		Token:       "t",
+		Token:       hashInviteToken("t"),
 		Status:      InviteStatusPending,
 		ExpiresAt:   time.Now().Add(time.Hour),
 	})
@@ -81,7 +81,7 @@ func TestAcceptInvite_NotPendingRejected(t *testing.T) {
 	store := newFakeStorage()
 	store.seedInvite(&WorkspaceInvite{
 		ID: uuid.New(), WorkspaceID: uuid.New(), Email: "x@example.com",
-		Token: "t", Status: InviteStatusDeclined, ExpiresAt: time.Now().Add(time.Hour),
+		Token: hashInviteToken("t"), Status: InviteStatusDeclined, ExpiresAt: time.Now().Add(time.Hour),
 	})
 	_, err := NewAcceptInvite(store, NoopAuditRecorder{}).Execute(ctx, "t", uuid.New(), "x@example.com")
 	require.Error(t, err)
@@ -92,7 +92,7 @@ func TestAcceptInvite_ExpiredRejected(t *testing.T) {
 	store := newFakeStorage()
 	store.seedInvite(&WorkspaceInvite{
 		ID: uuid.New(), WorkspaceID: uuid.New(), Email: "x@example.com",
-		Token: "t", Status: InviteStatusPending, ExpiresAt: time.Now().Add(-time.Hour),
+		Token: hashInviteToken("t"), Status: InviteStatusPending, ExpiresAt: time.Now().Add(-time.Hour),
 	})
 	_, err := NewAcceptInvite(store, NoopAuditRecorder{}).Execute(ctx, "t", uuid.New(), "x@example.com")
 	require.Error(t, err)
@@ -103,7 +103,7 @@ func TestAcceptInvite_EmailMismatchRejected(t *testing.T) {
 	store := newFakeStorage()
 	store.seedInvite(&WorkspaceInvite{
 		ID: uuid.New(), WorkspaceID: uuid.New(), Email: "owner@example.com",
-		Token: "t", Status: InviteStatusPending, ExpiresAt: time.Now().Add(time.Hour),
+		Token: hashInviteToken("t"), Status: InviteStatusPending, ExpiresAt: time.Now().Add(time.Hour),
 	})
 	_, err := NewAcceptInvite(store, NoopAuditRecorder{}).Execute(ctx, "t", uuid.New(), "imposter@example.com")
 	require.Error(t, err)

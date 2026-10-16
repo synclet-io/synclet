@@ -10,7 +10,7 @@ import (
 	"github.com/saturn4er/boilerplate-go/lib/filter"
 )
 
-// ResendInvite resends a pending invite email and resets the TTL (D-06).
+// ResendInvite resends a pending invite email with a fresh token and TTL.
 type ResendInvite struct {
 	storage     Storage
 	emailSender EmailSender
@@ -41,8 +41,8 @@ func NewResendInvite(
 	}
 }
 
-// Execute resends the invite email and resets the expiration. Same token is reused (D-06).
-// Returns the link the invitee opens to accept the invite.
+// Execute rotates the invite token, resets the expiration and resends the email.
+// Returns the link the invitee opens to accept the invite; earlier links stop working.
 func (uc *ResendInvite) Execute(ctx context.Context, inviteID, workspaceID uuid.UUID) (string, error) {
 	invite, err := uc.storage.WorkspaceInvites().First(ctx, &WorkspaceInviteFilter{
 		ID:          filter.Equals(inviteID),
@@ -60,14 +60,19 @@ func (uc *ResendInvite) Execute(ctx context.Context, inviteID, workspaceID uuid.
 		return "", &ValidationError{Message: fmt.Sprintf("invite is %s, cannot resend", invite.Status.String())}
 	}
 
-	// Reset TTL.
+	rawToken, tokenHash, err := newInviteToken()
+	if err != nil {
+		return "", err
+	}
+
 	now := time.Now()
+	invite.Token = tokenHash
 	invite.ExpiresAt = now.Add(uc.inviteTTL)
 	invite.UpdatedAt = now
 
 	invite, err = uc.storage.WorkspaceInvites().Update(ctx, invite)
 	if err != nil {
-		return "", fmt.Errorf("updating invite TTL: %w", err)
+		return "", fmt.Errorf("updating invite: %w", err)
 	}
 
 	uc.audit.Record(ctx, AuditEvent{
@@ -100,7 +105,7 @@ func (uc *ResendInvite) Execute(ctx context.Context, inviteID, workspaceID uuid.
 		return "", fmt.Errorf("inviter %s not found for resend email", invite.InviterUserID)
 	}
 
-	acceptURL := inviteAcceptURL(uc.frontendURL, invite.Token)
+	acceptURL := inviteAcceptURL(uc.frontendURL, rawToken)
 
 	go func() { //nolint:gosec // intentional background context for async email
 		sendCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)

@@ -16,7 +16,7 @@ func TestDeclineInvite_TransitionsToDeclined(t *testing.T) {
 	store := newFakeStorage()
 	store.seedInvite(&WorkspaceInvite{
 		ID: inviteID, WorkspaceID: uuid.New(), Email: "x@example.com",
-		Token: "tok", Status: InviteStatusPending, ExpiresAt: time.Now().Add(time.Hour),
+		Token: hashInviteToken("tok"), Status: InviteStatusPending, ExpiresAt: time.Now().Add(time.Hour),
 	})
 
 	require.NoError(t, NewDeclineInvite(store, NoopAuditRecorder{}).Execute(ctx, "tok"))
@@ -36,7 +36,7 @@ func TestDeclineInvite_AlreadyAcceptedRejected(t *testing.T) {
 	ctx := context.Background()
 	store := newFakeStorage()
 	store.seedInvite(&WorkspaceInvite{
-		ID: uuid.New(), Token: "tok", Status: InviteStatusAccepted,
+		ID: uuid.New(), Token: hashInviteToken("tok"), Status: InviteStatusAccepted,
 		ExpiresAt: time.Now().Add(time.Hour),
 	})
 
@@ -48,7 +48,7 @@ func TestDeclineInvite_ExpiredRejected(t *testing.T) {
 	ctx := context.Background()
 	store := newFakeStorage()
 	store.seedInvite(&WorkspaceInvite{
-		ID: uuid.New(), Token: "tok", Status: InviteStatusPending,
+		ID: uuid.New(), Token: hashInviteToken("tok"), Status: InviteStatusPending,
 		ExpiresAt: time.Now().Add(-time.Hour),
 	})
 

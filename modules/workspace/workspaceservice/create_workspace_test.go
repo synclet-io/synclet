@@ -28,6 +28,7 @@ func TestCreateWorkspace_CreatesWorkspaceAndAdminMember(t *testing.T) {
 
 	assert.Equal(t, ownerID, members[0].UserID)
 	assert.Equal(t, MemberRoleAdmin, members[0].Role)
+	assert.Equal(t, 1, store.txCallCount, "workspace, owner and event are written in one transaction")
 }
 
 func TestCreateWorkspace_EmitsCreatedEvent(t *testing.T) {

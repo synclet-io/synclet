@@ -21,9 +21,8 @@ func NewCreateWorkspace(storage Storage, audit AuditRecorder) *CreateWorkspace {
 	return &CreateWorkspace{storage: storage, audit: audit}
 }
 
-// Execute creates a workspace, adds the owner as admin, and publishes the
-// workspace.created event for downstream subscribers (e.g. seeding default
-// connector registries).
+// Execute creates a workspace, adds the owner as admin and publishes the
+// workspace.created event in one transaction.
 func (uc *CreateWorkspace) Execute(ctx context.Context, name string, ownerUserID uuid.UUID) (*Workspace, error) {
 	now := time.Now()
 	slug := stringutil.Slugify(name)
@@ -36,29 +35,38 @@ func (uc *CreateWorkspace) Execute(ctx context.Context, name string, ownerUserID
 		UpdatedAt: now,
 	}
 
-	created, err := uc.storage.Workspaces().Create(ctx, workspace)
-	if err != nil {
-		return nil, fmt.Errorf("creating workspace: %w", err)
-	}
+	var created *Workspace
 
-	// Add owner as admin member.
-	member := &WorkspaceMember{
-		ID:          uuid.New(),
-		WorkspaceID: created.ID,
-		UserID:      ownerUserID,
-		Role:        MemberRoleAdmin,
-		JoinedAt:    now,
-	}
+	if err := uc.storage.ExecuteInTransaction(ctx, func(ctx context.Context, tx Storage) error {
+		var err error
 
-	if _, err := uc.storage.WorkspaceMembers().Create(ctx, member); err != nil {
-		return nil, fmt.Errorf("adding owner member: %w", err)
-	}
+		created, err = tx.Workspaces().Create(ctx, workspace)
+		if err != nil {
+			return fmt.Errorf("creating workspace: %w", err)
+		}
 
-	if err := uc.storage.WorkspaceEvents().Send(ctx, &WorkspaceEvent{
-		EventType: WorkspaceEventTypeCreated,
-		Data:      &WorkspaceCreatedEventData{Workspace: created},
+		member := &WorkspaceMember{
+			ID:          uuid.New(),
+			WorkspaceID: created.ID,
+			UserID:      ownerUserID,
+			Role:        MemberRoleAdmin,
+			JoinedAt:    now,
+		}
+
+		if _, err := tx.WorkspaceMembers().Create(ctx, member); err != nil {
+			return fmt.Errorf("adding owner member: %w", err)
+		}
+
+		if err := tx.WorkspaceEvents().Send(ctx, &WorkspaceEvent{
+			EventType: WorkspaceEventTypeCreated,
+			Data:      &WorkspaceCreatedEventData{Workspace: created},
+		}); err != nil {
+			return fmt.Errorf("publishing workspace.created event: %w", err)
+		}
+
+		return nil
 	}); err != nil {
-		return nil, fmt.Errorf("publishing workspace.created event: %w", err)
+		return nil, err
 	}
 
 	uc.audit.Record(ctx, AuditEvent{

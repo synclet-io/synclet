@@ -1,11 +1,22 @@
-# Per-package minimum line coverage enforced by scripts/coverage-gate.sh (task test:coverage, CI).
+# Per-package minimum statement coverage enforced by scripts/coverage-gate.sh (task test:coverage, CI).
 # Format: <package path> <minimum percent>
+./modules/audit/auditservice 45
+./modules/auth/authservice 25
+./modules/notify/notifyservice 25
 ./modules/pipeline/pipelineservice/pipelinecatalog 60
+./modules/pipeline/pipelineservice/pipelineconfig 45
 ./modules/pipeline/pipelineservice/pipelineconnections 60
-./modules/pipeline/pipelineservice/pipelinesources 60
+./modules/pipeline/pipelineservice/pipelineconnectors 45
 ./modules/pipeline/pipelineservice/pipelinedestinations 60
+./modules/pipeline/pipelineservice/pipelinejobs 50
+./modules/pipeline/pipelineservice/pipelinelogs 60
+./modules/pipeline/pipelineservice/pipelinerepositories 20
+./modules/pipeline/pipelineservice/pipelinesecrets 45
+./modules/pipeline/pipelineservice/pipelinesettings 60
+./modules/pipeline/pipelineservice/pipelinesources 60
+./modules/pipeline/pipelineservice/pipelinestate 50
 ./modules/pipeline/pipelineservice/pipelinestats 60
 ./modules/pipeline/pipelineservice/pipelinetasks 60
-./modules/pipeline/pipelineservice/pipelinelogs 60
+./modules/pipeline/pipelineservice/pipelineworkspaces 60
 ./modules/workspace/workspaceservice 60
 ./modules/secret/secretservice 60

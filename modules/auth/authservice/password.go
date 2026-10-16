@@ -5,6 +5,9 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/samber/lo"
 	"golang.org/x/crypto/bcrypt"
@@ -12,10 +15,18 @@ import (
 
 var randomPasswordHash = string(lo.Must(bcrypt.GenerateFromPassword([]byte("password"), bcrypt.DefaultCost)))
 
-// ValidatePassword checks that a password meets minimum requirements.
+// ValidatePassword checks that a password has at least minLength characters and mixes
+// letters with digits or symbols.
 func ValidatePassword(password string, minLength int) error {
-	if len(password) < minLength {
+	if utf8.RuneCountInString(password) < minLength {
 		return &ValidationError{Message: fmt.Sprintf("password must be at least %d characters", minLength)}
+	}
+
+	hasLetter := strings.ContainsFunc(password, unicode.IsLetter)
+	hasOther := strings.ContainsFunc(password, func(r rune) bool { return !unicode.IsLetter(r) && !unicode.IsSpace(r) })
+
+	if !hasLetter || !hasOther {
+		return &ValidationError{Message: "password must contain at least one letter and one digit or symbol"}
 	}
 
 	return nil

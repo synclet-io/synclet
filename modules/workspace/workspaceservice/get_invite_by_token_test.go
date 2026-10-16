@@ -18,7 +18,7 @@ func TestGetInviteByToken_PopulatesWorkspaceAndInviterName(t *testing.T) {
 	store.seedWorkspace(&Workspace{ID: wsID, Name: "Acme", Slug: "acme"})
 	store.seedInvite(&WorkspaceInvite{
 		ID: uuid.New(), WorkspaceID: wsID, InviterUserID: inviterID,
-		Email: "x@example.com", Token: "tok", Status: InviteStatusPending,
+		Email: "x@example.com", Token: hashInviteToken("tok"), Status: InviteStatusPending,
 		ExpiresAt: time.Now().Add(time.Hour),
 	})
 
@@ -39,7 +39,7 @@ func TestGetInviteByToken_FlagsExpiredPending(t *testing.T) {
 	store.seedWorkspace(&Workspace{ID: wsID, Name: "Acme", Slug: "acme"})
 	store.seedInvite(&WorkspaceInvite{
 		ID: uuid.New(), WorkspaceID: wsID, InviterUserID: uuid.New(),
-		Email: "x@example.com", Token: "tok", Status: InviteStatusPending,
+		Email: "x@example.com", Token: hashInviteToken("tok"), Status: InviteStatusPending,
 		ExpiresAt: time.Now().Add(-time.Hour),
 	})
 

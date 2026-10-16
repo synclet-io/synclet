@@ -6,7 +6,10 @@
     ".": {
       "release-type": "go",
       "component": "synclet",
-      "changelog-path": "CHANGELOG.md"
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {"type": "yaml", "path": "deploy/helm/synclet/Chart.yaml", "jsonpath": "$.appVersion"}
+      ]
     },
     "connectors/source-google-sheets": {
       "release-type": "go",

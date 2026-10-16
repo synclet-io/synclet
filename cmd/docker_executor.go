@@ -15,15 +15,15 @@ func newDockerExecutorCommand() *cobra.Command {
 		Long: `Runs the Docker sync executor. In distributed mode (default), connects to the
 API server via EXECUTOR_API_URL and EXECUTOR_API_TOKEN env vars. In standalone
 mode (--standalone), runs in-process with direct DB access.`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			dotEnvs, err := cmd.Flags().GetStringArray("dotenv")
 			if err != nil {
-				panic(err)
+				return err
 			}
 
 			opts := append([]app.RunOption{app.WithDotEnvFiles(dotEnvs...)}, app.ExecutorCommandOptions(app.WithDockerExecutor(), standalone)...)
 
-			app.RunServer(opts...)
+			return app.RunServer(opts...)
 		},
 	}
 

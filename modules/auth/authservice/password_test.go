@@ -12,20 +12,24 @@ func TestValidatePassword(t *testing.T) {
 	tests := []struct {
 		name     string
 		password string
-		wantErr  bool
+		wantErr  string
 	}{
-		{"empty password", "", true},
-		{"too short - 1 char", "a", true},
-		{"too short - 7 chars", strings.Repeat("a", 7), true},
-		{"exactly 8 chars", strings.Repeat("a", 8), false},
-		{"long password - 100 chars", strings.Repeat("a", 100), false},
+		{"empty password", "", "at least 8 characters"},
+		{"too short - 7 chars", "abcde1!", "at least 8 characters"},
+		{"multibyte runes counted as characters", "пароль1", "at least 8 characters"},
+		{"letters only", strings.Repeat("a", 8), "one letter and one digit or symbol"},
+		{"digits only", "12345678", "one letter and one digit or symbol"},
+		{"letters and spaces", "abcd efgh", "one letter and one digit or symbol"},
+		{"letters and digit", "abcdefg1", ""},
+		{"letters and symbol", "abcdefg-", ""},
+		{"long password - 100 chars", strings.Repeat("a", 99) + "1", ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := ValidatePassword(tt.password, 8)
-			if tt.wantErr {
+			if tt.wantErr != "" {
 				require.Error(t, err)
-				assert.Contains(t, err.Error(), "at least 8 characters")
+				assert.Contains(t, err.Error(), tt.wantErr)
 			} else {
 				assert.NoError(t, err)
 			}

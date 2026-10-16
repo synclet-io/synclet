@@ -225,6 +225,14 @@ auth:
   ## Minimum required password length for local accounts.
   minPasswordLength: 8
 
+## @section Rate limit parameters
+rateLimit:
+  ## IPs or CIDR ranges of reverse proxies whose X-Forwarded-For / X-Real-IP headers
+  ## identify the client for login and register rate limits. Set to the ingress
+  ## controller's pod CIDR (e.g. ["10.42.0.0/16"]); empty keys limits on the TCP peer,
+  ## which behind an ingress is the ingress itself.
+  trustedProxies: []
+
 ## @section OIDC parameters
 ## Configure OpenID Connect providers for SSO login.
 ## Each provider needs an issuer URL, OAuth client ID, and client secret.

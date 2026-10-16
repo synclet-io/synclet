@@ -2,10 +2,9 @@ package workspaceservice
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"fmt"
+	"net/mail"
 	"strings"
 	"time"
 
@@ -64,6 +63,10 @@ type CreateInviteResult struct {
 func (uc *CreateInvite) Execute(ctx context.Context, params CreateInviteParams) (*CreateInviteResult, error) {
 	email := strings.ToLower(strings.TrimSpace(params.Email))
 
+	if addr, err := mail.ParseAddress(email); err != nil || addr.Address != email {
+		return nil, &ValidationError{Message: "invalid email address"}
+	}
+
 	// Check if user is already a member of this workspace.
 	user, err := uc.userLookup.GetUserByEmail(ctx, email)
 	if err != nil {
@@ -100,10 +103,16 @@ func (uc *CreateInvite) Execute(ctx context.Context, params CreateInviteParams) 
 		return nil, fmt.Errorf("checking existing invite: %w", err)
 	}
 
+	rawToken, tokenHash, err := newInviteToken()
+	if err != nil {
+		return nil, err
+	}
+
 	var invite *WorkspaceInvite
 
 	if existingInvite != nil {
-		// Replace existing pending invite: update role, TTL, inviter.
+		// Replace existing pending invite: update role, TTL, inviter and token.
+		existingInvite.Token = tokenHash
 		existingInvite.Role = params.Role
 		existingInvite.InviterUserID = params.InviterUserID
 		existingInvite.ExpiresAt = expiresAt
@@ -114,21 +123,13 @@ func (uc *CreateInvite) Execute(ctx context.Context, params CreateInviteParams) 
 			return nil, fmt.Errorf("updating existing invite: %w", err)
 		}
 	} else {
-		// Generate a new token: 32 random bytes -> 64 hex chars.
-		tokenBytes := make([]byte, 32)
-		if _, err := rand.Read(tokenBytes); err != nil {
-			return nil, fmt.Errorf("generating invite token: %w", err)
-		}
-
-		token := hex.EncodeToString(tokenBytes)
-
 		invite = &WorkspaceInvite{
 			ID:            uuid.New(),
 			WorkspaceID:   params.WorkspaceID,
 			InviterUserID: params.InviterUserID,
 			Email:         email,
 			Role:          params.Role,
-			Token:         token,
+			Token:         tokenHash,
 			Status:        InviteStatusPending,
 			ExpiresAt:     expiresAt,
 			CreatedAt:     now,
@@ -141,7 +142,7 @@ func (uc *CreateInvite) Execute(ctx context.Context, params CreateInviteParams) 
 		}
 	}
 
-	acceptURL := inviteAcceptURL(uc.frontendURL, invite.Token)
+	acceptURL := inviteAcceptURL(uc.frontendURL, rawToken)
 
 	// Send email asynchronously to avoid blocking the request.
 	uc.sendInviteEmailAsync(ctx, invite, params.InviterUserID, acceptURL)

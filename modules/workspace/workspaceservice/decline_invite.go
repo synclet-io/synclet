@@ -22,7 +22,7 @@ func NewDeclineInvite(storage Storage, audit AuditRecorder) *DeclineInvite {
 // Execute declines an invite. The invite is marked as declined (not deleted).
 func (uc *DeclineInvite) Execute(ctx context.Context, token string) error {
 	invite, err := uc.storage.WorkspaceInvites().First(ctx, &WorkspaceInviteFilter{
-		Token: filter.Equals(token),
+		Token: filter.Equals(hashInviteToken(token)),
 	})
 	if err != nil {
 		return fmt.Errorf("finding invite by token: %w", err)

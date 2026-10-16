@@ -36,13 +36,13 @@ type DockerVolume struct {
 	ReadOnly      bool   `json:"read_only,omitempty"`
 }
 
-// RuntimeDefaults holds global default resource values loaded from env vars.
+// RuntimeDefaults holds the global default resource values applied when a connection has none.
 type RuntimeDefaults struct {
-	CPURequest         string `env:"DEFAULT_CPU_REQUEST" envDefault:""`
-	CPULimit           string `env:"DEFAULT_CPU_LIMIT" envDefault:""`
-	MemoryRequest      string `env:"DEFAULT_MEMORY_REQUEST" envDefault:""`
-	MemoryLimit        string `env:"DEFAULT_MEMORY_LIMIT" envDefault:""`
-	ServiceAccountName string `env:"DEFAULT_SERVICE_ACCOUNT_NAME" envDefault:""`
+	CPURequest         string
+	CPULimit           string
+	MemoryRequest      string
+	MemoryLimit        string
+	ServiceAccountName string
 }
 
 // ParseRuntimeConfig parses a nullable JSONB string from DB model field.

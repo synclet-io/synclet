@@ -24,9 +24,6 @@ front/node_modules/
 # Proto generated
 proto/node_modules/
 
-# Generated files
-*.gen.go
-
 # Logs
 *.log
 

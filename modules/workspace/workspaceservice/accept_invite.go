@@ -32,7 +32,7 @@ type AcceptInviteResult struct {
 // and the user's email matches the invite email (D-14).
 func (uc *AcceptInvite) Execute(ctx context.Context, token string, userID uuid.UUID, userEmail string) (*AcceptInviteResult, error) {
 	invite, err := uc.storage.WorkspaceInvites().First(ctx, &WorkspaceInviteFilter{
-		Token: filter.Equals(token),
+		Token: filter.Equals(hashInviteToken(token)),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("finding invite by token: %w", err)

@@ -2,6 +2,7 @@ package workspaceservice
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -36,10 +37,12 @@ func TestResendInvite_RefreshesExpiration(t *testing.T) {
 
 	acceptURL, err := newResendInvite(store, users, &fakeEmailSender{}).Execute(ctx, inviteID, wsID)
 	require.NoError(t, err)
-	assert.Equal(t, "https://app.example.com/invite/tok", acceptURL)
-
 	got, err := store.WorkspaceInvites().First(ctx, &WorkspaceInviteFilter{ID: equalsUUID(inviteID)})
 	require.NoError(t, err)
+
+	rawToken := strings.TrimPrefix(acceptURL, "https://app.example.com/invite/")
+	assert.NotEqual(t, "tok", rawToken, "token rotated")
+	assert.Equal(t, hashInviteToken(rawToken), got.Token)
 	assert.True(t, got.ExpiresAt.After(oldExpiry), "expiration must be pushed forward")
 	assert.WithinDuration(t, time.Now().Add(24*time.Hour), got.ExpiresAt, 5*time.Second)
 }

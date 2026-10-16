@@ -34,7 +34,7 @@ type InviteByTokenResult struct {
 // Reports expired status even if DB status is still Pending.
 func (uc *GetInviteByToken) Execute(ctx context.Context, token string) (*InviteByTokenResult, error) {
 	invite, err := uc.storage.WorkspaceInvites().First(ctx, &WorkspaceInviteFilter{
-		Token: filter.Equals(token),
+		Token: filter.Equals(hashInviteToken(token)),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("finding invite by token: %w", err)

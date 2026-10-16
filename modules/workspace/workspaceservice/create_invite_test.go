@@ -43,9 +43,11 @@ func TestCreateInvite_NewInviteForUnknownUser(t *testing.T) {
 	assert.Equal(t, "newcomer@example.com", invite.Email, "email is normalised")
 	assert.Equal(t, MemberRoleEditor, invite.Role)
 	assert.Equal(t, InviteStatusPending, invite.Status)
-	assert.NotEmpty(t, invite.Token, "token must be generated")
 	assert.WithinDuration(t, time.Now().Add(24*time.Hour), invite.ExpiresAt, 5*time.Second)
-	assert.Equal(t, "https://app.example.com/invite/"+invite.Token, result.AcceptURL)
+
+	rawToken := strings.TrimPrefix(result.AcceptURL, "https://app.example.com/invite/")
+	assert.Len(t, rawToken, 64)
+	assert.Equal(t, hashInviteToken(rawToken), invite.Token, "only the token hash is stored")
 }
 
 func TestCreateInvite_ReplacesExistingPendingInvite(t *testing.T) {
@@ -76,8 +78,10 @@ func TestCreateInvite_ReplacesExistingPendingInvite(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.Equal(t, MemberRoleAdmin, result.Invite.Role, "role updated")
-	assert.Equal(t, "existing-token", result.Invite.Token, "token preserved across replacement")
-	assert.Equal(t, "https://app.example.com/invite/existing-token", result.AcceptURL)
+	assert.NotEqual(t, "existing-token", result.Invite.Token, "token rotated on replacement")
+
+	rawToken := strings.TrimPrefix(result.AcceptURL, "https://app.example.com/invite/")
+	assert.Equal(t, hashInviteToken(rawToken), result.Invite.Token)
 
 	all, err := store.WorkspaceInvites().Find(ctx, &WorkspaceInviteFilter{})
 	require.NoError(t, err)
@@ -107,5 +111,28 @@ func TestCreateInvite_AlreadyMemberRejected(t *testing.T) {
 
 	if !strings.Contains(err.Error(), "already a member") {
 		t.Fatalf("expected 'already a member' error, got: %v", err)
+	}
+}
+
+func TestCreateInvite_InvalidEmailRejected(t *testing.T) {
+	for _, email := range []string{"", "   ", "not-an-email", "Name <x@example.com>"} {
+		t.Run(email, func(t *testing.T) {
+			store := newFakeStorage()
+			mailer := &fakeEmailSender{}
+
+			_, err := newCreateInvite(store, newFakeUserLookup(), mailer).Execute(context.Background(), CreateInviteParams{
+				WorkspaceID:   uuid.New(),
+				InviterUserID: uuid.New(),
+				Email:         email,
+				Role:          MemberRoleViewer,
+			})
+
+			var validationErr *ValidationError
+			require.ErrorAs(t, err, &validationErr)
+
+			all, err := store.WorkspaceInvites().Find(context.Background(), &WorkspaceInviteFilter{})
+			require.NoError(t, err)
+			assert.Empty(t, all)
+		})
 	}
 }

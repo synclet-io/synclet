@@ -17,6 +17,7 @@ data:
   AUTH_REFRESH_TOKEN_TTL: {{ .Values.auth.refreshTokenTTL | quote }}
   AUTH_OIDC_STATE_TTL: {{ .Values.auth.oidcStateTTL | quote }}
   AUTH_MIN_PASSWORD_LENGTH: {{ .Values.auth.minPasswordLength | quote }}
+  RATE_LIMIT_TRUSTED_PROXIES: {{ join "," .Values.rateLimit.trustedProxies | quote }}
   ## Workspace
   WORKSPACE_MODE: {{ .Values.workspaces.mode | quote }}
   ## Frontend & invites
