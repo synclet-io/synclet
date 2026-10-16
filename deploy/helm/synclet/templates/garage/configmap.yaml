@@ -1,0 +1,24 @@
+{{- if .Values.logArchive.garage.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "synclet.garage.fullname" . }}
+  labels:
+    {{- include "synclet.garage.labels" . | nindent 4 }}
+data:
+  garage.toml: |
+    metadata_dir = "/var/lib/garage/meta"
+    data_dir = "/var/lib/garage/data"
+    db_engine = "lmdb"
+    replication_factor = 1
+
+    rpc_bind_addr = "0.0.0.0:3901"
+    rpc_public_addr = "127.0.0.1:3901"
+
+    [s3_api]
+    api_bind_addr = "0.0.0.0:{{ .Values.logArchive.garage.service.s3Port }}"
+    s3_region = "{{ include "synclet.garage.region" . }}"
+
+    [admin]
+    api_bind_addr = "0.0.0.0:{{ .Values.logArchive.garage.service.adminPort }}"
+{{- end }}

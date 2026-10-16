@@ -1,0 +1,21 @@
+{{- if .Values.logArchive.garage.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "synclet.garage.fullname" . }}
+  labels:
+    {{- include "synclet.garage.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.logArchive.garage.service.s3Port }}
+      targetPort: s3
+      protocol: TCP
+      name: s3
+    - port: {{ .Values.logArchive.garage.service.adminPort }}
+      targetPort: admin
+      protocol: TCP
+      name: admin
+  selector:
+    {{- include "synclet.garage.selectorLabels" . | nindent 4 }}
+{{- end }}

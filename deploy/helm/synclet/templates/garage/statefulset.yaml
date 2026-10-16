@@ -1,0 +1,108 @@
+{{- if .Values.logArchive.garage.enabled }}
+{{- $garage := .Values.logArchive.garage }}
+{{- $secretName := include "synclet.garage.secretName" . }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "synclet.garage.fullname" . }}
+  labels:
+    {{- include "synclet.garage.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "synclet.garage.fullname" . }}
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "synclet.garage.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "synclet.garage.selectorLabels" . | nindent 8 }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/garage/configmap.yaml") . | sha256sum }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      automountServiceAccountToken: false
+      {{- if $garage.podSecurityContext.enabled }}
+      securityContext:
+        runAsNonRoot: {{ $garage.podSecurityContext.runAsNonRoot }}
+        runAsUser: {{ $garage.podSecurityContext.runAsUser }}
+        runAsGroup: {{ $garage.podSecurityContext.runAsGroup }}
+        fsGroup: {{ $garage.podSecurityContext.fsGroup }}
+      {{- end }}
+      containers:
+        - name: garage
+          image: {{ include "synclet.garage.image" . }}
+          imagePullPolicy: {{ $garage.image.pullPolicy }}
+          ## Single-node mode assigns the layout on first start; --default-bucket creates
+          ## the access key from GARAGE_DEFAULT_* and the bucket if missing and grants the
+          ## key read/write on it. Both are no-ops on later starts.
+          command: ["/garage", "server", "--single-node", "--default-bucket"]
+          {{- if $garage.containerSecurityContext.enabled }}
+          securityContext:
+            allowPrivilegeEscalation: {{ $garage.containerSecurityContext.allowPrivilegeEscalation }}
+            readOnlyRootFilesystem: {{ $garage.containerSecurityContext.readOnlyRootFilesystem }}
+            capabilities:
+              drop:
+                {{- toYaml $garage.containerSecurityContext.capabilities.drop | nindent 16 }}
+          {{- end }}
+          env:
+            - name: GARAGE_CONFIG_FILE
+              value: /etc/garage/garage.toml
+            - name: GARAGE_DEFAULT_BUCKET
+              value: {{ $garage.bucket | quote }}
+            {{- range $env, $key := dict "GARAGE_RPC_SECRET" "rpc-secret" "GARAGE_ADMIN_TOKEN" "admin-token" "GARAGE_DEFAULT_ACCESS_KEY" "access-key-id" "GARAGE_DEFAULT_SECRET_KEY" "secret-access-key" }}
+            - name: {{ $env }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secretName }}
+                  key: {{ $key }}
+            {{- end }}
+          ports:
+            - containerPort: {{ $garage.service.s3Port }}
+              protocol: TCP
+              name: s3
+            - containerPort: {{ $garage.service.adminPort }}
+              protocol: TCP
+              name: admin
+          volumeMounts:
+            - name: config
+              mountPath: /etc/garage
+              readOnly: true
+            - name: data
+              mountPath: /var/lib/garage
+          startupProbe:
+            httpGet:
+              path: /health
+              port: admin
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: admin
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: admin
+            periodSeconds: 20
+          resources:
+            {{- toYaml $garage.resources | nindent 12 }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "synclet.garage.fullname" . }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- if or .Values.global.storageClass $garage.persistence.storageClass }}
+        storageClassName: {{ .Values.global.storageClass | default $garage.persistence.storageClass }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ $garage.persistence.size }}
+{{- end }}

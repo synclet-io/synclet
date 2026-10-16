@@ -361,7 +361,7 @@ pipeline:
 ## Where the logs of finished jobs are stored. While a job runs its logs are always in Postgres.
 logArchive:
   ## none: logs stay in Postgres. filesystem: files under dir. s3: any S3-compatible bucket.
-  ## gcs: Google Cloud Storage bucket.
+  ## gcs: Google Cloud Storage bucket. Keep none when garage.enabled is true.
   backend: none
   ## Base directory for the filesystem backend. Server and jobs pods must share it, so it
   ## needs a ReadWriteMany volume: set persistence.existingClaim to a PVC created beforehand.
@@ -398,6 +398,48 @@ logArchive:
     ## read-only into the server and jobs pods only.
     credentialsSecret: ""
     credentialsSecretKey: "key.json"
+  ## Bundled Garage (https://garagehq.deuxfleurs.fr), a single-node S3-compatible store run
+  ## by this chart, so archiving needs no external bucket. Enabling it selects the s3 backend
+  ## and wires its endpoint, bucket and credentials; leave backend at none and s3.* unset.
+  ## Garage creates the layout, the access key and the bucket itself on startup. Backups of
+  ## its volume are the operator's job; prefer a managed bucket for serious production.
+  garage:
+    enabled: false
+    bucket: synclet-logs
+    image:
+      registry: docker.io
+      repository: dxflrs/garage
+      tag: v2.4.1
+      pullPolicy: IfNotPresent
+    ## Pre-created Secret with keys rpc-secret (64 hex chars), admin-token, access-key-id
+    ## and secret-access-key. Empty: the chart generates them once and keeps them across
+    ## upgrades and uninstalls, because Garage refuses to start if the access key stored on
+    ## its volume no longer matches the Secret.
+    existingSecret: ""
+    persistence:
+      size: 10Gi
+      storageClass: ""
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        memory: 512Mi
+    podSecurityContext:
+      enabled: true
+      runAsNonRoot: true
+      runAsUser: 1000
+      runAsGroup: 1000
+      fsGroup: 1000
+    containerSecurityContext:
+      enabled: true
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop: ["ALL"]
+    service:
+      s3Port: 3900
+      adminPort: 3903
 
 ## @section Secrets
 ## Each secret supports 3 modes:

@@ -16,6 +16,14 @@ To get the application URL:
   Then visit: http://localhost:{{ .Values.server.service.ports.public }}
 {{- end }}
 
+{{- if .Values.logArchive.garage.enabled }}
+
+Job logs are archived to the bundled Garage bucket "{{ .Values.logArchive.garage.bucket }}"
+({{ include "synclet.garage.fullname" . }}). It is a single replica on one volume: back the
+volume up yourself, or use a managed bucket for production. Its Secret and volume are kept
+on uninstall.
+{{- end }}
+
 {{- if .Values.postgresql.enabled }}
 
 WARNING: Built-in PostgreSQL is intended for development/testing only.

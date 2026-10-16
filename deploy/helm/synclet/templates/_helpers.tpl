@@ -291,6 +291,69 @@ filesystem backend's PVC and the GCS service account key.
 {{- end }}
 {{- end }}
 
+{{/*
+Log archive backend Synclet runs with: s3 when the bundled Garage is enabled.
+*/}}
+{{- define "synclet.logArchive.backend" -}}
+{{- if .Values.logArchive.garage.enabled -}}
+{{- if ne .Values.logArchive.backend "none" -}}
+{{- fail (printf "logArchive.garage.enabled selects the s3 backend and wires it to Garage; leave logArchive.backend at none (got %q)" .Values.logArchive.backend) -}}
+{{- end -}}
+s3
+{{- else -}}
+{{- .Values.logArchive.backend -}}
+{{- end -}}
+{{- end }}
+
+{{/* ---- Garage ---- */}}
+{{- define "synclet.garage.fullname" -}}
+{{- printf "%s-garage" (include "synclet.fullname" .) -}}
+{{- end }}
+
+{{- define "synclet.garage.labels" -}}
+{{ include "synclet.labels" . }}
+app.kubernetes.io/component: garage
+{{- end }}
+
+{{- define "synclet.garage.selectorLabels" -}}
+{{ include "synclet.selectorLabels" . }}
+app.kubernetes.io/component: garage
+{{- end }}
+
+{{- define "synclet.garage.image" -}}
+{{- $image := .Values.logArchive.garage.image -}}
+{{- $registry := .Values.global.imageRegistry | default $image.registry -}}
+{{- if $registry -}}
+{{- printf "%s/%s:%s" $registry $image.repository $image.tag -}}
+{{- else -}}
+{{- printf "%s:%s" $image.repository $image.tag -}}
+{{- end -}}
+{{- end }}
+
+{{- define "synclet.garage.region" -}}
+garage
+{{- end }}
+
+{{- define "synclet.garage.secretName" -}}
+{{- .Values.logArchive.garage.existingSecret | default (include "synclet.garage.fullname" .) -}}
+{{- end }}
+
+{{/*
+Value of one key in the chart-generated Garage Secret: the stored one when the Secret
+exists, otherwise a fresh random value. The access key id follows Garage's own format
+(GK + 24 hex chars); the RPC secret and the secret access key are 64 hex chars.
+*/}}
+{{- define "synclet.garage.secretValue" -}}
+{{- $existing := lookup "v1" "Secret" .ctx.Release.Namespace (include "synclet.garage.fullname" .ctx) -}}
+{{- if and $existing $existing.data (index $existing.data .key) -}}
+{{- index $existing.data .key | b64dec -}}
+{{- else if eq .key "access-key-id" -}}
+{{- printf "GK%s" (randAlphaNum 64 | sha256sum | trunc 24) -}}
+{{- else -}}
+{{- randAlphaNum 64 | sha256sum -}}
+{{- end -}}
+{{- end }}
+
 {{- define "synclet.smtp.secretRef" -}}
 {{- if .Values.smtp.existingSecret }}
 name: {{ .Values.smtp.existingSecret }}
@@ -427,7 +490,18 @@ Common secret env vars shared across all deployments.
       key: oidc-{{ .slug }}-client-secret
       {{- end }}
 {{- end }}
-{{- if eq .Values.logArchive.backend "s3" }}
+{{- if .Values.logArchive.garage.enabled }}
+- name: PIPELINE_LOG_ARCHIVE_S3_ACCESS_KEY_ID
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "synclet.garage.secretName" . }}
+      key: access-key-id
+- name: PIPELINE_LOG_ARCHIVE_S3_SECRET_ACCESS_KEY
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "synclet.garage.secretName" . }}
+      key: secret-access-key
+{{- else if eq .Values.logArchive.backend "s3" }}
 {{- if or .Values.logArchive.s3.existingSecret .Values.logArchive.s3.accessKeyID }}
 - name: PIPELINE_LOG_ARCHIVE_S3_ACCESS_KEY_ID
   valueFrom:

@@ -54,14 +54,19 @@ data:
   PIPELINE_REGISTRY_FETCH_TIMEOUT: {{ .Values.pipeline.registryFetchTimeout | quote }}
   ## Pipeline: job logs
   PIPELINE_LOG_MAX_LINES_PER_ATTEMPT: {{ .Values.pipeline.logMaxLinesPerAttempt | quote }}
-  PIPELINE_LOG_ARCHIVE_BACKEND: {{ .Values.logArchive.backend | quote }}
+  PIPELINE_LOG_ARCHIVE_BACKEND: {{ include "synclet.logArchive.backend" . | quote }}
   {{- if eq .Values.logArchive.backend "filesystem" }}
   {{- if not .Values.logArchive.persistence.existingClaim }}
   {{- fail "logArchive.backend=filesystem needs logArchive.persistence.existingClaim (a ReadWriteMany PVC shared by the server and jobs pods)" }}
   {{- end }}
   PIPELINE_LOG_ARCHIVE_DIR: {{ .Values.logArchive.dir | quote }}
   {{- end }}
-  {{- if eq .Values.logArchive.backend "s3" }}
+  {{- if .Values.logArchive.garage.enabled }}
+  PIPELINE_LOG_ARCHIVE_S3_ENDPOINT: {{ printf "http://%s:%d" (include "synclet.garage.fullname" .) (int .Values.logArchive.garage.service.s3Port) | quote }}
+  PIPELINE_LOG_ARCHIVE_S3_REGION: {{ include "synclet.garage.region" . | quote }}
+  PIPELINE_LOG_ARCHIVE_S3_BUCKET: {{ .Values.logArchive.garage.bucket | quote }}
+  PIPELINE_LOG_ARCHIVE_S3_USE_PATH_STYLE: "true"
+  {{- else if eq .Values.logArchive.backend "s3" }}
   {{- if not .Values.logArchive.s3.bucket }}
   {{- fail "logArchive.backend=s3 needs logArchive.s3.bucket" }}
   {{- end }}

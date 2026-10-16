@@ -183,6 +183,28 @@ Outside Workload Identity, store a service account key in a Secret and set `logA
 
 The executor deployment (distributed mode) shares this service account because it needs its RBAC to launch connector pods. Connector pods run in `k8s.namespace` under `pipeline.resources.serviceAccountName` (or that namespace's default account), so they get no bucket access.
 
+#### Bundled Garage (Helm)
+
+The chart can run [Garage](https://garagehq.deuxfleurs.fr), a small S3-compatible store, next to Synclet so archiving works without an external bucket:
+
+```yaml
+logArchive:
+  garage:
+    enabled: true
+    bucket: synclet-logs        # default
+    persistence:
+      size: 10Gi                # default; size it for your log volume and retention
+      storageClass: ""
+```
+
+This selects the `s3` backend and points Synclet at the `<fullname>-garage` Service on port 3900 (region `garage`, path-style). Leave `logArchive.backend` at `none`: combining Garage with another backend fails at render time.
+
+Garage runs as a single-node StatefulSet (replication factor 1) with its metadata and data on one ReadWriteOnce volume. On startup it assigns its own layout, creates the access key and the bucket if they are missing and grants the key read/write on the bucket, so no bootstrap job is involved. Its RPC secret, admin token and S3 key are generated once into the `<fullname>-garage` Secret, which is kept on `helm uninstall` together with the volume: Garage refuses to start if the stored key and the Secret disagree. Delete both to start over, or bring your own Secret with `logArchive.garage.existingSecret` (keys `rpc-secret` as 64 hex chars, `admin-token`, `access-key-id`, `secret-access-key`). The S3 (3900) and admin (3903) ports are exposed only through a ClusterIP Service.
+
+Garage is a single replica on one volume: backing up that volume is up to you, and losing it loses the archived logs. For serious production use a managed bucket (S3, R2, GCS) instead.
+
+Garage is AGPL-3.0. The chart runs the unmodified upstream image as a separate service that Synclet talks to over the S3 API, which doesn't affect Synclet's own license.
+
 Switching back to `none` leaves already archived logs where they are, but they can no longer be read.
 
 ### Connector Configuration
