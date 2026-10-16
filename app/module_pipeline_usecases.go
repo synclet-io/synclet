@@ -18,6 +18,7 @@ import (
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinestate"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinestats"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinetasks"
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelineworkspaces"
 )
 
 func pipelineUseCasesModule() fx.Option {
@@ -144,6 +145,10 @@ func pipelineUseCasesModule() fx.Option {
 			pipelinetasks.NewReportTaskResult,
 			pipelinetasks.NewRetainTasks,
 			pipelinetasks.NewFailStaleTasks,
+		),
+
+		fx.Provide(
+			pipelineworkspaces.NewPurgeWorkspace,
 		),
 
 		// State use cases

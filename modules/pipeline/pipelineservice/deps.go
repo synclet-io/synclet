@@ -87,6 +87,9 @@ type StatsStorage interface {
 
 	// QueryConnectionSparklineBatch returns recent rollup records_read values for each of the given connection IDs.
 	QueryConnectionSparklineBatch(ctx context.Context, connectionIDs []uuid.UUID, from, to time.Time, limit int) (map[uuid.UUID][]int64, error)
+
+	// DeleteWorkspaceRollups removes every rollup bucket of a workspace.
+	DeleteWorkspaceRollups(ctx context.Context, workspaceID uuid.UUID) error
 }
 
 // JobRetentionStorage provides bulk deletion for job retention cleanup.

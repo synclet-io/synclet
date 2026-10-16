@@ -54,6 +54,7 @@ func notifyEventHandlersModule() fx.Option {
 		fx.Provide(
 			fx.Annotate(notifyadapt.NewJobInfoLoader, fx.As(new(notifyservice.JobInfoLoader))),
 			pnpwatermill.HandlerProvider(notifyeventhandle.NewJobEventHandler),
+			pnpwatermill.HandlerProvider(notifyeventhandle.NewWorkspaceDeletedHandler),
 		),
 	)
 }
@@ -78,6 +79,7 @@ func notifyDependenciesModule() fx.Option {
 		fx.Annotate(newNotifyStorage, fx.As(new(notifyservice.Storage))),
 		fx.Annotate(notifyadapt.NewSecretsAdapter, fx.As(new(notifyservice.SecretsProvider))),
 		fx.Annotate(notifyadapt.NewAuditRecorder, fx.As(new(notifyservice.AuditRecorder))),
+		fx.Annotate(notifyadapt.NewConnectionChecker, fx.As(new(notifyservice.ConnectionChecker))),
 
 		newSMTPEmailSender,
 	)
@@ -97,6 +99,7 @@ func notifyUseCasesModule() fx.Option {
 		notifyservice.NewCreateChannel,
 		notifyservice.NewUpdateChannel,
 		notifyservice.NewDeleteChannel,
+		notifyservice.NewPurgeWorkspace,
 		notifyservice.NewListChannels,
 		notifyservice.NewCreateNotificationRule,
 		notifyservice.NewUpdateNotificationRule,

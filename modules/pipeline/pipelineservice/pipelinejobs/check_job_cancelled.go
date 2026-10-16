@@ -2,6 +2,7 @@ package pipelinejobs
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -26,11 +27,17 @@ func NewCheckJobCancelled(storage pipelineservice.Storage) *CheckJobCancelled {
 	return &CheckJobCancelled{storage: storage}
 }
 
-// Execute returns true if the job status is Cancelled.
+// Execute returns true if the job status is Cancelled. A job that no longer
+// exists, for example because its workspace was deleted, counts as cancelled
+// so the executor stops at its next heartbeat.
 func (uc *CheckJobCancelled) Execute(ctx context.Context, params CheckJobCancelledParams) (bool, error) {
 	job, err := uc.storage.Jobs().First(ctx, &pipelineservice.JobFilter{
 		ID: filter.Equals(params.JobID),
 	})
+	if errors.Is(err, pipelineservice.ErrJobNotFound) {
+		return true, nil
+	}
+
 	if err != nil {
 		return false, fmt.Errorf("checking job cancelled: %w", err)
 	}

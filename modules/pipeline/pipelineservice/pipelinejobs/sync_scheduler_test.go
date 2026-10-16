@@ -223,4 +223,22 @@ func TestSyncScheduler_Execute(t *testing.T) {
 		// limit=10, active=8, remaining=2, but FindDueConnections returns min(2, 5)=2
 		assert.Len(t, mock.createdJobs, 2, "should only create jobs up to remaining capacity")
 	})
+
+	t.Run("returns error when a job insert fails", func(t *testing.T) {
+		mock := &mockSchedulerStorage{
+			lockAcquired: true,
+			dueConnections: []pipelineservice.DueConnection{
+				{ConnectionID: uuid.New(), Schedule: "*/5 * * * *", MaxAttempts: 3},
+				{ConnectionID: uuid.New(), Schedule: "*/5 * * * *", MaxAttempts: 3},
+			},
+			createErr: errors.New("insert failed"),
+		}
+		storage := &mockSchedulerStorageWrapper{mock: mock, connectionsMock: &mockSchedulerConnectionsStorage{parent: mock}}
+
+		scheduler := NewSyncScheduler(storage, pipelineservice.Config{MaxConcurrentJobs: 10}, nil)
+		err := scheduler.Execute(context.Background())
+
+		require.ErrorContains(t, err, "insert failed")
+		assert.Empty(t, mock.updatedConnections, "cycle must stop at the first failed statement")
+	})
 }

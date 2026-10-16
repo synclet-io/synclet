@@ -2,6 +2,7 @@ package pipelinetasks
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -14,23 +15,29 @@ import (
 // FailStaleTasks times out stuck pending and orphaned running connector tasks.
 type FailStaleTasks struct {
 	storage        pipelineservice.Storage
+	secrets        pipelineservice.SecretsProvider
 	pendingTimeout time.Duration
 	runningTimeout time.Duration
 }
 
 // NewFailStaleTasks creates a new FailStaleTasks use case.
-func NewFailStaleTasks(storage pipelineservice.Storage, cfg pipelineservice.Config) *FailStaleTasks {
+func NewFailStaleTasks(storage pipelineservice.Storage, secrets pipelineservice.SecretsProvider, cfg pipelineservice.Config) *FailStaleTasks {
 	return &FailStaleTasks{
 		storage:        storage,
+		secrets:        secrets,
 		pendingTimeout: cfg.ConnectorTaskPendingTimeout,
 		runningTimeout: cfg.ConnectorTaskRunningTimeout,
 	}
 }
 
-// Execute times out pending tasks waiting too long and orphaned running tasks.
+// Execute times out pending tasks waiting too long and orphaned running tasks,
+// then deletes the config secrets owned by the tasks it failed. A secret that
+// cannot be deleted here is picked up again by RetainTasks.
 func (uc *FailStaleTasks) Execute(ctx context.Context) error {
+	var failed []*pipelineservice.ConnectorTask
+
 	// It's ok to have long-running transactions with locks, as this is a background task
-	return uc.storage.ExecuteInTransaction(ctx, func(ctx context.Context, tx pipelineservice.Storage) error {
+	if err := uc.storage.ExecuteInTransaction(ctx, func(ctx context.Context, tx pipelineservice.Storage) error {
 		now := time.Now()
 
 		// Timeout pending tasks that have been waiting too long.
@@ -53,6 +60,8 @@ func (uc *FailStaleTasks) Execute(ctx context.Context) error {
 			if _, err := tx.ConnectorTasks().Update(ctx, task); err != nil {
 				return fmt.Errorf("timing out pending task %s: %w", task.ID, err)
 			}
+
+			failed = append(failed, task)
 		}
 
 		// Timeout orphaned running tasks whose executor did not report back.
@@ -75,8 +84,26 @@ func (uc *FailStaleTasks) Execute(ctx context.Context) error {
 			if _, err := tx.ConnectorTasks().Update(ctx, task); err != nil {
 				return fmt.Errorf("timing out running task %s: %w", task.ID, err)
 			}
+
+			failed = append(failed, task)
 		}
 
 		return nil
-	})
+	}); err != nil {
+		return err
+	}
+
+	var errs []error
+
+	for _, task := range failed {
+		if !ownsSecrets(task) {
+			continue
+		}
+
+		if err := uc.secrets.DeleteByOwner(ctx, taskSecretsOwnerType, task.ID); err != nil {
+			errs = append(errs, fmt.Errorf("deleting secrets of task %s: %w", task.ID, err))
+		}
+	}
+
+	return errors.Join(errs...)
 }

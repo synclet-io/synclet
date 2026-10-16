@@ -36,59 +36,53 @@ type SyncRepositoryParams struct {
 
 // Execute fetches connectors from the repository URL and replaces all stored connector entries.
 // WorkspaceID is required; the repository lookup is unconditionally scoped to the workspace (IDOR protection).
-// The entire operation runs in a transaction with FOR UPDATE on the repository row to prevent concurrent syncs.
+// The registry is fetched before any transaction is opened. A fetch failure is
+// persisted as status failed with last_error in its own transaction and then
+// returned. On success the connector set is replaced in a transaction holding
+// FOR UPDATE on the repository row, so concurrent syncs serialize on the write.
 // Returns the updated repository so callers don't need post-UC storage access.
 func (uc *SyncRepository) Execute(ctx context.Context, params SyncRepositoryParams) (*pipelineservice.Repository, error) {
+	repo, err := uc.storage.Repositories().First(ctx, uc.repositoryFilter(params))
+	if err != nil {
+		return nil, fmt.Errorf("loading repository: %w", err)
+	}
+
+	authHeader := repo.AuthHeader
+	if authHeader != nil && secretutil.IsSecretRef(*authHeader) {
+		plaintext, err := uc.secrets.RetrieveSecret(ctx, *authHeader)
+		if err != nil {
+			return nil, fmt.Errorf("decrypting auth header: %w", err)
+		}
+
+		authHeader = &plaintext
+	}
+
+	connectors, fetchErr := uc.fetcher.Fetch(ctx, repo.URL, authHeader)
+	if fetchErr != nil {
+		if err := uc.markFailed(ctx, params, fetchErr); err != nil {
+			return nil, fmt.Errorf("updating repository status to failed: %w (fetch error: %w)", err, fetchErr)
+		}
+
+		return nil, fmt.Errorf("fetching registry: %w", fetchErr)
+	}
+
 	var (
 		result        *pipelineservice.Repository
 		previousCount int
 	)
 
 	if err := uc.storage.ExecuteInTransaction(ctx, func(ctx context.Context, tx pipelineservice.Storage) error {
-		// Load repository scoped to workspace with row lock.
-		repo, err := tx.Repositories().First(ctx, &pipelineservice.RepositoryFilter{
-			ID:          filter.Equals(params.RepositoryID),
-			WorkspaceID: filter.Equals(params.WorkspaceID),
-		}, dbutil.WithForUpdate())
+		repo, err := tx.Repositories().First(ctx, uc.repositoryFilter(params), dbutil.WithForUpdate())
 		if err != nil {
 			return fmt.Errorf("loading repository: %w", err)
 		}
 
 		previousCount = repo.ConnectorCount
 
-		// Decrypt auth header if it's a secret reference (backward compatible with plaintext).
-		authHeader := repo.AuthHeader
-		if authHeader != nil && secretutil.IsSecretRef(*authHeader) {
-			plaintext, err := uc.secrets.RetrieveSecret(ctx, *authHeader)
-			if err != nil {
-				return fmt.Errorf("decrypting auth header: %w", err)
-			}
-
-			authHeader = &plaintext
-		}
-
-		// Fetch connectors from registry URL.
-		connectors, err := uc.fetcher.Fetch(ctx, repo.URL, authHeader)
-		if err != nil {
-			// Mark as failed.
-			errMsg := err.Error()
-			repo.Status = pipelineservice.RepositoryStatusFailed
-			repo.LastError = &errMsg
-			repo.UpdatedAt = time.Now()
-
-			if _, updateErr := tx.Repositories().Update(ctx, repo); updateErr != nil {
-				return fmt.Errorf("updating repository status to failed: %w (fetch error: %w)", updateErr, err)
-			}
-
-			return fmt.Errorf("fetching registry: %w", err)
-		}
-
-		// Upsert connectors and remove stale ones.
 		if err := uc.syncRepositoryConnectors(ctx, tx, params.RepositoryID, connectors); err != nil {
 			return err
 		}
 
-		// Update repository with new stats.
 		now := time.Now()
 		repo.Status = pipelineservice.RepositoryStatusSynced
 		repo.LastSyncedAt = &now
@@ -100,8 +94,6 @@ func (uc *SyncRepository) Execute(ctx context.Context, params SyncRepositoryPara
 			return fmt.Errorf("updating repository: %w", err)
 		}
 
-		// Auto-create managed connectors for registry connectors.
-		// Done inside the transaction so everything is atomic.
 		if err := uc.autoCreateManagedConnectors(ctx, tx, params.WorkspaceID, params.RepositoryID, connectors); err != nil {
 			uc.logger.WithError(err).Warn(ctx, "failed to auto-create managed connectors during sync",
 				"workspace_id", params.WorkspaceID,
@@ -129,6 +121,33 @@ func (uc *SyncRepository) Execute(ctx context.Context, params SyncRepositoryPara
 	}
 
 	return result, nil
+}
+
+func (uc *SyncRepository) repositoryFilter(params SyncRepositoryParams) *pipelineservice.RepositoryFilter {
+	return &pipelineservice.RepositoryFilter{
+		ID:          filter.Equals(params.RepositoryID),
+		WorkspaceID: filter.Equals(params.WorkspaceID),
+	}
+}
+
+func (uc *SyncRepository) markFailed(ctx context.Context, params SyncRepositoryParams, fetchErr error) error {
+	return uc.storage.ExecuteInTransaction(ctx, func(ctx context.Context, tx pipelineservice.Storage) error {
+		repo, err := tx.Repositories().First(ctx, uc.repositoryFilter(params), dbutil.WithForUpdate())
+		if err != nil {
+			return fmt.Errorf("loading repository: %w", err)
+		}
+
+		errMsg := fetchErr.Error()
+		repo.Status = pipelineservice.RepositoryStatusFailed
+		repo.LastError = &errMsg
+		repo.UpdatedAt = time.Now()
+
+		if _, err := tx.Repositories().Update(ctx, repo); err != nil {
+			return fmt.Errorf("updating repository: %w", err)
+		}
+
+		return nil
+	})
 }
 
 func (uc *SyncRepository) syncRepositoryConnectors(ctx context.Context, tx pipelineservice.Storage, repositoryID uuid.UUID, connectors []ConnectorData) error {

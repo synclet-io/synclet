@@ -353,8 +353,10 @@ func (s *catalogStorage) Create(_ context.Context, rec *pipelineservice.CatalogD
 
 type fakeSecrets struct {
 	pipelineservice.SecretsProvider
-	mu     sync.Mutex
-	values map[string]string
+	mu        sync.Mutex
+	values    map[string]string
+	deleted   []uuid.UUID
+	deleteErr error
 }
 
 func newFakeSecrets() *fakeSecrets {
@@ -381,6 +383,28 @@ func (s *fakeSecrets) RetrieveSecret(_ context.Context, ref string) (string, err
 	}
 
 	return v, nil
+}
+
+func (s *fakeSecrets) DeleteByOwner(_ context.Context, ownerType string, ownerID uuid.UUID) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.deleteErr != nil {
+		return s.deleteErr
+	}
+
+	if ownerType == "connector_task" {
+		s.deleted = append(s.deleted, ownerID)
+	}
+
+	return nil
+}
+
+func (s *fakeSecrets) deletedOwners() []uuid.UUID {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return append([]uuid.UUID(nil), s.deleted...)
 }
 
 type recordingAudit struct {

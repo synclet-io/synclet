@@ -36,6 +36,8 @@ func NewSyncScheduler(storage pipelineservice.Storage, config pipelineservice.Co
 // 2. Counts active jobs and checks against limit.
 // 3. Finds due connections ordered by oldest last-sync completion.
 // 4. Creates a scheduled job for each due connection.
+// Any failed statement aborts the Postgres transaction, so the first error
+// rolls back the whole cycle and is returned; the next cycle retries.
 func (s *SyncScheduler) Execute(ctx context.Context) error {
 	return s.storage.ExecuteInTransaction(ctx, func(ctx context.Context, tx pipelineservice.Storage) error {
 		err := tx.WithAdvisoryLock(ctx, "sync_scheduler", 1)
@@ -88,6 +90,11 @@ func (s *SyncScheduler) Execute(ctx context.Context) error {
 		created := 0
 
 		for _, conn := range dueConnections {
+			connRecord := connByID[conn.ConnectionID]
+			if connRecord == nil {
+				return fmt.Errorf("due connection %s not found", conn.ConnectionID)
+			}
+
 			job := &pipelineservice.Job{
 				ID:           uuid.New(),
 				ConnectionID: conn.ConnectionID,
@@ -99,31 +106,23 @@ func (s *SyncScheduler) Execute(ctx context.Context) error {
 
 			createdJob, err := tx.Jobs().Create(ctx, job)
 			if err != nil {
-				s.logger.WithError(err).WithField("connection_id", conn.ConnectionID.String()).Error(ctx, "creating scheduled job")
-
-				continue
+				return fmt.Errorf("creating scheduled job for connection %s: %w", conn.ConnectionID, err)
 			}
 
-			// Advance next_scheduled_at to next cron tick after job creation.
-			connRecord := connByID[conn.ConnectionID]
-			if connRecord != nil {
-				pipelineservice.RecomputeNextScheduledAt(connRecord, now)
+			pipelineservice.RecomputeNextScheduledAt(connRecord, now)
 
-				if _, err := tx.Connections().Update(ctx, connRecord); err != nil {
-					s.logger.WithError(err).WithField("connection_id", conn.ConnectionID.String()).Error(ctx, "advancing next_scheduled_at")
-				}
+			if _, err := tx.Connections().Update(ctx, connRecord); err != nil {
+				return fmt.Errorf("advancing next_scheduled_at for connection %s: %w", conn.ConnectionID, err)
 			}
 
-			if connRecord != nil {
-				if err := tx.PipelineEvents().Send(ctx, &pipelineservice.PipelineEvent{
-					EventType: pipelineservice.PipelineEventTypeJobCreated,
-					Data: &pipelineservice.JobCreatedEventData{
-						WorkspaceID: connRecord.WorkspaceID,
-						Job:         createdJob,
-					},
-				}); err != nil {
-					s.logger.WithError(err).WithField("connection_id", conn.ConnectionID.String()).Error(ctx, "publishing job.created event")
-				}
+			if err := tx.PipelineEvents().Send(ctx, &pipelineservice.PipelineEvent{
+				EventType: pipelineservice.PipelineEventTypeJobCreated,
+				Data: &pipelineservice.JobCreatedEventData{
+					WorkspaceID: connRecord.WorkspaceID,
+					Job:         createdJob,
+				},
+			}); err != nil {
+				return fmt.Errorf("publishing job.created event for connection %s: %w", conn.ConnectionID, err)
 			}
 
 			created++

@@ -23,6 +23,16 @@ func NewStatsStorage(db *gorm.DB) *StatsStorage {
 
 var _ pipelinesvc.StatsStorage = &StatsStorage{}
 
+// DeleteWorkspaceRollups removes every rollup bucket of a workspace.
+func (s *StatsStorage) DeleteWorkspaceRollups(ctx context.Context, workspaceID uuid.UUID) error {
+	if err := s.db.WithContext(ctx).
+		Exec(`DELETE FROM pipeline.stats_rollups WHERE workspace_id = ?`, workspaceID).Error; err != nil {
+		return fmt.Errorf("deleting workspace rollups: %w", err)
+	}
+
+	return nil
+}
+
 // UpsertRollups computes and upserts rollup buckets from job data.
 func (s *StatsStorage) UpsertRollups(ctx context.Context, bucketSize pipelinesvc.BucketSize, since time.Time, truncUnit string) error {
 	// Allowlist to prevent SQL injection — truncUnit is interpolated into SQL

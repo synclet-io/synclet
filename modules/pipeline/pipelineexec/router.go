@@ -89,41 +89,82 @@ func Run(ctx context.Context, sourceStdout io.Reader, destStdin io.WriteCloser, 
 	return stats.export(), srcErr
 }
 
-// routeSourceMessages reads messages from the source and routes them according
-// to the routing table defined in D-06.
-func routeSourceMessages(ctx context.Context, reader *protocol.MessageReader, writer *protocol.MessageWriter, handler Handler, stats *internalStats, cfg RunConfig, logger *logging.Logger) error {
-	var lastRecordTime time.Time
-	firstRecordSeen := false
+// sourceRead is one result of reading the source stream.
+type sourceRead struct {
+	msg *protocol.AirbyteMessage
+	err error
+}
 
-	for {
-		msg, err := reader.Read()
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				return nil
+// readSource reads the source stream on its own goroutine so the router can
+// stop waiting on a silent source. The goroutine exits after delivering EOF or
+// an error, or once done is closed; a Read blocked at that point returns when
+// the caller tears down the source.
+func readSource(reader *protocol.MessageReader, done <-chan struct{}) <-chan sourceRead {
+	reads := make(chan sourceRead)
+
+	go func() {
+		for {
+			msg, err := reader.Read()
+
+			select {
+			case reads <- sourceRead{msg: msg, err: err}:
+			case <-done:
+				return
 			}
 
-			return err
+			if err != nil {
+				return
+			}
 		}
+	}()
 
-		// Check for context cancellation between reads.
+	return reads
+}
+
+// routeSourceMessages reads messages from the source and routes them according
+// to the routing table defined in D-06. The idle timeout is armed by the first
+// RECORD, so slow initial loads are not killed, and fires even while the
+// source produces no output at all.
+func routeSourceMessages(ctx context.Context, reader *protocol.MessageReader, writer *protocol.MessageWriter, handler Handler, stats *internalStats, cfg RunConfig, logger *logging.Logger) error {
+	done := make(chan struct{})
+	defer close(done)
+
+	reads := readSource(reader, done)
+
+	idleTimer := time.NewTimer(cfg.IdleTimeout)
+	idleTimer.Stop()
+
+	defer idleTimer.Stop()
+
+	var idle <-chan time.Time
+
+	for {
+		var read sourceRead
+
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		default:
+		case <-idle:
+			return fmt.Errorf("idle timeout: no RECORD messages for %s", cfg.IdleTimeout)
+		case read = <-reads:
 		}
 
-		// Check idle timeout: only after first RECORD to avoid killing slow initial loads.
-		if cfg.IdleTimeout > 0 && firstRecordSeen && time.Since(lastRecordTime) > cfg.IdleTimeout {
-			return fmt.Errorf("idle timeout: no RECORD messages for %s", cfg.IdleTimeout)
+		if read.err != nil {
+			if errors.Is(read.err, io.EOF) {
+				return nil
+			}
+
+			return read.err
 		}
+
+		msg := read.msg
 
 		switch msg.Type {
 		case protocol.MessageTypeRecord:
-			if !firstRecordSeen {
-				firstRecordSeen = true
+			if cfg.IdleTimeout > 0 {
+				idleTimer.Reset(cfg.IdleTimeout)
+				idle = idleTimer.C
 			}
-
-			lastRecordTime = time.Now()
 
 			stats.recordsRead++
 			if msg.Record != nil {

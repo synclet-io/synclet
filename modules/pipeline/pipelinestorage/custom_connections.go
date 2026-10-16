@@ -10,7 +10,8 @@ import (
 )
 
 // FindDueConnections finds active connections whose next_scheduled_at has passed.
-// Excludes connections that already have a scheduled/starting/running job.
+// Excludes connections that already have a scheduled/starting/running job and
+// connections whose workspace no longer exists.
 // Ordered by next_scheduled_at ASC (earliest-due first).
 func (s *ConnectionsStorage) FindDueConnections(ctx context.Context, limit int) ([]pipelinesvc.DueConnection, error) {
 	type row struct {
@@ -26,6 +27,7 @@ func (s *ConnectionsStorage) FindDueConnections(ctx context.Context, limit int) 
 	result := s.DB.WithContext(ctx).
 		Raw(`SELECT c.id, c.source_id, c.destination_id, c.schedule, c.max_attempts
 		     FROM pipeline.connections c
+		     JOIN workspace.workspaces w ON w.id = c.workspace_id
 		     WHERE c.status = ?
 		       AND c.next_scheduled_at IS NOT NULL
 		       AND c.next_scheduled_at <= NOW()

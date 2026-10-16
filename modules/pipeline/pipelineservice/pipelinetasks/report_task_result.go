@@ -25,18 +25,22 @@ type ReportTaskResultParams struct {
 // ReportTaskResult updates a connector task to completed or failed with the result.
 type ReportTaskResult struct {
 	storage pipelineservice.Storage
+	secrets pipelineservice.SecretsProvider
 	logger  *logging.Logger
 }
 
 // NewReportTaskResult creates a new ReportTaskResult use case.
-func NewReportTaskResult(storage pipelineservice.Storage, logger *logging.Logger) *ReportTaskResult {
+func NewReportTaskResult(storage pipelineservice.Storage, secrets pipelineservice.SecretsProvider, logger *logging.Logger) *ReportTaskResult {
 	return &ReportTaskResult{
 		storage: storage,
+		secrets: secrets,
 		logger:  logger,
 	}
 }
 
-// Execute reports the result of a connector task.
+// Execute reports the result of a connector task. Config secrets the task
+// owns are deleted once the result is stored; a failed delete is logged and
+// left to RetainTasks.
 func (uc *ReportTaskResult) Execute(ctx context.Context, params ReportTaskResultParams) error {
 	// Find the task by ID (no workspace scoping -- executor is trusted internal caller).
 	task, err := uc.storage.ConnectorTasks().First(ctx, &pipelineservice.ConnectorTaskFilter{
@@ -69,6 +73,12 @@ func (uc *ReportTaskResult) Execute(ctx context.Context, params ReportTaskResult
 
 	if _, err := uc.storage.ConnectorTasks().Update(ctx, task); err != nil {
 		return fmt.Errorf("updating task: %w", err)
+	}
+
+	if ownsSecrets(task) {
+		if err := uc.secrets.DeleteByOwner(ctx, taskSecretsOwnerType, task.ID); err != nil {
+			uc.logger.WithError(err).WithField("task_id", task.ID.String()).Warn(ctx, "failed to delete connector task secrets")
+		}
 	}
 
 	// Persist catalog discovery result when a discover task completes successfully.

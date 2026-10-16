@@ -97,6 +97,7 @@ func pipelineEventHandlersModule() fx.Option {
 	return fx.Options(
 		fx.Provide(
 			pnpwatermill.HandlerProvider(pipelineeventhandle.NewWorkspaceCreatedHandler),
+			pnpwatermill.HandlerProvider(pipelineeventhandle.NewWorkspaceDeletedHandler),
 		),
 	)
 }

@@ -9,10 +9,12 @@ import (
 	"github.com/go-pnp/go-pnp/connectrpc/pnpconnectrpchandling"
 	"github.com/go-pnp/go-pnp/http/pnphttpserver"
 	"github.com/go-pnp/go-pnp/logging"
+	"github.com/go-pnp/go-pnp/watermill/pnpwatermill"
 	"github.com/synclet-io/synclet/gen/proto/synclet/publicapi/auth/v1/authv1connect"
 	"github.com/synclet-io/synclet/modules/auth/authadapt"
 	"github.com/synclet-io/synclet/modules/auth/authconnect"
 	_ "github.com/synclet-io/synclet/modules/auth/authdbstate"
+	"github.com/synclet-io/synclet/modules/auth/autheventhandle"
 	"github.com/synclet-io/synclet/modules/auth/authhttp"
 	"github.com/synclet-io/synclet/modules/auth/authservice"
 	"github.com/synclet-io/synclet/modules/auth/authstorage"
@@ -52,6 +54,7 @@ func authModule(options *RunAppOptions) fx.Option {
 		authConfigModule(),
 		authDependenciesModule(),
 		authUseCasesModule(),
+		authEventHandlersModule(),
 		authJobsModule(options),
 	)
 }
@@ -97,6 +100,13 @@ func authUseCasesModule() fx.Option {
 		authservice.NewGetOIDCProviders,
 		authservice.NewStartOIDCLogin,
 		authservice.NewHandleOIDCCallback,
+		authservice.NewPurgeWorkspaceAPIKeys,
+	)
+}
+
+func authEventHandlersModule() fx.Option {
+	return fx.Provide(
+		pnpwatermill.HandlerProvider(autheventhandle.NewWorkspaceDeletedHandler),
 	)
 }
 
