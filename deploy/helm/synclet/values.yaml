@@ -82,6 +82,31 @@ server:
     tlsSecretName: ""  # override auto-generated TLS secret name
     extraTls: []
     annotations: {}
+  ## HTTPRoute (gateway.networking.k8s.io/v1) attached to an existing Gateway. It routes only to
+  ## the public Service; the internal executor API is never exposed. Can be enabled together with
+  ## ingress to migrate gradually, which then requires server.publicUrl.
+  gateway:
+    enabled: false
+    ## Gateways (and optionally listeners) the route attaches to. A Gateway in another namespace
+    ## must allow routes from this namespace in its listener's allowedRoutes.
+    parentRefs: []
+    # - name: synclet-gateway
+    #   namespace: gateway-system
+    #   sectionName: https
+    hostnames: []
+    # - synclet.example.com
+    paths:
+      - type: PathPrefix
+        value: /
+    ## The Gateway listener terminates TLS; selects https for the derived public URL.
+    tls: false
+    labels: {}
+    annotations: {}
+  ## Base URL users reach Synclet at (e.g. https://synclet.example.com), the default for
+  ## frontend.url and oidc.callbackBaseURL. Empty: derived from ingress.hostname when only the
+  ## Ingress is enabled, or from the first gateway hostname when only the HTTPRoute is.
+  ## Required when both are enabled.
+  publicUrl: ""
   ## Enable PDB when running with replicaCount > 1 for high availability.
   pdb:
     enabled: false
@@ -228,9 +253,10 @@ auth:
 ## @section Rate limit parameters
 rateLimit:
   ## IPs or CIDR ranges of reverse proxies whose X-Forwarded-For / X-Real-IP headers
-  ## identify the client for login and register rate limits. Set to the ingress
-  ## controller's pod CIDR (e.g. ["10.42.0.0/16"]); empty keys limits on the TCP peer,
-  ## which behind an ingress is the ingress itself.
+  ## identify the client for login and register rate limits. Set to the pod CIDR of the
+  ## ingress controller and/or the Gateway data plane (e.g. the Envoy proxy pods) in front of
+  ## Synclet (e.g. ["10.42.0.0/16"]); empty keys limits on the TCP peer, which behind a proxy
+  ## is the proxy itself.
   trustedProxies: []
 
 ## @section OIDC parameters
@@ -238,7 +264,7 @@ rateLimit:
 ## Each provider needs an issuer URL, OAuth client ID, and client secret.
 ## Client secrets are stored in the chart-managed Secret (or reference existingSecret).
 oidc:
-  ## Base URL for OIDC callback redirects. Auto-derived from ingress hostname when empty.
+  ## Base URL for OIDC callback redirects. Defaults to frontend.url, then server.publicUrl.
   ## The callback path /auth/oidc/{slug}/callback is appended automatically.
   callbackBaseURL: ""
   ## Reference a pre-created K8s Secret containing OIDC client secrets.
@@ -294,7 +320,7 @@ workspaces:
 ## @section Frontend & invite parameters
 frontend:
   ## Base URL of the frontend app, used in invitation email links.
-  ## When empty, auto-derived from ingress (https if TLS, http otherwise).
+  ## When empty, server.publicUrl (or the URL derived from the Ingress or HTTPRoute) is used.
   url: ""
 
 invites:

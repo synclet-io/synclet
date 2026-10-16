@@ -209,20 +209,29 @@ Internal server address for K8s connector pods to call back.
 {{- end -}}
 
 {{/*
-Frontend URL: explicit value, or derived from ingress hostname.
+Public URL: server.publicUrl, or derived from the only enabled exposure (Ingress or HTTPRoute).
+Empty when neither is enabled or the HTTPRoute has no hostnames.
+*/}}
+{{- define "synclet.publicURL" -}}
+{{- $ingress := .Values.server.ingress -}}
+{{- $gateway := .Values.server.gateway -}}
+{{- if .Values.server.publicUrl -}}
+{{- .Values.server.publicUrl | trimSuffix "/" -}}
+{{- else if and $ingress.enabled $gateway.enabled -}}
+{{- fail "server.ingress.enabled and server.gateway.enabled are both true: set server.publicUrl to the URL users reach Synclet at" -}}
+{{- else if $ingress.enabled -}}
+{{- printf "%s://%s" (ternary "https" "http" $ingress.tls) $ingress.hostname -}}
+{{- else if and $gateway.enabled $gateway.hostnames -}}
+{{- printf "%s://%s" (ternary "https" "http" $gateway.tls) (first $gateway.hostnames) -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Frontend URL: frontend.url, else the public URL, else the local dev server.
 */}}
 {{- define "synclet.frontendURL" -}}
-{{- if .Values.frontend.url -}}
-{{- .Values.frontend.url -}}
-{{- else if .Values.server.ingress.enabled -}}
-{{- if .Values.server.ingress.tls -}}
-{{- printf "https://%s" .Values.server.ingress.hostname -}}
-{{- else -}}
-{{- printf "http://%s" .Values.server.ingress.hostname -}}
-{{- end -}}
-{{- else -}}
-http://localhost:5173
-{{- end -}}
+{{- $public := include "synclet.publicURL" . -}}
+{{- .Values.frontend.url | default $public | default "http://localhost:5173" -}}
 {{- end -}}
 
 {{/*

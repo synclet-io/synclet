@@ -9,8 +9,9 @@ Mode: {{ .Values.mode }}
 {{- end }}
 
 To get the application URL:
-{{- if .Values.server.ingress.enabled }}
-  http{{ if .Values.server.ingress.tls }}s{{ end }}://{{ .Values.server.ingress.hostname }}
+{{- $publicURL := include "synclet.publicURL" . }}
+{{- if $publicURL }}
+  {{ $publicURL }}
 {{- else }}
   kubectl port-forward svc/{{ $fullname }} {{ .Values.server.service.ports.public }}:{{ .Values.server.service.ports.public }}
   Then visit: http://localhost:{{ .Values.server.service.ports.public }}
