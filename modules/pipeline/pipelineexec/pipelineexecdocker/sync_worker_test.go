@@ -2,6 +2,7 @@ package pipelineexecdocker
 
 import (
 	"context"
+	"errors"
 	"os"
 	"sync/atomic"
 	"testing"
@@ -89,15 +90,44 @@ func (m *mockBackend) ReportConnectorTaskResult(_ context.Context, _ pipelineexe
 type mockExecutor struct {
 	stats      *pipelineservice.SyncStats
 	err        error
+	waitCtx    bool
 	called     atomic.Int32
 	lastBundle *pipelineexec.SyncBundle
 }
 
-func (m *mockExecutor) Execute(_ context.Context, bundle *pipelineexec.SyncBundle) (*pipelineservice.SyncStats, error) {
+func (m *mockExecutor) Execute(ctx context.Context, bundle *pipelineexec.SyncBundle) (*pipelineservice.SyncStats, error) {
 	m.called.Add(1)
 	m.lastBundle = bundle
 
+	if m.waitCtx {
+		<-ctx.Done()
+
+		return nil, ctx.Err()
+	}
+
 	return m.stats, m.err
+}
+
+func newTestWorker(backend *mockBackend, executor *mockExecutor) *DockerSyncWorker {
+	return &DockerSyncWorker{
+		backend:           backend,
+		executor:          executor,
+		maxSyncDuration:   10 * time.Minute,
+		heartbeatInterval: 10 * time.Millisecond,
+		semaphore:         make(chan struct{}, 10),
+		workerID:          "test-worker",
+	}
+}
+
+func newClaimResult() *pipelinejobs.ClaimJobBundleResult {
+	return &pipelinejobs.ClaimJobBundleResult{
+		Job: &pipelineservice.Job{
+			ID:      uuid.New(),
+			JobType: pipelineservice.JobTypeSync,
+			Status:  pipelineservice.JobStatusStarting,
+		},
+		ConfiguredCatalog: []byte(`{"streams":[]}`),
+	}
 }
 
 // --- Tests ---
@@ -151,6 +181,32 @@ func TestDockerSyncWorker_Execute_ClaimsJobAndSpawnsGoroutine(t *testing.T) {
 	// Verify UpdateJobStatus was called (success).
 	assert.Equal(t, int32(1), backend.updateCalled.Load())
 	assert.True(t, backend.lastUpdateParams.Success)
+}
+
+func TestDockerSyncWorker_Execute_ReportsExecutorFailure(t *testing.T) {
+	backend := &mockBackend{claimResult: newClaimResult()}
+	executor := &mockExecutor{err: errors.New("source failed: connection refused")}
+	worker := newTestWorker(backend, executor)
+
+	worker.executeJob(context.Background(), backend.claimResult)
+
+	require.Equal(t, int32(1), backend.updateCalled.Load())
+	assert.False(t, backend.lastUpdateParams.Success)
+	assert.Equal(t, backend.claimResult.Job.ID, backend.lastUpdateParams.JobID)
+	assert.Equal(t, "source failed: connection refused", backend.lastUpdateParams.ErrorMessage)
+}
+
+func TestDockerSyncWorker_Execute_SkipsStatusUpdateWhenCancelledViaHeartbeat(t *testing.T) {
+	backend := &mockBackend{
+		claimResult:     newClaimResult(),
+		heartbeatResult: &pipelineexec.HeartbeatResult{Cancelled: true},
+	}
+	executor := &mockExecutor{waitCtx: true}
+	worker := newTestWorker(backend, executor)
+
+	worker.executeJob(context.Background(), backend.claimResult)
+
+	assert.Equal(t, int32(0), backend.updateCalled.Load())
 }
 
 func TestDockerSyncWorker_Execute_ReturnsNilWhenNoJobs(t *testing.T) {

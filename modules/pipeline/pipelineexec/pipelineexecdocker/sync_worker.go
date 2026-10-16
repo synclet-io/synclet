@@ -3,6 +3,7 @@ package pipelineexecdocker
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -166,11 +167,14 @@ func (w *DockerSyncWorker) executeJob(ctx context.Context, result *pipelinejobs.
 	// Execute the sync with timeout-bounded context.
 	stats, execErr := w.executor.Execute(execCtx, bundle)
 
+	// Read the context state before cancelExec, which would otherwise make every failure look cancelled.
+	execCtxErr := execCtx.Err()
+
 	// Cancel heartbeat/cancel polling BEFORE updating status to avoid race conditions.
 	cancelExec()
 
 	// Distinguish timeout from manual cancellation.
-	if execErr != nil && execCtx.Err() == context.DeadlineExceeded {
+	if execErr != nil && errors.Is(execCtxErr, context.DeadlineExceeded) {
 		reason := fmt.Sprintf("max sync duration exceeded (%s)", w.maxSyncDuration)
 		execErr = fmt.Errorf("%s: %w", reason, execErr)
 
@@ -180,7 +184,7 @@ func (w *DockerSyncWorker) executeJob(ctx context.Context, result *pipelinejobs.
 	// Check if context was cancelled (cancel detected via heartbeat response).
 	// If so, the job was cancelled server-side -- just return without updating status.
 	// Only match Canceled, not DeadlineExceeded (timeouts must be marked as failed).
-	if execErr != nil && execCtx.Err() == context.Canceled {
+	if execErr != nil && errors.Is(execCtxErr, context.Canceled) {
 		w.logger.WithFields(map[string]interface{}{"worker_id": w.workerID, "job_id": result.Job.ID.String()}).Info(ctx, "job cancelled")
 
 		return
