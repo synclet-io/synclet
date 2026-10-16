@@ -50,3 +50,22 @@ func wrapAuditRetentionSettingQueryError(err error) error {
 
 	return err
 }
+func wrapAuditOutboxEventQueryError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return errors.WithStack(errors1.Join(auditsvc.ErrAuditOutboxEventNotFound, err))
+	}
+
+	var pgErr *pgconn.PgError
+
+	if errors.As(err, &pgErr) {
+		if pgErr.Code == "23505" {
+			return errors.WithStack(errors1.Join(auditsvc.ErrAuditOutboxEventAlreadyExists, err))
+		}
+	}
+
+	return err
+}

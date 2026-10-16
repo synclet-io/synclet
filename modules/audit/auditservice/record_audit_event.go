@@ -3,7 +3,6 @@ package auditservice
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/go-pnp/go-pnp/logging"
@@ -30,9 +29,10 @@ type RecordAuditEventParams struct {
 	After  any
 }
 
-// RecordAuditEvent persists a single audit event. Failure to persist is
-// logged but never returned — an audit-write failure must not unwind the
-// business operation that produced it.
+// RecordAuditEvent builds a single audit event and hands it to the outbox;
+// the bus consumer persists it. Failure to enqueue is logged but never
+// returned — an audit-write failure must not unwind the business operation
+// that produced it.
 type RecordAuditEvent struct {
 	storage Storage
 	logger  *logging.Logger
@@ -75,11 +75,21 @@ func (uc *RecordAuditEvent) Execute(ctx context.Context, params RecordAuditEvent
 		CreatedAt:     time.Now(),
 	}
 
-	if _, err := uc.storage.AuditEvents().Create(ctx, record); err != nil {
+	event := &AuditOutboxEvent{
+		EventType: AuditOutboxEventTypeRecorded,
+		Data:      &AuditEventRecordedData{Event: record},
+	}
+
+	if err := uc.storage.AuditOutboxEvents().Send(ctx, event); err != nil {
 		uc.logger.WithError(err).
 			WithField("workspace_id", params.WorkspaceID).
 			WithField("resource_type", params.ResourceType).
 			WithField("action", params.Action).
-			Error(ctx, fmt.Sprintf("failed to persist audit event: %s", err))
+			Error(ctx, "failed to enqueue audit event")
 	}
+}
+
+// Record enqueues the audit event described by params.
+func (uc *RecordAuditEvent) Record(ctx context.Context, params RecordAuditEventParams) {
+	uc.Execute(ctx, params)
 }

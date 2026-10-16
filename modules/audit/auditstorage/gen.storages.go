@@ -31,6 +31,9 @@ func (s Storages) AuditEvents() auditsvc.AuditEventsStorage {
 func (s Storages) AuditRetentionSettings() auditsvc.AuditRetentionSettingsStorage {
 	return NewAuditRetentionSettingsStorage(s.db, s.logger)
 }
+func (s Storages) AuditOutboxEvents() auditsvc.AuditOutboxEventsOutbox {
+	return NewAuditOutboxEventsOutbox(s.db, s.processors)
+}
 
 func (s Storages) IdempotencyKeys() idempotency.Storage {
 	return idempotency.GormStorage{
@@ -107,5 +110,12 @@ func NewAuditRetentionSettingsStorage(db *gorm.DB, logger *logging.Logger) audit
 			auditsvc.AuditRetentionSettingFieldUpdatedAt:     {Name: "updated_at"},
 		},
 		LockScope: "audit.AuditRetentionSettings",
+	}
+}
+func NewAuditOutboxEventsOutbox(db *gorm.DB, processors []txoutbox.MessageProcessor) auditsvc.AuditOutboxEventsOutbox {
+	return txoutbox.GormStorage[auditsvc.AuditOutboxEvent]{
+		DB:                db,
+		BuildMessage:      buildAuditOutboxEventMessage,
+		MessageProcessors: processors,
 	}
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/go-pnp/go-pnp/config/configutil"
 	"github.com/go-pnp/go-pnp/connectrpc/pnpconnectrpchandling"
 	"github.com/go-pnp/go-pnp/logging"
+	"github.com/go-pnp/go-pnp/watermill/pnpwatermill"
 	"github.com/saturn4er/boilerplate-go/lib/txoutbox"
 	"go.uber.org/fx"
 	"gorm.io/gorm"
@@ -15,6 +16,7 @@ import (
 	"github.com/synclet-io/synclet/gen/proto/synclet/publicapi/audit/v1/auditv1connect"
 	"github.com/synclet-io/synclet/modules/audit/auditconnect"
 	_ "github.com/synclet-io/synclet/modules/audit/auditdbstate"
+	"github.com/synclet-io/synclet/modules/audit/auditeventhandle"
 	"github.com/synclet-io/synclet/modules/audit/auditservice"
 	"github.com/synclet-io/synclet/modules/audit/auditstorage"
 )
@@ -32,7 +34,14 @@ func auditModule(options *RunAppOptions) fx.Option {
 		auditConfigModule(),
 		auditDependenciesModule(),
 		auditUseCasesModule(),
+		auditEventHandlersModule(),
 		auditJobsModule(options),
+	)
+}
+
+func auditEventHandlersModule() fx.Option {
+	return fx.Provide(
+		pnpwatermill.HandlerProvider(auditeventhandle.NewAuditEventHandler),
 	)
 }
 
@@ -54,6 +63,7 @@ func auditDependenciesModule() fx.Option {
 func auditUseCasesModule() fx.Option {
 	return fx.Provide(
 		auditservice.NewRecordAuditEvent,
+		auditservice.NewPersistAuditEvent,
 		auditservice.NewListAuditEvents,
 		auditservice.NewGetAuditEvent,
 		auditservice.NewGetAuditRetention,
@@ -90,6 +100,6 @@ func newAuditServiceConfig(cfg *auditConfig) (auditservice.Config, error) {
 	}, nil
 }
 
-func newAuditStorage(db *gorm.DB, logger *logging.Logger) *auditstorage.Storages {
-	return auditstorage.NewStorages(db, logger, []txoutbox.MessageProcessor{})
+func newAuditStorage(db *gorm.DB, logger *logging.Logger, processors []txoutbox.MessageProcessor) *auditstorage.Storages {
+	return auditstorage.NewStorages(db, logger, processors)
 }

@@ -10,6 +10,44 @@ import (
 	// end user code 'imports'
 )
 
+//sumtype:decl
+type AuditOutboxEventData interface {
+	isAuditOutboxEventData()
+	AuditOutboxEventDataEquals(AuditOutboxEventData) bool
+	// user code 'AuditOutboxEventData methods'
+	// end user code 'AuditOutboxEventData methods'
+}
+
+func (*AuditEventRecordedData) isAuditOutboxEventData() {}
+func (a *AuditEventRecordedData) AuditOutboxEventDataEquals(to AuditOutboxEventData) bool {
+	if (a == nil) != (to == nil) {
+		return false
+	}
+	if a == nil && to == nil {
+		return true
+	}
+
+	toTyped, ok := to.(*AuditEventRecordedData)
+	if !ok {
+		return false
+	}
+
+	return a.Equals(toTyped)
+}
+
+func copyAuditOutboxEventData(val AuditOutboxEventData) AuditOutboxEventData {
+	if val == nil {
+		return nil
+	}
+
+	switch val := val.(type) {
+	case *AuditEventRecordedData:
+		valCopy := val.Copy()
+		return &valCopy
+	}
+	panic("called copyAuditOutboxEventData with invalid type")
+}
+
 type AuditEventField byte
 
 const (
@@ -170,6 +208,99 @@ func (a *AuditRetentionSetting) Equals(to *AuditRetentionSetting) bool {
 	}
 	if a.UpdatedAt != to.UpdatedAt {
 		return false
+	}
+
+	return true
+}
+
+type AuditOutboxEventField byte
+
+const (
+	AuditOutboxEventFieldEventType AuditOutboxEventField = iota + 1
+	AuditOutboxEventFieldData
+)
+
+type AuditOutboxEventFilter struct {
+	Or  []*AuditOutboxEventFilter
+	And []*AuditOutboxEventFilter
+}
+type AuditOutboxEventOrder order.Order[AuditOutboxEventField]
+
+type AuditOutboxEvent struct {
+	EventType AuditOutboxEventType
+	Data      AuditOutboxEventData
+}
+
+// user code 'AuditOutboxEvent methods'
+// end user code 'AuditOutboxEvent methods'
+
+func (a *AuditOutboxEvent) Copy() AuditOutboxEvent {
+	var result AuditOutboxEvent
+	result.EventType = a.EventType // enum
+	result.Data = copyAuditOutboxEventData(a.Data)
+
+	return result
+}
+func (a *AuditOutboxEvent) Equals(to *AuditOutboxEvent) bool {
+	if (a == nil) != (to == nil) {
+		return false
+	}
+	if a == nil && to == nil {
+		return true
+	}
+	if a.EventType != to.EventType {
+		return false
+	}
+	if !a.Data.AuditOutboxEventDataEquals(to.Data) {
+		return false
+	}
+
+	return true
+}
+
+type AuditEventRecordedDataField byte
+
+const (
+	AuditEventRecordedDataFieldEvent AuditEventRecordedDataField = iota + 1
+)
+
+type AuditEventRecordedDataFilter struct {
+	Or  []*AuditEventRecordedDataFilter
+	And []*AuditEventRecordedDataFilter
+}
+type AuditEventRecordedDataOrder order.Order[AuditEventRecordedDataField]
+
+type AuditEventRecordedData struct {
+	Event *AuditEvent
+}
+
+// user code 'AuditEventRecordedData methods'
+// end user code 'AuditEventRecordedData methods'
+
+func (a *AuditEventRecordedData) Copy() AuditEventRecordedData {
+	var result AuditEventRecordedData
+	if a.Event != nil {
+		var tmp AuditEvent
+		tmp = (*a.Event).Copy() // model
+		result.Event = &tmp
+	}
+
+	return result
+}
+func (a *AuditEventRecordedData) Equals(to *AuditEventRecordedData) bool {
+	if (a == nil) != (to == nil) {
+		return false
+	}
+	if a == nil && to == nil {
+		return true
+	}
+	if (a.Event == nil) != (to.Event == nil) {
+		return false
+	}
+	if a.Event != nil && to.Event != nil {
+		if !(*a.Event).Equals(&(*to.Event)) {
+			return false
+		}
 	}
 
 	return true

@@ -22,3 +22,4 @@ modules:
   audit:
     imports:
       - "./audit/gen.models.yaml"
+      - "./audit/gen.events.yaml"

@@ -168,3 +168,18 @@ func (a ActorType) String() string {
 
 	return names[indexes[a-1]:indexes[a]]
 }
+
+type AuditOutboxEventType byte
+
+const (
+	AuditOutboxEventTypeRecorded AuditOutboxEventType = iota + 1
+)
+
+// user code 'AuditOutboxEventType methods'
+// end user code 'AuditOutboxEventType methods'
+func (a AuditOutboxEventType) IsValid() bool {
+	return a > 0 && a < 2
+}
+func (a AuditOutboxEventType) IsRecorded() bool {
+	return a == AuditOutboxEventTypeRecorded
+}

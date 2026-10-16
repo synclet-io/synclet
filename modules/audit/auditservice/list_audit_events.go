@@ -53,11 +53,15 @@ func (uc *ListAuditEvents) Execute(ctx context.Context, params ListAuditEventsPa
 		eventFilter.Action = filter.Equals(*params.Action)
 	}
 
-	if params.Since != nil {
+	switch {
+	case params.Since != nil && params.Until != nil:
+		eventFilter.CreatedAt = filter.And[time.Time](
+			filter.GreaterOrEquals(*params.Since),
+			filter.Less(*params.Until),
+		)
+	case params.Since != nil:
 		eventFilter.CreatedAt = filter.GreaterOrEquals(*params.Since)
-	}
-
-	if params.Until != nil && params.Since == nil {
+	case params.Until != nil:
 		eventFilter.CreatedAt = filter.Less(*params.Until)
 	}
 

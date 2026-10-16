@@ -26,3 +26,11 @@ const (
 	ErrAuditRetentionSettingNotFound      = NotFoundError("AuditRetentionSetting")
 	ErrAuditRetentionSettingAlreadyExists = AlreadyExistsError("AuditRetentionSetting")
 )
+const (
+	ErrAuditOutboxEventNotFound      = NotFoundError("AuditOutboxEvent")
+	ErrAuditOutboxEventAlreadyExists = AlreadyExistsError("AuditOutboxEvent")
+)
+const (
+	ErrAuditEventRecordedDataNotFound      = NotFoundError("AuditEventRecordedData")
+	ErrAuditEventRecordedDataAlreadyExists = AlreadyExistsError("AuditEventRecordedData")
+)

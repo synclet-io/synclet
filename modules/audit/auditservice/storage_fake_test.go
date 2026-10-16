@@ -2,6 +2,7 @@ package auditservice
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -18,6 +19,9 @@ type fakeStorage struct {
 	mu        sync.Mutex
 	events    []*AuditEvent
 	retention []*AuditRetentionSetting
+	outbox    []*AuditOutboxEvent
+	outboxErr error
+	createErr error
 }
 
 var (
@@ -35,6 +39,29 @@ func (s *fakeStorage) AuditEvents() AuditEventsStorage {
 
 func (s *fakeStorage) AuditRetentionSettings() AuditRetentionSettingsStorage {
 	return &fakeRetentionSettingsStorage{parent: s}
+}
+
+func (s *fakeStorage) AuditOutboxEvents() AuditOutboxEventsOutbox {
+	return &fakeOutbox{parent: s}
+}
+
+// fakeOutbox records every event sent via the outbox so tests can assert on
+// emitted events, or fails with outboxErr when set.
+type fakeOutbox struct {
+	parent *fakeStorage
+}
+
+func (o *fakeOutbox) Send(_ context.Context, event *AuditOutboxEvent) error {
+	o.parent.mu.Lock()
+	defer o.parent.mu.Unlock()
+
+	if o.parent.outboxErr != nil {
+		return o.parent.outboxErr
+	}
+
+	o.parent.outbox = append(o.parent.outbox, event)
+
+	return nil
 }
 
 func (s *fakeStorage) IdempotencyKeys() idempotency.Storage {
@@ -116,12 +143,54 @@ func (s *fakeAuditEventsStorage) matches(event *AuditEvent, flt *AuditEventFilte
 		return false
 	}
 
+	if !matchesTime(flt.CreatedAt, event.CreatedAt) {
+		return false
+	}
+
+	for _, sub := range flt.And {
+		if !s.matches(event, sub) {
+			return false
+		}
+	}
+
 	return true
+}
+
+func matchesTime(flt filter.Filter[time.Time], value time.Time) bool {
+	switch typed := flt.(type) {
+	case nil:
+		return true
+	case *filter.GreaterOrEqualsFilter[time.Time]:
+		return !value.Before(typed.Value)
+	case *filter.LessFilter[time.Time]:
+		return value.Before(typed.Value)
+	case *filter.AndFilter[time.Time]:
+		for _, sub := range typed.Filters {
+			if !matchesTime(sub, value) {
+				return false
+			}
+		}
+
+		return true
+	default:
+		panic(fmt.Sprintf("unsupported created_at filter %T", flt))
+	}
 }
 
 func (s *fakeAuditEventsStorage) Create(_ context.Context, event *AuditEvent) (*AuditEvent, error) {
 	s.parent.mu.Lock()
 	defer s.parent.mu.Unlock()
+
+	if s.parent.createErr != nil {
+		return nil, s.parent.createErr
+	}
+
+	for _, existing := range s.parent.events {
+		if existing.ID == event.ID {
+			return nil, ErrAuditEventAlreadyExists
+		}
+	}
+
 	s.parent.events = append(s.parent.events, event)
 
 	return event, nil

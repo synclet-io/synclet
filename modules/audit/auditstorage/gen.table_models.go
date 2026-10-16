@@ -1,6 +1,7 @@
 package auditstorage
 
 import (
+	fmt "fmt"
 	time "time"
 
 	uuid "github.com/google/uuid"
@@ -109,4 +110,39 @@ func convertAuditRetentionSettingFromDB(src *dbAuditRetentionSetting) (*auditser
 }
 func (a dbAuditRetentionSetting) TableName() string {
 	return "audit.retention_settings"
+}
+
+type dbAuditOutboxEvent struct {
+	EventType string                    `gorm:"column:event_type;type:text"`
+	Data      *jsonAuditOutboxEventData `gorm:"column:data"`
+}
+
+func convertAuditOutboxEventToDB(src *auditservice.AuditOutboxEvent) (*dbAuditOutboxEvent, error) {
+	result := &dbAuditOutboxEvent{}
+	tmp, err := convertAuditOutboxEventTypeToDB(src.EventType)
+	if err != nil {
+		return nil, err
+	}
+	result.EventType = tmp
+	tmp1, err := convertAuditOutboxEventDataToDB(src.Data)
+	if err != nil {
+		return nil, err
+	}
+	result.Data = tmp1
+	return result, nil
+}
+
+func convertAuditOutboxEventFromDB(src *dbAuditOutboxEvent) (*auditservice.AuditOutboxEvent, error) {
+	result := &auditservice.AuditOutboxEvent{}
+	tmp2, err := convertAuditOutboxEventTypeFromDB(src.EventType)
+	if err != nil {
+		return nil, err
+	}
+	result.EventType = tmp2
+	tmp3, err := convertAuditOutboxEventDataFromDB(src.Data)
+	if err != nil {
+		return nil, fmt.Errorf("convert AuditOutboxEventData to service type: %w", err)
+	}
+	result.Data = tmp3
+	return result, nil
 }

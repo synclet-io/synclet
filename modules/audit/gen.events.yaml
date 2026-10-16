@@ -1,0 +1,23 @@
+types:
+  one_ofs:
+    - name: AuditOutboxEventData
+      values:
+        - AuditEventRecordedData
+  enums:
+    - name: AuditOutboxEventType
+      values: [ Recorded ]
+      helpers:
+        is_valid: true
+        is: true
+  models:
+    - name: AuditOutboxEvent
+      storage_type: tx_outbox
+      fields:
+        - { name: EventType, type: "AuditOutboxEventType" }
+        - { name: Data, type: "AuditOutboxEventData" }
+
+    - name: AuditEventRecordedData
+      id: 50001
+      do_not_persists: true
+      fields:
+        - { name: Event, type: "*AuditEvent" }

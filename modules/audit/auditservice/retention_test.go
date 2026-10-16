@@ -8,13 +8,15 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/synclet-io/synclet/pkg/connectutil"
 )
 
 var testConfig = Config{DefaultRetentionDays: 90, MaxRetentionDays: 365}
 
 func TestUpdateAuditRetention_RejectsOutOfBounds(t *testing.T) {
 	storage := newFakeStorage()
-	uc := NewUpdateAuditRetention(storage, testConfig)
+	uc := NewUpdateAuditRetention(storage, testConfig, NewRecordAuditEvent(storage, nil))
 	workspaceID := uuid.New()
 
 	for _, days := range []int{0, testConfig.MaxRetentionDays + 1} {
@@ -25,12 +27,61 @@ func TestUpdateAuditRetention_RejectsOutOfBounds(t *testing.T) {
 	}
 
 	assert.Empty(t, storage.retention)
+	assert.Empty(t, storage.outbox, "rejected updates must not be audited")
+}
+
+func TestUpdateAuditRetention_AuditsChangeByUser(t *testing.T) {
+	storage := newFakeStorage()
+	uc := NewUpdateAuditRetention(storage, testConfig, NewRecordAuditEvent(storage, nil))
+	workspaceID := uuid.New()
+	userID := uuid.New()
+	storage.retention = []*AuditRetentionSetting{{WorkspaceID: workspaceID, RetentionDays: 30}}
+	ctx := connectutil.ContextWithUserID(context.Background(), userID)
+
+	_, err := uc.Execute(ctx, UpdateAuditRetentionParams{WorkspaceID: workspaceID, RetentionDays: 60})
+	require.NoError(t, err)
+
+	event := singleRecordedAuditEvent(t, storage)
+	assert.Equal(t, workspaceID, event.WorkspaceID)
+	assert.Equal(t, ActorTypeUser, event.ActorType)
+	assert.Equal(t, userID, event.ActorID)
+	assert.Equal(t, ActionUpdate, event.Action)
+	assert.Equal(t, ResourceTypeWorkspace, event.ResourceType)
+	assert.Equal(t, workspaceID, event.ResourceID)
+	assert.Equal(t, "audit retention", event.ResourceLabel)
+	assert.JSONEq(t, `[{"path":"audit_retention_days","before":30,"after":60}]`, event.DiffJSON)
+}
+
+func TestUpdateAuditRetention_AuditsChangeBySystemWithDefaultBefore(t *testing.T) {
+	storage := newFakeStorage()
+	uc := NewUpdateAuditRetention(storage, testConfig, NewRecordAuditEvent(storage, nil))
+	workspaceID := uuid.New()
+
+	_, err := uc.Execute(context.Background(), UpdateAuditRetentionParams{WorkspaceID: workspaceID, RetentionDays: 45})
+	require.NoError(t, err)
+
+	event := singleRecordedAuditEvent(t, storage)
+	assert.Equal(t, ActorTypeSystem, event.ActorType)
+	assert.Equal(t, uuid.Nil, event.ActorID)
+	assert.JSONEq(t, `[{"path":"audit_retention_days","before":90,"after":45}]`, event.DiffJSON)
+}
+
+func singleRecordedAuditEvent(t *testing.T, storage *fakeStorage) *AuditEvent {
+	t.Helper()
+
+	require.Len(t, storage.outbox, 1)
+
+	data, ok := storage.outbox[0].Data.(*AuditEventRecordedData)
+	require.True(t, ok, "outbox payload must be AuditEventRecordedData, got %T", storage.outbox[0].Data)
+	require.NotNil(t, data.Event)
+
+	return data.Event
 }
 
 func TestUpdateAuditRetention_AcceptsBounds(t *testing.T) {
 	for _, days := range []int{1, testConfig.MaxRetentionDays} {
 		storage := newFakeStorage()
-		uc := NewUpdateAuditRetention(storage, testConfig)
+		uc := NewUpdateAuditRetention(storage, testConfig, NewRecordAuditEvent(storage, nil))
 		workspaceID := uuid.New()
 
 		result, err := uc.Execute(context.Background(), UpdateAuditRetentionParams{WorkspaceID: workspaceID, RetentionDays: days})
@@ -45,7 +96,7 @@ func TestUpdateAuditRetention_AcceptsBounds(t *testing.T) {
 
 func TestUpdateAuditRetention_OverwritesExistingSetting(t *testing.T) {
 	storage := newFakeStorage()
-	uc := NewUpdateAuditRetention(storage, testConfig)
+	uc := NewUpdateAuditRetention(storage, testConfig, NewRecordAuditEvent(storage, nil))
 	workspaceID := uuid.New()
 
 	_, err := uc.Execute(context.Background(), UpdateAuditRetentionParams{WorkspaceID: workspaceID, RetentionDays: 30})

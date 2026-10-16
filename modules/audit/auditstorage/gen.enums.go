@@ -145,3 +145,27 @@ func convertActorTypeFromDB(actorTypeValue string) (auditservice.ActorType, erro
 	}
 	return result, nil
 }
+
+const (
+	auditOutboxEventTypeRecorded = "recorded"
+)
+
+func convertAuditOutboxEventTypeToDB(auditOutboxEventTypeValue auditservice.AuditOutboxEventType) (string, error) {
+	result, ok := map[auditservice.AuditOutboxEventType]string{
+		auditservice.AuditOutboxEventTypeRecorded: auditOutboxEventTypeRecorded,
+	}[auditOutboxEventTypeValue]
+	if !ok {
+		return "", fmt.Errorf("unknown AuditOutboxEventType value: %d", auditOutboxEventTypeValue)
+	}
+	return result, nil
+}
+
+func convertAuditOutboxEventTypeFromDB(auditOutboxEventTypeValue string) (auditservice.AuditOutboxEventType, error) {
+	result, ok := map[string]auditservice.AuditOutboxEventType{
+		auditOutboxEventTypeRecorded: auditservice.AuditOutboxEventTypeRecorded,
+	}[auditOutboxEventTypeValue]
+	if !ok {
+		return 0, fmt.Errorf("unknown AuditOutboxEventType db value: %s", auditOutboxEventTypeValue)
+	}
+	return result, nil
+}
