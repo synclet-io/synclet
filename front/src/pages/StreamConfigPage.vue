@@ -506,7 +506,12 @@ async function saveConfig() {
               @click="toggleNamespace(group.namespace)"
             >
               <td colspan="5" class="px-3 py-2">
-                <div class="flex items-center gap-2">
+                <button
+                  type="button"
+                  class="flex items-center gap-2 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                  :aria-expanded="isNamespaceExpanded(group.namespace)"
+                  @click.stop="toggleNamespace(group.namespace)"
+                >
                   <ChevronDown v-if="isNamespaceExpanded(group.namespace)" class="w-4 h-4 text-text-secondary" />
                   <ChevronRight v-else class="w-4 h-4 text-text-secondary" />
                   <span class="font-semibold text-sm text-heading">
@@ -515,7 +520,7 @@ async function saveConfig() {
                   <SBadge variant="gray">
                     {{ group.streams.length }} streams
                   </SBadge>
-                </div>
+                </button>
               </td>
             </tr>
 
@@ -549,15 +554,17 @@ async function saveConfig() {
                   <td class="px-3 py-2">
                     <span class="text-xs text-text-muted">{{ selectedFieldCount(s) }}/{{ totalFieldCount(s) }} fields</span>
                   </td>
-                  <td class="px-3 py-2 w-10">
-                    <ChevronUp
-                      v-if="expandedStream === streamKey(s)" class="w-4 h-4"
-                      :aria-label="`Collapse stream ${s.name}`"
-                    />
-                    <ChevronDown
-                      v-else class="w-4 h-4"
-                      :aria-label="`Expand stream ${s.name}`"
-                    />
+                  <td class="px-3 py-2 w-10" @click.stop>
+                    <SButton
+                      variant="ghost"
+                      size="icon"
+                      :aria-label="`${expandedStream === streamKey(s) ? 'Collapse' : 'Expand'} stream ${s.name}`"
+                      :aria-expanded="expandedStream === streamKey(s)"
+                      @click="toggleExpand(s)"
+                    >
+                      <ChevronUp v-if="expandedStream === streamKey(s)" class="w-4 h-4" aria-hidden="true" />
+                      <ChevronDown v-else class="w-4 h-4" aria-hidden="true" />
+                    </SButton>
                   </td>
                 </tr>
                 <!-- Expanded row -->

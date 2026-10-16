@@ -13,9 +13,11 @@ const emit = defineEmits<{ close: [] }>()
 const router = useRouter()
 const auth = useAuth()
 const inputEl = ref<HTMLInputElement | null>(null)
+const dialogEl = ref<HTMLElement | null>(null)
+let returnFocusTo: HTMLElement | null = null
 
 const query = ref('')
-const { groups, flatResults, hasResults, refreshAll } = useGlobalSearch(query)
+const { groups, flatResults, hasResults, isLoading, refreshAll } = useGlobalSearch(query)
 
 const history = useRecentHistory({
   userId: () => auth.user.value?.id ?? '',
@@ -44,11 +46,16 @@ const activeIndex = ref(0)
 
 watch(() => props.open, async (open) => {
   if (open) {
+    returnFocusTo = document.activeElement instanceof HTMLElement ? document.activeElement : null
     query.value = ''
     activeIndex.value = 0
     refreshAll()
     await nextTick()
     inputEl.value?.focus()
+  }
+  else {
+    returnFocusTo?.focus()
+    returnFocusTo = null
   }
 })
 
@@ -75,8 +82,36 @@ function activateAtIndex(idx: number) {
     activate(r)
 }
 
+function trapTab(e: KeyboardEvent) {
+  const focusables = Array.from(dialogEl.value?.querySelectorAll<HTMLElement>('input, button:not([disabled])') ?? [])
+  const first = focusables[0]
+  const last = focusables.at(-1)
+  if (!first || !last)
+    return
+  const inside = dialogEl.value?.contains(document.activeElement) ?? false
+  if (e.shiftKey && (document.activeElement === first || !inside)) {
+    e.preventDefault()
+    last.focus()
+  }
+  else if (!e.shiftKey && (document.activeElement === last || !inside)) {
+    e.preventDefault()
+    first.focus()
+  }
+}
+
 function onKeydown(e: KeyboardEvent) {
   if (!props.open)
+    return
+  if (e.key === 'Escape') {
+    e.preventDefault()
+    emit('close')
+    return
+  }
+  if (e.key === 'Tab') {
+    trapTab(e)
+    return
+  }
+  if (e.target !== inputEl.value)
     return
   if (e.key === 'ArrowDown') {
     e.preventDefault()
@@ -134,7 +169,13 @@ function pickRecentSearch(q: string) {
     >
       <div v-if="open" class="fixed inset-0 z-50 flex items-start justify-center pt-[10vh] px-4">
         <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" @click="emit('close')" />
-        <div class="relative bg-surface border border-border rounded-2xl shadow-overlay w-full max-w-xl flex flex-col max-h-[70vh]">
+        <div
+          ref="dialogEl"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Search"
+          class="relative bg-surface border border-border rounded-2xl shadow-overlay w-full max-w-xl flex flex-col max-h-[70vh]"
+        >
           <div class="flex items-center gap-2 px-4 py-3 border-b border-border">
             <Search class="w-4 h-4 text-text-muted" />
             <input
@@ -142,11 +183,19 @@ function pickRecentSearch(q: string) {
               v-model="query"
               type="text"
               placeholder="Search connections, sources, destinations…"
+              aria-label="Search"
               class="flex-1 bg-transparent outline-none text-sm placeholder-text-muted text-heading"
               autocomplete="off"
               spellcheck="false"
             >
-            <kbd class="hidden sm:inline-flex text-xs text-text-muted border border-border rounded px-1.5 py-0.5">Esc</kbd>
+            <button
+              type="button"
+              class="rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+              aria-label="Close search"
+              @click="emit('close')"
+            >
+              <kbd class="inline-flex text-xs text-text-muted border border-border rounded px-1.5 py-0.5">Esc</kbd>
+            </button>
           </div>
 
           <div class="flex-1 overflow-y-auto py-2">
@@ -159,7 +208,8 @@ function pickRecentSearch(q: string) {
                 <button
                   v-for="(visit, vi) in history.visits.value"
                   :key="`${visit.kind}-${visit.id}`"
-                  class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors text-left"
+                  type="button"
+                  class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                   :class="vi === activeIndex ? 'bg-primary/15 text-primary' : 'text-heading hover:bg-surface-hover'"
                   @mouseenter="activeIndex = vi"
                   @click="activate({ id: visit.id, kind: visit.kind as SearchResultKind, label: visit.label, to: visit.to })"
@@ -175,13 +225,18 @@ function pickRecentSearch(q: string) {
                 <button
                   v-for="q in history.searches.value"
                   :key="q"
-                  class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-heading hover:bg-surface-hover transition-colors text-left"
+                  type="button"
+                  class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-heading hover:bg-surface-hover transition-colors text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                   @click="pickRecentSearch(q)"
                 >
                   <Search class="w-4 h-4 text-text-muted shrink-0" />
                   <span class="truncate">{{ q }}</span>
                 </button>
               </div>
+            </div>
+
+            <div v-else-if="!hasResults && isLoading" role="status" class="px-6 py-10 text-center text-sm text-text-muted">
+              Loading…
             </div>
 
             <!-- Empty state when there's a query but no results -->
@@ -198,7 +253,8 @@ function pickRecentSearch(q: string) {
                 <button
                   v-for="result in group.results"
                   :key="`${group.kind}-${result.id}`"
-                  class="w-full flex items-center justify-between gap-3 px-3 py-2 rounded-lg text-sm text-heading transition-colors text-left"
+                  type="button"
+                  class="w-full flex items-center justify-between gap-3 px-3 py-2 rounded-lg text-sm text-heading transition-colors text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                   :class="indexOfResult(group, result) === activeIndex ? 'bg-primary/15 text-primary' : 'hover:bg-surface-hover'"
                   @mouseenter="activeIndex = indexOfResult(group, result)"
                   @click="activate(result)"
@@ -212,6 +268,9 @@ function pickRecentSearch(q: string) {
                   </span>
                 </button>
               </div>
+              <p v-if="isLoading" role="status" class="px-3 py-1 text-xs text-text-muted">
+                Loading more results…
+              </p>
             </div>
           </div>
           <div class="px-4 py-2 border-t border-border text-[11px] text-text-muted flex items-center justify-between">

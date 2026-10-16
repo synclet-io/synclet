@@ -334,7 +334,13 @@ async function handleDiscoverSchema() {
             <thead class="bg-surface-raised">
               <tr>
                 <th class="px-5 py-3 text-left w-10">
-                  <input type="checkbox" @change="localStreams.forEach(s => s.enabled = ($event.target as HTMLInputElement).checked)">
+                  <input
+                    type="checkbox"
+                    aria-label="Enable all streams"
+                    :checked="localStreams.every(s => s.enabled)"
+                    :indeterminate="localStreams.some(s => s.enabled) && !localStreams.every(s => s.enabled)"
+                    @change="localStreams.forEach(s => s.enabled = ($event.target as HTMLInputElement).checked)"
+                  >
                 </th>
                 <th class="px-5 py-3 text-left text-xs font-medium text-text-secondary uppercase">
                   Stream Name
@@ -360,7 +366,12 @@ async function handleDiscoverSchema() {
                   @click="toggleNamespace(group.namespace)"
                 >
                   <td colspan="6" class="px-5 py-2">
-                    <div class="flex items-center gap-2">
+                    <button
+                      type="button"
+                      class="flex items-center gap-2 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                      :aria-expanded="isNamespaceExpanded(group.namespace)"
+                      @click.stop="toggleNamespace(group.namespace)"
+                    >
                       <ChevronDown v-if="isNamespaceExpanded(group.namespace)" class="w-4 h-4 text-text-secondary" />
                       <ChevronRight v-else class="w-4 h-4 text-text-secondary" />
                       <span class="font-semibold text-sm text-heading">
@@ -369,7 +380,7 @@ async function handleDiscoverSchema() {
                       <SBadge variant="gray">
                         {{ group.streams.length }} streams
                       </SBadge>
-                    </div>
+                    </button>
                   </td>
                 </tr>
 
@@ -383,7 +394,7 @@ async function handleDiscoverSchema() {
                       @click="toggleExpand(s)"
                     >
                       <td class="px-5 py-3" @click.stop>
-                        <input v-model="s.enabled" type="checkbox">
+                        <input v-model="s.enabled" type="checkbox" :aria-label="`Enable stream ${s.name}`">
                       </td>
                       <td class="px-5 py-3 text-sm font-semibold text-heading">
                         <span class="inline-flex items-center gap-1.5">
@@ -406,9 +417,17 @@ async function handleDiscoverSchema() {
                           {{ cursorSummary(s) }}
                         </SBadge>
                       </td>
-                      <td class="px-5 py-3">
-                        <ChevronUp v-if="expandedStream === streamKey(s)" class="w-4 h-4" />
-                        <ChevronDown v-else class="w-4 h-4" />
+                      <td class="px-5 py-3" @click.stop>
+                        <SButton
+                          variant="ghost"
+                          size="icon"
+                          :aria-label="`${expandedStream === streamKey(s) ? 'Collapse' : 'Expand'} stream ${s.name}`"
+                          :aria-expanded="expandedStream === streamKey(s)"
+                          @click="toggleExpand(s)"
+                        >
+                          <ChevronUp v-if="expandedStream === streamKey(s)" class="w-4 h-4" aria-hidden="true" />
+                          <ChevronDown v-else class="w-4 h-4" aria-hidden="true" />
+                        </SButton>
                       </td>
                     </tr>
                     <!-- Expanded row -->

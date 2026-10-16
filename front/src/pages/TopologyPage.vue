@@ -91,8 +91,18 @@ function onHover(p: PlacedNode, e: MouseEvent) {
   tooltipPos.value = { x: e.clientX, y: e.clientY }
 }
 
+function onFocus(p: PlacedNode, e: FocusEvent) {
+  const rect = (e.currentTarget as Element).getBoundingClientRect()
+  hovered.value = p
+  tooltipPos.value = { x: rect.left + rect.width / 2, y: rect.bottom }
+}
+
 function onLeave() {
   hovered.value = null
+}
+
+function nodeLabel(node: TopologyNode): string {
+  return `${node.kind} ${node.name}, ${node.health}`
 }
 
 function navigateTo(node: TopologyNode) {
@@ -174,7 +184,7 @@ const isEmpty = computed(() => data.value.sources.length === 0 && data.value.des
       :width="svgWidth"
       :height="svgHeight"
       :viewBox="`0 0 ${svgWidth} ${svgHeight}`"
-      class="block"
+      class="block overflow-visible"
     >
       <!-- Edges -->
       <g>
@@ -192,11 +202,27 @@ const isEmpty = computed(() => data.value.sources.length === 0 && data.value.des
       <g
         v-for="placed in [...placedSources, ...placedConnections, ...placedDestinations]"
         :key="`${placed.node.kind}-${placed.node.id}`"
-        class="cursor-pointer"
+        class="group cursor-pointer focus:outline-none"
+        tabindex="0"
+        role="link"
+        :aria-label="nodeLabel(placed.node)"
         @mousemove="onHover(placed, $event)"
         @mouseleave="onLeave"
+        @focus="onFocus(placed, $event)"
+        @blur="onLeave"
         @click="navigateTo(placed.node)"
+        @keydown.enter.prevent="navigateTo(placed.node)"
       >
+        <rect
+          :x="placed.x - 3"
+          :y="placed.y - 3"
+          :width="NODE_WIDTH + 6"
+          :height="NODE_HEIGHT + 6"
+          rx="10"
+          fill="none"
+          stroke-width="2"
+          class="stroke-primary opacity-0 group-focus-visible:opacity-100"
+        />
         <rect
           :x="placed.x"
           :y="placed.y"
