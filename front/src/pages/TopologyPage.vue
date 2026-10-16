@@ -239,6 +239,8 @@ const isEmpty = computed(() => data.value.sources.length === 0 && data.value.des
         >
           {{ placed.node.name.length > 24 ? `${placed.node.name.slice(0, 24)}…` : placed.node.name }}
         </text>
+        <!-- Keeps the name and health as separate words in the node's text content. -->
+        {{ ' ' }}
         <text
           :x="placed.x + 12"
           :y="placed.y + 40"

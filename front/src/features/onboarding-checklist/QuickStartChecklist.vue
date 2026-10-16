@@ -44,7 +44,7 @@ const state = useOnboardingState()
         v-for="(step, index) in state.steps.value"
         :key="step.id"
         class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-2 rounded-lg transition-colors"
-        :class="step.done ? 'opacity-60' : 'hover:bg-surface-hover'"
+        :class="step.done ? undefined : 'hover:bg-surface-hover'"
       >
         <div class="flex items-start gap-3 flex-1 min-w-0">
           <CheckCircle2 v-if="step.done" class="w-5 h-5 text-success shrink-0 mt-0.5" />

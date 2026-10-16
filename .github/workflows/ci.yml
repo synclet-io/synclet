@@ -88,6 +88,8 @@ jobs:
       - run: cd front && bun run lint
       - run: cd front && bun run type-check
       - run: cd front && bun run build
+      - run: cd front && bunx playwright install --with-deps chromium
+      - run: cd front && bun run test:a11y
 
   helm:
     runs-on: ubuntu-latest

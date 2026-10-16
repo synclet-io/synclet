@@ -20,6 +20,8 @@ bin/
 front/dist/*
 !front/dist/.gitkeep
 front/node_modules/
+front/test-results/
+front/playwright-report/
 
 # Proto generated
 proto/node_modules/

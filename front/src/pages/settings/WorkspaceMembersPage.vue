@@ -232,7 +232,7 @@ const columns: Column[] = [
       <div class="flex-1">
         <SInput v-model="inviteEmail" type="email" placeholder="Email address" required />
       </div>
-      <SSelect v-model="inviteRole" :options="roleOptions" />
+      <SSelect v-model="inviteRole" :options="roleOptions" aria-label="Invite role" />
       <SButton type="submit" :loading="createInvite.isPending.value">
         {{ emailEnabled ? 'Send Invite' : 'Create Invite' }}
       </SButton>
@@ -298,6 +298,7 @@ const columns: Column[] = [
           <SSelect
             :model-value="row.member.role"
             :options="roleOptions"
+            :aria-label="`Role for ${row.member.name || row.member.email}`"
             :disabled="updateMemberRole.isPending.value"
             @update:model-value="(value: string | number) => handleRoleChange(row.member, value as MemberRole)"
           />

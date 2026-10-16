@@ -8,6 +8,7 @@
     "type-check": "vue-tsc --noEmit",
     "test": "vitest",
     "test:run": "vitest run",
+    "test:a11y": "playwright test",
     "generate": "buf generate",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
@@ -30,8 +31,10 @@
   },
   "devDependencies": {
     "@antfu/eslint-config": "^7.7.3",
+    "@axe-core/playwright": "^4.14.0",
     "@bufbuild/buf": "^1.66.1",
     "@bufbuild/protoc-gen-es": "^2.11.0",
+    "@playwright/test": "^1.64.1",
     "@tanstack/vue-query-devtools": "^6.1.5",
     "@types/dompurify": "^3.2.0",
     "@types/node": "^20.11.30",

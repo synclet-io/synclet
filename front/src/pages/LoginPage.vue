@@ -66,7 +66,7 @@ function startOIDCLogin(slug: string) {
           Connect your data sources and destinations with a few clicks. Manage pipelines, monitor jobs, and keep everything in sync.
         </p>
       </div>
-      <p class="text-xs text-slate-500">
+      <p class="text-xs text-slate-400">
         &copy; {{ new Date().getFullYear() }} Synclet
       </p>
     </div>

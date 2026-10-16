@@ -53,7 +53,7 @@ async function handleSubmit() {
           Resetting your password signs you out of every session.
         </p>
       </div>
-      <p class="text-xs text-slate-500">
+      <p class="text-xs text-slate-400">
         &copy; {{ new Date().getFullYear() }} Synclet
       </p>
     </div>

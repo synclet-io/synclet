@@ -43,7 +43,7 @@ async function handleSubmit() {
           We'll email you a link to choose a new password.
         </p>
       </div>
-      <p class="text-xs text-slate-500">
+      <p class="text-xs text-slate-400">
         &copy; {{ new Date().getFullYear() }} Synclet
       </p>
     </div>

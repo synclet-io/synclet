@@ -57,7 +57,7 @@ async function handleRegister() {
           Create an account to start building data pipelines. No credit card required.
         </p>
       </div>
-      <p class="text-xs text-slate-500">
+      <p class="text-xs text-slate-400">
         &copy; {{ new Date().getFullYear() }} Synclet
       </p>
     </div>

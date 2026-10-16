@@ -141,7 +141,7 @@ const userInitial = computed(() => {
         >
           <Search class="w-4 h-4 opacity-70" />
           <span class="flex-1">Search</span>
-          <kbd class="text-[10px] border border-sidebar-border rounded px-1 py-0.5 opacity-70">{{ cmdKey }}K</kbd>
+          <kbd class="text-[10px] border border-sidebar-border rounded px-1 py-0.5">{{ cmdKey }}K</kbd>
         </button>
         <RouterLink
           v-for="item in navItems"

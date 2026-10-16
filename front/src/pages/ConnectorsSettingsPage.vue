@@ -459,6 +459,7 @@ async function handleSyncRepo(repo: Repository) {
       <SSelect
         v-model="repositoryFilter"
         class="w-48"
+        aria-label="Repository"
         :options="[
           { label: 'All repositories', value: '' },
           ...(repositories ?? []).map(r => ({ label: r.name, value: r.id })),
