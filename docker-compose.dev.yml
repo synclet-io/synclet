@@ -10,5 +10,13 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
 
+  # Catches outgoing email: SMTP on :1025, web UI and API on http://localhost:8025.
+  # MAILPIT_SMTP_PORT / MAILPIT_UI_PORT move them when those host ports are taken.
+  mailpit:
+    image: axllent/mailpit:v1.27
+    ports:
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+
 volumes:
   pgdata:

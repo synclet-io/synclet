@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/go-pnp/go-pnp/config/configutil"
@@ -28,6 +29,8 @@ type notifySMTPConfig struct {
 	User     string `env:"USER"`
 	Password string `env:"PASSWORD"`
 	From     string `env:"FROM" envDefault:"noreply@synclet.io"`
+	// TLS is implicit (TLS from the first byte), starttls or none.
+	TLS string `env:"TLS" envDefault:"implicit"`
 }
 type notifyWebhookConfig struct {
 	HTTPTimeout time.Duration `env:"HTTP_TIMEOUT" envDefault:"10s"`
@@ -156,11 +159,16 @@ func newNotifyDeliverNotification(
 	return notifyservice.NewDeliverNotification(storage, deliverers, logger.Named("notify"))
 }
 
-func newSMTPEmailSender(cfg *notifyConfig, logger *logging.Logger) notifyservice.EmailSender {
+func newSMTPEmailSender(cfg *notifyConfig, logger *logging.Logger) (notifyservice.EmailSender, error) {
 	if cfg.SMTP.Host == "" {
 		logger.Named("notify").Info(context.Background(), "SMTP not configured: email delivery disabled. Set NOTIFY_SMTP_HOST to enable.")
 
-		return notifyservice.NewNoOpEmailSender()
+		return notifyservice.NewNoOpEmailSender(), nil
+	}
+
+	tlsMode := notifyservice.SMTPTLSMode(cfg.SMTP.TLS)
+	if !tlsMode.Valid() {
+		return nil, fmt.Errorf("NOTIFY_SMTP_TLS: unknown mode %q, want implicit, starttls or none", cfg.SMTP.TLS)
 	}
 
 	return notifyservice.NewSMTPEmailSender(notifyservice.SMTPConfig{
@@ -169,5 +177,6 @@ func newSMTPEmailSender(cfg *notifyConfig, logger *logging.Logger) notifyservice
 		Username: cfg.SMTP.User,
 		Password: cfg.SMTP.Password,
 		From:     cfg.SMTP.From,
-	})
+		TLS:      tlsMode,
+	}), nil
 }

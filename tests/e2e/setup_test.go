@@ -13,16 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pressly/goose/v3"
-
-	// Import all module dbstate packages so their init() functions register migrations.
-	_ "github.com/synclet-io/synclet/modules/auth/authdbstate"
-	_ "github.com/synclet-io/synclet/modules/notify/notifydbstate"
-	_ "github.com/synclet-io/synclet/modules/pipeline/pipelinedbstate"
-	_ "github.com/synclet-io/synclet/modules/workspace/workspacedbstate"
-
-	"github.com/synclet-io/synclet/pkg/migrations"
-
 	_ "github.com/jackc/pgx/v5/stdlib" // pgx driver for database/sql
 )
 
@@ -95,12 +85,12 @@ func TestMain(m *testing.M) {
 	}
 
 	log.Println("Running migrations...")
-	for _, source := range migrations.Sources() {
-		goose.SetTableName(source.Module + "_goose_db_version")
-		goose.SetBaseFS(source.FS)
-		if err := goose.Up(testDB, "."); err != nil {
-			log.Fatalf("Failed to run %s migrations: %v", source.Module, err)
-		}
+	migrateCmd := exec.Command(syncletBinary, "migrate", "up")
+	migrateCmd.Env = append(os.Environ(), "DB_DSN="+testDSN)
+	migrateCmd.Stdout = os.Stdout
+	migrateCmd.Stderr = os.Stderr
+	if err := migrateCmd.Run(); err != nil {
+		log.Fatalf("Failed to run migrations: %v", err)
 	}
 	log.Println("Migrations complete")
 

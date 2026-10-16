@@ -147,7 +147,12 @@ func (c *apiClient) RegisterAndLogin(ctx context.Context, t *testing.T) {
 		Name:     "E2E Test User",
 	}))
 	require.NoError(t, err, "registering test user")
-	c.token = regResp.Msg.GetAccessToken()
+	for _, cookie := range (&http.Response{Header: regResp.Header()}).Cookies() {
+		if cookie.Name == "synclet_at" {
+			c.token = cookie.Value
+		}
+	}
+	require.NotEmpty(t, c.token, "access token cookie in register response")
 
 	// Create a workspace for the test user.
 	userID := regResp.Msg.GetUser().GetId()
@@ -160,17 +165,28 @@ func (c *apiClient) RegisterAndLogin(ctx context.Context, t *testing.T) {
 	c.workspaceID = wsCreateResp.Msg.GetWorkspace().GetId()
 }
 
+// managedConnector adds the image to the client's workspace as a managed connector and returns its ID.
+func (c *apiClient) managedConnector(t *testing.T, image, connectorType string) string {
+	t.Helper()
+
+	var id string
+	err := testDB.QueryRow(`INSERT INTO pipeline.managed_connectors (id, workspace_id, docker_image, docker_tag, name, connector_type)
+		VALUES (gen_random_uuid(), $1, $2, 'latest', $2, $3) RETURNING id`, c.workspaceID, image, connectorType).Scan(&id)
+	require.NoError(t, err, "seeding managed connector %s", image)
+
+	return id
+}
+
 // CreateSource creates a source with the test source image and returns its ID.
 func (c *apiClient) CreateSource(ctx context.Context, t *testing.T, name string, config map[string]any) string {
 	t.Helper()
 	configStruct := mapToStruct(t, config)
 
 	resp, err := c.source.CreateSource(ctx, newAuthRequest(c, &pipelinev1.CreateSourceRequest{
-		WorkspaceId:      c.workspaceID,
-		Name:             name,
-		ConnectorImage:   testSourceImage,
-		ConnectorVersion: "latest",
-		Config:           configStruct,
+		WorkspaceId:        c.workspaceID,
+		Name:               name,
+		ManagedConnectorId: c.managedConnector(t, testSourceImage, "source"),
+		Config:             configStruct,
 	}))
 	require.NoError(t, err, "creating source")
 	return resp.Msg.GetSource().GetId()
@@ -182,11 +198,10 @@ func (c *apiClient) CreateDestination(ctx context.Context, t *testing.T, name st
 	configStruct := mapToStruct(t, config)
 
 	resp, err := c.destination.CreateDestination(ctx, newAuthRequest(c, &pipelinev1.CreateDestinationRequest{
-		WorkspaceId:      c.workspaceID,
-		Name:             name,
-		ConnectorImage:   testDestImage,
-		ConnectorVersion: "latest",
-		Config:           configStruct,
+		WorkspaceId:        c.workspaceID,
+		Name:               name,
+		ManagedConnectorId: c.managedConnector(t, testDestImage, "destination"),
+		Config:             configStruct,
 	}))
 	require.NoError(t, err, "creating destination")
 	return resp.Msg.GetDestination().GetId()

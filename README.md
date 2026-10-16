@@ -60,6 +60,11 @@ Synclet is a **modular monolith** -- a single Go binary runs the API server, sch
    go run . migrate up
    ```
 
+   `.env.dist` sends email to Mailpit. Start it to receive invites and password reset emails at `http://localhost:8025`:
+   ```bash
+   docker compose -f docker-compose.dev.yml up -d mailpit
+   ```
+
 4. Start backend (with hot reload):
    ```bash
    task dev
@@ -227,6 +232,7 @@ server:
 | `WORKSPACE_FRONTEND_URL` | Base URL used in invite and password reset links | `http://localhost:5173` |
 | `NOTIFY_SMTP_HOST` | SMTP server; empty disables email | empty |
 | `NOTIFY_SMTP_PORT` | SMTP port | `587` |
+| `NOTIFY_SMTP_TLS` | `implicit` (TLS from the first byte), `starttls` or `none` (plain text, for local catchers such as Mailpit) | `implicit` |
 | `NOTIFY_SMTP_USER` | SMTP username | empty |
 | `NOTIFY_SMTP_PASSWORD` | SMTP password | empty |
 | `NOTIFY_SMTP_FROM` | Sender address | `noreply@synclet.io` |
@@ -250,6 +256,8 @@ server:
 Users sign in with email and password, or with an OIDC provider when `AUTH_OIDC_PROVIDERS` is set.
 
 **Password reset.** With SMTP configured (`NOTIFY_SMTP_HOST`), the login page shows a "Forgot password?" link. The user enters their email and receives a reset link that expires in 1 hour and works once; requesting another link invalidates the previous one. Requests for the same account within `AUTH_PASSWORD_RESET_COOLDOWN` (2 minutes by default) send nothing. Resetting the password signs the user out of every session. An account that only signed in through OIDC can set a password the same way.
+
+To check the email path locally, start Mailpit (see Development Setup) with the SMTP settings from `.env.dist`, click "Forgot password?" on the login page and request a link for your account. The email shows up at `http://localhost:8025`; its link opens the reset form on `WORKSPACE_FRONTEND_URL`, where the new password replaces the old one.
 
 **Without SMTP** the "Forgot password?" link is hidden. The operator who runs the Synclet deployment issues the link instead and hands it to the user:
 
@@ -418,6 +426,8 @@ User documentation lives in the separate docs site repository (`synclet_site`).
 | `go test ./...` | Run Go unit tests |
 | `cd front && bun run dev` | Frontend dev server |
 | `cd front && bun run build` | Frontend production build |
+
+`task e2e` runs the end-to-end tests against PostgreSQL (`E2E_DATABASE_URL`, default `postgres://postgres:postgres@localhost:5432/synclet_test`) and Docker. `TestE2E_PasswordResetEmail` also needs Mailpit from `docker-compose.dev.yml`; `E2E_MAILPIT_URL` (default `http://localhost:8025`) and `E2E_MAILPIT_SMTP_PORT` (default `1025`) point it at another instance.
 
 ### CLI Reference
 
