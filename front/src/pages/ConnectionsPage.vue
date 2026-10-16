@@ -11,7 +11,7 @@ import SchemaDriftBadge from '@features/schema-changes/SchemaDriftBadge.vue'
 import { getErrorMessage } from '@shared/lib/errorUtils'
 import { statusVariant } from '@shared/lib/format'
 import { connectionKeys } from '@shared/lib/queryKeys'
-import { PageHeader, SAlert, SBadge, SButton, SCheckbox, SConfirmDialog, SEmptyState, SPagination, SSelect, STable, useToast } from '@shared/ui'
+import { PageHeader, SAlert, SBadge, SButton, SCheckbox, SCombobox, SConfirmDialog, SEmptyState, SPagination, STable, useToast } from '@shared/ui'
 import { useQueryClient } from '@tanstack/vue-query'
 import { Copy, FilterX, Pause, Play, Plus, Trash2 } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
@@ -45,14 +45,8 @@ const { data, isLoading: loading, error } = useConnections({
 const { data: sources } = useSources()
 const { data: destinations } = useDestinations()
 
-const sourceOptions = computed(() => [
-  { label: 'All sources', value: '' },
-  ...(sources.value?.items ?? []).map(s => ({ label: s.name, value: s.id })),
-])
-const destinationOptions = computed(() => [
-  { label: 'All destinations', value: '' },
-  ...(destinations.value?.items ?? []).map(d => ({ label: d.name, value: d.id })),
-])
+const sourceOptions = computed(() => (sources.value?.items ?? []).map(s => ({ label: s.name, value: s.id })))
+const destinationOptions = computed(() => (destinations.value?.items ?? []).map(d => ({ label: d.name, value: d.id })))
 
 const showFilters = computed(() => hasFilters.value || (data.value?.total ?? 0) > 0)
 const qc = useQueryClient()
@@ -188,17 +182,21 @@ const columns: Column[] = [
   </SAlert>
 
   <div v-if="showFilters" class="flex flex-wrap items-end gap-3 mb-4">
-    <SSelect
+    <SCombobox
       label="Source"
       :options="sourceOptions"
       :model-value="sourceId"
+      placeholder="All sources"
+      empty-text="No sources found"
       class="w-56"
       @update:model-value="updateQuery({ sourceId: String($event) })"
     />
-    <SSelect
+    <SCombobox
       label="Destination"
       :options="destinationOptions"
       :model-value="destinationId"
+      placeholder="All destinations"
+      empty-text="No destinations found"
       class="w-56"
       @update:model-value="updateQuery({ destinationId: String($event) })"
     />
