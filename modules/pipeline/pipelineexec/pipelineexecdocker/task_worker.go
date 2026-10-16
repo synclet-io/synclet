@@ -3,6 +3,7 @@ package pipelineexecdocker
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/go-pnp/go-pnp/logging"
@@ -112,8 +113,8 @@ func (w *DockerTaskWorker) executeTask(ctx context.Context, task *pipelineexec.C
 		Result:  resultBytes,
 	}
 	if taskErr != nil {
-		params.ErrorMessage = taskErr.Error()
-		w.logger.WithError(taskErr).WithFields(map[string]interface{}{"task_id": task.TaskID.String(), "task_type": task.TaskType}).Error(ctx, "connector task failed")
+		params.ErrorMessage = pipelineexec.NewRedactor(task.Config).Redact(taskErr.Error())
+		w.logger.WithError(errors.New(params.ErrorMessage)).WithFields(map[string]interface{}{"task_id": task.TaskID.String(), "task_type": task.TaskType}).Error(ctx, "connector task failed")
 	}
 
 	if err := w.backend.ReportConnectorTaskResult(ctx, params); err != nil {
