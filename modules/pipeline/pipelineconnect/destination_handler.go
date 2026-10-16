@@ -59,9 +59,9 @@ func NewDestinationHandler(
 }
 
 func (h *DestinationHandler) CreateDestination(ctx context.Context, req *connect.Request[pipelinev1.CreateDestinationRequest]) (*connect.Response[pipelinev1.CreateDestinationResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	if err := connectutil.ValidateStringLengths(
@@ -102,9 +102,9 @@ func (h *DestinationHandler) CreateDestination(ctx context.Context, req *connect
 }
 
 func (h *DestinationHandler) UpdateDestination(ctx context.Context, req *connect.Request[pipelinev1.UpdateDestinationRequest]) (*connect.Response[pipelinev1.UpdateDestinationResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	id, err := uuid.Parse(req.Msg.GetId())
@@ -171,9 +171,9 @@ func (h *DestinationHandler) UpdateDestination(ctx context.Context, req *connect
 }
 
 func (h *DestinationHandler) DeleteDestination(ctx context.Context, req *connect.Request[pipelinev1.DeleteDestinationRequest]) (*connect.Response[pipelinev1.DeleteDestinationResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	id, err := uuid.Parse(req.Msg.GetId())
@@ -192,9 +192,9 @@ func (h *DestinationHandler) DeleteDestination(ctx context.Context, req *connect
 }
 
 func (h *DestinationHandler) GetDestination(ctx context.Context, req *connect.Request[pipelinev1.GetDestinationRequest]) (*connect.Response[pipelinev1.GetDestinationResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	id, err := uuid.Parse(req.Msg.GetId())
@@ -216,9 +216,9 @@ func (h *DestinationHandler) GetDestination(ctx context.Context, req *connect.Re
 }
 
 func (h *DestinationHandler) ListDestinations(ctx context.Context, req *connect.Request[pipelinev1.ListDestinationsRequest]) (*connect.Response[pipelinev1.ListDestinationsResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	dests, err := h.listDestinations.Execute(ctx, pipelinedestinations.ListDestinationsParams{
@@ -242,9 +242,9 @@ func (h *DestinationHandler) ListDestinations(ctx context.Context, req *connect.
 }
 
 func (h *DestinationHandler) TestDestinationConnection(ctx context.Context, req *connect.Request[pipelinev1.TestDestinationConnectionRequest]) (*connect.Response[pipelinev1.TestDestinationConnectionResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	params := pipelinetasks.CreateCheckTaskParams{

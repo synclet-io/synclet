@@ -100,7 +100,7 @@ func (uc *FailStaleTasks) Execute(ctx context.Context) error {
 			continue
 		}
 
-		if err := uc.secrets.DeleteByOwner(ctx, taskSecretsOwnerType, task.ID); err != nil {
+		if err := uc.secrets.DeleteByOwner(ctx, pipelineservice.SecretOwnerConnectorTask, task.ID); err != nil {
 			errs = append(errs, fmt.Errorf("deleting secrets of task %s: %w", task.ID, err))
 		}
 	}

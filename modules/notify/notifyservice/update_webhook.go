@@ -12,7 +12,9 @@ import (
 	"github.com/synclet-io/synclet/pkg/secretutil"
 )
 
-// UpdateWebhookParams holds parameters for updating a webhook.
+// UpdateWebhookParams holds parameters for updating a webhook. Nil fields stay
+// unchanged; a non-nil empty Events unsubscribes from every event and an empty
+// Secret stops signing deliveries.
 type UpdateWebhookParams struct {
 	ID          uuid.UUID
 	WorkspaceID uuid.UUID
@@ -48,6 +50,7 @@ func (uc *UpdateWebhook) Execute(ctx context.Context, params UpdateWebhookParams
 		"url":     webhook.URL,
 		"enabled": webhook.Enabled,
 		"events":  webhook.Events,
+		"secret":  webhook.Secret,
 	}
 
 	if params.URL != nil {
@@ -63,18 +66,23 @@ func (uc *UpdateWebhook) Execute(ctx context.Context, params UpdateWebhookParams
 		webhook.Events = string(eventsJSON)
 	}
 
-	if params.Secret != nil && *params.Secret != "" && !secretutil.IsSecretRef(*params.Secret) {
-		// Delete old secret if it was encrypted.
+	var staleSecretRef string
+
+	if params.Secret != nil {
 		if secretutil.IsSecretRef(webhook.Secret) {
-			_ = uc.secrets.DeleteSecret(ctx, webhook.Secret) // non-fatal
+			staleSecretRef = webhook.Secret
 		}
 
-		ref, err := uc.secrets.StoreSecret(ctx, "webhook", webhook.ID, *params.Secret)
-		if err != nil {
-			return nil, fmt.Errorf("encrypting webhook secret: %w", err)
-		}
+		webhook.Secret = ""
 
-		webhook.Secret = ref
+		if *params.Secret != "" {
+			ref, err := uc.secrets.StoreSecret(ctx, "webhook", webhook.ID, *params.Secret)
+			if err != nil {
+				return nil, fmt.Errorf("encrypting webhook secret: %w", err)
+			}
+
+			webhook.Secret = ref
+		}
 	}
 
 	if params.Enabled != nil {
@@ -88,6 +96,10 @@ func (uc *UpdateWebhook) Execute(ctx context.Context, params UpdateWebhookParams
 		return nil, fmt.Errorf("updating webhook: %w", err)
 	}
 
+	if staleSecretRef != "" {
+		_ = uc.secrets.DeleteSecret(ctx, staleSecretRef) // non-fatal
+	}
+
 	uc.audit.Record(ctx, AuditEvent{
 		WorkspaceID:   params.WorkspaceID,
 		Action:        "update",
@@ -99,6 +111,7 @@ func (uc *UpdateWebhook) Execute(ctx context.Context, params UpdateWebhookParams
 			"url":     updated.URL,
 			"enabled": updated.Enabled,
 			"events":  updated.Events,
+			"secret":  updated.Secret,
 		},
 	})
 

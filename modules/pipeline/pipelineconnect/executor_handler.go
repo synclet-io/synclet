@@ -183,7 +183,8 @@ func (h *ExecutorHandler) ReportLog(ctx context.Context, req *connect.Request[ex
 	}); err != nil {
 		h.logger.WithError(err).Error(ctx, "executor: failed to batch append logs",
 			"job_id", req.Msg.GetJobId())
-		// Non-fatal: return success anyway so executor doesn't retry.
+
+		return nil, mapError(err)
 	}
 
 	return connect.NewResponse(&executorv1.ReportLogResponse{}), nil

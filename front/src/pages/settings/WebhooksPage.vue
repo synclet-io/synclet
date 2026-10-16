@@ -24,7 +24,7 @@ import {
   STable,
   useToast,
 } from '@shared/ui'
-import { Pencil, Power, Send, Trash2, Webhook as WebhookIcon } from 'lucide-vue-next'
+import { Pencil, Plus, Power, Send, Trash2, Webhook as WebhookIcon } from 'lucide-vue-next'
 import { computed, reactive, ref } from 'vue'
 
 const LOCAL_URL_RE = /^http:\/\/(?:localhost|127\.\d{1,3}\.\d{1,3}\.\d{1,3})(?::\d+)?(?:$|\/)/
@@ -52,11 +52,12 @@ interface WebhookForm {
   url: string
   events: WebhookEvent[]
   secret: string
+  removeSecret: boolean
   enabled: boolean
 }
 
 function newForm(): WebhookForm {
-  return { url: '', events: [], secret: '', enabled: true }
+  return { url: '', events: [], secret: '', removeSecret: false, enabled: true }
 }
 
 const dialog = reactive<{
@@ -91,6 +92,7 @@ function openEdit(webhook: Webhook) {
     url: webhook.url,
     events: [...webhook.events],
     secret: '',
+    removeSecret: false,
     enabled: webhook.enabled,
   }
   dialog.open = true
@@ -115,7 +117,7 @@ function validateForm(): string | null {
   if (!httpsOk && !localhostOk)
     return 'URL must use HTTPS (HTTP allowed only for localhost / 127.x.x.x)'
 
-  if (dialog.form.events.length === 0)
+  if (dialog.mode === 'create' && dialog.form.events.length === 0)
     return 'Select at least one event'
 
   return null
@@ -144,6 +146,7 @@ async function submitForm() {
         url: dialog.form.url.trim(),
         events: dialog.form.events,
         enabled: dialog.form.enabled,
+        secret: editedSecret(),
       })
       toast.success('Webhook updated')
     }
@@ -152,6 +155,12 @@ async function submitForm() {
   catch (e: unknown) {
     dialogError.value = getErrorMessage(e) || 'Failed to save webhook'
   }
+}
+
+function editedSecret(): string | undefined {
+  if (dialog.form.removeSecret)
+    return ''
+  return dialog.form.secret || undefined
 }
 
 async function handleDelete() {
@@ -201,6 +210,7 @@ function eventLabel(value: WebhookEvent): string {
     <PageHeader title="Webhooks" :level="2">
       <template #actions>
         <SButton v-if="isAdmin && (webhooks?.length ?? 0) > 0" @click="openCreate">
+          <Plus class="w-4 h-4" />
           Create webhook
         </SButton>
       </template>
@@ -225,6 +235,7 @@ function eventLabel(value: WebhookEvent): string {
         :icon="WebhookIcon"
       >
         <SButton @click="openCreate">
+          <Plus class="w-4 h-4" />
           Create webhook
         </SButton>
       </SEmptyState>
@@ -248,8 +259,9 @@ function eventLabel(value: WebhookEvent): string {
       </template>
       <template #cell-status="{ row }">
         <button
-          class="cursor-pointer"
+          class="cursor-pointer rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
           :title="row.enabled ? 'Click to disable' : 'Click to enable'"
+          :aria-label="row.enabled ? 'Enabled, click to disable' : 'Disabled, click to enable'"
           @click="toggleEnabled(row)"
         >
           <SBadge :variant="row.enabled ? 'success' : 'gray'" dot>
@@ -262,37 +274,39 @@ function eventLabel(value: WebhookEvent): string {
       </template>
       <template #cell-actions="{ row }">
         <div class="flex items-center justify-end gap-1">
-          <button
-            class="p-1 transition-colors"
-            :class="row.enabled ? 'text-success hover:text-warning' : 'text-text-muted hover:text-success'"
+          <SButton
+            variant="ghost"
+            size="icon"
+            :class="row.enabled ? 'text-success' : ''"
             :title="row.enabled ? 'Disable webhook' : 'Enable webhook'"
+            :aria-label="row.enabled ? 'Disable webhook' : 'Enable webhook'"
             :disabled="updateMutation.isPending.value"
             @click="toggleEnabled(row)"
           >
             <Power class="w-4 h-4" />
-          </button>
-          <button
-            class="p-1 text-text-muted hover:text-text-primary transition-colors"
+          </SButton>
+          <SButton
+            variant="ghost"
+            size="icon"
             title="Test delivery"
+            aria-label="Test delivery"
             :disabled="testMutation.isPending.value"
             @click="handleTest(row)"
           >
             <Send class="w-4 h-4" />
-          </button>
-          <button
-            class="p-1 text-text-muted hover:text-text-primary transition-colors"
-            title="Edit"
-            @click="openEdit(row)"
-          >
+          </SButton>
+          <SButton variant="ghost" size="icon" title="Edit" aria-label="Edit webhook" @click="openEdit(row)">
             <Pencil class="w-4 h-4" />
-          </button>
-          <button
-            class="p-1 text-text-muted hover:text-danger transition-colors"
+          </SButton>
+          <SButton
+            variant="ghost"
+            size="icon"
             title="Delete"
+            aria-label="Delete webhook"
             @click="confirmDelete = { open: true, id: row.id, url: row.url }"
           >
             <Trash2 class="w-4 h-4" />
-          </button>
+          </SButton>
         </div>
       </template>
     </STable>
@@ -325,21 +339,36 @@ function eventLabel(value: WebhookEvent): string {
               @update:model-value="toggleEvent(event.value)"
             />
           </div>
+          <p v-if="dialog.mode === 'edit' && dialog.form.events.length === 0" class="mt-1 text-xs text-text-muted">
+            With no events selected, this webhook receives no deliveries.
+          </p>
         </fieldset>
 
         <div v-if="dialog.mode === 'create'">
           <label class="block text-sm font-medium text-text-primary mb-1">Secret (optional)</label>
           <SInput v-model="dialog.form.secret" type="password" placeholder="Used to sign deliveries with HMAC-SHA256" />
-          <p class="mt-1 text-xs text-text-muted">
-            Secret cannot be changed after creation.
-          </p>
         </div>
 
-        <SCheckbox v-else v-model="dialog.form.enabled" label="Enabled" />
+        <template v-else>
+          <div>
+            <label class="block text-sm font-medium text-text-primary mb-1">New secret (optional)</label>
+            <SInput
+              v-model="dialog.form.secret"
+              type="password"
+              placeholder="Leave blank to keep the current secret"
+              :disabled="dialog.form.removeSecret"
+            />
+            <p class="mt-1 text-xs text-text-muted">
+              Deliveries are signed with the new secret as soon as you save.
+            </p>
+          </div>
+          <SCheckbox v-model="dialog.form.removeSecret" label="Stop signing deliveries" />
+          <SCheckbox v-model="dialog.form.enabled" label="Enabled" />
+        </template>
       </form>
 
       <template #footer>
-        <SButton variant="ghost" @click="dialog.open = false">
+        <SButton variant="secondary" @click="dialog.open = false">
           Cancel
         </SButton>
         <SButton :loading="createMutation.isPending.value || updateMutation.isPending.value" @click="submitForm">

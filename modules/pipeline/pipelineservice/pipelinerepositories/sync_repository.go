@@ -32,6 +32,8 @@ func NewSyncRepository(storage pipelineservice.Storage, fetcher *RegistryFetcher
 type SyncRepositoryParams struct {
 	RepositoryID uuid.UUID
 	WorkspaceID  uuid.UUID
+	// Requested marks a sync a user asked for; it is audited even when the connector set is unchanged.
+	Requested bool
 }
 
 // Execute fetches connectors from the repository URL and replaces all stored connector entries.
@@ -107,8 +109,8 @@ func (uc *SyncRepository) Execute(ctx context.Context, params SyncRepositoryPara
 		return nil, err
 	}
 
-	// Syncs run hourly in the background; only a changed connector set is audited.
-	if result.ConnectorCount != previousCount {
+	// Background syncs run hourly, so they are audited only when the connector set changed.
+	if params.Requested || result.ConnectorCount != previousCount {
 		uc.audit.Record(ctx, pipelineservice.AuditEvent{
 			WorkspaceID:   params.WorkspaceID,
 			Action:        "sync",

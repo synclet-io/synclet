@@ -11,8 +11,6 @@ import (
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
 )
 
-const taskSecretsOwnerType = "connector_task"
-
 // ownsSecrets reports whether the task stored encrypted config secrets under
 // its own ID, which only direct-config check tasks do.
 func ownsSecrets(task *pipelineservice.ConnectorTask) bool {
@@ -65,7 +63,7 @@ func (uc *RetainTasks) Execute(ctx context.Context) error {
 			continue
 		}
 
-		if err := uc.secrets.DeleteByOwner(ctx, taskSecretsOwnerType, task.ID); err != nil {
+		if err := uc.secrets.DeleteByOwner(ctx, pipelineservice.SecretOwnerConnectorTask, task.ID); err != nil {
 			return fmt.Errorf("deleting secrets of task %s: %w", task.ID, err)
 		}
 	}

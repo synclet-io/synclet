@@ -57,6 +57,7 @@ func auditDependenciesModule() fx.Option {
 	return fx.Provide(
 		fx.Annotate(newAuditStorage, fx.As(new(auditservice.Storage))),
 		fx.Annotate(auditstorage.NewRetentionStorage, fx.As(new(auditservice.RetentionStorage))),
+		fx.Annotate(auditstorage.NewEventPageStorage, fx.As(new(auditservice.EventPageStorage))),
 	)
 }
 

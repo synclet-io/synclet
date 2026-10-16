@@ -197,3 +197,84 @@ func TestTruncateDiffWithCap_RespectsCustomCap(t *testing.T) {
 	assert.True(t, truncated)
 	assert.NotEqual(t, 3, len(out))
 }
+
+func TestRedact_MasksSpecSecretPaths(t *testing.T) {
+	in := map[string]any{
+		"host":      "db",
+		"client_id": "abc",
+		"service_account": map[string]any{
+			"service_account_info": "{...}",
+			"project":              "p",
+		},
+		"empty": nil,
+	}
+
+	got := auditutil.Redact(in, "client_id", "service_account.service_account_info", "empty", "missing.path").(map[string]any)
+
+	assert.Equal(t, "db", got["host"])
+	assert.Equal(t, auditutil.RedactMask, got["client_id"])
+	nested := got["service_account"].(map[string]any)
+	assert.Equal(t, auditutil.RedactMask, nested["service_account_info"])
+	assert.Equal(t, "p", nested["project"])
+	assert.Nil(t, got["empty"])
+	assert.NotContains(t, got, "missing")
+	assert.Equal(t, "abc", in["client_id"], "input must not be mutated")
+}
+
+func TestDiff_OneSidedNestedMapRedactsLeaves(t *testing.T) {
+	after := map[string]any{
+		"name":        "src",
+		"auth":        map[string]any{"password": "hunter2", "user": "alice"},
+		"credentials": map[string]any{"json": "{...}"},
+	}
+
+	for name, changes := range map[string][]auditutil.FieldChange{
+		"create": auditutil.Diff(nil, after),
+		"delete": auditutil.Diff(after, nil),
+	} {
+		t.Run(name, func(t *testing.T) {
+			byPath := map[string]auditutil.FieldChange{}
+			for _, c := range changes {
+				byPath[c.Path] = c
+			}
+
+			require.Len(t, byPath, 4)
+
+			for path, want := range map[string]any{
+				"name":             "src",
+				"auth.user":        "alice",
+				"auth.password":    auditutil.RedactMask,
+				"credentials.json": auditutil.RedactMask,
+			} {
+				change := byPath[path]
+
+				got := change.After
+				if name == "delete" {
+					got = change.Before
+				}
+
+				assert.Equal(t, want, got, path)
+			}
+		})
+	}
+}
+
+func TestDiff_TypeChangeRedactsNestedSecrets(t *testing.T) {
+	changes := auditutil.Diff(
+		map[string]any{"auth": map[string]any{"password": "hunter2"}},
+		map[string]any{"auth": "none"},
+	)
+
+	require.Len(t, changes, 1)
+	assert.Equal(t, map[string]any{"password": auditutil.RedactMask}, changes[0].Before)
+	assert.Equal(t, "none", changes[0].After)
+}
+
+func TestDiff_EmptyContainerOnOneSide(t *testing.T) {
+	changes := auditutil.Diff(map[string]any{"tags": []any{}}, map[string]any{})
+
+	require.Len(t, changes, 1)
+	assert.Equal(t, "tags", changes[0].Path)
+	assert.Equal(t, []any{}, changes[0].Before)
+	assert.Nil(t, changes[0].After)
+}

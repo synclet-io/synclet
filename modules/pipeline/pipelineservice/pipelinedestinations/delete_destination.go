@@ -45,6 +45,13 @@ func (uc *DeleteDestination) Execute(ctx context.Context, params DeleteDestinati
 		return err
 	}
 
+	connector, err := uc.storage.ManagedConnectors().First(ctx, &pipelineservice.ManagedConnectorFilter{
+		ID: filter.Equals(dest.ManagedConnectorID),
+	})
+	if err != nil {
+		return fmt.Errorf("loading connector spec: %w", err)
+	}
+
 	// Clean up all associated secrets.
 	if err := uc.secrets.DeleteByOwner(ctx, "destination", dest.ID); err != nil {
 		return fmt.Errorf("deleting destination secrets: %w", err)
@@ -67,7 +74,7 @@ func (uc *DeleteDestination) Execute(ctx context.Context, params DeleteDestinati
 		Before: map[string]any{
 			"name":                 dest.Name,
 			"managed_connector_id": dest.ManagedConnectorID.String(),
-			"config":               auditConfig(dest.Config),
+			"config":               auditConfig(dest.Config, connector.Spec),
 		},
 	})
 

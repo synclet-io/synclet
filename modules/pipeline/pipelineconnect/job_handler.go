@@ -46,9 +46,9 @@ func NewJobHandler(
 }
 
 func (h *JobHandler) TriggerSync(ctx context.Context, req *connect.Request[pipelinev1.TriggerSyncRequest]) (*connect.Response[pipelinev1.TriggerSyncResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	connID, err := uuid.Parse(req.Msg.GetConnectionId())
@@ -70,9 +70,9 @@ func (h *JobHandler) TriggerSync(ctx context.Context, req *connect.Request[pipel
 }
 
 func (h *JobHandler) CancelJob(ctx context.Context, req *connect.Request[pipelinev1.CancelJobRequest]) (*connect.Response[pipelinev1.CancelJobResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	jobID, err := uuid.Parse(req.Msg.GetJobId())
@@ -91,9 +91,9 @@ func (h *JobHandler) CancelJob(ctx context.Context, req *connect.Request[pipelin
 }
 
 func (h *JobHandler) GetJob(ctx context.Context, req *connect.Request[pipelinev1.GetJobRequest]) (*connect.Response[pipelinev1.GetJobResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	jobID, err := uuid.Parse(req.Msg.GetJobId())
@@ -115,9 +115,9 @@ func (h *JobHandler) GetJob(ctx context.Context, req *connect.Request[pipelinev1
 }
 
 func (h *JobHandler) ListJobs(ctx context.Context, req *connect.Request[pipelinev1.ListJobsRequest]) (*connect.Response[pipelinev1.ListJobsResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	var connID *uuid.UUID
@@ -159,9 +159,9 @@ func (h *JobHandler) ListJobs(ctx context.Context, req *connect.Request[pipeline
 }
 
 func (h *JobHandler) GetJobLogs(ctx context.Context, req *connect.Request[pipelinev1.GetJobLogsRequest]) (*connect.Response[pipelinev1.GetJobLogsResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	jobID, err := uuid.Parse(req.Msg.GetJobId())

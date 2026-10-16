@@ -15,7 +15,7 @@ import (
 func TestBatchUpdateConnectors_EmptyIDs(t *testing.T) {
 	store := newMockStorage()
 	updateUC := pipelineconnectors.NewUpdateManagedConnector(store, pipelineservice.NoopAuditRecorder{})
-	batchUC := pipelineconnectors.NewBatchUpdateConnectors(updateUC, store)
+	batchUC := pipelineconnectors.NewBatchUpdateConnectors(updateUC, store, nil)
 
 	result, err := batchUC.Execute(context.Background(), pipelineconnectors.BatchUpdateConnectorsParams{
 		WorkspaceID:  uuid.New(),
@@ -30,7 +30,7 @@ func TestBatchUpdateConnectors_EmptyIDs(t *testing.T) {
 func TestBatchUpdateConnectors_ExplicitIDs(t *testing.T) {
 	store := newMockStorage()
 	updateUC := pipelineconnectors.NewUpdateManagedConnector(store, pipelineservice.NoopAuditRecorder{})
-	batchUC := pipelineconnectors.NewBatchUpdateConnectors(updateUC, store)
+	batchUC := pipelineconnectors.NewBatchUpdateConnectors(updateUC, store, nil)
 
 	workspaceID := uuid.New()
 	repoID := uuid.New()
@@ -104,7 +104,7 @@ func TestBatchUpdateConnectors_ExplicitIDs(t *testing.T) {
 func TestBatchUpdateConnectors_SkipsCustom(t *testing.T) {
 	store := newMockStorage()
 	updateUC := pipelineconnectors.NewUpdateManagedConnector(store, pipelineservice.NoopAuditRecorder{})
-	batchUC := pipelineconnectors.NewBatchUpdateConnectors(updateUC, store)
+	batchUC := pipelineconnectors.NewBatchUpdateConnectors(updateUC, store, nil)
 
 	workspaceID := uuid.New()
 

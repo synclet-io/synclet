@@ -465,7 +465,7 @@ func (r *SyncRunner) LaunchConnectorTask(ctx context.Context, opts ConnectorTask
 		"--data-dir", dataDir,
 	}
 
-	if r.config.APIToken != "" {
+	if secretName != "" {
 		orchestratorArgs = append(orchestratorArgs, "--secrets-dir", "/secrets")
 	}
 
@@ -513,10 +513,17 @@ func (r *SyncRunner) LaunchConnectorTask(ctx context.Context, opts ConnectorTask
 			SubPath:   "task-config",
 			ReadOnly:  true,
 		})
+		coordinatorMounts = append(coordinatorMounts, corev1.VolumeMount{
+			Name:      "task-configs",
+			MountPath: "/secrets/task-config",
+			SubPath:   "task-config",
+			ReadOnly:  true,
+		})
 	}
 
-	// Coordinator container (task mode). It only sees the API token; the
-	// connector container receives config.json directly via subPath.
+	// Coordinator container (task mode). It sees the API token and the task
+	// config, which it reads only to redact config secrets from reported
+	// errors; the connector container receives config.json via subPath.
 	coordinatorContainer := corev1.Container{
 		Name:         "coordinator",
 		Image:        r.config.SyncletImage,

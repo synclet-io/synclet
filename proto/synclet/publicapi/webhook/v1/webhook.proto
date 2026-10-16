@@ -51,8 +51,13 @@ message CreateWebhookResponse {
 message UpdateWebhookRequest {
   string id = 1;
   optional string url = 2;
+  // Replaces the subscribed events when non-empty; use clear_events to unsubscribe from every event.
   repeated string events = 3;
   optional bool enabled = 4;
+  // Replaces the signing secret when set; an empty value stops signing deliveries.
+  optional string secret = 5;
+  // Unsubscribes from every event. Must not be combined with events.
+  bool clear_events = 6;
 }
 
 message UpdateWebhookResponse {

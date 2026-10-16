@@ -46,9 +46,16 @@ func (uc *UpdateSource) Execute(ctx context.Context, params UpdateSourceParams) 
 		return nil, fmt.Errorf("getting source: %w", err)
 	}
 
+	connector, err := uc.storage.ManagedConnectors().First(ctx, &pipelineservice.ManagedConnectorFilter{
+		ID: filter.Equals(src.ManagedConnectorID),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("loading connector spec: %w", err)
+	}
+
 	before := map[string]any{
 		"name":           src.Name,
-		"config":         auditConfig(src.Config),
+		"config":         auditConfig(src.Config, connector.Spec),
 		"runtime_config": auditRuntimeConfig(src.RuntimeConfig),
 	}
 
@@ -58,14 +65,6 @@ func (uc *UpdateSource) Execute(ctx context.Context, params UpdateSourceParams) 
 
 	if params.Config != nil {
 		newConfig := string(*params.Config)
-
-		// Look up connector spec via managed connector FK.
-		connector, specErr := uc.storage.ManagedConnectors().First(ctx, &pipelineservice.ManagedConnectorFilter{
-			ID: filter.Equals(src.ManagedConnectorID),
-		})
-		if specErr != nil {
-			return nil, fmt.Errorf("loading connector spec for secret encryption: %w", specErr)
-		}
 
 		encryptedConfig, encErr := pipelinesecrets.UpdateConfigSecrets(ctx, uc.secrets, "source", src.ID, src.Config, newConfig, connector.Spec)
 		if encErr != nil {
@@ -106,7 +105,7 @@ func (uc *UpdateSource) Execute(ctx context.Context, params UpdateSourceParams) 
 		Before:        before,
 		After: map[string]any{
 			"name":           updated.Name,
-			"config":         auditConfig(updated.Config),
+			"config":         auditConfig(updated.Config, connector.Spec),
 			"runtime_config": auditRuntimeConfig(updated.RuntimeConfig),
 		},
 	})

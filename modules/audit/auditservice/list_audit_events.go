@@ -6,9 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/saturn4er/boilerplate-go/lib/dbutil"
 	"github.com/saturn4er/boilerplate-go/lib/filter"
-	"github.com/saturn4er/boilerplate-go/lib/pagination"
 )
 
 // ListAuditEventsParams filters and paginates the workspace audit log.
@@ -25,11 +23,11 @@ type ListAuditEventsParams struct {
 }
 
 type ListAuditEvents struct {
-	storage Storage
+	pages EventPageStorage
 }
 
-func NewListAuditEvents(storage Storage) *ListAuditEvents {
-	return &ListAuditEvents{storage: storage}
+func NewListAuditEvents(pages EventPageStorage) *ListAuditEvents {
+	return &ListAuditEvents{pages: pages}
 }
 
 func (uc *ListAuditEvents) Execute(ctx context.Context, params ListAuditEventsParams) ([]*AuditEvent, error) {
@@ -70,12 +68,7 @@ func (uc *ListAuditEvents) Execute(ctx context.Context, params ListAuditEventsPa
 		limit = 50
 	}
 
-	page := params.Offset/limit + 1
-
-	events, err := uc.storage.AuditEvents().Find(ctx, eventFilter,
-		dbutil.WithOrder(AuditEventFieldCreatedAt, dbutil.OrderDirDesc),
-		dbutil.WithPagination(&pagination.Pagination{Page: page, PerPage: limit}),
-	)
+	events, err := uc.pages.FindPage(ctx, eventFilter, max(params.Offset, 0), limit)
 	if err != nil {
 		return nil, fmt.Errorf("listing audit events: %w", err)
 	}

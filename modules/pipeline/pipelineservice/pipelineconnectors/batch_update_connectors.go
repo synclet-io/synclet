@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/go-pnp/go-pnp/logging"
 	"github.com/google/uuid"
 	"github.com/saturn4er/boilerplate-go/lib/filter"
 
@@ -14,11 +15,12 @@ import (
 type BatchUpdateConnectors struct {
 	updateConnector *UpdateManagedConnector
 	storage         pipelineservice.Storage
+	logger          *logging.Logger
 }
 
 // NewBatchUpdateConnectors creates a new BatchUpdateConnectors use case.
-func NewBatchUpdateConnectors(updateConnector *UpdateManagedConnector, storage pipelineservice.Storage) *BatchUpdateConnectors {
-	return &BatchUpdateConnectors{updateConnector: updateConnector, storage: storage}
+func NewBatchUpdateConnectors(updateConnector *UpdateManagedConnector, storage pipelineservice.Storage, logger *logging.Logger) *BatchUpdateConnectors {
+	return &BatchUpdateConnectors{updateConnector: updateConnector, storage: storage, logger: logger.Named("batch-update-connectors")}
 }
 
 // BatchUpdateConnectorsParams holds parameters for batch updating connectors.
@@ -62,7 +64,9 @@ func (uc *BatchUpdateConnectors) Execute(ctx context.Context, params BatchUpdate
 			WorkspaceID: params.WorkspaceID,
 		})
 		if err != nil {
-			continue // Skip failures, continue with others.
+			uc.logger.WithError(err).WithField("connector_id", connector.ID.String()).Warn(ctx, "skipping connector that failed to update")
+
+			continue
 		}
 
 		updated = append(updated, result)

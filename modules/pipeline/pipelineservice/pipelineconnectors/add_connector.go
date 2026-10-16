@@ -3,10 +3,12 @@ package pipelineconnectors
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/saturn4er/boilerplate-go/lib/filter"
 
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinetasks"
@@ -57,43 +59,19 @@ func (uc *AddConnector) Execute(ctx context.Context, params AddConnectorParams) 
 		return nil, fmt.Errorf("creating managed connector: %w", err)
 	}
 
-	// Create a spec extraction task.
-	taskResult, err := uc.createSpecTask.Execute(ctx, pipelinetasks.CreateSpecTaskParams{
-		WorkspaceID:        params.WorkspaceID,
-		ManagedConnectorID: created.ID,
-	})
+	withSpec, err := uc.extractSpec(ctx, params.WorkspaceID, created)
 	if err != nil {
-		return nil, fmt.Errorf("creating spec task: %w", err)
-	}
-
-	// Wait synchronously for spec extraction to complete.
-	result, err := uc.waitForTaskResult.Execute(ctx, pipelinetasks.WaitForTaskResultParams{
-		TaskID:      taskResult.TaskID,
-		WorkspaceID: params.WorkspaceID,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("waiting for spec task: %w", err)
-	}
-
-	if result.Status == pipelineservice.ConnectorTaskStatusFailed {
-		return nil, fmt.Errorf("spec extraction failed: %s", result.ErrorMessage)
-	}
-
-	// Extract spec from task result and update the connector.
-	if specResult, ok := result.Result.(*pipelineservice.SpecResult); ok && specResult != nil {
-		specJSON, err := specResultToJSON(specResult)
-		if err != nil {
-			return nil, fmt.Errorf("converting spec result to JSON: %w", err)
+		if delErr := uc.storage.ManagedConnectors().Delete(context.WithoutCancel(ctx), &pipelineservice.ManagedConnectorFilter{
+			ID:          filter.Equals(created.ID),
+			WorkspaceID: filter.Equals(params.WorkspaceID),
+		}); delErr != nil {
+			return nil, errors.Join(err, fmt.Errorf("deleting connector without spec: %w", delErr))
 		}
 
-		created.Spec = specJSON
-		created.UpdatedAt = time.Now()
-
-		created, err = uc.storage.ManagedConnectors().Update(ctx, created)
-		if err != nil {
-			return nil, fmt.Errorf("updating connector spec: %w", err)
-		}
+		return nil, err
 	}
+
+	created = withSpec
 
 	uc.audit.Record(ctx, pipelineservice.AuditEvent{
 		WorkspaceID:   params.WorkspaceID,
@@ -105,6 +83,49 @@ func (uc *AddConnector) Execute(ctx context.Context, params AddConnectorParams) 
 	})
 
 	return created, nil
+}
+
+// extractSpec runs a spec extraction task for the connector, waits for it and stores the resulting spec.
+func (uc *AddConnector) extractSpec(ctx context.Context, workspaceID uuid.UUID, connector *pipelineservice.ManagedConnector) (*pipelineservice.ManagedConnector, error) {
+	taskResult, err := uc.createSpecTask.Execute(ctx, pipelinetasks.CreateSpecTaskParams{
+		WorkspaceID:        workspaceID,
+		ManagedConnectorID: connector.ID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("creating spec task: %w", err)
+	}
+
+	result, err := uc.waitForTaskResult.Execute(ctx, pipelinetasks.WaitForTaskResultParams{
+		TaskID:      taskResult.TaskID,
+		WorkspaceID: workspaceID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("waiting for spec task: %w", err)
+	}
+
+	if result.Status == pipelineservice.ConnectorTaskStatusFailed {
+		return nil, fmt.Errorf("spec extraction failed: %s", result.ErrorMessage)
+	}
+
+	specResult, ok := result.Result.(*pipelineservice.SpecResult)
+	if !ok || specResult == nil {
+		return connector, nil
+	}
+
+	specJSON, err := specResultToJSON(specResult)
+	if err != nil {
+		return nil, fmt.Errorf("converting spec result to JSON: %w", err)
+	}
+
+	connector.Spec = specJSON
+	connector.UpdatedAt = time.Now()
+
+	updated, err := uc.storage.ManagedConnectors().Update(ctx, connector)
+	if err != nil {
+		return nil, fmt.Errorf("updating connector spec: %w", err)
+	}
+
+	return updated, nil
 }
 
 func connectorToAuditPayload(connector *pipelineservice.ManagedConnector) map[string]any {

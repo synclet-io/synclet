@@ -228,11 +228,16 @@ func (x *CreateWebhookResponse) GetWebhook() *WebhookInfo {
 }
 
 type UpdateWebhookRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Url           *string                `protobuf:"bytes,2,opt,name=url,proto3,oneof" json:"url,omitempty"`
-	Events        []string               `protobuf:"bytes,3,rep,name=events,proto3" json:"events,omitempty"`
-	Enabled       *bool                  `protobuf:"varint,4,opt,name=enabled,proto3,oneof" json:"enabled,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Url   *string                `protobuf:"bytes,2,opt,name=url,proto3,oneof" json:"url,omitempty"`
+	// Replaces the subscribed events when non-empty; use clear_events to unsubscribe from every event.
+	Events  []string `protobuf:"bytes,3,rep,name=events,proto3" json:"events,omitempty"`
+	Enabled *bool    `protobuf:"varint,4,opt,name=enabled,proto3,oneof" json:"enabled,omitempty"`
+	// Replaces the signing secret when set; an empty value stops signing deliveries.
+	Secret *string `protobuf:"bytes,5,opt,name=secret,proto3,oneof" json:"secret,omitempty"`
+	// Unsubscribes from every event. Must not be combined with events.
+	ClearEvents   bool `protobuf:"varint,6,opt,name=clear_events,json=clearEvents,proto3" json:"clear_events,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -291,6 +296,20 @@ func (x *UpdateWebhookRequest) GetEvents() []string {
 func (x *UpdateWebhookRequest) GetEnabled() bool {
 	if x != nil && x.Enabled != nil {
 		return *x.Enabled
+	}
+	return false
+}
+
+func (x *UpdateWebhookRequest) GetSecret() string {
+	if x != nil && x.Secret != nil {
+		return *x.Secret
+	}
+	return ""
+}
+
+func (x *UpdateWebhookRequest) GetClearEvents() bool {
+	if x != nil {
+		return x.ClearEvents
 	}
 	return false
 }
@@ -628,15 +647,18 @@ const file_synclet_publicapi_webhook_v1_webhook_proto_rawDesc = "" +
 	"\x06events\x18\x03 \x03(\tR\x06events\x12\x16\n" +
 	"\x06secret\x18\x04 \x01(\tR\x06secret\"\\\n" +
 	"\x15CreateWebhookResponse\x12C\n" +
-	"\awebhook\x18\x01 \x01(\v2).synclet.publicapi.webhook.v1.WebhookInfoR\awebhook\"\x88\x01\n" +
+	"\awebhook\x18\x01 \x01(\v2).synclet.publicapi.webhook.v1.WebhookInfoR\awebhook\"\xd3\x01\n" +
 	"\x14UpdateWebhookRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x15\n" +
 	"\x03url\x18\x02 \x01(\tH\x00R\x03url\x88\x01\x01\x12\x16\n" +
 	"\x06events\x18\x03 \x03(\tR\x06events\x12\x1d\n" +
-	"\aenabled\x18\x04 \x01(\bH\x01R\aenabled\x88\x01\x01B\x06\n" +
+	"\aenabled\x18\x04 \x01(\bH\x01R\aenabled\x88\x01\x01\x12\x1b\n" +
+	"\x06secret\x18\x05 \x01(\tH\x02R\x06secret\x88\x01\x01\x12!\n" +
+	"\fclear_events\x18\x06 \x01(\bR\vclearEventsB\x06\n" +
 	"\x04_urlB\n" +
 	"\n" +
-	"\b_enabled\"\\\n" +
+	"\b_enabledB\t\n" +
+	"\a_secret\"\\\n" +
 	"\x15UpdateWebhookResponse\x12C\n" +
 	"\awebhook\x18\x01 \x01(\v2).synclet.publicapi.webhook.v1.WebhookInfoR\awebhook\"&\n" +
 	"\x14DeleteWebhookRequest\x12\x0e\n" +

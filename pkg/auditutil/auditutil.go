@@ -1,11 +1,7 @@
-// Package auditutil provides pure helpers for the upcoming audit module:
-// secret redaction over arbitrary JSON-like payloads, structural field diffs
-// between "before" and "after" snapshots, and size-bounded truncation so a
-// rogue payload cannot blow up the audit table.
-//
-// The audit module itself (modules/audit) is not yet implemented — see
-// docs/roadmap-6m/EPIC-3-audit-log/EPIC.md. This package is the foundation
-// it will consume.
+// Package auditutil provides pure helpers for the audit module: secret
+// redaction over arbitrary JSON-like payloads, structural field diffs between
+// "before" and "after" snapshots, and size-bounded truncation so a rogue
+// payload cannot blow up the audit table.
 package auditutil
 
 import (
@@ -47,39 +43,73 @@ func isSecretKey(name string) bool {
 	return false
 }
 
-// Redact returns a deep copy of v with values under secret-looking keys
-// replaced by RedactMask. Works recursively on map[string]any and
-// []any structures, leaving primitives untouched.
-func Redact(value any) any {
+// Redact returns a deep copy of value with the values under secret-looking
+// keys, and under every dot-separated secretPaths entry, replaced by
+// RedactMask. Works recursively on map[string]any and []any structures,
+// leaving primitives untouched.
+func Redact(value any, secretPaths ...string) any {
+	out := redactKeys(value)
+
+	if root, ok := out.(map[string]any); ok {
+		for _, path := range secretPaths {
+			maskPath(root, strings.Split(path, "."))
+		}
+	}
+
+	return out
+}
+
+func redactKeys(value any) any {
 	switch typed := value.(type) {
 	case map[string]any:
 		out := make(map[string]any, len(typed))
 
 		for key, val := range typed {
 			if isSecretKey(key) {
-				if val == nil {
-					out[key] = nil
-				} else {
-					out[key] = RedactMask
-				}
+				out[key] = mask(val)
 
 				continue
 			}
 
-			out[key] = Redact(val)
+			out[key] = redactKeys(val)
 		}
 
 		return out
 	case []any:
 		out := make([]any, len(typed))
 		for i, val := range typed {
-			out[i] = Redact(val)
+			out[i] = redactKeys(val)
 		}
 
 		return out
 	default:
 		return value
 	}
+}
+
+func maskPath(obj map[string]any, parts []string) {
+	val, ok := obj[parts[0]]
+	if !ok {
+		return
+	}
+
+	if len(parts) == 1 {
+		obj[parts[0]] = mask(val)
+
+		return
+	}
+
+	if child, ok := val.(map[string]any); ok {
+		maskPath(child, parts[1:])
+	}
+}
+
+func mask(val any) any {
+	if val == nil {
+		return nil
+	}
+
+	return RedactMask
 }
 
 // RedactJSON parses raw JSON, redacts secret fields, and re-marshals.
@@ -114,17 +144,19 @@ type FieldChange struct {
 // Diff produces a flat list of FieldChange entries between two structurally
 // similar payloads. The walk operates on raw values so that genuine changes
 // to secret fields still surface (the consumer can tell "the password
-// changed") but the emitted Before / After values for secret-keyed paths are
-// replaced with RedactMask so the actual secret never lands in the audit
-// table. The path uses dot notation, with [i] for array indices.
+// changed") but the emitted Before / After values at or below a secret-keyed
+// path are replaced with RedactMask so the actual secret never lands in the
+// audit table. A map or slice present on one side only is walked against an
+// empty counterpart, so each of its leaves becomes its own change. The path
+// uses dot notation, with [i] for array indices.
 func Diff(before, after any) []FieldChange {
 	out := []FieldChange{}
-	diffWalk("", "", before, after, &out)
+	diffWalk("", false, before, after, &out)
 
 	return out
 }
 
-func diffWalk(path, lastKey string, before, after any, out *[]FieldChange) {
+func diffWalk(path string, secret bool, before, after any, out *[]FieldChange) {
 	if reflectiveEqual(before, after) {
 		return
 	}
@@ -132,7 +164,7 @@ func diffWalk(path, lastKey string, before, after any, out *[]FieldChange) {
 	beforeMap, beforeOk := before.(map[string]any)
 	afterMap, afterOk := after.(map[string]any)
 
-	if beforeOk && afterOk {
+	if (beforeOk || before == nil) && (afterOk || after == nil) && (beforeOk || afterOk) {
 		keys := make(map[string]struct{}, len(beforeMap)+len(afterMap))
 		for k := range beforeMap {
 			keys[k] = struct{}{}
@@ -142,9 +174,14 @@ func diffWalk(path, lastKey string, before, after any, out *[]FieldChange) {
 			keys[k] = struct{}{}
 		}
 
+		emitted := len(*out)
+
 		for k := range keys {
-			child := joinPath(path, k)
-			diffWalk(child, k, beforeMap[k], afterMap[k], out)
+			diffWalk(joinPath(path, k), secret || isSecretKey(k), beforeMap[k], afterMap[k], out)
+		}
+
+		if len(*out) == emitted {
+			*out = append(*out, FieldChange{Path: path, Before: before, After: after})
 		}
 
 		return
@@ -153,11 +190,9 @@ func diffWalk(path, lastKey string, before, after any, out *[]FieldChange) {
 	beforeSlice, beforeSliceOk := before.([]any)
 	afterSlice, afterSliceOk := after.([]any)
 
-	if beforeSliceOk && afterSliceOk {
-		maxLen := len(beforeSlice)
-		if len(afterSlice) > maxLen {
-			maxLen = len(afterSlice)
-		}
+	if (beforeSliceOk || before == nil) && (afterSliceOk || after == nil) && (beforeSliceOk || afterSliceOk) {
+		maxLen := max(len(beforeSlice), len(afterSlice))
+		emitted := len(*out)
 
 		for i := range maxLen {
 			var beforeItem, afterItem any
@@ -169,26 +204,22 @@ func diffWalk(path, lastKey string, before, after any, out *[]FieldChange) {
 				afterItem = afterSlice[i]
 			}
 
-			diffWalk(fmt.Sprintf("%s[%d]", path, i), lastKey, beforeItem, afterItem, out)
+			diffWalk(fmt.Sprintf("%s[%d]", path, i), secret, beforeItem, afterItem, out)
+		}
+
+		if len(*out) == emitted {
+			*out = append(*out, FieldChange{Path: path, Before: before, After: after})
 		}
 
 		return
 	}
 
-	emitBefore := before
-	emitAfter := after
-
-	if isSecretKey(lastKey) {
-		if emitBefore != nil {
-			emitBefore = RedactMask
-		}
-
-		if emitAfter != nil {
-			emitAfter = RedactMask
-		}
+	if secret {
+		before = mask(before)
+		after = mask(after)
 	}
 
-	*out = append(*out, FieldChange{Path: path, Before: emitBefore, After: emitAfter})
+	*out = append(*out, FieldChange{Path: path, Before: redactKeys(before), After: redactKeys(after)})
 }
 
 func joinPath(parent, child string) string {

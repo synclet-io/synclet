@@ -171,13 +171,22 @@ func (s *connectorStorage) First(_ context.Context, f *pipelineservice.ManagedCo
 
 func newDestStore(records ...*pipelineservice.Destination) *destStore {
 	m := make(map[uuid.UUID]*pipelineservice.Destination, len(records))
+	connectors := make(map[uuid.UUID]*pipelineservice.ManagedConnector, len(records))
+
 	for _, r := range records {
 		m[r.ID] = r
+		connectors[r.ManagedConnectorID] = &pipelineservice.ManagedConnector{
+			ID:            r.ManagedConnectorID,
+			WorkspaceID:   r.WorkspaceID,
+			Name:          "connector",
+			ConnectorType: pipelineservice.ConnectorTypeDestination,
+			Spec:          "{}",
+		}
 	}
 
 	return &destStore{
 		destinations: &destStorage{records: m},
-		connectors:   &connectorStorage{records: map[uuid.UUID]*pipelineservice.ManagedConnector{}},
+		connectors:   &connectorStorage{records: connectors},
 		connections:  &connStorage{},
 	}
 }

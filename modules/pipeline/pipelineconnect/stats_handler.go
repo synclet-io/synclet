@@ -98,9 +98,9 @@ func NewStatsHandler(
 }
 
 func (h *StatsHandler) GetWorkspaceStats(ctx context.Context, req *connect.Request[statsv1.GetWorkspaceStatsRequest]) (*connect.Response[statsv1.GetWorkspaceStatsResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	result, err := h.getWorkspaceStats.Execute(ctx, pipelineservice.GetWorkspaceStatsParams{
@@ -165,9 +165,9 @@ func (h *StatsHandler) GetWorkspaceStats(ctx context.Context, req *connect.Reque
 }
 
 func (h *StatsHandler) GetConnectionStats(ctx context.Context, req *connect.Request[statsv1.GetConnectionStatsRequest]) (*connect.Response[statsv1.GetConnectionStatsResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	connectionID, err := uuid.Parse(req.Msg.GetConnectionId())
@@ -232,9 +232,9 @@ func (h *StatsHandler) GetConnectionStats(ctx context.Context, req *connect.Requ
 }
 
 func (h *StatsHandler) GetSyncTimeline(ctx context.Context, req *connect.Request[statsv1.GetSyncTimelineRequest]) (*connect.Response[statsv1.GetSyncTimelineResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	params := pipelineservice.GetSyncTimelineParams{

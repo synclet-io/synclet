@@ -87,7 +87,7 @@ func (uc *CreateSource) Execute(ctx context.Context, params CreateSourceParams) 
 		After: map[string]any{
 			"name":                 created.Name,
 			"managed_connector_id": created.ManagedConnectorID.String(),
-			"config":               auditConfig(created.Config),
+			"config":               auditConfig(created.Config, connector.Spec),
 		},
 	})
 

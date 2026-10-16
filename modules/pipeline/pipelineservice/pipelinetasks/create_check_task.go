@@ -37,8 +37,10 @@ type CreateCheckTaskParams struct {
 	Config             json.RawMessage // Plaintext config from the frontend.
 }
 
-// Execute creates a connector check task and returns the task ID. Checks of a
-// stored source or destination are recorded as a "test" audit event.
+// Execute creates a connector check task and returns the task ID and records a
+// "test" audit event on the source, destination or, for a direct config, the
+// managed connector. A direct config may not carry $secret: references, since
+// no stored entity owns them.
 func (uc *CreateCheckTask) Execute(ctx context.Context, params CreateCheckTaskParams) (*CreateTaskResult, error) {
 	hasEntityRef := params.SourceID != nil || params.DestinationID != nil
 	hasDirectConfig := params.ManagedConnectorID != nil && len(params.Config) > 0
@@ -62,13 +64,19 @@ func (uc *CreateCheckTask) Execute(ctx context.Context, params CreateCheckTaskPa
 			return nil, fmt.Errorf("managed connector not found: %w", err)
 		}
 
-		encrypted, err := pipelinesecrets.EncryptConfigSecrets(ctx, uc.secrets, "connector_task", taskID, string(params.Config), connector.Spec)
+		config, err := pipelinesecrets.MergeMaskedSecrets("", string(params.Config))
+		if err != nil {
+			return nil, err
+		}
+
+		encrypted, err := pipelinesecrets.EncryptConfigSecrets(ctx, uc.secrets, pipelineservice.SecretOwnerConnectorTask, taskID, config, connector.Spec)
 		if err != nil {
 			return nil, fmt.Errorf("encrypting config secrets: %w", err)
 		}
 
 		payload.ManagedConnectorID = connector.ID
 		payload.Config = &encrypted
+		auditEvent = &pipelineservice.AuditEvent{ResourceType: "connector", ResourceID: connector.ID, ResourceLabel: connector.Name}
 	} else {
 		// Entity reference path: resolve managed connector ID from source/destination.
 		if params.SourceID != nil {
@@ -110,11 +118,9 @@ func (uc *CreateCheckTask) Execute(ctx context.Context, params CreateCheckTaskPa
 		return nil, fmt.Errorf("creating check task: %w", err)
 	}
 
-	if auditEvent != nil {
-		auditEvent.WorkspaceID = params.WorkspaceID
-		auditEvent.Action = "test"
-		uc.audit.Record(ctx, *auditEvent)
-	}
+	auditEvent.WorkspaceID = params.WorkspaceID
+	auditEvent.Action = "test"
+	uc.audit.Record(ctx, *auditEvent)
 
 	return &CreateTaskResult{TaskID: task.ID}, nil
 }

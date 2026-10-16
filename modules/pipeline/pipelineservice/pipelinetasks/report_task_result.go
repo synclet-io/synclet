@@ -76,7 +76,7 @@ func (uc *ReportTaskResult) Execute(ctx context.Context, params ReportTaskResult
 	}
 
 	if ownsSecrets(task) {
-		if err := uc.secrets.DeleteByOwner(ctx, taskSecretsOwnerType, task.ID); err != nil {
+		if err := uc.secrets.DeleteByOwner(ctx, pipelineservice.SecretOwnerConnectorTask, task.ID); err != nil {
 			uc.logger.WithError(err).WithField("task_id", task.ID.String()).Warn(ctx, "failed to delete connector task secrets")
 		}
 	}

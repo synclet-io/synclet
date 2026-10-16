@@ -97,6 +97,9 @@ type JobRetentionStorage interface {
 	DeleteOldestTerminalJobs(ctx context.Context, workspaceID uuid.UUID, keepCount int) (int64, error)
 }
 
+// SecretOwnerConnectorTask is the secret owner type for config secrets a check task stores under its own ID.
+const SecretOwnerConnectorTask = "connector_task"
+
 // SecretsProvider manages encrypted secret storage.
 type SecretsProvider interface {
 	StoreSecret(ctx context.Context, ownerType string, ownerID uuid.UUID, plaintext string) (secretRef string, err error)

@@ -542,6 +542,13 @@ func TestLaunchConnectorTask_CreatesSecret(t *testing.T) {
 
 	coordArgs := job.Spec.Template.Spec.Containers[0].Command
 	assert.NotContains(t, coordArgs, "--task-config")
+	assert.Contains(t, strings.Join(coordArgs, " "), "--secrets-dir /secrets")
+	assert.Contains(t, job.Spec.Template.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
+		Name:      "task-configs",
+		MountPath: "/secrets/task-config",
+		SubPath:   "task-config",
+		ReadOnly:  true,
+	}, "coordinator reads the task config to redact reported errors")
 
 	// Verify the connector container has a SubPath mount from the Secret.
 	connectorContainer := job.Spec.Template.Spec.Containers[1]

@@ -110,9 +110,9 @@ func NewNotificationHandler(
 }
 
 func (h *NotificationHandler) CreateNotificationChannel(ctx context.Context, req *connect.Request[notifyv1.CreateNotificationChannelRequest]) (*connect.Response[notifyv1.CreateNotificationChannelResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	if err := connectutil.ValidateStringLengths(
@@ -154,9 +154,9 @@ func (h *NotificationHandler) CreateNotificationChannel(ctx context.Context, req
 }
 
 func (h *NotificationHandler) UpdateNotificationChannel(ctx context.Context, req *connect.Request[notifyv1.UpdateNotificationChannelRequest]) (*connect.Response[notifyv1.UpdateNotificationChannelResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	id, err := uuid.Parse(req.Msg.GetId())
@@ -196,9 +196,9 @@ func (h *NotificationHandler) UpdateNotificationChannel(ctx context.Context, req
 }
 
 func (h *NotificationHandler) DeleteNotificationChannel(ctx context.Context, req *connect.Request[notifyv1.DeleteNotificationChannelRequest]) (*connect.Response[notifyv1.DeleteNotificationChannelResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	id, err := uuid.Parse(req.Msg.GetId())
@@ -217,9 +217,9 @@ func (h *NotificationHandler) DeleteNotificationChannel(ctx context.Context, req
 }
 
 func (h *NotificationHandler) ListNotificationChannels(ctx context.Context, req *connect.Request[notifyv1.ListNotificationChannelsRequest]) (*connect.Response[notifyv1.ListNotificationChannelsResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	params := notifyservice.ListChannelsParams{
@@ -252,9 +252,9 @@ func (h *NotificationHandler) ListNotificationChannels(ctx context.Context, req 
 }
 
 func (h *NotificationHandler) TestNotificationChannel(ctx context.Context, req *connect.Request[notifyv1.TestNotificationChannelRequest]) (*connect.Response[notifyv1.TestNotificationChannelResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	id, err := uuid.Parse(req.Msg.GetId())
@@ -277,9 +277,9 @@ func (h *NotificationHandler) TestNotificationChannel(ctx context.Context, req *
 }
 
 func (h *NotificationHandler) CreateNotificationRule(ctx context.Context, req *connect.Request[notifyv1.CreateNotificationRuleRequest]) (*connect.Response[notifyv1.CreateNotificationRuleResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	channelID, err := uuid.Parse(req.Msg.GetChannelId())
@@ -322,9 +322,9 @@ func (h *NotificationHandler) CreateNotificationRule(ctx context.Context, req *c
 }
 
 func (h *NotificationHandler) UpdateNotificationRule(ctx context.Context, req *connect.Request[notifyv1.UpdateNotificationRuleRequest]) (*connect.Response[notifyv1.UpdateNotificationRuleResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	id, err := uuid.Parse(req.Msg.GetId())
@@ -366,9 +366,9 @@ func (h *NotificationHandler) UpdateNotificationRule(ctx context.Context, req *c
 }
 
 func (h *NotificationHandler) DeleteNotificationRule(ctx context.Context, req *connect.Request[notifyv1.DeleteNotificationRuleRequest]) (*connect.Response[notifyv1.DeleteNotificationRuleResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	id, err := uuid.Parse(req.Msg.GetId())
@@ -387,9 +387,9 @@ func (h *NotificationHandler) DeleteNotificationRule(ctx context.Context, req *c
 }
 
 func (h *NotificationHandler) ListNotificationRules(ctx context.Context, req *connect.Request[notifyv1.ListNotificationRulesRequest]) (*connect.Response[notifyv1.ListNotificationRulesResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	params := notifyservice.ListNotificationRulesParams{

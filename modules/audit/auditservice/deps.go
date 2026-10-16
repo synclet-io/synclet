@@ -14,3 +14,9 @@ type RetentionStorage interface {
 	// DeleteOlderThan removes the workspace's events created before cutoff and returns the count.
 	DeleteOlderThan(ctx context.Context, workspaceID uuid.UUID, cutoff time.Time) (int64, error)
 }
+
+// EventPageStorage lists audit events with row-offset pagination.
+type EventPageStorage interface {
+	// FindPage returns up to limit events matching flt, newest first, after skipping offset of them.
+	FindPage(ctx context.Context, flt *AuditEventFilter, offset, limit int) ([]*AuditEvent, error)
+}

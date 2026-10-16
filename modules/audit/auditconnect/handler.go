@@ -51,9 +51,9 @@ func NewHandler(
 }
 
 func (h *Handler) ListAuditEvents(ctx context.Context, req *connect.Request[auditv1.ListAuditEventsRequest]) (*connect.Response[auditv1.ListAuditEventsResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	params := auditservice.ListAuditEventsParams{
@@ -116,9 +116,9 @@ func (h *Handler) ListAuditEvents(ctx context.Context, req *connect.Request[audi
 }
 
 func (h *Handler) GetAuditEvent(ctx context.Context, req *connect.Request[auditv1.GetAuditEventRequest]) (*connect.Response[auditv1.GetAuditEventResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	id, err := uuid.Parse(req.Msg.GetId())
@@ -131,16 +131,16 @@ func (h *Handler) GetAuditEvent(ctx context.Context, req *connect.Request[auditv
 		WorkspaceID: workspaceID,
 	})
 	if err != nil {
-		return nil, connect.NewError(connect.CodeNotFound, err)
+		return nil, mapError(err)
 	}
 
 	return connect.NewResponse(&auditv1.GetAuditEventResponse{Event: eventToProto(event)}), nil
 }
 
 func (h *Handler) GetAuditRetention(ctx context.Context, _ *connect.Request[auditv1.GetAuditRetentionRequest]) (*connect.Response[auditv1.GetAuditRetentionResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	retention, err := h.getAuditRetention.Execute(ctx, workspaceID)
@@ -152,9 +152,9 @@ func (h *Handler) GetAuditRetention(ctx context.Context, _ *connect.Request[audi
 }
 
 func (h *Handler) UpdateAuditRetention(ctx context.Context, req *connect.Request[auditv1.UpdateAuditRetentionRequest]) (*connect.Response[auditv1.UpdateAuditRetentionResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	retention, err := h.updateAuditRetention.Execute(ctx, auditservice.UpdateAuditRetentionParams{

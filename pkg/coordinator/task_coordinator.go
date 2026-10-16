@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"os"
@@ -16,6 +17,7 @@ import (
 
 	executorv1 "github.com/synclet-io/synclet/gen/proto/synclet/internalapi/executor/v1"
 	"github.com/synclet-io/synclet/gen/proto/synclet/internalapi/executor/v1/executorv1connect"
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineexec"
 	"github.com/synclet-io/synclet/pkg/protocol"
 )
 
@@ -26,6 +28,8 @@ type TaskConfig struct {
 	ServerAddr string
 	DataDir    string
 	SecretsDir string
+
+	redactor *pipelineexec.Redactor
 }
 
 // RunTask executes the task coordinator lifecycle inside a K8s pod:
@@ -36,9 +40,12 @@ type TaskConfig struct {
 // 5. Report result via ReportConnectorTaskResult RPC
 //
 // Config file (config.json) is mounted directly into the connector container
-// via K8s Secret subPath mount. The coordinator only writes the run script.
+// via K8s Secret subPath mount. The coordinator writes the run script and reads
+// its own copy of the config only to mask config secrets in what it reports.
 func RunTask(ctx context.Context, cfg TaskConfig) error {
 	slog.Info("task coordinator: starting", "task_id", cfg.TaskID, "task_type", cfg.TaskType)
+
+	cfg.redactor = taskConfigRedactor(cfg.SecretsDir)
 
 	// 1. Write connector run script with the appropriate command args.
 	connectorArgs := connectorTaskArgs(cfg.TaskType, cfg.DataDir)
@@ -79,7 +86,7 @@ func RunTask(ctx context.Context, cfg TaskConfig) error {
 			output = output[:4096] + "... (truncated)"
 		}
 
-		slog.Debug("task coordinator: connector output", "task_id", cfg.TaskID, "output", output)
+		slog.Debug("task coordinator: connector output", "task_id", cfg.TaskID, "output", cfg.redactor.Redact(output))
 	} else {
 		slog.Warn("task coordinator: could not read connector output", "task_id", cfg.TaskID, "error", readErr)
 	}
@@ -131,7 +138,7 @@ func RunTask(ctx context.Context, cfg TaskConfig) error {
 	}
 
 	// 5. Extract the relevant message based on task type.
-	resultBytes, err := extractTaskResult(cfg.TaskType, messages)
+	resultBytes, err := extractTaskResult(cfg.TaskType, messages, cfg.redactor)
 	if err != nil {
 		return reportTaskResult(cfg, false, err.Error(), nil)
 	}
@@ -142,8 +149,9 @@ func RunTask(ctx context.Context, cfg TaskConfig) error {
 }
 
 // extractTaskResult extracts the relevant Airbyte message based on task type
-// and marshals it to JSON matching the domain result structs.
-func extractTaskResult(taskType string, messages []*protocol.AirbyteMessage) ([]byte, error) {
+// and marshals it to JSON matching the domain result structs. A check status
+// message is redacted, since connectors often echo the failing config value.
+func extractTaskResult(taskType string, messages []*protocol.AirbyteMessage, redactor *pipelineexec.Redactor) ([]byte, error) {
 	switch taskType {
 	case "Check":
 		for _, msg := range messages {
@@ -153,7 +161,7 @@ func extractTaskResult(taskType string, messages []*protocol.AirbyteMessage) ([]
 					Message string `json:"Message"`
 				}{
 					Success: msg.ConnectionStatus.Status == protocol.ConnectionStatusSucceeded,
-					Message: msg.ConnectionStatus.Message,
+					Message: redactor.Redact(msg.ConnectionStatus.Message),
 				}
 
 				return json.Marshal(result)
@@ -207,7 +215,8 @@ func extractTaskResult(taskType string, messages []*protocol.AirbyteMessage) ([]
 	}
 }
 
-// reportTaskResult sends the task result to the server via gRPC.
+// reportTaskResult sends the task result to the server via gRPC, with config
+// secrets masked in the error message.
 func reportTaskResult(cfg TaskConfig, success bool, errMsg string, result []byte) error {
 	clientOpts, err := clientOptions(cfg.SecretsDir)
 	if err != nil {
@@ -223,7 +232,7 @@ func reportTaskResult(cfg TaskConfig, success bool, errMsg string, result []byte
 	req := connect.NewRequest(&executorv1.ReportConnectorTaskResultRequest{
 		TaskId:       cfg.TaskID,
 		Success:      success,
-		ErrorMessage: errMsg,
+		ErrorMessage: cfg.redactor.Redact(errMsg),
 		Result:       result,
 	})
 
@@ -249,6 +258,25 @@ func reportTaskError(cfg TaskConfig, err error) error {
 	}
 
 	return err
+}
+
+// taskConfigRedactor masks the task config secrets mounted in secretsDir.
+// Tasks without a config, or a config that cannot be read, redact nothing.
+func taskConfigRedactor(secretsDir string) *pipelineexec.Redactor {
+	if secretsDir == "" {
+		return nil
+	}
+
+	data, err := os.ReadFile(filepath.Join(secretsDir, "task-config")) //nolint:gosec // fixed file name inside the mounted secrets volume.
+	if err != nil {
+		if !errors.Is(err, fs.ErrNotExist) {
+			slog.Warn("task coordinator: could not read task config for redaction", "error", err)
+		}
+
+		return nil
+	}
+
+	return pipelineexec.NewRedactor(data)
 }
 
 // connectorTaskArgs returns the Airbyte CLI arguments for a connector task type.

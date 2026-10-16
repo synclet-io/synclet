@@ -86,7 +86,7 @@ func TestListAuditEventsP95(t *testing.T) {
 		{ActorID: &actors[2], Action: &action, Offset: pageSize},
 	}
 
-	list := auditservice.NewListAuditEvents(storage)
+	list := auditservice.NewListAuditEvents(auditstorage.NewEventPageStorage(db))
 	durations := make([]time.Duration, 0, runs)
 
 	for i := range runs {

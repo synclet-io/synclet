@@ -73,9 +73,9 @@ func NewHandler(
 }
 
 func (h *Handler) CreateWebhook(ctx context.Context, req *connect.Request[webhookv1.CreateWebhookRequest]) (*connect.Response[webhookv1.CreateWebhookResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	if err := connectutil.ValidateStringLengths(
@@ -105,9 +105,9 @@ func (h *Handler) CreateWebhook(ctx context.Context, req *connect.Request[webhoo
 }
 
 func (h *Handler) UpdateWebhook(ctx context.Context, req *connect.Request[webhookv1.UpdateWebhookRequest]) (*connect.Response[webhookv1.UpdateWebhookResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	id, err := uuid.Parse(req.Msg.GetId())
@@ -115,11 +115,20 @@ func (h *Handler) UpdateWebhook(ctx context.Context, req *connect.Request[webhoo
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
+	if req.Msg.GetClearEvents() && len(req.Msg.GetEvents()) > 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("clear_events cannot be combined with events"))
+	}
+
 	params := notifyservice.UpdateWebhookParams{
 		ID:          id,
 		WorkspaceID: workspaceID,
 		Events:      req.Msg.GetEvents(),
+		Secret:      req.Msg.Secret,
 	}
+	if req.Msg.GetClearEvents() {
+		params.Events = []string{}
+	}
+
 	if req.Msg.Url != nil {
 		if err := connectutil.ValidateWebhookURL(req.Msg.GetUrl()); err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -143,9 +152,9 @@ func (h *Handler) UpdateWebhook(ctx context.Context, req *connect.Request[webhoo
 }
 
 func (h *Handler) DeleteWebhook(ctx context.Context, req *connect.Request[webhookv1.DeleteWebhookRequest]) (*connect.Response[webhookv1.DeleteWebhookResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	id, err := uuid.Parse(req.Msg.GetId())
@@ -164,9 +173,9 @@ func (h *Handler) DeleteWebhook(ctx context.Context, req *connect.Request[webhoo
 }
 
 func (h *Handler) ListWebhooks(ctx context.Context, req *connect.Request[webhookv1.ListWebhooksRequest]) (*connect.Response[webhookv1.ListWebhooksResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	webhooks, err := h.listWebhooks.Execute(ctx, notifyservice.ListWebhooksParams{
@@ -187,9 +196,9 @@ func (h *Handler) ListWebhooks(ctx context.Context, req *connect.Request[webhook
 }
 
 func (h *Handler) TestWebhook(ctx context.Context, req *connect.Request[webhookv1.TestWebhookRequest]) (*connect.Response[webhookv1.TestWebhookResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	id, err := uuid.Parse(req.Msg.GetId())

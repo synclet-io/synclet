@@ -31,9 +31,9 @@ func NewConnectorTaskHandler(getTaskResult *pipelinetasks.GetTaskResult) *Connec
 
 // GetConnectorTaskResult returns the status and typed result of a connector task.
 func (h *ConnectorTaskHandler) GetConnectorTaskResult(ctx context.Context, req *connect.Request[pipelinev1.GetConnectorTaskResultRequest]) (*connect.Response[pipelinev1.GetConnectorTaskResultResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	taskID, err := uuid.Parse(req.Msg.GetTaskId())

@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"connectrpc.com/connect"
@@ -27,6 +29,7 @@ type Reporter struct {
 	completionCh   chan *executorv1.ReportCompletionRequest
 	configUpdateCh chan *executorv1.ReportConfigUpdateRequest
 	logCh          chan string
+	droppedLogs    atomic.Int64
 
 	wg   sync.WaitGroup
 	done chan struct{}
@@ -125,7 +128,9 @@ func (r *Reporter) SendHeartbeat(ctx context.Context, recordsRead, bytesSynced i
 }
 
 // QueueState queues a state checkpoint for reliable delivery.
-// The msg is serialized to JSON and sent as the state_data blob.
+// The msg is serialized to JSON and sent as the state_data blob. It blocks
+// while the buffer is full, so a slow server throttles the sync instead of
+// losing checkpoints.
 func (r *Reporter) QueueState(msg *protocol.AirbyteStateMessage) {
 	stateData, err := json.Marshal(msg)
 	if err != nil {
@@ -143,8 +148,8 @@ func (r *Reporter) QueueState(msg *protocol.AirbyteStateMessage) {
 
 	select {
 	case r.stateCh <- req:
-	default:
-		slog.Warn("reporter: state buffer full, dropping state")
+	case <-r.done:
+		slog.Warn("reporter: stopped, dropping state")
 	}
 }
 
@@ -160,13 +165,26 @@ func (r *Reporter) QueueCompletion(req *executorv1.ReportCompletionRequest) {
 	}
 }
 
-// QueueLog queues a log line for delivery. Non-blocking: drops on full buffer.
+// QueueLog queues a log line for delivery. Non-blocking: a line that does not
+// fit the buffer is dropped and counted, and the next delivered batch carries
+// a line reporting how many were lost.
 func (r *Reporter) QueueLog(line string) {
 	select {
 	case r.logCh <- line:
 	default:
-		slog.Warn("reporter: log buffer full, dropping log line")
+		if r.droppedLogs.Add(1) == 1 {
+			slog.Warn("reporter: log buffer full, dropping log lines")
+		}
 	}
+}
+
+// withDroppedNotice appends a line reporting the log lines dropped since the last batch.
+func (r *Reporter) withDroppedNotice(batch []string) []string {
+	if dropped := r.droppedLogs.Swap(0); dropped > 0 {
+		return append(batch, "[synclet] "+strconv.FormatInt(dropped, 10)+" log lines dropped: log buffer full")
+	}
+
+	return batch
 }
 
 // QueueConfigUpdate queues a config update report for reliable delivery.
@@ -290,6 +308,7 @@ func (r *Reporter) drainLogs(ctx context.Context) {
 	defer ticker.Stop()
 	var batch []string
 	flush := func() {
+		batch = r.withDroppedNotice(batch)
 		if len(batch) == 0 {
 			return
 		}
@@ -321,6 +340,8 @@ func (r *Reporter) drainLogs(ctx context.Context) {
 				case line := <-r.logCh:
 					batch = append(batch, line)
 				default:
+					batch = r.withDroppedNotice(batch)
+
 					// Use a background context for the final flush since the outer ctx may be cancelled.
 					if len(batch) > 0 {
 						flushCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

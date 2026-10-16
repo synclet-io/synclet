@@ -13,11 +13,12 @@ import (
 // CreateDiscoverTask creates a connector discover task for a source.
 type CreateDiscoverTask struct {
 	storage pipelineservice.Storage
+	audit   pipelineservice.AuditRecorder
 }
 
 // NewCreateDiscoverTask creates a new CreateDiscoverTask use case.
-func NewCreateDiscoverTask(storage pipelineservice.Storage) *CreateDiscoverTask {
-	return &CreateDiscoverTask{storage: storage}
+func NewCreateDiscoverTask(storage pipelineservice.Storage, audit pipelineservice.AuditRecorder) *CreateDiscoverTask {
+	return &CreateDiscoverTask{storage: storage, audit: audit}
 }
 
 // CreateDiscoverTaskParams holds parameters for creating a discover task.
@@ -28,6 +29,7 @@ type CreateDiscoverTaskParams struct {
 
 // Execute creates a connector discover task and returns the task ID.
 // If a pending or running discover task already exists for the same source, it returns that task instead.
+// A new task is recorded as a "sync" audit event on the source, since its result replaces the stored catalog.
 func (uc *CreateDiscoverTask) Execute(ctx context.Context, params CreateDiscoverTaskParams) (*CreateTaskResult, error) {
 	// Resolve the managed connector ID from the source, scoped to workspace.
 	src, err := uc.storage.Sources().First(ctx, &pipelineservice.SourceFilter{
@@ -68,6 +70,14 @@ func (uc *CreateDiscoverTask) Execute(ctx context.Context, params CreateDiscover
 	if _, err := uc.storage.ConnectorTasks().Create(ctx, task); err != nil {
 		return nil, fmt.Errorf("creating discover task: %w", err)
 	}
+
+	uc.audit.Record(ctx, pipelineservice.AuditEvent{
+		WorkspaceID:   params.WorkspaceID,
+		Action:        "sync",
+		ResourceType:  "source",
+		ResourceID:    src.ID,
+		ResourceLabel: src.Name,
+	})
 
 	return &CreateTaskResult{TaskID: task.ID}, nil
 }

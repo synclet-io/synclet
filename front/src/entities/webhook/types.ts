@@ -32,6 +32,9 @@ export interface CreateWebhookInput {
 export interface UpdateWebhookInput {
   id: string
   url?: string
+  /** An empty list unsubscribes from every event. */
   events?: WebhookEvent[]
   enabled?: boolean
+  /** Replaces the signing secret; an empty string stops signing deliveries. */
+  secret?: string
 }

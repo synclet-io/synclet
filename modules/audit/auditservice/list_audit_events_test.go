@@ -75,3 +75,28 @@ func TestListAuditEvents_BoundsAreHalfOpen(t *testing.T) {
 	require.Len(t, events, 1)
 	assert.Equal(t, atSince, events[0].ID)
 }
+
+func TestListAuditEvents_OffsetIsExact(t *testing.T) {
+	now := time.Date(2026, 10, 16, 12, 0, 0, 0, time.UTC)
+	storage := newFakeStorage()
+	workspaceID := uuid.New()
+
+	ids := make([]uuid.UUID, 0, 5)
+	for i := range 5 {
+		ids = append(ids, addAuditEvent(storage, workspaceID, now.Add(-time.Duration(i)*time.Minute)))
+	}
+
+	events, err := NewListAuditEvents(storage).Execute(context.Background(), ListAuditEventsParams{
+		WorkspaceID: workspaceID,
+		Limit:       2,
+		Offset:      3,
+	})
+	require.NoError(t, err)
+
+	got := make([]uuid.UUID, 0, len(events))
+	for _, event := range events {
+		got = append(got, event.ID)
+	}
+
+	assert.Equal(t, ids[3:5], got)
+}

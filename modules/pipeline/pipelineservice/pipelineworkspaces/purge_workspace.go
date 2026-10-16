@@ -193,7 +193,7 @@ func (uc *PurgeWorkspace) purgeConnectorTasks(ctx context.Context, workspaceID u
 			continue
 		}
 
-		if err := uc.secrets.DeleteByOwner(ctx, "connector_task", task.ID); err != nil {
+		if err := uc.secrets.DeleteByOwner(ctx, pipelineservice.SecretOwnerConnectorTask, task.ID); err != nil {
 			return fmt.Errorf("deleting secrets of connector task %s: %w", task.ID, err)
 		}
 	}

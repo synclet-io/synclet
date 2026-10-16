@@ -51,6 +51,7 @@ var audited = map[string][]string{
 	"pipelineconnect.ConnectionHandler.ConfigureStreams":       {"modules/pipeline/pipelineservice/pipelinecatalog/configure_streams.go"},
 	"pipelineconnect.ConnectionHandler.CreateConnection":       {"modules/pipeline/pipelineservice/pipelineconnections/create_connection.go"},
 	"pipelineconnect.ConnectionHandler.DeleteConnection":       {"modules/pipeline/pipelineservice/pipelineconnections/delete_connection.go"},
+	"pipelineconnect.ConnectionHandler.DiscoverSchema":         {"modules/pipeline/pipelineservice/pipelinetasks/create_discover_task.go"},
 	"pipelineconnect.ConnectionHandler.DisableConnection":      {"modules/pipeline/pipelineservice/pipelineconnections/disable_connection.go"},
 	"pipelineconnect.ConnectionHandler.EnableConnection":       {"modules/pipeline/pipelineservice/pipelineconnections/enable_connection.go"},
 	"pipelineconnect.ConnectionHandler.ImportWorkspaceConfig":  {"modules/pipeline/pipelineservice/pipelineconfig/import_config.go"},
@@ -65,6 +66,7 @@ var audited = map[string][]string{
 		"modules/pipeline/pipelineservice/pipelinetasks/create_check_task.go",
 	},
 	"pipelineconnect.DestinationHandler.UpdateDestination":   {"modules/pipeline/pipelineservice/pipelinedestinations/update_destination.go"},
+	"pipelineconnect.JobHandler.CancelJob":                   {"modules/pipeline/pipelineservice/pipelinejobs/cancel_job_for_workspace.go"},
 	"pipelineconnect.JobHandler.TriggerSync":                 {"modules/pipeline/pipelineservice/pipelinejobs/trigger_sync.go"},
 	"pipelineconnect.RegistryHandler.AddConnector":           {"modules/pipeline/pipelineservice/pipelineconnectors/add_connector.go"},
 	"pipelineconnect.RegistryHandler.AddRepository":          {"modules/pipeline/pipelineservice/pipelinerepositories/add_repository.go"},
@@ -75,6 +77,7 @@ var audited = map[string][]string{
 	"pipelineconnect.RegistryHandler.UpdateManagedConnector": {"modules/pipeline/pipelineservice/pipelineconnectors/update_connector.go"},
 	"pipelineconnect.SourceHandler.CreateSource":             {"modules/pipeline/pipelineservice/pipelinesources/create_source.go"},
 	"pipelineconnect.SourceHandler.DeleteSource":             {"modules/pipeline/pipelineservice/pipelinesources/delete_source.go"},
+	"pipelineconnect.SourceHandler.DiscoverSourceSchema":     {"modules/pipeline/pipelineservice/pipelinetasks/create_discover_task.go"},
 	"pipelineconnect.SourceHandler.TestSourceConnection":     {"modules/pipeline/pipelineservice/pipelinetasks/create_check_task.go"},
 	"pipelineconnect.SourceHandler.UpdateSource":             {"modules/pipeline/pipelineservice/pipelinesources/update_source.go"},
 
@@ -91,11 +94,7 @@ var audited = map[string][]string{
 }
 
 // exempt maps mutating RPCs that intentionally record no audit event to the reason why.
-var exempt = map[string]string{
-	"pipelineconnect.ConnectionHandler.DiscoverSchema":   "Creates a connector discover task that reads the source schema without changing configuration.",
-	"pipelineconnect.JobHandler.CancelJob":               "Job lifecycle operation with no configuration change and no audit action value.",
-	"pipelineconnect.SourceHandler.DiscoverSourceSchema": "Creates a connector discover task that reads the source schema without changing configuration.",
-}
+var exempt = map[string]string{}
 
 func TestMutatingRPCsAreAudited(t *testing.T) {
 	root := repoRoot(t)

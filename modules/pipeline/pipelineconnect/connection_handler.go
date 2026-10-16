@@ -9,6 +9,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
+	"github.com/samber/lo"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -24,10 +25,6 @@ import (
 	"github.com/synclet-io/synclet/pkg/connectutil"
 	"github.com/synclet-io/synclet/pkg/protocol"
 )
-
-// errRetryDelayUnsupported rejects retry_delay_minutes: failed attempts are
-// retried immediately, so a delay would be silently ignored.
-var errRetryDelayUnsupported = errors.New("retry_delay_minutes is not supported")
 
 // ConnectionHandler implements the ConnectionService ConnectRPC handler.
 type ConnectionHandler struct {
@@ -52,6 +49,7 @@ type ConnectionHandler struct {
 	configureStreams                  *pipelinecatalog.ConfigureStreams
 	getConfiguredCatalog              *pipelinecatalog.GetConfiguredCatalog
 	detectSchemaChanges               *pipelinecatalog.DetectSchemaChanges
+	countPendingSchemaChanges         *pipelinecatalog.CountPendingSchemaChanges
 
 	// Composite state use cases (with workspace verification)
 	resetStreamState     *pipelinestate.ResetStreamState
@@ -82,6 +80,7 @@ func NewConnectionHandler(
 	configureStreams *pipelinecatalog.ConfigureStreams,
 	getConfiguredCatalog *pipelinecatalog.GetConfiguredCatalog,
 	detectSchemaChanges *pipelinecatalog.DetectSchemaChanges,
+	countPendingSchemaChanges *pipelinecatalog.CountPendingSchemaChanges,
 	resetStreamState *pipelinestate.ResetStreamState,
 	resetConnectionState *pipelinestate.ResetConnectionState,
 	updateStreamState *pipelinestate.UpdateStreamState,
@@ -104,6 +103,7 @@ func NewConnectionHandler(
 		configureStreams:                  configureStreams,
 		getConfiguredCatalog:              getConfiguredCatalog,
 		detectSchemaChanges:               detectSchemaChanges,
+		countPendingSchemaChanges:         countPendingSchemaChanges,
 		resetStreamState:                  resetStreamState,
 		resetConnectionState:              resetConnectionState,
 		updateStreamState:                 updateStreamState,
@@ -116,9 +116,9 @@ func NewConnectionHandler(
 }
 
 func (h *ConnectionHandler) CreateConnection(ctx context.Context, req *connect.Request[pipelinev1.CreateConnectionRequest]) (*connect.Response[pipelinev1.CreateConnectionResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	if err := connectutil.ValidateStringLengths(
@@ -133,10 +133,6 @@ func (h *ConnectionHandler) CreateConnection(ctx context.Context, req *connect.R
 		); err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}
-	}
-
-	if req.Msg.GetRetryDelayMinutes() != 0 {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errRetryDelayUnsupported)
 	}
 
 	var schedule *string
@@ -178,18 +174,14 @@ func (h *ConnectionHandler) CreateConnection(ctx context.Context, req *connect.R
 }
 
 func (h *ConnectionHandler) UpdateConnection(ctx context.Context, req *connect.Request[pipelinev1.UpdateConnectionRequest]) (*connect.Response[pipelinev1.UpdateConnectionResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	id, err := uuid.Parse(req.Msg.GetId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
-	}
-
-	if req.Msg.RetryDelayMinutes != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errRetryDelayUnsupported)
 	}
 
 	params := pipelineconnections.UpdateConnectionParams{
@@ -253,9 +245,9 @@ func (h *ConnectionHandler) UpdateConnection(ctx context.Context, req *connect.R
 }
 
 func (h *ConnectionHandler) DeleteConnection(ctx context.Context, req *connect.Request[pipelinev1.DeleteConnectionRequest]) (*connect.Response[pipelinev1.DeleteConnectionResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	id, err := uuid.Parse(req.Msg.GetId())
@@ -274,9 +266,9 @@ func (h *ConnectionHandler) DeleteConnection(ctx context.Context, req *connect.R
 }
 
 func (h *ConnectionHandler) GetConnection(ctx context.Context, req *connect.Request[pipelinev1.GetConnectionRequest]) (*connect.Response[pipelinev1.GetConnectionResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	id, err := uuid.Parse(req.Msg.GetId())
@@ -292,15 +284,20 @@ func (h *ConnectionHandler) GetConnection(ctx context.Context, req *connect.Requ
 		return nil, mapError(err)
 	}
 
+	protoConns, err := h.connectionsWithPendingSchemaChanges(ctx, []*pipelineservice.Connection{conn})
+	if err != nil {
+		return nil, err
+	}
+
 	return connect.NewResponse(&pipelinev1.GetConnectionResponse{
-		Connection: connectionToProto(conn),
+		Connection: protoConns[0],
 	}), nil
 }
 
 func (h *ConnectionHandler) ListConnections(ctx context.Context, req *connect.Request[pipelinev1.ListConnectionsRequest]) (*connect.Response[pipelinev1.ListConnectionsResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	conns, err := h.listConnections.Execute(ctx, pipelineconnections.ListConnectionsParams{
@@ -310,23 +307,44 @@ func (h *ConnectionHandler) ListConnections(ctx context.Context, req *connect.Re
 		return nil, mapError(err)
 	}
 
-	protoConns := make([]*pipelinev1.Connection, len(conns))
-	for i, c := range conns {
-		protoConns[i] = connectionToProto(c)
+	page, total := paginateSlice(conns, req.Msg.GetPageSize(), req.Msg.GetOffset())
+
+	var protoConns []*pipelinev1.Connection
+	if req.Msg.GetIncludePendingSchemaChanges() {
+		protoConns, err = h.connectionsWithPendingSchemaChanges(ctx, page)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		protoConns = lo.Map(page, func(c *pipelineservice.Connection, _ int) *pipelinev1.Connection { return connectionToProto(c) })
 	}
 
-	paginated, total := paginateSlice(protoConns, req.Msg.GetPageSize(), req.Msg.GetOffset())
-
 	return connect.NewResponse(&pipelinev1.ListConnectionsResponse{
-		Connections: paginated,
+		Connections: protoConns,
 		Total:       total,
 	}), nil
 }
 
-func (h *ConnectionHandler) EnableConnection(ctx context.Context, req *connect.Request[pipelinev1.EnableConnectionRequest]) (*connect.Response[pipelinev1.EnableConnectionResponse], error) {
-	wsID, err := connectutil.WorkspaceIDFromContext(ctx)
+func (h *ConnectionHandler) connectionsWithPendingSchemaChanges(ctx context.Context, conns []*pipelineservice.Connection) ([]*pipelinev1.Connection, error) {
+	counts, err := h.countPendingSchemaChanges.Execute(ctx, lo.Map(conns, func(c *pipelineservice.Connection, _ int) pipelinecatalog.PendingSchemaChangesTarget {
+		return pipelinecatalog.PendingSchemaChangesTarget{ConnectionID: c.ID, SourceID: c.SourceID}
+	}))
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("workspace context required"))
+		return nil, mapError(err)
+	}
+
+	return lo.Map(conns, func(c *pipelineservice.Connection, _ int) *pipelinev1.Connection {
+		pc := connectionToProto(c)
+		pc.PendingSchemaChanges = int32(counts[c.ID])
+
+		return pc
+	}), nil
+}
+
+func (h *ConnectionHandler) EnableConnection(ctx context.Context, req *connect.Request[pipelinev1.EnableConnectionRequest]) (*connect.Response[pipelinev1.EnableConnectionResponse], error) {
+	wsID, err := connectutil.RequireWorkspaceID(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	id, err := uuid.Parse(req.Msg.GetId())
@@ -348,9 +366,9 @@ func (h *ConnectionHandler) EnableConnection(ctx context.Context, req *connect.R
 }
 
 func (h *ConnectionHandler) DisableConnection(ctx context.Context, req *connect.Request[pipelinev1.DisableConnectionRequest]) (*connect.Response[pipelinev1.DisableConnectionResponse], error) {
-	wsID, err := connectutil.WorkspaceIDFromContext(ctx)
+	wsID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("workspace context required"))
+		return nil, err
 	}
 
 	id, err := uuid.Parse(req.Msg.GetId())
@@ -372,9 +390,9 @@ func (h *ConnectionHandler) DisableConnection(ctx context.Context, req *connect.
 }
 
 func (h *ConnectionHandler) DiscoverSchema(ctx context.Context, req *connect.Request[pipelinev1.DiscoverSchemaRequest]) (*connect.Response[pipelinev1.DiscoverSchemaResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	connID, err := uuid.Parse(req.Msg.GetConnectionId())
@@ -406,9 +424,9 @@ func (h *ConnectionHandler) DiscoverSchema(ctx context.Context, req *connect.Req
 }
 
 func (h *ConnectionHandler) ConfigureStreams(ctx context.Context, req *connect.Request[pipelinev1.ConfigureStreamsRequest]) (*connect.Response[pipelinev1.ConfigureStreamsResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	connID, err := uuid.Parse(req.Msg.GetConnectionId())
@@ -461,9 +479,9 @@ func (h *ConnectionHandler) ConfigureStreams(ctx context.Context, req *connect.R
 }
 
 func (h *ConnectionHandler) GetDiscoveredCatalog(ctx context.Context, req *connect.Request[pipelinev1.GetDiscoveredCatalogRequest]) (*connect.Response[pipelinev1.GetDiscoveredCatalogResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	connID, err := uuid.Parse(req.Msg.GetConnectionId())
@@ -487,9 +505,9 @@ func (h *ConnectionHandler) GetDiscoveredCatalog(ctx context.Context, req *conne
 }
 
 func (h *ConnectionHandler) GetConfiguredCatalog(ctx context.Context, req *connect.Request[pipelinev1.GetConfiguredCatalogRequest]) (*connect.Response[pipelinev1.GetConfiguredCatalogResponse], error) {
-	wsID, err := connectutil.WorkspaceIDFromContext(ctx)
+	wsID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("workspace context required"))
+		return nil, err
 	}
 
 	connID, err := uuid.Parse(req.Msg.GetConnectionId())
@@ -529,9 +547,9 @@ func (h *ConnectionHandler) GetConfiguredCatalog(ctx context.Context, req *conne
 }
 
 func (h *ConnectionHandler) GetSchemaChanges(ctx context.Context, req *connect.Request[pipelinev1.GetSchemaChangesRequest]) (*connect.Response[pipelinev1.GetSchemaChangesResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	connID, err := uuid.Parse(req.Msg.GetConnectionId())
@@ -573,9 +591,9 @@ func (h *ConnectionHandler) GetSchemaChanges(ctx context.Context, req *connect.R
 }
 
 func (h *ConnectionHandler) ResetStreamState(ctx context.Context, req *connect.Request[pipelinev1.ResetStreamStateRequest]) (*connect.Response[pipelinev1.ResetStreamStateResponse], error) {
-	wsID, err := connectutil.WorkspaceIDFromContext(ctx)
+	wsID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("workspace context required"))
+		return nil, err
 	}
 
 	connID, err := uuid.Parse(req.Msg.GetConnectionId())
@@ -600,9 +618,9 @@ func (h *ConnectionHandler) ResetStreamState(ctx context.Context, req *connect.R
 }
 
 func (h *ConnectionHandler) ResetConnectionState(ctx context.Context, req *connect.Request[pipelinev1.ResetConnectionStateRequest]) (*connect.Response[pipelinev1.ResetConnectionStateResponse], error) {
-	wsID, err := connectutil.WorkspaceIDFromContext(ctx)
+	wsID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("workspace context required"))
+		return nil, err
 	}
 
 	connID, err := uuid.Parse(req.Msg.GetConnectionId())
@@ -621,9 +639,9 @@ func (h *ConnectionHandler) ResetConnectionState(ctx context.Context, req *conne
 }
 
 func (h *ConnectionHandler) ListStreamStates(ctx context.Context, req *connect.Request[pipelinev1.ListStreamStatesRequest]) (*connect.Response[pipelinev1.ListStreamStatesResponse], error) {
-	wsID, err := connectutil.WorkspaceIDFromContext(ctx)
+	wsID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("workspace context required"))
+		return nil, err
 	}
 
 	connID, err := uuid.Parse(req.Msg.GetConnectionId())
@@ -655,9 +673,9 @@ func (h *ConnectionHandler) ListStreamStates(ctx context.Context, req *connect.R
 }
 
 func (h *ConnectionHandler) UpdateStreamState(ctx context.Context, req *connect.Request[pipelinev1.UpdateStreamStateRequest]) (*connect.Response[pipelinev1.UpdateStreamStateResponse], error) {
-	wsID, err := connectutil.WorkspaceIDFromContext(ctx)
+	wsID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("workspace context required"))
+		return nil, err
 	}
 
 	connID, err := uuid.Parse(req.Msg.GetConnectionId())
@@ -683,9 +701,9 @@ func (h *ConnectionHandler) UpdateStreamState(ctx context.Context, req *connect.
 }
 
 func (h *ConnectionHandler) ExportWorkspaceConfig(ctx context.Context, req *connect.Request[pipelinev1.ExportWorkspaceConfigRequest]) (*connect.Response[pipelinev1.ExportWorkspaceConfigResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	yamlData, err := h.exportConfig.Execute(ctx, pipelineconfig.ExportConfigParams{
@@ -701,9 +719,9 @@ func (h *ConnectionHandler) ExportWorkspaceConfig(ctx context.Context, req *conn
 }
 
 func (h *ConnectionHandler) ImportWorkspaceConfig(ctx context.Context, req *connect.Request[pipelinev1.ImportWorkspaceConfigRequest]) (*connect.Response[pipelinev1.ImportWorkspaceConfigResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	if len(req.Msg.GetConfigYaml()) == 0 {
@@ -729,9 +747,9 @@ func (h *ConnectionHandler) GetPipelineSettings(
 	ctx context.Context,
 	req *connect.Request[pipelinev1.GetPipelineSettingsRequest],
 ) (*connect.Response[pipelinev1.GetPipelineSettingsResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	settings, err := h.getWorkspaceSettings.Execute(ctx, workspaceID)
@@ -750,9 +768,9 @@ func (h *ConnectionHandler) UpdatePipelineSettings(
 	ctx context.Context,
 	req *connect.Request[pipelinev1.UpdatePipelineSettingsRequest],
 ) (*connect.Response[pipelinev1.UpdatePipelineSettingsResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	params := pipelinesettings.UpdateWorkspaceSettingsParams{

@@ -143,13 +143,13 @@ func (a *UseCaseExecutorBackend) ReportConfigUpdate(ctx context.Context, connect
 	})
 }
 
-// ReportLog appends log lines for a job. Non-fatal: logs error but returns nil.
+// ReportLog appends log lines for a job.
 func (a *UseCaseExecutorBackend) ReportLog(ctx context.Context, jobID uuid.UUID, lines []string) error {
 	if err := a.batchAppendLogs.Execute(ctx, pipelinelogs.BatchAppendJobLogsParams{
 		JobID:    jobID,
 		LogLines: lines,
 	}); err != nil {
-		slog.Error("usecase backend: report log failed", "job_id", jobID.String(), "error", err)
+		return fmt.Errorf("appending job logs: %w", err)
 	}
 
 	return nil

@@ -46,9 +46,16 @@ func (uc *UpdateDestination) Execute(ctx context.Context, params UpdateDestinati
 		return nil, fmt.Errorf("getting destination: %w", err)
 	}
 
+	connector, err := uc.storage.ManagedConnectors().First(ctx, &pipelineservice.ManagedConnectorFilter{
+		ID: filter.Equals(dest.ManagedConnectorID),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("loading connector spec: %w", err)
+	}
+
 	before := map[string]any{
 		"name":           dest.Name,
-		"config":         auditConfig(dest.Config),
+		"config":         auditConfig(dest.Config, connector.Spec),
 		"runtime_config": auditRuntimeConfig(dest.RuntimeConfig),
 	}
 
@@ -58,14 +65,6 @@ func (uc *UpdateDestination) Execute(ctx context.Context, params UpdateDestinati
 
 	if params.Config != nil {
 		newConfig := string(*params.Config)
-
-		// Look up connector spec via managed connector FK.
-		connector, specErr := uc.storage.ManagedConnectors().First(ctx, &pipelineservice.ManagedConnectorFilter{
-			ID: filter.Equals(dest.ManagedConnectorID),
-		})
-		if specErr != nil {
-			return nil, fmt.Errorf("loading connector spec for secret encryption: %w", specErr)
-		}
 
 		encryptedConfig, encErr := pipelinesecrets.UpdateConfigSecrets(ctx, uc.secrets, "destination", dest.ID, dest.Config, newConfig, connector.Spec)
 		if encErr != nil {
@@ -106,7 +105,7 @@ func (uc *UpdateDestination) Execute(ctx context.Context, params UpdateDestinati
 		Before:        before,
 		After: map[string]any{
 			"name":           updated.Name,
-			"config":         auditConfig(updated.Config),
+			"config":         auditConfig(updated.Config, connector.Spec),
 			"runtime_config": auditRuntimeConfig(updated.RuntimeConfig),
 		},
 	})

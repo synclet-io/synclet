@@ -69,9 +69,9 @@ func NewSourceHandler(
 }
 
 func (h *SourceHandler) CreateSource(ctx context.Context, req *connect.Request[pipelinev1.CreateSourceRequest]) (*connect.Response[pipelinev1.CreateSourceResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	if err := connectutil.ValidateStringLengths(
@@ -125,9 +125,9 @@ func (h *SourceHandler) CreateSource(ctx context.Context, req *connect.Request[p
 }
 
 func (h *SourceHandler) UpdateSource(ctx context.Context, req *connect.Request[pipelinev1.UpdateSourceRequest]) (*connect.Response[pipelinev1.UpdateSourceResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	id, err := uuid.Parse(req.Msg.GetId())
@@ -209,9 +209,9 @@ func (h *SourceHandler) UpdateSource(ctx context.Context, req *connect.Request[p
 }
 
 func (h *SourceHandler) DeleteSource(ctx context.Context, req *connect.Request[pipelinev1.DeleteSourceRequest]) (*connect.Response[pipelinev1.DeleteSourceResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	id, err := uuid.Parse(req.Msg.GetId())
@@ -230,9 +230,9 @@ func (h *SourceHandler) DeleteSource(ctx context.Context, req *connect.Request[p
 }
 
 func (h *SourceHandler) GetSource(ctx context.Context, req *connect.Request[pipelinev1.GetSourceRequest]) (*connect.Response[pipelinev1.GetSourceResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	id, err := uuid.Parse(req.Msg.GetId())
@@ -254,9 +254,9 @@ func (h *SourceHandler) GetSource(ctx context.Context, req *connect.Request[pipe
 }
 
 func (h *SourceHandler) ListSources(ctx context.Context, req *connect.Request[pipelinev1.ListSourcesRequest]) (*connect.Response[pipelinev1.ListSourcesResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	sources, err := h.listSources.Execute(ctx, pipelinesources.ListSourcesParams{
@@ -280,9 +280,9 @@ func (h *SourceHandler) ListSources(ctx context.Context, req *connect.Request[pi
 }
 
 func (h *SourceHandler) TestSourceConnection(ctx context.Context, req *connect.Request[pipelinev1.TestSourceConnectionRequest]) (*connect.Response[pipelinev1.TestSourceConnectionResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	params := pipelinetasks.CreateCheckTaskParams{
@@ -326,9 +326,9 @@ func (h *SourceHandler) TestSourceConnection(ctx context.Context, req *connect.R
 }
 
 func (h *SourceHandler) DiscoverSourceSchema(ctx context.Context, req *connect.Request[pipelinev1.DiscoverSourceSchemaRequest]) (*connect.Response[pipelinev1.DiscoverSourceSchemaResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	sourceID, err := uuid.Parse(req.Msg.GetSourceId())
@@ -350,9 +350,9 @@ func (h *SourceHandler) DiscoverSourceSchema(ctx context.Context, req *connect.R
 }
 
 func (h *SourceHandler) GetSourceCatalog(ctx context.Context, req *connect.Request[pipelinev1.GetSourceCatalogRequest]) (*connect.Response[pipelinev1.GetSourceCatalogResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	sourceID, err := uuid.Parse(req.Msg.GetSourceId())

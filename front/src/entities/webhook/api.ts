@@ -1,6 +1,7 @@
 import type { CreateWebhookInput, UpdateWebhookInput, Webhook, WebhookEvent } from './types'
 import type { WebhookInfo as ProtoWebhookInfo } from '@/gen/synclet/publicapi/webhook/v1/webhook_pb'
 import { webhookClient } from '@shared/api/services'
+import { requireField } from '@shared/lib/errorUtils'
 import { tsToDate } from '@shared/lib/formatting'
 
 function mapEvent(value: string): WebhookEvent | null {
@@ -41,7 +42,7 @@ export async function createWebhook(input: CreateWebhookInput): Promise<Webhook>
     events: input.events,
     secret: input.secret ?? '',
   })
-  return mapWebhook(res.webhook!)
+  return mapWebhook(requireField(res.webhook, 'webhook'))
 }
 
 export async function updateWebhook(input: UpdateWebhookInput): Promise<Webhook> {
@@ -49,9 +50,11 @@ export async function updateWebhook(input: UpdateWebhookInput): Promise<Webhook>
     id: input.id,
     url: input.url,
     events: input.events ?? [],
+    clearEvents: input.events?.length === 0,
     enabled: input.enabled,
+    secret: input.secret,
   })
-  return mapWebhook(res.webhook!)
+  return mapWebhook(requireField(res.webhook, 'webhook'))
 }
 
 export async function deleteWebhook(id: string): Promise<void> {

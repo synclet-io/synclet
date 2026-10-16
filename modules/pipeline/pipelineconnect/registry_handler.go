@@ -135,9 +135,9 @@ func (h *RegistryHandler) ListConnectors(_ context.Context, _ *connect.Request[r
 }
 
 func (h *RegistryHandler) GetConnectorSpec(ctx context.Context, req *connect.Request[registryv1.GetConnectorSpecRequest]) (*connect.Response[registryv1.GetConnectorSpecResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	id, err := uuid.Parse(req.Msg.GetId())
@@ -175,9 +175,9 @@ func (h *RegistryHandler) GetConnectorSpec(ctx context.Context, req *connect.Req
 
 // AddConnector creates a managed connector and starts async pull+spec extraction.
 func (h *RegistryHandler) AddConnector(ctx context.Context, req *connect.Request[registryv1.AddConnectorRequest]) (*connect.Response[registryv1.AddConnectorResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	if err := connectutil.ValidateStringLengths(
@@ -218,9 +218,9 @@ func (h *RegistryHandler) AddConnector(ctx context.Context, req *connect.Request
 
 // GetManagedConnector returns a single managed connector by ID with update info.
 func (h *RegistryHandler) GetManagedConnector(ctx context.Context, req *connect.Request[registryv1.GetManagedConnectorRequest]) (*connect.Response[registryv1.ManagedConnectorInfo], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	id, err := uuid.Parse(req.Msg.GetId())
@@ -241,9 +241,9 @@ func (h *RegistryHandler) GetManagedConnector(ctx context.Context, req *connect.
 
 // ListManagedConnectors returns all managed connectors for the workspace with update info.
 func (h *RegistryHandler) ListManagedConnectors(ctx context.Context, req *connect.Request[registryv1.ListManagedConnectorsRequest]) (*connect.Response[registryv1.ListManagedConnectorsResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	params := pipelineconnectors.ListConnectorsWithUpdateInfoParams{
@@ -271,9 +271,9 @@ func (h *RegistryHandler) ListManagedConnectors(ctx context.Context, req *connec
 
 // DeleteManagedConnector removes a managed connector from the registry.
 func (h *RegistryHandler) DeleteManagedConnector(ctx context.Context, req *connect.Request[registryv1.DeleteManagedConnectorRequest]) (*connect.Response[registryv1.DeleteManagedConnectorResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	id, err := uuid.Parse(req.Msg.GetId())
@@ -293,9 +293,9 @@ func (h *RegistryHandler) DeleteManagedConnector(ctx context.Context, req *conne
 
 // AddRepository creates a new connector repository (admin-only).
 func (h *RegistryHandler) AddRepository(ctx context.Context, req *connect.Request[registryv1.AddRepositoryRequest]) (*connect.Response[registryv1.AddRepositoryResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	if err := connectutil.ValidateStringLengths(
@@ -327,9 +327,9 @@ func (h *RegistryHandler) AddRepository(ctx context.Context, req *connect.Reques
 
 // ListRepositories returns all repositories for the workspace.
 func (h *RegistryHandler) ListRepositories(ctx context.Context, _ *connect.Request[registryv1.ListRepositoriesRequest]) (*connect.Response[registryv1.ListRepositoriesResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	repos, err := h.listRepositories.Execute(ctx, pipelinerepositories.ListRepositoriesParams{
@@ -356,9 +356,9 @@ func (h *RegistryHandler) DeleteRepository(ctx context.Context, req *connect.Req
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid repository id: %w", err))
 	}
 
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	result, err := h.deleteRepository.Execute(ctx, pipelinerepositories.DeleteRepositoryParams{
@@ -381,14 +381,15 @@ func (h *RegistryHandler) SyncRepository(ctx context.Context, req *connect.Reque
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid repository id: %w", err))
 	}
 
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	repo, err := h.syncRepository.Execute(ctx, pipelinerepositories.SyncRepositoryParams{
 		RepositoryID: repoID,
 		WorkspaceID:  workspaceID,
+		Requested:    true,
 	})
 	if err != nil {
 		return nil, mapError(fmt.Errorf("syncing repository: %w", err))
@@ -401,9 +402,9 @@ func (h *RegistryHandler) SyncRepository(ctx context.Context, req *connect.Reque
 
 // ListRepositoryConnectors returns connectors from a specific repository.
 func (h *RegistryHandler) ListRepositoryConnectors(ctx context.Context, req *connect.Request[registryv1.ListRepositoryConnectorsRequest]) (*connect.Response[registryv1.ListRepositoryConnectorsResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	repoID, err := uuid.Parse(req.Msg.GetRepositoryId())
@@ -454,11 +455,17 @@ func (h *RegistryHandler) ListRepositoryConnectors(ctx context.Context, req *con
 
 // GetConnectorVersions returns available versions for a connector image.
 func (h *RegistryHandler) GetConnectorVersions(ctx context.Context, req *connect.Request[registryv1.GetConnectorVersionsRequest]) (*connect.Response[registryv1.GetConnectorVersionsResponse], error) {
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	if req.Msg.GetConnectorImage() == "" {
 		return connect.NewResponse(&registryv1.GetConnectorVersionsResponse{}), nil
 	}
 
 	result, err := h.getConnectorVersions.Execute(ctx, pipelinerepositories.GetConnectorVersionsParams{
+		WorkspaceID:    workspaceID,
 		ConnectorImage: req.Msg.GetConnectorImage(),
 	})
 	if err != nil {
@@ -473,9 +480,9 @@ func (h *RegistryHandler) GetConnectorVersions(ctx context.Context, req *connect
 
 // UpdateManagedConnector updates a managed connector to the latest version from its repository.
 func (h *RegistryHandler) UpdateManagedConnector(ctx context.Context, req *connect.Request[registryv1.UpdateManagedConnectorRequest]) (*connect.Response[registryv1.UpdateManagedConnectorResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	connectorID, err := uuid.Parse(req.Msg.GetId())
@@ -498,9 +505,9 @@ func (h *RegistryHandler) UpdateManagedConnector(ctx context.Context, req *conne
 
 // BatchUpdateConnectors updates explicitly requested connectors in the workspace.
 func (h *RegistryHandler) BatchUpdateConnectors(ctx context.Context, req *connect.Request[registryv1.BatchUpdateConnectorsRequest]) (*connect.Response[registryv1.BatchUpdateConnectorsResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	var connectorIDs []uuid.UUID

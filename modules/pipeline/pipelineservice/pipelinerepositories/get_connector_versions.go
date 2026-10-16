@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/saturn4er/boilerplate-go/lib/filter"
 
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
@@ -21,6 +22,7 @@ func NewGetConnectorVersions(storage pipelineservice.Storage) *GetConnectorVersi
 
 // GetConnectorVersionsParams holds parameters for getting connector versions.
 type GetConnectorVersionsParams struct {
+	WorkspaceID    uuid.UUID
 	ConnectorImage string
 }
 
@@ -30,9 +32,26 @@ type GetConnectorVersionsResult struct {
 	LatestVersion string
 }
 
-// Execute queries repository_connectors for the given docker image and returns available versions.
+// Execute returns the versions of the given docker image listed by the workspace's repositories.
 func (uc *GetConnectorVersions) Execute(ctx context.Context, params GetConnectorVersionsParams) (*GetConnectorVersionsResult, error) {
+	repos, err := uc.storage.Repositories().Find(ctx, &pipelineservice.RepositoryFilter{
+		WorkspaceID: filter.Equals(params.WorkspaceID),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("listing workspace repositories: %w", err)
+	}
+
+	if len(repos) == 0 {
+		return &GetConnectorVersionsResult{}, nil
+	}
+
+	repoIDs := make([]uuid.UUID, 0, len(repos))
+	for _, repo := range repos {
+		repoIDs = append(repoIDs, repo.ID)
+	}
+
 	connectors, err := uc.storage.RepositoryConnectors().Find(ctx, &pipelineservice.RepositoryConnectorFilter{
+		RepositoryID:     filter.In(repoIDs...),
 		DockerRepository: filter.Equals(params.ConnectorImage),
 	})
 	if err != nil {

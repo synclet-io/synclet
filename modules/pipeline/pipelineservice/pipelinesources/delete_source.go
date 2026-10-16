@@ -45,6 +45,13 @@ func (uc *DeleteSource) Execute(ctx context.Context, params DeleteSourceParams) 
 		return err
 	}
 
+	connector, err := uc.storage.ManagedConnectors().First(ctx, &pipelineservice.ManagedConnectorFilter{
+		ID: filter.Equals(src.ManagedConnectorID),
+	})
+	if err != nil {
+		return fmt.Errorf("loading connector spec: %w", err)
+	}
+
 	// Clean up all associated secrets.
 	if err := uc.secrets.DeleteByOwner(ctx, "source", src.ID); err != nil {
 		return fmt.Errorf("deleting source secrets: %w", err)
@@ -67,7 +74,7 @@ func (uc *DeleteSource) Execute(ctx context.Context, params DeleteSourceParams) 
 		Before: map[string]any{
 			"name":                 src.Name,
 			"managed_connector_id": src.ManagedConnectorID.String(),
-			"config":               auditConfig(src.Config),
+			"config":               auditConfig(src.Config, connector.Spec),
 		},
 	})
 

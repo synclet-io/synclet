@@ -3,6 +3,7 @@ package auditservice
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sync"
 	"time"
 
@@ -27,6 +28,7 @@ type fakeStorage struct {
 var (
 	_ Storage          = (*fakeStorage)(nil)
 	_ RetentionStorage = (*fakeStorage)(nil)
+	_ EventPageStorage = (*fakeStorage)(nil)
 )
 
 func newFakeStorage() *fakeStorage {
@@ -232,6 +234,23 @@ func (s *fakeAuditEventsStorage) Find(_ context.Context, flt *AuditEventFilter, 
 	}
 
 	return out, nil
+}
+
+func (s *fakeStorage) FindPage(ctx context.Context, flt *AuditEventFilter, offset, limit int) ([]*AuditEvent, error) {
+	events, err := s.AuditEvents().Find(ctx, flt)
+	if err != nil {
+		return nil, err
+	}
+
+	slices.SortStableFunc(events, func(a, b *AuditEvent) int {
+		return b.CreatedAt.Compare(a.CreatedAt)
+	})
+
+	if offset >= len(events) {
+		return []*AuditEvent{}, nil
+	}
+
+	return events[offset:min(offset+limit, len(events))], nil
 }
 
 func (s *fakeAuditEventsStorage) Delete(_ context.Context, _ *AuditEventFilter) error {
