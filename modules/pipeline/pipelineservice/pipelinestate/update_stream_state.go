@@ -25,22 +25,25 @@ type UpdateStreamStateParams struct {
 type UpdateStreamState struct {
 	getConnection *pipelineconnections.GetConnection
 	saveSyncState *SaveSyncState
+	audit         pipelineservice.AuditRecorder
 }
 
 // NewUpdateStreamState creates a new UpdateStreamState use case.
-func NewUpdateStreamState(getConnection *pipelineconnections.GetConnection, saveSyncState *SaveSyncState) *UpdateStreamState {
+func NewUpdateStreamState(getConnection *pipelineconnections.GetConnection, saveSyncState *SaveSyncState, audit pipelineservice.AuditRecorder) *UpdateStreamState {
 	return &UpdateStreamState{
 		getConnection: getConnection,
 		saveSyncState: saveSyncState,
+		audit:         audit,
 	}
 }
 
 // Execute verifies the connection, validates the JSON state data, and saves it.
 func (uc *UpdateStreamState) Execute(ctx context.Context, params UpdateStreamStateParams) error {
-	if _, err := uc.getConnection.Execute(ctx, pipelineconnections.GetConnectionParams{
+	conn, err := uc.getConnection.Execute(ctx, pipelineconnections.GetConnectionParams{
 		ID:          params.ConnectionID,
 		WorkspaceID: params.WorkspaceID,
-	}); err != nil {
+	})
+	if err != nil {
 		return fmt.Errorf("connection not found in workspace: %w", err)
 	}
 
@@ -65,6 +68,20 @@ func (uc *UpdateStreamState) Execute(ctx context.Context, params UpdateStreamSta
 	}); err != nil {
 		return fmt.Errorf("saving stream state: %w", err)
 	}
+
+	stream := params.StreamName
+	if params.StreamNamespace != "" {
+		stream = params.StreamNamespace + "." + params.StreamName
+	}
+
+	uc.audit.Record(ctx, pipelineservice.AuditEvent{
+		WorkspaceID:   params.WorkspaceID,
+		Action:        "update",
+		ResourceType:  "connection",
+		ResourceID:    conn.ID,
+		ResourceLabel: conn.Name,
+		After:         map[string]any{"stream_state_set": stream},
+	})
 
 	return nil
 }

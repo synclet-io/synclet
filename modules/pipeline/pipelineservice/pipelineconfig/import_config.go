@@ -30,11 +30,12 @@ type ImportConfigResult struct {
 type ImportConfig struct {
 	storage pipelineservice.Storage
 	cfg     pipelineservice.Config
+	audit   pipelineservice.AuditRecorder
 }
 
 // NewImportConfig creates a new ImportConfig use case.
-func NewImportConfig(storage pipelineservice.Storage, cfg pipelineservice.Config) *ImportConfig {
-	return &ImportConfig{storage: storage, cfg: cfg}
+func NewImportConfig(storage pipelineservice.Storage, cfg pipelineservice.Config, audit pipelineservice.AuditRecorder) *ImportConfig {
+	return &ImportConfig{storage: storage, cfg: cfg, audit: audit}
 }
 
 // Execute parses YAML config and creates/updates sources, destinations, and connections.
@@ -49,6 +50,8 @@ func (uc *ImportConfig) Execute(ctx context.Context, params ImportConfigParams) 
 	}
 
 	result := &ImportConfigResult{}
+
+	var sourcesWritten, destinationsWritten, connectionsWritten int
 
 	// Import sources
 	sourceIDByName := make(map[string]uuid.UUID)
@@ -78,6 +81,7 @@ func (uc *ImportConfig) Execute(ctx context.Context, params ImportConfigParams) 
 		if len(existing) > 0 {
 			src := existing[0]
 			sourceIDByName[sourceConfig.Name] = src.ID
+			before := connectorAuditFields(src.Name, src.ManagedConnectorID)
 			mergedConfig := mergeConfigs(configToMap(src.Config), sourceConfig.Config)
 			mergedBytes, _ := json.Marshal(mergedConfig)
 			src.ManagedConnectorID = managedConnectorID
@@ -89,6 +93,9 @@ func (uc *ImportConfig) Execute(ctx context.Context, params ImportConfigParams) 
 				continue
 			}
 
+			uc.record(ctx, params.WorkspaceID, "update", "source", src.ID, src.Name, before, connectorAuditFields(src.Name, src.ManagedConnectorID))
+
+			sourcesWritten++
 			result.Updated++
 		} else {
 			src := pipelineservice.Source{
@@ -104,7 +111,9 @@ func (uc *ImportConfig) Execute(ctx context.Context, params ImportConfigParams) 
 				continue
 			}
 
+			uc.record(ctx, params.WorkspaceID, "create", "source", src.ID, src.Name, nil, connectorAuditFields(src.Name, src.ManagedConnectorID))
 			sourceIDByName[sourceConfig.Name] = src.ID
+			sourcesWritten++
 			result.Created++
 		}
 	}
@@ -137,6 +146,7 @@ func (uc *ImportConfig) Execute(ctx context.Context, params ImportConfigParams) 
 		if len(existing) > 0 {
 			dst := existing[0]
 			destIDByName[destConfig.Name] = dst.ID
+			before := connectorAuditFields(dst.Name, dst.ManagedConnectorID)
 			mergedConfig := mergeConfigs(configToMap(dst.Config), destConfig.Config)
 			mergedBytes, _ := json.Marshal(mergedConfig)
 			dst.ManagedConnectorID = managedConnectorID
@@ -148,6 +158,9 @@ func (uc *ImportConfig) Execute(ctx context.Context, params ImportConfigParams) 
 				continue
 			}
 
+			uc.record(ctx, params.WorkspaceID, "update", "destination", dst.ID, dst.Name, before, connectorAuditFields(dst.Name, dst.ManagedConnectorID))
+
+			destinationsWritten++
 			result.Updated++
 		} else {
 			dst := pipelineservice.Destination{
@@ -163,7 +176,9 @@ func (uc *ImportConfig) Execute(ctx context.Context, params ImportConfigParams) 
 				continue
 			}
 
+			uc.record(ctx, params.WorkspaceID, "create", "destination", dst.ID, dst.Name, nil, connectorAuditFields(dst.Name, dst.ManagedConnectorID))
 			destIDByName[destConfig.Name] = dst.ID
+			destinationsWritten++
 			result.Created++
 		}
 	}
@@ -224,6 +239,7 @@ func (uc *ImportConfig) Execute(ctx context.Context, params ImportConfigParams) 
 
 		if len(existingConns) > 0 {
 			conn := existingConns[0]
+			before := connectionAuditFields(conn)
 			conn.Schedule = schedule
 
 			conn.Status = status
@@ -239,6 +255,9 @@ func (uc *ImportConfig) Execute(ctx context.Context, params ImportConfigParams) 
 				continue
 			}
 
+			uc.record(ctx, params.WorkspaceID, "update", "connection", conn.ID, conn.Name, before, connectionAuditFields(conn))
+
+			connectionsWritten++
 			result.Updated++
 		} else {
 			maxAttempts := connConfig.MaxAttempts
@@ -266,11 +285,55 @@ func (uc *ImportConfig) Execute(ctx context.Context, params ImportConfigParams) 
 				continue
 			}
 
+			uc.record(ctx, params.WorkspaceID, "create", "connection", conn.ID, conn.Name, nil, connectionAuditFields(&conn))
+
+			connectionsWritten++
 			result.Created++
 		}
 	}
 
+	uc.record(ctx, params.WorkspaceID, "update", "workspace", params.WorkspaceID, "config import", nil, map[string]any{
+		"sources":      sourcesWritten,
+		"destinations": destinationsWritten,
+		"connections":  connectionsWritten,
+	})
+
 	return result, nil
+}
+
+func (uc *ImportConfig) record(ctx context.Context, workspaceID uuid.UUID, action, resourceType string, resourceID uuid.UUID, label string, before, after any) {
+	uc.audit.Record(ctx, pipelineservice.AuditEvent{
+		WorkspaceID:   workspaceID,
+		Action:        action,
+		ResourceType:  resourceType,
+		ResourceID:    resourceID,
+		ResourceLabel: label,
+		Before:        before,
+		After:         after,
+	})
+}
+
+// connectorAuditFields returns the non-secret fields of a source or destination; the connector config is never included.
+func connectorAuditFields(name string, managedConnectorID uuid.UUID) map[string]any {
+	return map[string]any{
+		"name":                 name,
+		"managed_connector_id": managedConnectorID.String(),
+	}
+}
+
+// connectionAuditFields returns the connection fields an import can change.
+func connectionAuditFields(conn *pipelineservice.Connection) map[string]any {
+	var schedule any
+	if conn.Schedule != nil {
+		schedule = *conn.Schedule
+	}
+
+	return map[string]any{
+		"name":         conn.Name,
+		"schedule":     schedule,
+		"status":       conn.Status.String(),
+		"max_attempts": conn.MaxAttempts,
+	}
 }
 
 // filterRedacted removes redacted placeholder values from a config map.
