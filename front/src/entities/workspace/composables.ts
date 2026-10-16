@@ -1,7 +1,7 @@
 import type { MaybeRef, Ref } from 'vue'
 import type { MemberRole } from './types'
 import { useAuth } from '@entities/auth'
-import { inviteKeys, workspaceKeys } from '@shared/lib/queryKeys'
+import { connectionKeys, destinationKeys, inviteKeys, sourceKeys, statsKeys, workspaceKeys } from '@shared/lib/queryKeys'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
 import { computed, toValue } from 'vue'
 import * as workspaceApi from './api'
@@ -79,8 +79,10 @@ export function useAcceptInvite() {
 }
 
 export function useDeclineInvite() {
+  const qc = useQueryClient()
   return useMutation({
     mutationFn: (token: string) => workspaceApi.declineInvite(token),
+    onSuccess: (_data, token) => { qc.invalidateQueries({ queryKey: inviteKeys.byToken(token) }) },
   })
 }
 
@@ -115,7 +117,20 @@ export function useExportConfig() {
 }
 
 export function useImportConfig() {
+  const qc = useQueryClient()
+  const { currentWorkspaceId } = useAuth()
   return useMutation({
     mutationFn: (file: File) => workspaceApi.importConfig(file),
+    onSuccess: () => {
+      const workspaceId = currentWorkspaceId.value ?? ''
+      for (const queryKey of [
+        sourceKeys.all(workspaceId),
+        destinationKeys.all(workspaceId),
+        connectionKeys.all(workspaceId),
+        statsKeys.all(workspaceId),
+      ]) {
+        qc.invalidateQueries({ queryKey })
+      }
+    },
   })
 }

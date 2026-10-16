@@ -1,9 +1,11 @@
 import type { MaybeRef, Ref } from 'vue'
 import type { ConfiguredStream } from './types'
 import { useAuth } from '@entities/auth'
+import { useConnectorTaskResult } from '@entities/connector-task'
+import { getErrorMessage } from '@shared/lib/errorUtils'
 import { connectionKeys } from '@shared/lib/queryKeys'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
-import { computed, toValue } from 'vue'
+import { computed, ref, toValue, watch } from 'vue'
 import * as connectionApi from './api'
 
 export function useStreamStates(connectionId: MaybeRef<string>) {
@@ -132,15 +134,60 @@ export function useSchemaChanges(connectionId: MaybeRef<string>, options?: { ena
   })
 }
 
-export function useDiscoverSchema() {
+export function useDiscoverSchemaTask(
+  connectionId: MaybeRef<string>,
+  callbacks?: { onCompleted?: () => void, onFailed?: (message: string) => void },
+) {
   const qc = useQueryClient()
   const { currentWorkspaceId } = useAuth()
-  return useMutation({
-    mutationFn: (connectionId: string) => connectionApi.discoverSchema(connectionId),
-    onSuccess: (_data, connectionId) => {
-      qc.invalidateQueries({ queryKey: connectionKeys.schemaChanges(currentWorkspaceId.value ?? '', connectionId) })
-    },
+  const taskId = ref<string | null>(null)
+  const discoveringFor = ref('')
+  const task = useConnectorTaskResult(taskId)
+  const start = useMutation({
+    mutationFn: (id: string) => connectionApi.discoverSchema(id),
   })
+
+  function finish(failure?: string) {
+    const id = discoveringFor.value
+    taskId.value = null
+    if (failure !== undefined) {
+      callbacks?.onFailed?.(failure)
+      return
+    }
+    const workspaceId = currentWorkspaceId.value ?? ''
+    qc.invalidateQueries({ queryKey: connectionKeys.schemaChanges(workspaceId, id) })
+    qc.invalidateQueries({ queryKey: connectionKeys.streamStates(workspaceId, id) })
+    callbacks?.onCompleted?.()
+  }
+
+  watch([task.data, task.isError, task.timedOut], ([data, isError, timedOut]) => {
+    if (!taskId.value)
+      return
+    if (data?.status === 'completed')
+      finish()
+    else if (data?.status === 'failed')
+      finish(data.errorMessage || 'Schema discovery failed')
+    else if (isError)
+      finish(getErrorMessage(task.error.value))
+    else if (timedOut)
+      finish('Schema discovery is taking longer than expected. Check the job logs and try again.')
+  })
+
+  async function discover() {
+    const id = toValue(connectionId)
+    try {
+      const res = await start.mutateAsync(id)
+      discoveringFor.value = id
+      taskId.value = res.taskId
+    }
+    catch (e: unknown) {
+      callbacks?.onFailed?.(getErrorMessage(e))
+    }
+  }
+
+  const isDiscovering = computed(() => start.isPending.value || !!taskId.value)
+
+  return { discover, isDiscovering }
 }
 
 export function useConfigureStreams() {

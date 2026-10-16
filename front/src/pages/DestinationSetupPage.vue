@@ -1,32 +1,39 @@
 <script setup lang="ts">
 import type { ExternalDocumentationUrl, ManagedConnector } from '@entities/connector'
+import { useConnectorSpec, useManagedConnectors } from '@entities/connector'
 import { useConnectorTaskResult } from '@entities/connector-task'
-import { getConnectorSpec, listManagedConnectors } from '@entities/connector/api'
-import { createDestination, testConnection as testDestinationConnection } from '@entities/destination/api'
+import { useCreateDestination, useTestDestinationConnection } from '@entities/destination'
 import { getErrorMessage } from '@shared/lib/errorUtils'
-import { PageHeader, SAlert, SButton, SCard, SInput } from '@shared/ui'
+import { PageHeader, SAlert, SButton, SCard, SConfirmDialog, SEmptyState, SInput, SSkeleton } from '@shared/ui'
 import JsonSchemaForm from '@shared/ui/JsonSchemaForm.vue'
-import { ExternalLink } from 'lucide-vue-next'
-import { computed, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { ExternalLink, PackageOpen } from 'lucide-vue-next'
+import { computed, ref, watch } from 'vue'
+import { onBeforeRouteLeave, useRouter } from 'vue-router'
 
 const router = useRouter()
 const step = ref(1)
-const connectors = ref<ManagedConnector[]>([])
 const selectedConnector = ref<ManagedConnector | null>(null)
-const spec = ref<any>(null)
 const name = ref('')
 const configValues = ref<Record<string, any>>({})
 const showJsonEditor = ref(false)
 const jsonEditorText = ref('{}')
-const loading = ref(false)
 const error = ref('')
 const search = ref('')
-const testing = ref(false)
-const externalDocs = ref<ExternalDocumentationUrl[]>([])
+const created = ref(false)
+const resolveLeave = ref<((leave: boolean) => void) | null>(null)
+
+const { data: allConnectors, isLoading: connectorsLoading, error: connectorsError } = useManagedConnectors()
+const connectors = computed(() => (allConnectors.value ?? []).filter(c => c.connectorType === 'destination'))
+
+const selectedConnectorId = computed(() => selectedConnector.value?.id)
+const { data: specResult, isLoading: specLoading, error: specError } = useConnectorSpec(selectedConnectorId)
+const externalDocs = computed<ExternalDocumentationUrl[]>(() => specResult.value?.externalDocumentationUrls ?? [])
+
+const createMutation = useCreateDestination()
+const testMutation = useTestDestinationConnection()
 
 const testTaskId = ref<string | null>(null)
-const { data: testTaskResult } = useConnectorTaskResult(testTaskId)
+const { data: testTaskResult, polling: testPolling, error: testPollError, timedOut: testTimedOut } = useConnectorTaskResult(testTaskId)
 
 const testResult = computed(() => {
   if (!testTaskResult.value)
@@ -42,12 +49,12 @@ const testResult = computed(() => {
   return null
 })
 
-const testPolling = computed(() => {
-  if (!testTaskId.value)
-    return false
-  if (!testTaskResult.value)
-    return true
-  return testTaskResult.value.status === 'pending' || testTaskResult.value.status === 'running'
+const testError = computed(() => {
+  if (testPollError.value)
+    return getErrorMessage(testPollError.value)
+  if (testTimedOut.value)
+    return 'The connection test is taking longer than expected. Try again later.'
+  return ''
 })
 
 const DOC_GROUPS = [
@@ -67,7 +74,11 @@ const groupedDocs = computed(() =>
 
 const hasExternalDocs = computed(() => externalDocs.value.length > 0)
 
-const connectionSpec = computed(() => spec.value?.connectionSpecification ?? null)
+const connectionSpec = computed(() => (specResult.value?.spec as any)?.connectionSpecification ?? null)
+
+const hasUnsavedChanges = computed(() =>
+  step.value === 2 && (!!name.value || Object.keys(configValues.value).length > 0),
+)
 
 watch(configValues, (val) => {
   if (!showJsonEditor.value) {
@@ -85,32 +96,25 @@ function syncJsonToForm() {
   }
 }
 
-onMounted(async () => {
-  try {
-    const all = await listManagedConnectors()
-    connectors.value = all.filter(c => c.connectorType === 'destination')
-  }
-  catch (e: unknown) {
-    error.value = getErrorMessage(e)
-  }
+onBeforeRouteLeave(() => {
+  if (created.value || !hasUnsavedChanges.value)
+    return true
+  return new Promise<boolean>((resolve) => {
+    resolveLeave.value = resolve
+  })
 })
 
-async function selectConnector(c: ManagedConnector) {
+function settleLeave(leave: boolean) {
+  resolveLeave.value?.(leave)
+  resolveLeave.value = null
+}
+
+function selectConnector(c: ManagedConnector) {
   selectedConnector.value = c
-  loading.value = true
-  try {
-    const result = await getConnectorSpec(c.id)
-    spec.value = result.spec
-    externalDocs.value = result.externalDocumentationUrls
-    configValues.value = {}
-    step.value = 2
-  }
-  catch (e: unknown) {
-    error.value = `Failed to load spec: ${getErrorMessage(e)}`
-  }
-  finally {
-    loading.value = false
-  }
+  configValues.value = {}
+  testTaskId.value = null
+  error.value = ''
+  step.value = 2
 }
 
 function syncJsonIfNeeded() {
@@ -143,22 +147,22 @@ async function handleCreateDestination() {
   if (!selectedConnector.value)
     return
   syncJsonIfNeeded()
-  loading.value = true
   error.value = ''
   testTaskId.value = null
   try {
-    await createDestination({
+    const destination = await createMutation.mutateAsync({
       name: name.value,
       managedConnectorId: selectedConnector.value.id,
       config: cleanConfig(configValues.value),
     })
-    router.push('/destinations')
+    created.value = true
+    if (destination)
+      router.push({ name: 'destination-detail', params: { id: destination.id } })
+    else
+      router.push({ name: 'destinations' })
   }
   catch (e: unknown) {
     error.value = getErrorMessage(e)
-  }
-  finally {
-    loading.value = false
   }
 }
 
@@ -166,11 +170,10 @@ async function handleTestConnection() {
   if (!selectedConnector.value)
     return
   syncJsonIfNeeded()
-  testing.value = true
   testTaskId.value = null
   error.value = ''
   try {
-    const { taskId } = await testDestinationConnection({
+    const { taskId } = await testMutation.mutateAsync({
       managedConnectorId: selectedConnector.value.id,
       config: cleanConfig(configValues.value),
     })
@@ -179,17 +182,14 @@ async function handleTestConnection() {
   catch (e: unknown) {
     error.value = getErrorMessage(e)
   }
-  finally {
-    testing.value = false
-  }
 }
 
-function filteredConnectors() {
+const filteredConnectors = computed(() => {
   if (!search.value)
     return connectors.value
   const q = search.value.toLowerCase()
   return connectors.value.filter(c => c.name.toLowerCase().includes(q))
-}
+})
 </script>
 
 <template>
@@ -200,27 +200,45 @@ function filteredConnectors() {
   </SAlert>
 
   <div v-if="step === 1">
-    <SInput v-model="search" placeholder="Search destination connectors..." class="mb-4" />
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-      <button
-        v-for="c in filteredConnectors()" :key="c.id" class="text-left bg-surface rounded-xl border border-border p-4 hover:border-primary hover:shadow-raised transition-all duration-200"
-        @click="selectConnector(c)"
-      >
-        <div class="flex items-center gap-3">
-          <div>
-            <h3 class="text-sm font-semibold text-heading">
-              {{ c.name }}
-            </h3>
-            <p class="text-xs text-text-muted mt-0.5">
-              {{ c.dockerImage }}:{{ c.dockerTag }}
-            </p>
+    <SAlert v-if="connectorsError" variant="danger" class="mb-4">
+      Failed to load connectors: {{ getErrorMessage(connectorsError) }}
+    </SAlert>
+    <div v-else-if="connectorsLoading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+      <SSkeleton v-for="i in 6" :key="i" variant="rect" height="72px" />
+    </div>
+    <SEmptyState
+      v-else-if="connectors.length === 0"
+      :icon="PackageOpen"
+      title="No destination connectors installed yet"
+      description="Connectors arrive from your repositories. If this workspace was just created, the first repository sync may still be running."
+    >
+      <SButton :to="{ name: 'settings-connectors' }" variant="secondary" size="sm">
+        Manage connectors
+      </SButton>
+    </SEmptyState>
+    <template v-else>
+      <SInput v-model="search" placeholder="Search destination connectors..." class="mb-4" />
+      <p v-if="filteredConnectors.length === 0" class="text-sm text-text-muted py-8 text-center">
+        No destination connectors match "{{ search }}".
+      </p>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        <button
+          v-for="c in filteredConnectors" :key="c.id" class="text-left bg-surface rounded-xl border border-border p-4 hover:border-primary hover:shadow-raised transition-all duration-200"
+          @click="selectConnector(c)"
+        >
+          <div class="flex items-center gap-3">
+            <div>
+              <h3 class="text-sm font-semibold text-heading">
+                {{ c.name }}
+              </h3>
+              <p class="text-xs text-text-muted mt-0.5">
+                {{ c.dockerImage }}:{{ c.dockerTag }}
+              </p>
+            </div>
           </div>
-        </div>
-      </button>
-    </div>
-    <div v-if="loading" class="text-center py-8 text-text-muted">
-      Loading connector spec...
-    </div>
+        </button>
+      </div>
+    </template>
   </div>
 
   <div v-if="step === 2" :class="hasExternalDocs ? 'max-w-5xl flex flex-col lg:flex-row gap-6' : 'max-w-2xl'">
@@ -259,7 +277,11 @@ function filteredConnectors() {
                 {{ showJsonEditor ? 'Switch to Form' : 'Edit as JSON' }}
               </button>
             </div>
-            <div v-if="showJsonEditor">
+            <SSkeleton v-if="specLoading" :count="4" height="36px" />
+            <SAlert v-else-if="specError" variant="danger">
+              Failed to load the connector spec: {{ getErrorMessage(specError) }}
+            </SAlert>
+            <div v-else-if="showJsonEditor">
               <textarea
                 v-model="jsonEditorText" rows="10" placeholder="{}"
                 class="w-full px-3 py-2 border border-border rounded-lg bg-surface text-sm font-mono text-text-primary"
@@ -279,6 +301,9 @@ function filteredConnectors() {
           <SAlert v-if="testPolling" variant="info">
             Testing connection...
           </SAlert>
+          <SAlert v-else-if="testError" variant="danger">
+            {{ testError }}
+          </SAlert>
           <SAlert v-else-if="testResult" :variant="testResult.success ? 'success' : 'danger'">
             {{ testResult.message }}
           </SAlert>
@@ -287,11 +312,11 @@ function filteredConnectors() {
             <SButton variant="secondary" type="button" @click="step = 1">
               Back
             </SButton>
-            <SButton variant="secondary" type="button" :loading="testing || testPolling" @click="handleTestConnection">
+            <SButton variant="secondary" type="button" :loading="testMutation.isPending.value || testPolling" :disabled="specLoading" @click="handleTestConnection">
               Test Connection
             </SButton>
-            <SButton type="submit" :loading="loading" :disabled="!name">
-              {{ loading ? 'Testing connection...' : 'Create Destination' }}
+            <SButton type="submit" :loading="createMutation.isPending.value" :disabled="!name || specLoading">
+              {{ createMutation.isPending.value ? 'Creating destination...' : 'Create Destination' }}
             </SButton>
           </div>
         </form>
@@ -323,4 +348,14 @@ function filteredConnectors() {
       </div>
     </div>
   </div>
+
+  <SConfirmDialog
+    :open="!!resolveLeave"
+    title="Leave without creating?"
+    message="The destination has not been created yet. Leaving discards the name and configuration you entered."
+    confirm-text="Leave"
+    cancel-text="Stay"
+    @confirm="settleLeave(true)"
+    @cancel="settleLeave(false)"
+  />
 </template>

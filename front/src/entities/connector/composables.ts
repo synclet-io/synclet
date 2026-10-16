@@ -17,7 +17,7 @@ export function useAddConnector() {
 export function useManagedConnector(id: MaybeRef<string>) {
   const { currentWorkspaceId } = useAuth()
   return useQuery({
-    queryKey: computed(() => ['managed-connector', currentWorkspaceId.value ?? '', toValue(id)]),
+    queryKey: computed(() => connectorKeys.managedDetail(currentWorkspaceId.value ?? '', toValue(id))),
     queryFn: () => connectorApi.getManagedConnector(toValue(id)),
     enabled: computed(() => !!currentWorkspaceId.value && !!toValue(id)),
   })
@@ -42,11 +42,21 @@ export function useManagedConnectors(params?: {
   })
 }
 
-export function useConnectorVersions(connectorImage: Ref<string>) {
+export function useConnectorSpec(id: MaybeRef<string | null | undefined>) {
+  const { currentWorkspaceId } = useAuth()
   return useQuery({
-    queryKey: computed(() => ['connector-versions', connectorImage.value]),
+    queryKey: computed(() => connectorKeys.spec(currentWorkspaceId.value ?? '', toValue(id) ?? '')),
+    queryFn: () => connectorApi.getConnectorSpec(toValue(id)!),
+    enabled: computed(() => !!currentWorkspaceId.value && !!toValue(id)),
+  })
+}
+
+export function useConnectorVersions(connectorImage: Ref<string>) {
+  const { currentWorkspaceId } = useAuth()
+  return useQuery({
+    queryKey: computed(() => connectorKeys.versions(currentWorkspaceId.value ?? '', connectorImage.value)),
     queryFn: () => connectorApi.getConnectorVersions(connectorImage.value),
-    enabled: computed(() => !!connectorImage.value),
+    enabled: computed(() => !!currentWorkspaceId.value && !!connectorImage.value),
     staleTime: 1000 * 60 * 60,
   })
 }

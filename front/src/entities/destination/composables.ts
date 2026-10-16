@@ -1,6 +1,6 @@
 import type { MaybeRef, Ref } from 'vue'
 import { useAuth } from '@entities/auth'
-import { destinationKeys } from '@shared/lib/queryKeys'
+import { connectionKeys, destinationKeys, statsKeys } from '@shared/lib/queryKeys'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
 import { computed, toValue } from 'vue'
 import * as destinationApi from './api'
@@ -27,12 +27,25 @@ export function useDestination(id: MaybeRef<string>) {
   })
 }
 
+export function useCreateDestination() {
+  const qc = useQueryClient()
+  const { currentWorkspaceId } = useAuth()
+  return useMutation({
+    mutationFn: destinationApi.createDestination,
+    onSuccess: () => { qc.invalidateQueries({ queryKey: destinationKeys.all(currentWorkspaceId.value ?? '') }) },
+  })
+}
+
 export function useUpdateDestination() {
   const qc = useQueryClient()
   const { currentWorkspaceId } = useAuth()
   return useMutation({
     mutationFn: destinationApi.updateDestination,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: destinationKeys.all(currentWorkspaceId.value ?? '') }) },
+    onSuccess: () => {
+      const workspaceId = currentWorkspaceId.value ?? ''
+      qc.invalidateQueries({ queryKey: destinationKeys.all(workspaceId) })
+      qc.invalidateQueries({ queryKey: connectionKeys.all(workspaceId) })
+    },
   })
 }
 
@@ -41,7 +54,12 @@ export function useDeleteDestination() {
   const { currentWorkspaceId } = useAuth()
   return useMutation({
     mutationFn: destinationApi.deleteDestination,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: destinationKeys.all(currentWorkspaceId.value ?? '') }) },
+    onSuccess: () => {
+      const workspaceId = currentWorkspaceId.value ?? ''
+      qc.invalidateQueries({ queryKey: destinationKeys.all(workspaceId) })
+      qc.invalidateQueries({ queryKey: connectionKeys.all(workspaceId) })
+      qc.invalidateQueries({ queryKey: statsKeys.all(workspaceId) })
+    },
   })
 }
 

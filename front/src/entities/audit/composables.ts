@@ -31,7 +31,9 @@ export function useUpdateAuditRetention() {
   return useMutation({
     mutationFn: auditApi.updateAuditRetention,
     onSuccess: (retention) => {
-      qc.setQueryData(auditKeys.retention(currentWorkspaceId.value ?? ''), retention)
+      const workspaceId = currentWorkspaceId.value ?? ''
+      qc.setQueryData(auditKeys.retention(workspaceId), retention)
+      qc.invalidateQueries({ queryKey: [...auditKeys.all(workspaceId), 'list'] })
     },
   })
 }

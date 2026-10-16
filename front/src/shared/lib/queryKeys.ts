@@ -3,7 +3,14 @@ export const connectorKeys = {
   list: (workspaceId: string) => [...connectorKeys.all(workspaceId), 'list'] as const,
   managed: (workspaceId: string, repositoryId?: string | null, search?: string) =>
     [...connectorKeys.all(workspaceId), 'managed', repositoryId ?? '', search ?? ''] as const,
+  managedDetail: (workspaceId: string, id: string) => [...connectorKeys.all(workspaceId), 'managedDetail', id] as const,
   spec: (workspaceId: string, name: string) => [...connectorKeys.all(workspaceId), 'spec', name] as const,
+  versions: (workspaceId: string, image: string) => [...connectorKeys.all(workspaceId), 'versions', image] as const,
+} as const
+
+export const connectorTaskKeys = {
+  all: ['connector-task'] as const,
+  detail: (taskId: string) => [...connectorTaskKeys.all, taskId] as const,
 } as const
 
 export const sourceKeys = {
@@ -76,4 +83,14 @@ export const auditKeys = {
   all: (workspaceId: string) => ['audit', workspaceId] as const,
   list: (workspaceId: string, params: object) => [...auditKeys.all(workspaceId), 'list', params] as const,
   retention: (workspaceId: string) => [...auditKeys.all(workspaceId), 'retention'] as const,
+} as const
+
+export const systemKeys = {
+  all: ['system'] as const,
+  info: () => [...systemKeys.all, 'info'] as const,
+} as const
+
+export const apiKeyKeys = {
+  all: (workspaceId: string) => ['apiKeys', workspaceId] as const,
+  list: (workspaceId: string) => [...apiKeyKeys.all(workspaceId), 'list'] as const,
 } as const

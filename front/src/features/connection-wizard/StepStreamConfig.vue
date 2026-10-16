@@ -52,24 +52,40 @@ const validationErrors = ref<StreamValidationError[]>([])
 const expandedNamespaces = ref(new Set<string>())
 
 const discoverTaskId = ref<string | null>(null)
-const { data: discoverTaskResult } = useConnectorTaskResult(discoverTaskId)
+const DISCOVERY_FAILED = 'Schema discovery failed. Check that the source connector is running and try again.'
+const { data: discoverTaskResult, error: discoverPollError, timedOut: discoverTimedOut } = useConnectorTaskResult(discoverTaskId)
 
-// Watch discover task result and extract catalog when complete
+function stopDiscovery(message?: string) {
+  if (message)
+    error.value = message
+  discovering.value = false
+  discoverTaskId.value = null
+}
+
 watch(discoverTaskResult, (task) => {
   if (!task)
     return
-  if (task.status === 'completed' && task.discoverResult) {
-    const cat = task.discoverResult.catalog
-    parseStreams(cat)
-    emit('update:discoveredCatalog', cat ?? null)
-    discovering.value = false
-    discoverTaskId.value = null
+  if (task.status === 'completed') {
+    const cat = task.discoverResult?.catalog
+    if (cat) {
+      parseStreams(cat)
+      emit('update:discoveredCatalog', cat)
+    }
+    stopDiscovery()
   }
   else if (task.status === 'failed') {
-    error.value = task.errorMessage || 'Schema discovery failed. Check that the source connector is running and try again.'
-    discovering.value = false
-    discoverTaskId.value = null
+    stopDiscovery(task.errorMessage || DISCOVERY_FAILED)
   }
+})
+
+watch(discoverPollError, (e) => {
+  if (e && discoverTaskId.value)
+    stopDiscovery(getErrorMessage(e))
+})
+
+watch(discoverTimedOut, (timedOut) => {
+  if (timedOut && discoverTaskId.value)
+    stopDiscovery('Schema discovery is taking longer than expected. Check the source connector and try again.')
 })
 
 const { validate } = useStreamValidation()
@@ -275,8 +291,7 @@ async function handleDiscoverSchema() {
     discoverTaskId.value = taskId
   }
   catch (e: unknown) {
-    error.value = getErrorMessage(e) || 'Schema discovery failed. Check that the source connector is running and try again.'
-    discovering.value = false
+    stopDiscovery(getErrorMessage(e) || DISCOVERY_FAILED)
   }
 }
 </script>
@@ -285,7 +300,7 @@ async function handleDiscoverSchema() {
   <div>
     <!-- Error alert -->
     <SAlert v-if="error" variant="danger" class="mb-4" dismissible @dismiss="error = ''">
-      Schema discovery failed. Check that the source connector is running and try again.
+      {{ error }}
     </SAlert>
 
     <!-- Loading state during discovery -->

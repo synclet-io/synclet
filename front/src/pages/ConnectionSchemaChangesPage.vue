@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { SchemaChange, SchemaChangeType } from '@entities/connection'
 import type { Column } from '@shared/ui'
-import { useConnection, useDiscoverSchema, useSchemaChanges } from '@entities/connection'
+import { useConnection, useDiscoverSchemaTask, useSchemaChanges } from '@entities/connection'
 import { getErrorMessage } from '@shared/lib/errorUtils'
 import { SAlert, SBadge, SButton, SEmptyState, STable, useToast } from '@shared/ui'
 import { CheckCircle2, RefreshCw } from 'lucide-vue-next'
@@ -13,8 +13,11 @@ const toast = useToast()
 const connectionId = computed(() => route.params.id as string)
 
 const { data: connection } = useConnection(connectionId)
-const { data: changes, isLoading, error, refetch } = useSchemaChanges(connectionId)
-const discoverMutation = useDiscoverSchema()
+const { data: changes, isLoading, error } = useSchemaChanges(connectionId)
+const { discover, isDiscovering } = useDiscoverSchemaTask(connectionId, {
+  onCompleted: () => toast.success('Source schema refreshed'),
+  onFailed: message => toast.error(`Refresh failed: ${message}`),
+})
 
 const changeCount = computed(() => changes.value?.length ?? 0)
 
@@ -32,17 +35,6 @@ const policyMessage = computed(() => {
       return ''
   }
 })
-
-async function refreshFromSource() {
-  try {
-    await discoverMutation.mutateAsync(connectionId.value)
-    await refetch()
-    toast.success('Source schema refreshed')
-  }
-  catch (e: unknown) {
-    toast.error(`Refresh failed: ${getErrorMessage(e)}`)
-  }
-}
 
 function changeVariant(type: SchemaChangeType): 'success' | 'danger' | 'warning' | 'gray' {
   switch (type) {
@@ -74,8 +66,15 @@ const columns: Column[] = [
 
 <template>
   <div class="space-y-4 mt-4">
+    <div v-if="isDiscovering" class="flex items-center gap-2 text-sm text-text-secondary" role="status">
+      <SBadge variant="info">
+        Discovering…
+      </SBadge>
+      Running schema discovery on the source connector. Changes appear here when it finishes.
+    </div>
+
     <SAlert v-if="error" variant="danger">
-      Failed to load schema changes: {{ error.message }}
+      Failed to load schema changes: {{ getErrorMessage(error) }}
     </SAlert>
 
     <div v-if="changeCount > 0" class="flex items-center justify-between gap-4">
@@ -87,9 +86,9 @@ const columns: Column[] = [
           {{ policyMessage }}
         </p>
       </SAlert>
-      <SButton variant="secondary" :loading="discoverMutation.isPending.value" @click="refreshFromSource">
-        <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': discoverMutation.isPending.value }" />
-        Refresh from source
+      <SButton variant="secondary" :disabled="isDiscovering" @click="discover">
+        <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': isDiscovering }" />
+        {{ isDiscovering ? 'Discovering…' : 'Refresh from source' }}
       </SButton>
     </div>
 
@@ -127,9 +126,9 @@ const columns: Column[] = [
         description="Schema drift is detected on every sync. Use Refresh from source to re-run discovery now."
         :icon="CheckCircle2"
       >
-        <SButton :loading="discoverMutation.isPending.value" @click="refreshFromSource">
-          <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': discoverMutation.isPending.value }" />
-          Refresh from source
+        <SButton :disabled="isDiscovering" @click="discover">
+          <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': isDiscovering }" />
+          {{ isDiscovering ? 'Discovering…' : 'Refresh from source' }}
         </SButton>
       </SEmptyState>
     </template>
