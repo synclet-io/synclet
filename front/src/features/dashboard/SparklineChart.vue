@@ -1,21 +1,21 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Line } from 'vue-chartjs'
-import './chartSetup'
+import { useChartTheme } from './chartSetup'
 
-const props = withDefaults(defineProps<{
+const props = defineProps<{
   values: number[]
   color?: string
-}>(), {
-  color: '#6366f1',
-})
+}>()
+
+const { palette, version } = useChartTheme()
 
 const chartData = computed(() => ({
   labels: props.values.map(() => ''),
   datasets: [
     {
       data: props.values,
-      borderColor: props.color,
+      borderColor: props.color ?? palette.value.primary,
       borderWidth: 1.5,
       pointRadius: 0,
       tension: 0.3,
@@ -43,6 +43,6 @@ const chartOptions = {
 
 <template>
   <div class="h-8 w-24">
-    <Line :data="chartData" :options="chartOptions" />
+    <Line :key="version" :data="chartData" :options="chartOptions" />
   </div>
 </template>

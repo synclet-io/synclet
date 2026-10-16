@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Bar } from 'vue-chartjs'
-import './chartSetup'
+import { useChartTheme } from './chartSetup'
 
 const props = defineProps<{
   labels: string[]
   durations: number[]
 }>()
+
+const { palette, version } = useChartTheme()
 
 const chartData = computed(() => ({
   labels: props.labels,
@@ -14,7 +16,7 @@ const chartData = computed(() => ({
     {
       label: 'Avg Duration (s)',
       data: props.durations.map(d => +(d / 1000).toFixed(1)),
-      backgroundColor: '#3b82f6',
+      backgroundColor: palette.value.primary,
       borderRadius: 4,
     },
   ],
@@ -24,12 +26,8 @@ const chartOptions = {
   responsive: true,
   maintainAspectRatio: false,
   scales: {
-    x: {
-      grid: { color: 'rgba(0,0,0,0.05)' },
-    },
     y: {
       beginAtZero: true,
-      grid: { color: 'rgba(0,0,0,0.05)' },
     },
   },
   plugins: {
@@ -42,6 +40,6 @@ const chartOptions = {
 
 <template>
   <div class="h-64">
-    <Bar :data="chartData" :options="chartOptions" />
+    <Bar :key="version" :data="chartData" :options="chartOptions" />
   </div>
 </template>

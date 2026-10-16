@@ -1,11 +1,13 @@
 <script setup lang="ts">
+import { useChartTheme } from '@features/dashboard/chartSetup'
 import { computed } from 'vue'
 import { Bar } from 'vue-chartjs'
-import '@features/dashboard/chartSetup'
 
 const props = defineProps<{
   syncs: { label: string, durationMs: number, status: string }[]
 }>()
+
+const { palette, version } = useChartTheme()
 
 const chartData = computed(() => ({
   labels: props.syncs.map(s => s.label),
@@ -14,7 +16,7 @@ const chartData = computed(() => ({
       label: 'Duration (s)',
       data: props.syncs.map(s => s.durationMs / 1000),
       backgroundColor: props.syncs.map(s =>
-        s.status === 'completed' ? '#22c55e' : '#ef4444',
+        s.status === 'completed' ? palette.value.success : palette.value.danger,
       ),
       borderRadius: 4,
     },
@@ -25,12 +27,8 @@ const chartOptions = {
   responsive: true,
   maintainAspectRatio: false,
   scales: {
-    x: {
-      grid: { color: 'rgba(0,0,0,0.05)' },
-    },
     y: {
       beginAtZero: true,
-      grid: { color: 'rgba(0,0,0,0.05)' },
       title: {
         display: true,
         text: 'Duration (s)',
@@ -47,6 +45,6 @@ const chartOptions = {
 
 <template>
   <div class="h-64">
-    <Bar :data="chartData" :options="chartOptions" />
+    <Bar :key="version" :data="chartData" :options="chartOptions" />
   </div>
 </template>

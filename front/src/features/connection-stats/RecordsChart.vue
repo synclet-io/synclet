@@ -1,12 +1,14 @@
 <script setup lang="ts">
+import { useChartTheme, withAlpha } from '@features/dashboard/chartSetup'
 import { computed } from 'vue'
 import { Line } from 'vue-chartjs'
-import '@features/dashboard/chartSetup'
 
 const props = defineProps<{
   labels: string[]
   read: number[]
 }>()
+
+const { palette, version } = useChartTheme()
 
 const chartData = computed(() => ({
   labels: props.labels,
@@ -14,8 +16,8 @@ const chartData = computed(() => ({
     {
       label: 'Records Read',
       data: props.read,
-      borderColor: '#6366f1',
-      backgroundColor: 'rgba(99, 102, 241, 0.2)',
+      borderColor: palette.value.primary,
+      backgroundColor: withAlpha(palette.value.primary, 0.2),
       fill: 'origin',
       tension: 0.3,
       pointRadius: 2,
@@ -27,12 +29,8 @@ const chartOptions = {
   responsive: true,
   maintainAspectRatio: false,
   scales: {
-    x: {
-      grid: { color: 'rgba(0,0,0,0.05)' },
-    },
     y: {
       beginAtZero: true,
-      grid: { color: 'rgba(0,0,0,0.05)' },
     },
   },
   plugins: {
@@ -45,6 +43,6 @@ const chartOptions = {
 
 <template>
   <div class="h-64">
-    <Line :data="chartData" :options="chartOptions" />
+    <Line :key="version" :data="chartData" :options="chartOptions" />
   </div>
 </template>

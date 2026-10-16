@@ -1,19 +1,21 @@
 <script setup lang="ts">
+import type { ChartPalette } from './chartSetup'
 import { computed } from 'vue'
 import { Doughnut } from 'vue-chartjs'
-import './chartSetup'
+import { useChartTheme } from './chartSetup'
 
 const props = defineProps<{
   labels: string[]
   counts: number[]
 }>()
 
-const colorMap: Record<string, string> = {
-  connector: '#ef4444',
-  timeout: '#f59e0b',
-  oom: '#f97316',
-  infrastructure: '#64748b',
-  unknown: '#cbd5e1',
+const { palette, version } = useChartTheme()
+
+const colorKeys: Record<string, keyof ChartPalette> = {
+  connector: 'danger',
+  timeout: 'warning',
+  oom: 'accent',
+  infrastructure: 'neutral',
 }
 
 const chartData = computed(() => ({
@@ -21,7 +23,7 @@ const chartData = computed(() => ({
   datasets: [
     {
       data: props.counts,
-      backgroundColor: props.labels.map(l => colorMap[l.toLowerCase()] || '#cbd5e1'),
+      backgroundColor: props.labels.map(l => palette.value[colorKeys[l.toLowerCase()] ?? 'muted']),
       borderWidth: 0,
     },
   ],
@@ -40,6 +42,6 @@ const chartOptions = {
 
 <template>
   <div class="h-64">
-    <Doughnut :data="chartData" :options="chartOptions" />
+    <Doughnut :key="version" :data="chartData" :options="chartOptions" />
   </div>
 </template>
