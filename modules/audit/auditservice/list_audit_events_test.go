@@ -22,7 +22,7 @@ func TestListAuditEvents_DateRange(t *testing.T) {
 
 	since := now.Add(-150 * time.Minute)
 	until := now.Add(-90 * time.Minute)
-	uc := NewListAuditEvents(storage)
+	uc := NewListAuditEvents(storage, &fakeUserDirectory{})
 
 	cases := map[string]struct {
 		since *time.Time
@@ -63,7 +63,7 @@ func TestListAuditEvents_BoundsAreHalfOpen(t *testing.T) {
 	addAuditEvent(storage, workspaceID, now.Add(time.Hour))
 
 	until := now.Add(time.Hour)
-	uc := NewListAuditEvents(storage)
+	uc := NewListAuditEvents(storage, &fakeUserDirectory{})
 
 	events, err := uc.Execute(context.Background(), ListAuditEventsParams{
 		WorkspaceID: workspaceID,
@@ -86,7 +86,7 @@ func TestListAuditEvents_OffsetIsExact(t *testing.T) {
 		ids = append(ids, addAuditEvent(storage, workspaceID, now.Add(-time.Duration(i)*time.Minute)))
 	}
 
-	events, err := NewListAuditEvents(storage).Execute(context.Background(), ListAuditEventsParams{
+	events, err := NewListAuditEvents(storage, &fakeUserDirectory{}).Execute(context.Background(), ListAuditEventsParams{
 		WorkspaceID: workspaceID,
 		Limit:       2,
 		Offset:      3,
@@ -99,4 +99,58 @@ func TestListAuditEvents_OffsetIsExact(t *testing.T) {
 	}
 
 	assert.Equal(t, ids[3:5], got)
+}
+
+type fakeUserDirectory struct {
+	existing map[uuid.UUID]bool
+	lookups  []uuid.UUID
+}
+
+func (f *fakeUserDirectory) UserExists(_ context.Context, id uuid.UUID) (bool, error) {
+	f.lookups = append(f.lookups, id)
+
+	return f.existing[id], nil
+}
+
+func TestListAuditEvents_FlagsDeletedUserActors(t *testing.T) {
+	now := time.Date(2026, 10, 16, 12, 0, 0, 0, time.UTC)
+	storage := newFakeStorage()
+	workspaceID := uuid.New()
+	liveUser := uuid.New()
+	deletedUser := uuid.New()
+
+	addActorEvent := func(actorType ActorType, actorID uuid.UUID, offset time.Duration) uuid.UUID {
+		id := addAuditEvent(storage, workspaceID, now.Add(-offset))
+		storage.events[len(storage.events)-1].ActorType = actorType
+		storage.events[len(storage.events)-1].ActorID = actorID
+
+		return id
+	}
+
+	byLive := addActorEvent(ActorTypeUser, liveUser, time.Minute)
+	byDeleted := addActorEvent(ActorTypeUser, deletedUser, 2*time.Minute)
+	byDeletedAgain := addActorEvent(ActorTypeUser, deletedUser, 3*time.Minute)
+	byAPIKey := addActorEvent(ActorTypeAPIKey, uuid.New(), 4*time.Minute)
+	bySystem := addActorEvent(ActorTypeSystem, uuid.Nil, 5*time.Minute)
+
+	users := &fakeUserDirectory{existing: map[uuid.UUID]bool{liveUser: true}}
+
+	events, err := NewListAuditEvents(storage, users).Execute(context.Background(), ListAuditEventsParams{
+		WorkspaceID: workspaceID,
+	})
+	require.NoError(t, err)
+
+	deleted := make(map[uuid.UUID]bool, len(events))
+	for _, event := range events {
+		deleted[event.ID] = event.ActorDeleted
+	}
+
+	assert.Equal(t, map[uuid.UUID]bool{
+		byLive:         false,
+		byDeleted:      true,
+		byDeletedAgain: true,
+		byAPIKey:       false,
+		bySystem:       false,
+	}, deleted)
+	assert.ElementsMatch(t, []uuid.UUID{liveUser, deletedUser}, users.lookups)
 }

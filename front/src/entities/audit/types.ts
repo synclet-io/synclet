@@ -29,6 +29,7 @@ export interface AuditEvent {
   actorType: AuditActorType
   actorId: string
   actorLabel: string
+  actorDeleted: boolean
   action: AuditAction | 'unknown'
   resourceType: AuditResourceType | 'unknown'
   resourceId: string

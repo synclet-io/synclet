@@ -243,6 +243,9 @@ type AuditEvent struct {
 	DiffJson      string                 `protobuf:"bytes,10,opt,name=diff_json,json=diffJson,proto3" json:"diff_json,omitempty"`
 	DiffTruncated bool                   `protobuf:"varint,11,opt,name=diff_truncated,json=diffTruncated,proto3" json:"diff_truncated,omitempty"`
 	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	// True when the actor is a user account that no longer exists. Set by
+	// ListAuditEvents only.
+	ActorDeleted  bool `protobuf:"varint,13,opt,name=actor_deleted,json=actorDeleted,proto3" json:"actor_deleted,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -359,6 +362,13 @@ func (x *AuditEvent) GetCreatedAt() *timestamppb.Timestamp {
 		return x.CreatedAt
 	}
 	return nil
+}
+
+func (x *AuditEvent) GetActorDeleted() bool {
+	if x != nil {
+		return x.ActorDeleted
+	}
+	return false
 }
 
 type ListAuditEventsRequest struct {
@@ -822,7 +832,7 @@ var File_synclet_publicapi_audit_v1_audit_proto protoreflect.FileDescriptor
 
 const file_synclet_publicapi_audit_v1_audit_proto_rawDesc = "" +
 	"\n" +
-	"&synclet/publicapi/audit/v1/audit.proto\x12\x1asynclet.publicapi.audit.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a synclet/options/v1/options.proto\"\xa2\x04\n" +
+	"&synclet/publicapi/audit/v1/audit.proto\x12\x1asynclet.publicapi.audit.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a synclet/options/v1/options.proto\"\xc7\x04\n" +
 	"\n" +
 	"AuditEvent\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
@@ -841,7 +851,8 @@ const file_synclet_publicapi_audit_v1_audit_proto_rawDesc = "" +
 	" \x01(\tR\bdiffJson\x12%\n" +
 	"\x0ediff_truncated\x18\v \x01(\bR\rdiffTruncated\x129\n" +
 	"\n" +
-	"created_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"\xe7\x03\n" +
+	"created_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12#\n" +
+	"\ractor_deleted\x18\r \x01(\bR\factorDeleted\"\xe7\x03\n" +
 	"\x16ListAuditEventsRequest\x12\x1e\n" +
 	"\bactor_id\x18\x01 \x01(\tH\x00R\aactorId\x88\x01\x01\x12W\n" +
 	"\rresource_type\x18\x02 \x01(\x0e2-.synclet.publicapi.audit.v1.AuditResourceTypeH\x01R\fresourceType\x88\x01\x01\x12$\n" +

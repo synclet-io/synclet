@@ -75,6 +75,9 @@ message AuditEvent {
   string diff_json = 10;
   bool diff_truncated = 11;
   google.protobuf.Timestamp created_at = 12;
+  // True when the actor is a user account that no longer exists. Set by
+  // ListAuditEvents only.
+  bool actor_deleted = 13;
 }
 
 message ListAuditEventsRequest {

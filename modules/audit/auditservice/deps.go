@@ -20,3 +20,8 @@ type EventPageStorage interface {
 	// FindPage returns up to limit events matching flt, newest first, after skipping offset of them.
 	FindPage(ctx context.Context, flt *AuditEventFilter, offset, limit int) ([]*AuditEvent, error)
 }
+
+// UserDirectory reports whether a user account still exists.
+type UserDirectory interface {
+	UserExists(ctx context.Context, id uuid.UUID) (bool, error)
+}

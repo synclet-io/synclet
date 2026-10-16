@@ -109,7 +109,9 @@ func (h *Handler) ListAuditEvents(ctx context.Context, req *connect.Request[audi
 		Events: make([]*auditv1.AuditEvent, 0, len(events)),
 	}
 	for _, e := range events {
-		resp.Events = append(resp.Events, eventToProto(e))
+		event := eventToProto(e.AuditEvent)
+		event.ActorDeleted = e.ActorDeleted
+		resp.Events = append(resp.Events, event)
 	}
 
 	return connect.NewResponse(resp), nil

@@ -192,7 +192,7 @@ function formatValue(v: unknown): string {
       <div class="flex flex-col items-end gap-1">
         <form class="flex items-center gap-2" @submit.prevent="saveRetention">
           <span class="text-sm text-text-secondary whitespace-nowrap">Retention (days)</span>
-          <SInput v-model="retentionDays" type="number" class="w-24" :disabled="!retention" />
+          <SInput v-model="retentionDays" type="number" class="w-24" aria-label="Retention (days)" :disabled="!retention" />
           <SButton type="submit" variant="secondary" :loading="updateRetention.isPending.value" :disabled="!retention">
             Save
           </SButton>
@@ -208,8 +208,8 @@ function formatValue(v: unknown): string {
   </PageHeader>
 
   <div class="flex flex-wrap items-end gap-3 mb-3">
-    <SSelect v-model="action" :options="actionOptions" />
-    <SSelect v-model="resourceType" :options="resourceOptions" />
+    <SSelect v-model="action" :options="actionOptions" aria-label="Action" />
+    <SSelect v-model="resourceType" :options="resourceOptions" aria-label="Resource type" />
     <SInput v-model="since" type="date" label="From" />
     <SInput v-model="until" type="date" label="To" />
     <SButton v-if="hasFilters" variant="ghost" @click="clearFilters">
@@ -286,6 +286,12 @@ function formatValue(v: unknown): string {
             </div>
             <p class="text-xs text-text-secondary">
               by {{ event.actorLabel || event.actorType }}
+              <template v-if="event.actorDeleted">
+                <SBadge variant="gray" :title="`User ${event.actorId} no longer exists`">
+                  deleted user
+                </SBadge>
+                <span class="font-mono">{{ event.actorId }}</span>
+              </template>
               · {{ event.createdAt?.toLocaleString() ?? 'unknown time' }}
             </p>
           </div>

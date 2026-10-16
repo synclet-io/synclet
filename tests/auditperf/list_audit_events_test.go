@@ -86,7 +86,7 @@ func TestListAuditEventsP95(t *testing.T) {
 		{ActorID: &actors[2], Action: &action, Offset: pageSize},
 	}
 
-	list := auditservice.NewListAuditEvents(auditstorage.NewEventPageStorage(db))
+	list := auditservice.NewListAuditEvents(auditstorage.NewEventPageStorage(db), existingUsers{})
 	durations := make([]time.Duration, 0, runs)
 
 	for i := range runs {
@@ -107,7 +107,7 @@ func TestListAuditEventsP95(t *testing.T) {
 		}
 
 		for _, event := range events {
-			assertMatches(t, params, event)
+			assertMatches(t, params, event.AuditEvent)
 		}
 	}
 
@@ -206,3 +206,7 @@ func percentile(sorted []time.Duration, pct int) time.Duration {
 
 	return sorted[max(idx, 0)]
 }
+
+type existingUsers struct{}
+
+func (existingUsers) UserExists(context.Context, uuid.UUID) (bool, error) { return true, nil }

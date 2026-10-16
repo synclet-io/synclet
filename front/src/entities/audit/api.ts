@@ -101,6 +101,7 @@ function mapEvent(proto: ProtoAuditEvent): AuditEvent {
     actorType: mapActorType(proto.actorType),
     actorId: proto.actorId,
     actorLabel: proto.actorLabel,
+    actorDeleted: proto.actorDeleted,
     action: mapAction(proto.action),
     resourceType: mapResourceType(proto.resourceType),
     resourceId: proto.resourceId,

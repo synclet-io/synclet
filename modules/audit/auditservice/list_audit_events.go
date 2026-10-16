@@ -22,15 +22,23 @@ type ListAuditEventsParams struct {
 	Offset       int
 }
 
+// ListedAuditEvent is an audit event with what is known about its actor at read time.
+type ListedAuditEvent struct {
+	*AuditEvent
+	// ActorDeleted is true when the event's user actor no longer exists.
+	ActorDeleted bool
+}
+
 type ListAuditEvents struct {
 	pages EventPageStorage
+	users UserDirectory
 }
 
-func NewListAuditEvents(pages EventPageStorage) *ListAuditEvents {
-	return &ListAuditEvents{pages: pages}
+func NewListAuditEvents(pages EventPageStorage, users UserDirectory) *ListAuditEvents {
+	return &ListAuditEvents{pages: pages, users: users}
 }
 
-func (uc *ListAuditEvents) Execute(ctx context.Context, params ListAuditEventsParams) ([]*AuditEvent, error) {
+func (uc *ListAuditEvents) Execute(ctx context.Context, params ListAuditEventsParams) ([]ListedAuditEvent, error) {
 	eventFilter := &AuditEventFilter{
 		WorkspaceID: filter.Equals(params.WorkspaceID),
 	}
@@ -73,5 +81,42 @@ func (uc *ListAuditEvents) Execute(ctx context.Context, params ListAuditEventsPa
 		return nil, fmt.Errorf("listing audit events: %w", err)
 	}
 
-	return events, nil
+	deletedActors, err := uc.deletedUserActors(ctx, events)
+	if err != nil {
+		return nil, err
+	}
+
+	listed := make([]ListedAuditEvent, 0, len(events))
+	for _, event := range events {
+		listed = append(listed, ListedAuditEvent{
+			AuditEvent:   event,
+			ActorDeleted: event.ActorType == ActorTypeUser && deletedActors[event.ActorID],
+		})
+	}
+
+	return listed, nil
+}
+
+func (uc *ListAuditEvents) deletedUserActors(ctx context.Context, events []*AuditEvent) (map[uuid.UUID]bool, error) {
+	deleted := make(map[uuid.UUID]bool)
+	checked := make(map[uuid.UUID]bool)
+
+	for _, event := range events {
+		if event.ActorType != ActorTypeUser || checked[event.ActorID] {
+			continue
+		}
+
+		checked[event.ActorID] = true
+
+		exists, err := uc.users.UserExists(ctx, event.ActorID)
+		if err != nil {
+			return nil, fmt.Errorf("checking audit actor %s: %w", event.ActorID, err)
+		}
+
+		if !exists {
+			deleted[event.ActorID] = true
+		}
+	}
+
+	return deleted, nil
 }
