@@ -10,19 +10,21 @@ import StepStreamConfig from '@features/connection-wizard/StepStreamConfig.vue'
 import { useWizardState, WIZARD_STEPS } from '@features/connection-wizard/useWizardState'
 import WizardStepper from '@features/connection-wizard/WizardStepper.vue'
 import { getErrorMessage } from '@shared/lib/errorUtils'
-import { PageHeader, SAlert, SButton, SCard, SSkeleton } from '@shared/ui'
+import { PageHeader, SAlert, SButton, SCard, SConfirmDialog, SSkeleton } from '@shared/ui'
 import { onMounted, onUnmounted, ref } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 
 const route = useRoute()
 const router = useRouter()
-const { currentStep, state, canProceed, hasAnyState, next, back, goTo } = useWizardState()
+const { currentStep, state, canProceed, hasUnsavedChanges, committedConnectionId, markCommitted, next, back, goTo } = useWizardState()
 const createConnectionMutation = useCreateConnection()
 const configureStreamsMutation = useConfigureStreams()
 const submitting = ref(false)
 const error = ref('')
 const redirectTimer = ref<ReturnType<typeof setTimeout> | null>(null)
 const hydrating = ref(false)
+const skipLeaveGuard = ref(false)
+const resolveLeave = ref<((leave: boolean) => void) | null>(null)
 const cloneFromId = ref<string>(typeof route.query.cloneFrom === 'string' ? route.query.cloneFrom : '')
 
 onMounted(async () => {
@@ -76,25 +78,31 @@ onUnmounted(() => {
   }
 })
 
-onBeforeRouteLeave((_to, _from, nextGuard) => {
-  if (hasAnyState.value && !submitting.value) {
-    // eslint-disable-next-line no-alert
-    const answer = window.confirm('You have unsaved changes. Leave this page?')
-    if (!answer)
-      return nextGuard(false)
-  }
-  nextGuard()
+onBeforeRouteLeave(() => {
+  if (skipLeaveGuard.value || submitting.value || !hasUnsavedChanges.value)
+    return true
+  return new Promise<boolean>((resolve) => {
+    resolveLeave.value = resolve
+  })
 })
+
+function settleLeave(leave: boolean) {
+  resolveLeave.value?.(leave)
+  resolveLeave.value = null
+}
 
 function handleAutoAdvance() {
   next()
 }
 
-function discardDraft() {
+function cancelWizard() {
+  skipLeaveGuard.value = true
   router.push('/connections')
 }
 
 async function handleCreate() {
+  if (committedConnectionId.value)
+    return
   submitting.value = true
   error.value = ''
   try {
@@ -111,6 +119,7 @@ async function handleCreate() {
     })
     if (!connection)
       throw new Error('Failed to create connection')
+    markCommitted(connection.id)
 
     // Configure streams if any were selected
     if (state.value.streams.length > 0 && !state.value.streamsSkipped) {
@@ -121,7 +130,6 @@ async function handleCreate() {
         })
       }
       catch {
-        // Partial failure: connection created but streams failed
         error.value = 'Connection created but stream configuration failed. Redirecting to stream settings...'
         submitting.value = false
         redirectTimer.value = setTimeout(() => router.push(`/connections/${connection.id}/streams`), 3000)
@@ -222,8 +230,8 @@ function handleSkipStreams() {
             <SButton v-if="currentStep > 1" variant="secondary" @click="back">
               Back
             </SButton>
-            <SButton variant="ghost" @click="discardDraft">
-              Discard Draft
+            <SButton variant="ghost" @click="cancelWizard">
+              Cancel
             </SButton>
           </div>
           <div class="flex gap-3">
@@ -233,12 +241,22 @@ function handleSkipStreams() {
             <SButton v-if="currentStep === 3 || currentStep === 4" :disabled="!canProceed" @click="next">
               Next
             </SButton>
-            <SButton v-if="currentStep === 5" :loading="submitting" @click="handleCreate">
+            <SButton v-if="currentStep === 5" :loading="submitting" :disabled="!!committedConnectionId" @click="handleCreate">
               Create Connection
             </SButton>
           </div>
         </div>
       </template>
     </SCard>
+
+    <SConfirmDialog
+      :open="!!resolveLeave"
+      title="Leave without creating?"
+      message="The connection has not been created yet. Leaving discards the source, destination and settings you picked."
+      confirm-text="Leave"
+      cancel-text="Stay"
+      @confirm="settleLeave(true)"
+      @cancel="settleLeave(false)"
+    />
   </div>
 </template>

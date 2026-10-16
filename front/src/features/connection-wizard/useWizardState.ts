@@ -64,7 +64,14 @@ export function useWizardState() {
     }
   })
 
+  const committedConnectionId = ref<string | null>(null)
+
   const hasAnyState = computed(() => !!state.value.sourceId || !!state.value.destinationId)
+  const hasUnsavedChanges = computed(() => hasAnyState.value && !committedConnectionId.value)
+
+  function markCommitted(connectionId: string) {
+    committedConnectionId.value = connectionId
+  }
 
   function next() {
     if (canProceed.value && currentStep.value < totalSteps)
@@ -83,5 +90,5 @@ export function useWizardState() {
       currentStep.value = step
   }
 
-  return { currentStep, totalSteps, state, canProceed, hasAnyState, next, back, goTo }
+  return { currentStep, totalSteps, state, canProceed, hasAnyState, hasUnsavedChanges, committedConnectionId, markCommitted, next, back, goTo }
 }

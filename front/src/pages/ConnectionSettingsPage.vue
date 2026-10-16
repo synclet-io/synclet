@@ -3,11 +3,11 @@ import type { NamespaceDefinition, SchemaChangePolicy } from '@entities/connecti
 import { useConnection, useUpdateConnection } from '@entities/connection'
 import { getErrorMessage } from '@shared/lib/errorUtils'
 import { SButton, SCard, SCronEditor, SInput, SSelect, useToast } from '@shared/ui'
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
-const id = route.params.id as string
+const id = computed(() => route.params.id as string)
 const toast = useToast()
 
 const { data: connection } = useConnection(id)
@@ -52,14 +52,14 @@ watch(() => connection.value, (conn) => {
 async function saveSettings() {
   try {
     await updateMutation.mutateAsync({
-      id,
+      id: id.value,
       name: editForm.value.name,
       schedule: editForm.value.schedule,
       schemaChangePolicy: editForm.value.schemaChangePolicy,
       maxAttempts: Number(editForm.value.maxAttempts),
       namespaceDefinition: editForm.value.namespaceDefinition,
-      customNamespaceFormat: editForm.value.customNamespaceFormat || undefined,
-      streamPrefix: editForm.value.streamPrefix || undefined,
+      customNamespaceFormat: editForm.value.customNamespaceFormat,
+      streamPrefix: editForm.value.streamPrefix,
     })
     toast.success('Settings updated')
   }

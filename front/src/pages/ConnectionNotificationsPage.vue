@@ -2,18 +2,17 @@
 import type { ChannelType, NotificationCondition } from '@entities/notification'
 import { useCreateRule, useDeleteRule, useNotificationChannels, useNotificationRules, useUpdateRule } from '@entities/notification'
 import { getErrorMessage } from '@shared/lib/errorUtils'
-import { SBadge, useToast } from '@shared/ui'
+import { SBadge, SSkeleton, useToast } from '@shared/ui'
 import { ChevronDown, Hash, Mail, Send } from 'lucide-vue-next'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
-const id = route.params.id as string
+const id = computed(() => route.params.id as string)
 const toast = useToast()
 
-const connectionIdRef = ref(id)
-const { data: notifChannels } = useNotificationChannels()
-const { data: notifRules } = useNotificationRules(connectionIdRef)
+const { data: notifChannels, isLoading: channelsLoading } = useNotificationChannels()
+const { data: notifRules } = useNotificationRules(id)
 const createRuleMutation = useCreateRule()
 const updateRuleMutation = useUpdateRule()
 const deleteRuleMutation = useDeleteRule()
@@ -74,7 +73,7 @@ async function toggleCondition(channelId: string, condition: NotificationConditi
     else {
       await createRuleMutation.mutateAsync({
         channelId,
-        connectionId: id,
+        connectionId: id.value,
         condition,
         conditionValue: condition === 'on_consecutive_failures' ? 3 : 1,
         enabled: true,
@@ -105,7 +104,11 @@ async function updateConditionValue(channelId: string, condition: NotificationCo
 </script>
 
 <template>
-  <div v-if="!notifChannels || notifChannels.length === 0" class="text-center py-12">
+  <div v-if="channelsLoading" class="space-y-2">
+    <SSkeleton v-for="i in 3" :key="i" variant="rect" height="48px" />
+  </div>
+
+  <div v-else-if="!notifChannels || notifChannels.length === 0" class="text-center py-12">
     <p class="text-sm text-text-muted mb-2">
       No notification channels configured.
     </p>

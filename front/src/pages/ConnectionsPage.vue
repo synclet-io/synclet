@@ -126,7 +126,7 @@ const columns: Column[] = [
   </PageHeader>
 
   <SAlert v-if="error" variant="danger" class="mb-4">
-    {{ error.message }}
+    {{ getErrorMessage(error) }}
   </SAlert>
 
   <BulkActionToolbar

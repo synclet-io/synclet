@@ -10,21 +10,21 @@ import ConnectionStatsCards from '@features/connection-stats/ConnectionStatsCard
 import RecordsChart from '@features/connection-stats/RecordsChart.vue'
 import SyncDurationChart from '@features/connection-stats/SyncDurationChart.vue'
 import TimeRangeSelector from '@features/dashboard/TimeRangeSelector.vue'
-import { statusVariant } from '@shared/lib/format'
+import { formatDuration, statusVariant } from '@shared/lib/format'
 import { SBadge, SCard, SEmptyState, SPagination, SSkeleton, STable } from '@shared/ui'
 import { ArrowRight, ExternalLink } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 
 const route = useRoute()
-const id = route.params.id as string
+const id = computed(() => route.params.id as string)
 
 const PAGE_SIZE = 25
 const currentPage = ref(1)
 const { data: connection } = useConnection(id)
 const { data: source } = useSource(computed(() => connection.value?.sourceId ?? ''))
 const { data: destination } = useDestination(computed(() => connection.value?.destinationId ?? ''))
-const { data: jobs } = useJobs(id, { page: currentPage, pageSize: PAGE_SIZE })
+const { data: jobs, isLoading: jobsLoading } = useJobs(id, { page: currentPage, pageSize: PAGE_SIZE })
 const timeRange = ref<TimeRange>('24h')
 const { data: connStats, isLoading: statsLoading } = useConnectionStats(id, timeRange)
 
@@ -118,7 +118,7 @@ const jobColumns: Column[] = [
     </div>
 
     <SCard title="Sync History" :padding="false">
-      <STable :columns="jobColumns" :data="jobs?.items" empty-text="No sync jobs yet">
+      <STable :columns="jobColumns" :data="jobs?.items" :loading="jobsLoading" empty-text="No sync jobs yet">
         <template #cell-status="{ row }">
           <SBadge :variant="statusVariant(row.status)" dot>
             {{ row.status }}
@@ -132,9 +132,7 @@ const jobColumns: Column[] = [
         </template>
         <template #cell-duration="{ row }">
           <span class="text-sm text-text-secondary">
-            {{ row.attempts?.[row.attempts.length - 1]?.syncStats?.durationMs
-              ? `${(row.attempts[row.attempts.length - 1].syncStats!.durationMs / 1000).toFixed(1)}s`
-              : '-' }}
+            {{ formatDuration(row.attempts?.[row.attempts.length - 1]?.syncStats?.durationMs) }}
           </span>
         </template>
         <template #cell-attempt="{ row }">

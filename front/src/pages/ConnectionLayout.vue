@@ -6,7 +6,7 @@ import { useConnectionStats } from '@entities/stats'
 import HealthBadge from '@features/connection-stats/HealthBadge.vue'
 import { getErrorMessage } from '@shared/lib/errorUtils'
 import { statusVariant } from '@shared/lib/format'
-import { PageHeader, SAlert, SBadge, SButton, SSkeleton, STabs, useToast } from '@shared/ui'
+import { PageHeader, SAlert, SBadge, SButton, SConfirmDialog, SSkeleton, STabs, useToast } from '@shared/ui'
 import { Copy, Pause, Play, RefreshCw, Settings, XCircle } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
@@ -25,6 +25,7 @@ const cancelJobMutation = useCancelJob()
 
 const syncing = computed(() => triggerSyncMutation.isPending.value)
 const cancelling = computed(() => cancelJobMutation.isPending.value)
+const confirmCancelOpen = ref(false)
 
 const tabs = computed<Tab[]>(() => [
   { name: 'Overview', to: { name: 'connection-detail', params: { id: id.value } } },
@@ -44,14 +45,19 @@ async function triggerSync() {
 }
 
 async function cancelSync() {
-  if (!activeJob.value)
+  if (!activeJob.value) {
+    confirmCancelOpen.value = false
     return
+  }
   try {
     await cancelJobMutation.mutateAsync(activeJob.value.id)
     toast.success('Sync cancelled')
   }
   catch (e: unknown) {
     toast.error(`Error: ${getErrorMessage(e)}`)
+  }
+  finally {
+    confirmCancelOpen.value = false
   }
 }
 
@@ -83,7 +89,7 @@ async function toggleEnabled() {
   </div>
   <div v-else-if="error" class="p-4">
     <SAlert variant="danger">
-      {{ error.message }}
+      {{ getErrorMessage(error) }}
     </SAlert>
   </div>
 
@@ -104,7 +110,7 @@ async function toggleEnabled() {
         <SButton variant="secondary" :to="`/connections/new?cloneFrom=${id}`" title="Duplicate this connection">
           <Copy class="w-4 h-4" /> Duplicate
         </SButton>
-        <SButton v-if="activeJob" variant="danger" :loading="cancelling" @click="cancelSync">
+        <SButton v-if="activeJob" variant="danger" :loading="cancelling" @click="confirmCancelOpen = true">
           <XCircle class="w-4 h-4" />
           Cancel Sync
         </SButton>
@@ -116,6 +122,17 @@ async function toggleEnabled() {
     </PageHeader>
 
     <STabs :tabs="tabs" />
-    <RouterView />
+    <RouterView :key="id" />
+
+    <SConfirmDialog
+      :open="confirmCancelOpen"
+      title="Cancel sync"
+      :message="`Cancel the running sync of ${connection.name}${activeJob ? ` (job ${activeJob.id})` : ''}?`"
+      confirm-text="Cancel Sync"
+      cancel-text="Keep Running"
+      :loading="cancelling"
+      @confirm="cancelSync"
+      @cancel="confirmCancelOpen = false"
+    />
   </template>
 </template>
