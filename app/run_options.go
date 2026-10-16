@@ -49,11 +49,18 @@ func WithRunPublicHTTPServer() RunOption {
 	}
 }
 
+func WithRunInternalHTTPServer() RunOption {
+	return func(options *RunAppOptions) {
+		options.RunInternalHTTPServer = true
+	}
+}
+
 func WithRunJobs() RunOption {
 	return func(options *RunAppOptions) {
 		options.RunJobs = true
 	}
 }
+
 func WithRunConsumers() RunOption {
 	return func(options *RunAppOptions) {
 		options.RunConsumers = true
@@ -116,4 +123,34 @@ func WithRunModule(module string) RunOption {
 
 		options.RunModule[module] = true
 	}
+}
+
+// ServerCommandOptions are the run options of `synclet server`. Standalone
+// adds background jobs, event consumers and an in-process executor.
+func ServerCommandOptions(standalone bool) []RunOption {
+	opts := []RunOption{WithRunPublicHTTPServer(), WithRunInternalHTTPServer()}
+	if standalone {
+		opts = append(opts, WithRunJobs(), WithRunConsumers(), WithStandalone(), WithAutoExecutor())
+	}
+
+	return opts
+}
+
+// JobsCommandOptions are the run options of `synclet jobs`: background jobs,
+// the outbox publisher and event consumers, no public API.
+func JobsCommandOptions() []RunOption {
+	return []RunOption{WithRunJobs(), WithRunConsumers()}
+}
+
+// ExecutorCommandOptions are the run options of the executor commands. An
+// executor runs its own workers but no background jobs or consumers;
+// scheduling, retention and the outbox publisher belong to `jobs` or
+// `server --standalone`.
+func ExecutorCommandOptions(executor RunOption, standalone bool) []RunOption {
+	opts := []RunOption{executor}
+	if standalone {
+		opts = append(opts, WithStandalone())
+	}
+
+	return opts
 }

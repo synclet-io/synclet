@@ -2,13 +2,18 @@ package pipelineexecdocker
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"io"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
 	pkgcontainer "github.com/synclet-io/synclet/pkg/container"
+	"github.com/synclet-io/synclet/pkg/protocol"
 )
 
 // mockContainerRunner implements pkgcontainer.Runner for testing.
@@ -203,4 +208,65 @@ func TestIsImageNotFoundError(t *testing.T) {
 			assert.Equal(t, tt.expected, isImageNotFoundError(tt.err))
 		})
 	}
+}
+
+func finishedRunResult(stdout, stderr string, exitCode int) *pkgcontainer.RunResult {
+	done := make(chan struct{})
+	close(done)
+
+	return &pkgcontainer.RunResult{
+		Stdout:   io.NopCloser(strings.NewReader(stdout)),
+		Stderr:   io.NopCloser(strings.NewReader(stderr)),
+		ExitCode: exitCode,
+		Done:     done,
+	}
+}
+
+func TestConnectorClientRedactsSecrets(t *testing.T) {
+	ctx := context.Background()
+	config := json.RawMessage(`{"host":"db.internal","password":"hunter2-pass"}`)
+
+	t.Run("stderr of failed check", func(t *testing.T) {
+		runner := &mockContainerRunner{runResults: []*pkgcontainer.RunResult{
+			finishedRunResult("", "crash: config={\"password\":\"hunter2-pass\"}", 1),
+		}}
+
+		_, err := NewConnectorClient(runner).Check(ctx, "img", config)
+		require.Error(t, err)
+		assert.NotContains(t, err.Error(), "hunter2-pass")
+		assert.Contains(t, err.Error(), `"password":"***"`)
+	})
+
+	t.Run("trace error and connection status", func(t *testing.T) {
+		stdout := `{"type":"TRACE","trace":{"type":"ERROR","error":{"message":"bad hunter2-pass","internal_message":"pw hunter2-pass"}}}` + "\n"
+		runner := &mockContainerRunner{runResults: []*pkgcontainer.RunResult{finishedRunResult(stdout, "", 0)}}
+
+		_, err := NewConnectorClient(runner).Check(ctx, "img", config)
+		require.Error(t, err)
+		assert.Equal(t, "check: connector error: bad *** (internal: pw ***)", err.Error())
+
+		stdout = `{"type":"CONNECTION_STATUS","connectionStatus":{"status":"FAILED","message":"login hunter2-pass rejected"}}` + "\n"
+		runner = &mockContainerRunner{runResults: []*pkgcontainer.RunResult{finishedRunResult(stdout, "", 0)}}
+
+		status, err := NewConnectorClient(runner).Check(ctx, "img", config)
+		require.NoError(t, err)
+		assert.Equal(t, "login *** rejected", status.Message)
+	})
+
+	t.Run("stderr of failed read", func(t *testing.T) {
+		runner := &mockContainerRunner{runResults: []*pkgcontainer.RunResult{
+			finishedRunResult("", "password=hunter2-pass", 2),
+		}}
+
+		stdout, cleanup, err := NewConnectorClient(runner).Read(ctx, "img", config, &protocol.ConfiguredAirbyteCatalog{}, nil, nil, ResourceLimits{})
+		require.NoError(t, err)
+
+		defer cleanup()
+
+		_, err = io.ReadAll(stdout)
+
+		var exitErr *pipelineservice.ExitCodeError
+		require.ErrorAs(t, err, &exitErr)
+		assert.Equal(t, "password=***", exitErr.Stderr)
+	})
 }

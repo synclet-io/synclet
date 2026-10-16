@@ -233,7 +233,7 @@ func runPipeline(ctx context.Context, cfg Config, reporter *Reporter) (*pipeline
 	}
 
 	// Route messages using the shared router.
-	return pipelineexec.Run(ctx, sourceStdout, destStdin, destStdout, handler, pipelineexec.RunConfig{
+	return pipelineexec.Run(ctx, sourceStdout, destStdin, destStdout, pipelineexec.RedactHandler(handler, connectorConfigRedactor(cfg.SecretsDir)), pipelineexec.RunConfig{
 		Rewriter: rewriter,
 	}, nil)
 }
@@ -316,4 +316,23 @@ func parseNamespaceDefinition(s string) pipelineservice.NamespaceDefinition {
 	default:
 		return pipelineservice.NamespaceDefinitionSource
 	}
+}
+
+// connectorConfigRedactor masks the source and destination config secrets
+// mounted in secretsDir. A config that cannot be read contributes nothing.
+func connectorConfigRedactor(secretsDir string) *pipelineexec.Redactor {
+	configs := make([]json.RawMessage, 0, 2)
+
+	for _, name := range []string{"source-config", "dest-config"} {
+		data, err := os.ReadFile(filepath.Join(secretsDir, name)) //nolint:gosec // fixed file names inside the mounted secrets volume.
+		if err != nil {
+			slog.Warn("coordinator: could not read connector config for log redaction", "file", name, "error", err)
+
+			continue
+		}
+
+		configs = append(configs, data)
+	}
+
+	return pipelineexec.NewRedactor(configs...)
 }

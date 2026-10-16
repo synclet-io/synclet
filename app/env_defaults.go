@@ -15,11 +15,15 @@ import (
 
 // envDefaults are applied for any var still unset after dotenv files have been loaded.
 var envDefaults = map[string]string{
-	"WATERMILL_TRANSPORT":          "sql",
-	"WATERMILL_SQL_DRIVER":         "postgres",
-	"WATERMILL_SQL_CONSUMER_GROUP": "synclet",
-	"PUBLIC_HTTP_SERVER_ADDR":      "0.0.0.0:8080",
-	"INTERNAL_HTTP_SERVER_ADDR":    "0.0.0.0:8081",
+	"WATERMILL_TRANSPORT":                      "sql",
+	"WATERMILL_SQL_DRIVER":                     "postgres",
+	"WATERMILL_SQL_CONSUMER_GROUP":             "synclet",
+	"PUBLIC_HTTP_SERVER_ADDR":                  "0.0.0.0:8080",
+	"PUBLIC_HTTP_SERVER_READ_HEADER_TIMEOUT":   "10s",
+	"PUBLIC_HTTP_SERVER_IDLE_TIMEOUT":          "120s",
+	"INTERNAL_HTTP_SERVER_ADDR":                "0.0.0.0:8081",
+	"INTERNAL_HTTP_SERVER_READ_HEADER_TIMEOUT": "10s",
+	"INTERNAL_HTTP_SERVER_IDLE_TIMEOUT":        "120s",
 }
 
 // applyEnvDefaults fills plain defaults and the secrets the server and jobs

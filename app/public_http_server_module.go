@@ -2,10 +2,12 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/go-pnp/go-pnp/config/configutil"
 	"github.com/go-pnp/go-pnp/connectrpc/pnpconnectrpchandling"
 	"github.com/go-pnp/go-pnp/connectrpc/pnprecoverconnectrpchandling"
 	"github.com/go-pnp/go-pnp/http/pnphttphealthcheck"
@@ -23,11 +25,16 @@ import (
 	"github.com/synclet-io/synclet/pkg/connectutil"
 )
 
+const publicCORSConfigPrefix = "PUBLIC_HTTP_SERVER_CORS_"
+
 func publicHTTPServerModule(options *RunAppOptions) fx.Option {
 	return fx.Module(
 		"http-server",
 		pnphttpserverrecovery.Module(pnphttpserverrecovery.WithFxPrivate()),
-		pnphttpservercors.Module(pnphttpservercors.WithFxPrivate()),
+		pnphttpservercors.Module(
+			pnphttpservercors.WithFxPrivate(),
+			pnphttpservercors.WithConfigPrefix(publicCORSConfigPrefix),
+		),
 		pnphttphealthcheck.Module(pnphttphealthcheck.WithFxPrivate()),
 		pnpconnectrpchandling.Module(pnpconnectrpchandling.WithFxPrivate()),
 		pnprecoverconnectrpchandling.Module(pnprecoverconnectrpchandling.WithFxPrivate()),
@@ -46,6 +53,11 @@ func publicHTTPServerModule(options *RunAppOptions) fx.Option {
 			pnpconnectrpchandling.InterceptorProvider(newConnectRPCRoleInterceptor),
 			pnpconnectrpchandling.InterceptorProvider(newConnectRPCErrorInterceptor),
 			fx.Private,
+		),
+
+		fx.Provide(
+			configutil.NewPrefixedConfigProvider[rateLimitConfig]("RATE_LIMIT_"),
+			configutil.NewPrefixedConfigInfoProvider[rateLimitConfig]("RATE_LIMIT_"),
 		),
 
 		// MembershipChecker adapter as standalone FX type for downstream handler injection.
@@ -75,13 +87,25 @@ func newHTTPSecurityHeadersMiddleware() ordering.OrderedItem[pnphttpserver.Handl
 	}
 }
 
-func newConnectRPCRateLimitInterceptor(lc fx.Lifecycle) ordering.OrderedItem[connect.Interceptor] {
+type rateLimitConfig struct {
+	// TrustedProxies lists the IPs or CIDR ranges of reverse proxies whose
+	// X-Forwarded-For and X-Real-IP headers identify the client.
+	TrustedProxies []string `env:"TRUSTED_PROXIES" envSeparator:","`
+}
+
+func newConnectRPCRateLimitInterceptor(lc fx.Lifecycle, cfg *rateLimitConfig) (ordering.OrderedItem[connect.Interceptor], error) {
+	trustedProxies, err := connectutil.ParseTrustedProxies(cfg.TrustedProxies)
+	if err != nil {
+		return ordering.OrderedItem[connect.Interceptor]{}, fmt.Errorf("RATE_LIMIT_TRUSTED_PROXIES: %w", err)
+	}
+
 	rateLimiter := connectutil.NewRateLimitInterceptor(
 		map[string]connectutil.RateLimitConfig{
 			"/synclet.publicapi.auth.v1.AuthService/Login":        {Rate: rate.Every(6 * time.Second), Burst: 10}, // ~10/min
 			"/synclet.publicapi.auth.v1.AuthService/Register":     {Rate: rate.Every(20 * time.Second), Burst: 3}, // ~3/min
 			"/synclet.publicapi.auth.v1.AuthService/RefreshToken": {Rate: rate.Every(3 * time.Second), Burst: 20}, // ~20/min
 		},
+		connectutil.WithTrustedProxies(trustedProxies),
 	)
 
 	lc.Append(fx.Hook{
@@ -92,7 +116,7 @@ func newConnectRPCRateLimitInterceptor(lc fx.Lifecycle) ordering.OrderedItem[con
 		},
 	})
 
-	return ordering.Ordered[connect.Interceptor](-1, rateLimiter)
+	return ordering.Ordered[connect.Interceptor](-1, rateLimiter), nil
 }
 
 func newConnectRPCAuthInterceptor(

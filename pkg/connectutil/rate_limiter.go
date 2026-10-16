@@ -3,7 +3,11 @@ package connectutil
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
+	"net/http"
+	"net/netip"
+	"strings"
 	"sync"
 	"time"
 
@@ -22,22 +26,74 @@ type RateLimitConfig struct {
 	Burst int
 }
 
-// RateLimitInterceptor rate-limits specific ConnectRPC procedures by client IP.
+// RateLimitOption configures a RateLimitInterceptor.
+type RateLimitOption func(*RateLimitInterceptor)
+
+// WithTrustedProxies makes the interceptor resolve the client IP from
+// X-Forwarded-For (then X-Real-IP) when the TCP peer is one of the given
+// proxies. Requests from any other peer are keyed on the peer address, so
+// clients cannot spoof their IP by sending the headers directly.
+func WithTrustedProxies(proxies []netip.Prefix) RateLimitOption {
+	return func(r *RateLimitInterceptor) {
+		r.trustedProxies = proxies
+	}
+}
+
+// ParseTrustedProxies parses IP addresses and CIDR ranges.
+func ParseTrustedProxies(values []string) ([]netip.Prefix, error) {
+	prefixes := make([]netip.Prefix, 0, len(values))
+
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			continue
+		}
+
+		if strings.Contains(value, "/") {
+			prefix, err := netip.ParsePrefix(value)
+			if err != nil {
+				return nil, fmt.Errorf("parse trusted proxy %q: %w", value, err)
+			}
+
+			prefixes = append(prefixes, prefix.Masked())
+
+			continue
+		}
+
+		addr, err := netip.ParseAddr(value)
+		if err != nil {
+			return nil, fmt.Errorf("parse trusted proxy %q: %w", value, err)
+		}
+
+		addr = addr.Unmap()
+		prefixes = append(prefixes, netip.PrefixFrom(addr, addr.BitLen()))
+	}
+
+	return prefixes, nil
+}
+
+// RateLimitInterceptor rate-limits specific ConnectRPC procedures per client IP.
+// Each procedure has its own bucket per IP.
 type RateLimitInterceptor struct {
-	mu       sync.Mutex
-	limiters map[string]*ipLimiter
-	configs  map[string]RateLimitConfig // procedure -> config
-	stopCh   chan struct{}
+	mu             sync.Mutex
+	limiters       map[string]*ipLimiter
+	configs        map[string]RateLimitConfig // procedure -> config
+	trustedProxies []netip.Prefix
+	stopCh         chan struct{}
 }
 
 // NewRateLimitInterceptor creates a rate limiting interceptor.
 // configs maps procedure paths to their rate limit configuration.
-func NewRateLimitInterceptor(configs map[string]RateLimitConfig) *RateLimitInterceptor {
+func NewRateLimitInterceptor(configs map[string]RateLimitConfig, opts ...RateLimitOption) *RateLimitInterceptor {
 	rateLimiter := &RateLimitInterceptor{
 		limiters: make(map[string]*ipLimiter),
 		configs:  configs,
 		stopCh:   make(chan struct{}),
 	}
+	for _, opt := range opts {
+		opt(rateLimiter)
+	}
+
 	go rateLimiter.cleanupLoop()
 
 	return rateLimiter
@@ -48,11 +104,11 @@ func (r *RateLimitInterceptor) Stop() {
 	close(r.stopCh)
 }
 
-func (r *RateLimitInterceptor) getLimiter(ipAddr string, cfg RateLimitConfig) *rate.Limiter {
+func (r *RateLimitInterceptor) getLimiter(key string, cfg RateLimitConfig) *rate.Limiter {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	if limiter, ok := r.limiters[ipAddr]; ok {
+	if limiter, ok := r.limiters[key]; ok {
 		limiter.lastSeen = time.Now()
 
 		return limiter.limiter
@@ -62,7 +118,7 @@ func (r *RateLimitInterceptor) getLimiter(ipAddr string, cfg RateLimitConfig) *r
 		limiter:  rate.NewLimiter(cfg.Rate, cfg.Burst),
 		lastSeen: time.Now(),
 	}
-	r.limiters[ipAddr] = limiter
+	r.limiters[key] = limiter
 
 	return limiter.limiter
 }
@@ -95,14 +151,16 @@ func (r *RateLimitInterceptor) cleanup() {
 // WrapUnary implements connect.Interceptor.
 func (r *RateLimitInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
 	return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-		cfg, ok := r.configs[req.Spec().Procedure]
+		procedure := req.Spec().Procedure
+
+		cfg, ok := r.configs[procedure]
 		if !ok {
 			return next(ctx, req)
 		}
 
-		ip := extractIP(req.Peer().Addr)
+		ip := r.clientIP(req.Peer().Addr, req.Header())
 
-		limiter := r.getLimiter(ip, cfg)
+		limiter := r.getLimiter(procedure+"|"+ip, cfg)
 		if !limiter.Allow() {
 			return nil, connect.NewError(connect.CodeResourceExhausted, errors.New("rate limit exceeded, try again later"))
 		}
@@ -119,6 +177,54 @@ func (r *RateLimitInterceptor) WrapStreamingClient(next connect.StreamingClientF
 // WrapStreamingHandler implements connect.Interceptor.
 func (r *RateLimitInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc) connect.StreamingHandlerFunc {
 	return next // No streaming auth endpoints
+}
+
+// clientIP returns the address of the client that sent the request. Behind a
+// trusted proxy it is the right-most X-Forwarded-For entry that is not itself
+// a trusted proxy, falling back to X-Real-IP and then the peer address.
+func (r *RateLimitInterceptor) clientIP(peerAddr string, header http.Header) string {
+	peer := extractIP(peerAddr)
+	if !r.isTrustedProxy(peer) {
+		return peer
+	}
+
+	forwarded := strings.Split(strings.Join(header.Values("X-Forwarded-For"), ","), ",")
+	for i := len(forwarded) - 1; i >= 0; i-- {
+		addr, err := netip.ParseAddr(strings.TrimSpace(forwarded[i]))
+		if err != nil {
+			break
+		}
+
+		if !r.isTrustedProxy(addr.String()) {
+			return addr.Unmap().String()
+		}
+	}
+
+	if addr, err := netip.ParseAddr(strings.TrimSpace(header.Get("X-Real-IP"))); err == nil {
+		return addr.Unmap().String()
+	}
+
+	return peer
+}
+
+func (r *RateLimitInterceptor) isTrustedProxy(ip string) bool {
+	if len(r.trustedProxies) == 0 {
+		return false
+	}
+
+	addr, err := netip.ParseAddr(ip)
+	if err != nil {
+		return false
+	}
+
+	addr = addr.Unmap()
+	for _, prefix := range r.trustedProxies {
+		if prefix.Contains(addr) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // extractIP extracts the IP from an address string (ip:port or just ip).

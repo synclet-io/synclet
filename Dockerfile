@@ -13,7 +13,8 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
 COPY --from=frontend /app/front/dist ./front/dist
-RUN CGO_ENABLED=0 go build -o /synclet .
+ARG VERSION=dev
+RUN CGO_ENABLED=0 go build -ldflags "-X github.com/synclet-io/synclet/cmd.version=${VERSION}" -o /synclet .
 
 # Stage 3: Runtime
 FROM gcr.io/distroless/base-debian12:nonroot

@@ -21,14 +21,7 @@ mode (--standalone), runs in-process with direct DB access.`,
 				panic(err)
 			}
 
-			opts := []app.RunOption{
-				app.WithDotEnvFiles(dotEnvs...),
-				app.WithRunJobs(),
-				app.WithDockerExecutor(),
-			}
-			if standalone {
-				opts = append(opts, app.WithStandalone())
-			}
+			opts := append([]app.RunOption{app.WithDotEnvFiles(dotEnvs...)}, app.ExecutorCommandOptions(app.WithDockerExecutor(), standalone)...)
 
 			app.RunServer(opts...)
 		},

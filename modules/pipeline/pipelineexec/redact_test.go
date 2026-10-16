@@ -1,0 +1,101 @@
+package pipelineexec
+
+import (
+	"context"
+	"encoding/json"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/synclet-io/synclet/pkg/protocol"
+)
+
+func TestRedactor(t *testing.T) {
+	config := json.RawMessage(`{
+		"host": "db.internal",
+		"username": "synclet",
+		"password": "hunter2-pass",
+		"tunnel": {"ssh_private_key": "-----BEGIN KEY-----\nAAAABBBBCCCCDDDD\n-----END KEY-----"},
+		"credentials": {"auth_type": "OAuth", "client_id": "client-abc-123", "refresh_token": "rt-xyz-987"},
+		"service_account_info": "{\"type\":\"service_account\",\"private_key\":\"pk-\\\"quoted\\\"-value\"}",
+		"short_secret": "ab",
+		"port": 5432
+	}`)
+	dest := json.RawMessage(`{"api_key": "dst-key-555"}`)
+
+	redactor := NewRedactor(config, dest, json.RawMessage(`not json`))
+
+	tests := map[string]struct {
+		in, out string
+	}{
+		"top-level secret":              {"login failed for password hunter2-pass", "login failed for password ***"},
+		"non-secret values kept":        {"connecting to db.internal as synclet:5432", "connecting to db.internal as synclet:5432"},
+		"nested under secret key":       {"client client-abc-123 refresh rt-xyz-987", "client *** refresh ***"},
+		"multiline key line":            {"bad key line AAAABBBBCCCCDDDD", "bad key line ***"},
+		"json string secret":            {`private_key pk-"quoted"-value`, "private_key ***"},
+		"json-escaped echo":             {`{"password":"hunter2-pass","pk":"pk-\"quoted\"-value"}`, `{"password":"***","pk":"***"}`},
+		"second config":                 {"key dst-key-555 rejected", "key *** rejected"},
+		"short secret values not added": {"ab cd", "ab cd"},
+		"short words under secret kept": {"OAuth flow", "OAuth flow"},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			assert.Equal(t, tt.out, redactor.Redact(tt.in))
+		})
+	}
+}
+
+func TestRedactorNilAndEmpty(t *testing.T) {
+	var nilRedactor *Redactor
+	assert.Equal(t, "x", nilRedactor.Redact("x"))
+	assert.Equal(t, "x", NewRedactor(json.RawMessage(`{"host":"x"}`)).Redact("x"))
+
+	handler := &recordingHandler{}
+	assert.Same(t, Handler(handler), RedactHandler(handler, NewRedactor()))
+}
+
+type recordingHandler struct {
+	DefaultHandler
+
+	lines  []string
+	traces []*protocol.AirbyteTraceMessage
+}
+
+func (h *recordingHandler) OnLog(_ context.Context, line string) error {
+	h.lines = append(h.lines, line)
+
+	return nil
+}
+
+func (h *recordingHandler) OnSourceTrace(_ context.Context, msg *protocol.AirbyteTraceMessage) error {
+	h.traces = append(h.traces, msg)
+
+	return nil
+}
+
+func TestRedactHandler(t *testing.T) {
+	ctx := context.Background()
+	inner := &recordingHandler{}
+	handler := RedactHandler(inner, NewRedactor(json.RawMessage(`{"password":"hunter2-pass"}`)))
+
+	require.NoError(t, handler.OnLog(ctx, formatLogLine("[src]", &protocol.AirbyteLogMessage{Level: "INFO", Message: "config password=hunter2-pass"})))
+
+	original := &protocol.AirbyteTraceMessage{
+		Type: protocol.TraceTypeError,
+		Error: &protocol.AirbyteErrorTraceMessage{
+			Message:         "auth failed hunter2-pass",
+			InternalMessage: "pw hunter2-pass",
+			StackTrace:      "at connect(hunter2-pass)",
+		},
+	}
+	require.NoError(t, handler.OnSourceTrace(ctx, original))
+
+	assert.Equal(t, []string{"[src] INFO: config password=***"}, inner.lines)
+	require.Len(t, inner.traces, 1)
+	assert.Equal(t, "auth failed ***", inner.traces[0].Error.Message)
+	assert.Equal(t, "pw ***", inner.traces[0].Error.InternalMessage)
+	assert.Equal(t, "at connect(***)", inner.traces[0].Error.StackTrace)
+	assert.Equal(t, "auth failed hunter2-pass", original.Error.Message, "input message is not mutated")
+}

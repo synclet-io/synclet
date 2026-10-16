@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineexec"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
 	pkgcontainer "github.com/synclet-io/synclet/pkg/container"
 	"github.com/synclet-io/synclet/pkg/protocol"
@@ -40,7 +41,7 @@ type ResourceLimits struct {
 // Spec runs the connector's spec command and returns its specification.
 // The container runs with network mode "none" since no external access is needed.
 func (c *ConnectorClient) Spec(ctx context.Context, image string) (*protocol.ConnectorSpecification, error) {
-	messages, err := c.runAndCollect(ctx, pkgcontainer.RunOptions{
+	messages, err := c.runAndCollect(ctx, nil, pkgcontainer.RunOptions{
 		Image:       image,
 		Command:     []string{"spec"},
 		NetworkMode: "none",
@@ -60,7 +61,9 @@ func (c *ConnectorClient) Spec(ctx context.Context, image string) (*protocol.Con
 
 // Check validates a connector configuration by running the check command.
 func (c *ConnectorClient) Check(ctx context.Context, image string, config json.RawMessage) (*protocol.AirbyteConnectionStatus, error) {
-	messages, err := c.runAndCollect(ctx, pkgcontainer.RunOptions{
+	redactor := pipelineexec.NewRedactor(config)
+
+	messages, err := c.runAndCollect(ctx, redactor, pkgcontainer.RunOptions{
 		Image:       image,
 		Command:     []string{"check", "--config", "/tmp/config.json"},
 		ConfigFile:  config,
@@ -72,7 +75,10 @@ func (c *ConnectorClient) Check(ctx context.Context, image string, config json.R
 
 	for _, msg := range messages {
 		if msg.Type == protocol.MessageTypeConnectionStatus && msg.ConnectionStatus != nil {
-			return msg.ConnectionStatus, nil
+			status := *msg.ConnectionStatus
+			status.Message = redactor.Redact(status.Message)
+
+			return &status, nil
 		}
 	}
 
@@ -81,7 +87,7 @@ func (c *ConnectorClient) Check(ctx context.Context, image string, config json.R
 
 // Discover discovers the catalog (available streams) for a connector.
 func (c *ConnectorClient) Discover(ctx context.Context, image string, config json.RawMessage) (*protocol.AirbyteCatalog, error) {
-	messages, err := c.runAndCollect(ctx, pkgcontainer.RunOptions{
+	messages, err := c.runAndCollect(ctx, pipelineexec.NewRedactor(config), pkgcontainer.RunOptions{
 		Image:       image,
 		Command:     []string{"discover", "--config", "/tmp/config.json"},
 		ConfigFile:  config,
@@ -147,7 +153,7 @@ func (c *ConnectorClient) Read(ctx context.Context, image string, config json.Ra
 		_ = c.runner.Remove(context.Background(), result.ContainerID)
 	}
 
-	wrapped := newExitAwareReader(result.Stdout, result.Stderr, result.Done, &result.ExitCode, "source")
+	wrapped := newExitAwareReader(result.Stdout, result.Stderr, result.Done, &result.ExitCode, "source", pipelineexec.NewRedactor(config))
 
 	return wrapped, cleanup, nil
 }
@@ -191,7 +197,7 @@ func (c *ConnectorClient) Write(ctx context.Context, image string, config json.R
 		_ = c.runner.Remove(context.Background(), result.ContainerID)
 	}
 
-	wrapped := newExitAwareReader(result.Stdout, result.Stderr, result.Done, &result.ExitCode, "destination")
+	wrapped := newExitAwareReader(result.Stdout, result.Stderr, result.Done, &result.ExitCode, "destination", pipelineexec.NewRedactor(config))
 
 	return wrapped, cleanup, nil
 }
@@ -206,15 +212,17 @@ type exitAwareReader struct {
 	done     <-chan struct{}
 	exitCode *int
 	role     string // "source" or "destination", for error messages
+	redactor *pipelineexec.Redactor
 }
 
-func newExitAwareReader(stdout, stderr io.ReadCloser, done <-chan struct{}, exitCode *int, role string) *exitAwareReader {
+func newExitAwareReader(stdout, stderr io.ReadCloser, done <-chan struct{}, exitCode *int, role string, redactor *pipelineexec.Redactor) *exitAwareReader {
 	return &exitAwareReader{
 		stdout:   stdout,
 		stderr:   stderr,
 		done:     done,
 		exitCode: exitCode,
 		role:     role,
+		redactor: redactor,
 	}
 }
 
@@ -226,7 +234,7 @@ func (r *exitAwareReader) Read(p []byte) (int, error) {
 
 		if *r.exitCode != 0 {
 			stderrContent, _ := io.ReadAll(r.stderr)
-			stderrStr := truncateString(string(bytes.TrimSpace(stderrContent)), 1024)
+			stderrStr := truncateString(r.redactor.Redact(string(bytes.TrimSpace(stderrContent))), 1024)
 
 			return n, &pipelineservice.ExitCodeError{
 				ExitCode: *r.exitCode,
@@ -285,8 +293,8 @@ func isImageNotFoundError(err error) bool {
 // runAndCollect runs a container, reads all messages from STDOUT until the container exits,
 // and returns them. If the container emits a TRACE error message, it is returned as an error.
 // If the container exits with a non-zero code and no TRACE error was found, a generic error
-// with stderr content is returned.
-func (c *ConnectorClient) runAndCollect(ctx context.Context, opts pkgcontainer.RunOptions) ([]*protocol.AirbyteMessage, error) {
+// with stderr content is returned. Error texts pass through redactor.
+func (c *ConnectorClient) runAndCollect(ctx context.Context, redactor *pipelineexec.Redactor, opts pkgcontainer.RunOptions) ([]*protocol.AirbyteMessage, error) {
 	result, err := c.runWithAutoPull(ctx, opts)
 	if err != nil {
 		return nil, err
@@ -317,14 +325,14 @@ func (c *ConnectorClient) runAndCollect(ctx context.Context, opts pkgcontainer.R
 	<-result.Done
 
 	// Check for TRACE error messages.
-	if traceErr := extractTraceError(messages); traceErr != nil {
+	if traceErr := extractTraceError(messages, redactor); traceErr != nil {
 		return nil, traceErr
 	}
 
 	// If the container exited with a non-zero code, return an error with stderr content.
 	if result.ExitCode != 0 {
 		stderrContent, _ := io.ReadAll(result.Stderr)
-		stderrStr := truncateString(string(bytes.TrimSpace(stderrContent)), 1024)
+		stderrStr := truncateString(redactor.Redact(string(bytes.TrimSpace(stderrContent))), 1024)
 
 		return nil, fmt.Errorf("container exited with code %d: %s", result.ExitCode, stderrStr)
 	}
@@ -333,12 +341,14 @@ func (c *ConnectorClient) runAndCollect(ctx context.Context, opts pkgcontainer.R
 }
 
 // extractTraceError looks through messages for a TRACE error and returns it as an error.
-func extractTraceError(messages []*protocol.AirbyteMessage) error {
+func extractTraceError(messages []*protocol.AirbyteMessage, redactor *pipelineexec.Redactor) error {
 	for _, msg := range messages {
 		if msg.Type == protocol.MessageTypeTrace && msg.Trace != nil && msg.Trace.Type == protocol.TraceTypeError && msg.Trace.Error != nil {
-			errMsg := msg.Trace.Error.Message
-			if msg.Trace.Error.InternalMessage != "" {
-				errMsg = fmt.Sprintf("%s (internal: %s)", errMsg, msg.Trace.Error.InternalMessage)
+			traceErr := redactor.RedactTrace(msg.Trace).Error
+
+			errMsg := traceErr.Message
+			if traceErr.InternalMessage != "" {
+				errMsg = fmt.Sprintf("%s (internal: %s)", errMsg, traceErr.InternalMessage)
 			}
 
 			return &connectorError{

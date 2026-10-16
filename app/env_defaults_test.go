@@ -85,3 +85,22 @@ func TestEnsureSecrets(t *testing.T) {
 		assert.Contains(t, path, home)
 	})
 }
+
+func TestApplyPlainEnvDefaultsSetsHTTPTimeouts(t *testing.T) {
+	keys := []string{
+		"PUBLIC_HTTP_SERVER_READ_HEADER_TIMEOUT",
+		"PUBLIC_HTTP_SERVER_IDLE_TIMEOUT",
+		"INTERNAL_HTTP_SERVER_READ_HEADER_TIMEOUT",
+		"INTERNAL_HTTP_SERVER_IDLE_TIMEOUT",
+	}
+	unsetEnv(t, keys...)
+	t.Setenv("PUBLIC_HTTP_SERVER_IDLE_TIMEOUT", "30s")
+	require.NoError(t, os.Unsetenv("INTERNAL_HTTP_SERVER_IDLE_TIMEOUT"))
+
+	applyPlainEnvDefaults()
+
+	assert.Equal(t, "10s", os.Getenv("PUBLIC_HTTP_SERVER_READ_HEADER_TIMEOUT"))
+	assert.Equal(t, "30s", os.Getenv("PUBLIC_HTTP_SERVER_IDLE_TIMEOUT"))
+	assert.Equal(t, "10s", os.Getenv("INTERNAL_HTTP_SERVER_READ_HEADER_TIMEOUT"))
+	assert.Equal(t, "120s", os.Getenv("INTERNAL_HTTP_SERVER_IDLE_TIMEOUT"))
+}

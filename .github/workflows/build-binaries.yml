@@ -99,7 +99,7 @@ jobs:
           mkdir -p dist
           go build \
             -trimpath \
-            -ldflags "-s -w" \
+            -ldflags "-s -w -X github.com/synclet-io/synclet/cmd.version=v${VERSION}" \
             -o "dist/${BIN_NAME}" \
             .
 
