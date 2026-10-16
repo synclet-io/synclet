@@ -102,7 +102,7 @@ func TestLoginWithUserInfo_PassesLockoutThrough(t *testing.T) {
 		_, _ = login.Execute(ctx, "a@example.com", "wrong")
 	}
 
-	_, err := NewLoginWithUserInfo(login, nil, nil).Execute(ctx, LoginWithUserInfoParams{Email: "a@example.com", Password: "wrong"})
+	_, err := NewLoginWithUserInfo(login, nil, nil, nil).Execute(ctx, LoginWithUserInfoParams{Email: "a@example.com", Password: "wrong"})
 	require.ErrorIs(t, err, ErrTooManyLoginAttempts)
 	assert.NotErrorIs(t, err, ErrInvalidCredentials)
 }

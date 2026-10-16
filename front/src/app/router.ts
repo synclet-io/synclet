@@ -263,7 +263,7 @@ router.beforeEach(async (to) => {
   }
 
   // Load workspaces if not yet loaded.
-  if (auth.workspaces.value.length === 0) {
+  if (!auth.workspacesLoaded.value) {
     await auth.fetchCurrentUser()
   }
 

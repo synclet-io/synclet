@@ -162,6 +162,7 @@ func (h *Handler) Register(ctx context.Context, req *connect.Request[authv1.Regi
 		ExpiresAt:             timestamppb.New(result.Tokens.ExpiresAt),
 		User:                  userToProto(result.User),
 		RefreshTokenExpiresAt: timestamppb.New(result.Tokens.RefreshExpiresAt),
+		Workspaces:            workspacesToProto(result.Workspaces),
 	})
 	connectutil.SetAuthCookies(resp.Header(), toAuthTokens(result.Tokens), h.cookieConfig)
 
@@ -185,6 +186,7 @@ func (h *Handler) Login(ctx context.Context, req *connect.Request[authv1.LoginRe
 		ExpiresAt:             timestamppb.New(result.Tokens.ExpiresAt),
 		User:                  userToProto(result.User),
 		RefreshTokenExpiresAt: timestamppb.New(result.Tokens.RefreshExpiresAt),
+		Workspaces:            workspacesToProto(result.Workspaces),
 	})
 	connectutil.SetAuthCookies(resp.Header(), toAuthTokens(result.Tokens), h.cookieConfig)
 
@@ -240,6 +242,13 @@ func (h *Handler) GetCurrentUser(ctx context.Context, _ *connect.Request[authv1.
 		return nil, mapError(err)
 	}
 
+	return connect.NewResponse(&authv1.GetCurrentUserResponse{
+		User:       userToProto(user),
+		Workspaces: workspacesToProto(memberships),
+	}), nil
+}
+
+func workspacesToProto(memberships []authservice.WorkspaceMembership) []*authv1.WorkspaceMembership {
 	workspaces := make([]*authv1.WorkspaceMembership, len(memberships))
 	for i, m := range memberships {
 		workspaces[i] = &authv1.WorkspaceMembership{
@@ -249,10 +258,7 @@ func (h *Handler) GetCurrentUser(ctx context.Context, _ *connect.Request[authv1.
 		}
 	}
 
-	return connect.NewResponse(&authv1.GetCurrentUserResponse{
-		User:       userToProto(user),
-		Workspaces: workspaces,
-	}), nil
+	return workspaces
 }
 
 func workspaceRoleToProto(r authservice.WorkspaceRole) workspacev1.MemberRole {

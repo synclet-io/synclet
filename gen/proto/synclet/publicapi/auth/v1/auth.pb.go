@@ -217,6 +217,7 @@ type RegisterResponse struct {
 	ExpiresAt             *timestamppb.Timestamp `protobuf:"bytes,1,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
 	User                  *UserInfo              `protobuf:"bytes,2,opt,name=user,proto3" json:"user,omitempty"`
 	RefreshTokenExpiresAt *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=refresh_token_expires_at,json=refreshTokenExpiresAt,proto3" json:"refresh_token_expires_at,omitempty"`
+	Workspaces            []*WorkspaceMembership `protobuf:"bytes,4,rep,name=workspaces,proto3" json:"workspaces,omitempty"`
 	unknownFields         protoimpl.UnknownFields
 	sizeCache             protoimpl.SizeCache
 }
@@ -268,6 +269,13 @@ func (x *RegisterResponse) GetUser() *UserInfo {
 func (x *RegisterResponse) GetRefreshTokenExpiresAt() *timestamppb.Timestamp {
 	if x != nil {
 		return x.RefreshTokenExpiresAt
+	}
+	return nil
+}
+
+func (x *RegisterResponse) GetWorkspaces() []*WorkspaceMembership {
+	if x != nil {
+		return x.Workspaces
 	}
 	return nil
 }
@@ -329,6 +337,7 @@ type LoginResponse struct {
 	ExpiresAt             *timestamppb.Timestamp `protobuf:"bytes,1,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
 	User                  *UserInfo              `protobuf:"bytes,2,opt,name=user,proto3" json:"user,omitempty"`
 	RefreshTokenExpiresAt *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=refresh_token_expires_at,json=refreshTokenExpiresAt,proto3" json:"refresh_token_expires_at,omitempty"`
+	Workspaces            []*WorkspaceMembership `protobuf:"bytes,4,rep,name=workspaces,proto3" json:"workspaces,omitempty"`
 	unknownFields         protoimpl.UnknownFields
 	sizeCache             protoimpl.SizeCache
 }
@@ -380,6 +389,13 @@ func (x *LoginResponse) GetUser() *UserInfo {
 func (x *LoginResponse) GetRefreshTokenExpiresAt() *timestamppb.Timestamp {
 	if x != nil {
 		return x.RefreshTokenExpiresAt
+	}
+	return nil
+}
+
+func (x *LoginResponse) GetWorkspaces() []*WorkspaceMembership {
+	if x != nil {
+		return x.Workspaces
 	}
 	return nil
 }
@@ -1490,20 +1506,26 @@ const file_synclet_publicapi_auth_v1_auth_proto_rawDesc = "" +
 	"\x0fRegisterRequest\x12\x14\n" +
 	"\x05email\x18\x01 \x01(\tR\x05email\x12\x1a\n" +
 	"\bpassword\x18\x02 \x01(\tR\bpassword\x12\x12\n" +
-	"\x04name\x18\x03 \x01(\tR\x04name\"\xdb\x01\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\"\xab\x02\n" +
 	"\x10RegisterResponse\x129\n" +
 	"\n" +
 	"expires_at\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\x127\n" +
 	"\x04user\x18\x02 \x01(\v2#.synclet.publicapi.auth.v1.UserInfoR\x04user\x12S\n" +
-	"\x18refresh_token_expires_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\x15refreshTokenExpiresAt\"@\n" +
+	"\x18refresh_token_expires_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\x15refreshTokenExpiresAt\x12N\n" +
+	"\n" +
+	"workspaces\x18\x04 \x03(\v2..synclet.publicapi.auth.v1.WorkspaceMembershipR\n" +
+	"workspaces\"@\n" +
 	"\fLoginRequest\x12\x14\n" +
 	"\x05email\x18\x01 \x01(\tR\x05email\x12\x1a\n" +
-	"\bpassword\x18\x02 \x01(\tR\bpassword\"\xd8\x01\n" +
+	"\bpassword\x18\x02 \x01(\tR\bpassword\"\xa8\x02\n" +
 	"\rLoginResponse\x129\n" +
 	"\n" +
 	"expires_at\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\x127\n" +
 	"\x04user\x18\x02 \x01(\v2#.synclet.publicapi.auth.v1.UserInfoR\x04user\x12S\n" +
-	"\x18refresh_token_expires_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\x15refreshTokenExpiresAt\"\x15\n" +
+	"\x18refresh_token_expires_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\x15refreshTokenExpiresAt\x12N\n" +
+	"\n" +
+	"workspaces\x18\x04 \x03(\v2..synclet.publicapi.auth.v1.WorkspaceMembershipR\n" +
+	"workspaces\"\x15\n" +
 	"\x13RefreshTokenRequest\"\xa6\x01\n" +
 	"\x14RefreshTokenResponse\x129\n" +
 	"\n" +
@@ -1633,52 +1655,54 @@ var file_synclet_publicapi_auth_v1_auth_proto_depIdxs = []int32{
 	30, // 2: synclet.publicapi.auth.v1.RegisterResponse.expires_at:type_name -> google.protobuf.Timestamp
 	0,  // 3: synclet.publicapi.auth.v1.RegisterResponse.user:type_name -> synclet.publicapi.auth.v1.UserInfo
 	30, // 4: synclet.publicapi.auth.v1.RegisterResponse.refresh_token_expires_at:type_name -> google.protobuf.Timestamp
-	30, // 5: synclet.publicapi.auth.v1.LoginResponse.expires_at:type_name -> google.protobuf.Timestamp
-	0,  // 6: synclet.publicapi.auth.v1.LoginResponse.user:type_name -> synclet.publicapi.auth.v1.UserInfo
-	30, // 7: synclet.publicapi.auth.v1.LoginResponse.refresh_token_expires_at:type_name -> google.protobuf.Timestamp
-	30, // 8: synclet.publicapi.auth.v1.RefreshTokenResponse.expires_at:type_name -> google.protobuf.Timestamp
-	30, // 9: synclet.publicapi.auth.v1.RefreshTokenResponse.refresh_token_expires_at:type_name -> google.protobuf.Timestamp
-	0,  // 10: synclet.publicapi.auth.v1.GetCurrentUserResponse.user:type_name -> synclet.publicapi.auth.v1.UserInfo
-	1,  // 11: synclet.publicapi.auth.v1.GetCurrentUserResponse.workspaces:type_name -> synclet.publicapi.auth.v1.WorkspaceMembership
-	0,  // 12: synclet.publicapi.auth.v1.UpdateProfileResponse.user:type_name -> synclet.publicapi.auth.v1.UserInfo
-	30, // 13: synclet.publicapi.auth.v1.APIKeyInfo.created_at:type_name -> google.protobuf.Timestamp
-	30, // 14: synclet.publicapi.auth.v1.APIKeyInfo.expires_at:type_name -> google.protobuf.Timestamp
-	30, // 15: synclet.publicapi.auth.v1.APIKeyInfo.last_used_at:type_name -> google.protobuf.Timestamp
-	30, // 16: synclet.publicapi.auth.v1.CreateAPIKeyRequest.expires_at:type_name -> google.protobuf.Timestamp
-	20, // 17: synclet.publicapi.auth.v1.CreateAPIKeyResponse.api_key:type_name -> synclet.publicapi.auth.v1.APIKeyInfo
-	20, // 18: synclet.publicapi.auth.v1.ListAPIKeysResponse.api_keys:type_name -> synclet.publicapi.auth.v1.APIKeyInfo
-	27, // 19: synclet.publicapi.auth.v1.GetOIDCProvidersResponse.providers:type_name -> synclet.publicapi.auth.v1.OIDCProviderInfo
-	2,  // 20: synclet.publicapi.auth.v1.AuthService.Register:input_type -> synclet.publicapi.auth.v1.RegisterRequest
-	4,  // 21: synclet.publicapi.auth.v1.AuthService.Login:input_type -> synclet.publicapi.auth.v1.LoginRequest
-	6,  // 22: synclet.publicapi.auth.v1.AuthService.RefreshToken:input_type -> synclet.publicapi.auth.v1.RefreshTokenRequest
-	8,  // 23: synclet.publicapi.auth.v1.AuthService.Logout:input_type -> synclet.publicapi.auth.v1.LogoutRequest
-	10, // 24: synclet.publicapi.auth.v1.AuthService.GetCurrentUser:input_type -> synclet.publicapi.auth.v1.GetCurrentUserRequest
-	12, // 25: synclet.publicapi.auth.v1.AuthService.UpdateProfile:input_type -> synclet.publicapi.auth.v1.UpdateProfileRequest
-	14, // 26: synclet.publicapi.auth.v1.AuthService.ChangePassword:input_type -> synclet.publicapi.auth.v1.ChangePasswordRequest
-	16, // 27: synclet.publicapi.auth.v1.AuthService.RequestPasswordReset:input_type -> synclet.publicapi.auth.v1.RequestPasswordResetRequest
-	18, // 28: synclet.publicapi.auth.v1.AuthService.ResetPassword:input_type -> synclet.publicapi.auth.v1.ResetPasswordRequest
-	21, // 29: synclet.publicapi.auth.v1.AuthService.CreateAPIKey:input_type -> synclet.publicapi.auth.v1.CreateAPIKeyRequest
-	23, // 30: synclet.publicapi.auth.v1.AuthService.RevokeAPIKey:input_type -> synclet.publicapi.auth.v1.RevokeAPIKeyRequest
-	25, // 31: synclet.publicapi.auth.v1.AuthService.ListAPIKeys:input_type -> synclet.publicapi.auth.v1.ListAPIKeysRequest
-	28, // 32: synclet.publicapi.auth.v1.AuthService.GetOIDCProviders:input_type -> synclet.publicapi.auth.v1.GetOIDCProvidersRequest
-	3,  // 33: synclet.publicapi.auth.v1.AuthService.Register:output_type -> synclet.publicapi.auth.v1.RegisterResponse
-	5,  // 34: synclet.publicapi.auth.v1.AuthService.Login:output_type -> synclet.publicapi.auth.v1.LoginResponse
-	7,  // 35: synclet.publicapi.auth.v1.AuthService.RefreshToken:output_type -> synclet.publicapi.auth.v1.RefreshTokenResponse
-	9,  // 36: synclet.publicapi.auth.v1.AuthService.Logout:output_type -> synclet.publicapi.auth.v1.LogoutResponse
-	11, // 37: synclet.publicapi.auth.v1.AuthService.GetCurrentUser:output_type -> synclet.publicapi.auth.v1.GetCurrentUserResponse
-	13, // 38: synclet.publicapi.auth.v1.AuthService.UpdateProfile:output_type -> synclet.publicapi.auth.v1.UpdateProfileResponse
-	15, // 39: synclet.publicapi.auth.v1.AuthService.ChangePassword:output_type -> synclet.publicapi.auth.v1.ChangePasswordResponse
-	17, // 40: synclet.publicapi.auth.v1.AuthService.RequestPasswordReset:output_type -> synclet.publicapi.auth.v1.RequestPasswordResetResponse
-	19, // 41: synclet.publicapi.auth.v1.AuthService.ResetPassword:output_type -> synclet.publicapi.auth.v1.ResetPasswordResponse
-	22, // 42: synclet.publicapi.auth.v1.AuthService.CreateAPIKey:output_type -> synclet.publicapi.auth.v1.CreateAPIKeyResponse
-	24, // 43: synclet.publicapi.auth.v1.AuthService.RevokeAPIKey:output_type -> synclet.publicapi.auth.v1.RevokeAPIKeyResponse
-	26, // 44: synclet.publicapi.auth.v1.AuthService.ListAPIKeys:output_type -> synclet.publicapi.auth.v1.ListAPIKeysResponse
-	29, // 45: synclet.publicapi.auth.v1.AuthService.GetOIDCProviders:output_type -> synclet.publicapi.auth.v1.GetOIDCProvidersResponse
-	33, // [33:46] is the sub-list for method output_type
-	20, // [20:33] is the sub-list for method input_type
-	20, // [20:20] is the sub-list for extension type_name
-	20, // [20:20] is the sub-list for extension extendee
-	0,  // [0:20] is the sub-list for field type_name
+	1,  // 5: synclet.publicapi.auth.v1.RegisterResponse.workspaces:type_name -> synclet.publicapi.auth.v1.WorkspaceMembership
+	30, // 6: synclet.publicapi.auth.v1.LoginResponse.expires_at:type_name -> google.protobuf.Timestamp
+	0,  // 7: synclet.publicapi.auth.v1.LoginResponse.user:type_name -> synclet.publicapi.auth.v1.UserInfo
+	30, // 8: synclet.publicapi.auth.v1.LoginResponse.refresh_token_expires_at:type_name -> google.protobuf.Timestamp
+	1,  // 9: synclet.publicapi.auth.v1.LoginResponse.workspaces:type_name -> synclet.publicapi.auth.v1.WorkspaceMembership
+	30, // 10: synclet.publicapi.auth.v1.RefreshTokenResponse.expires_at:type_name -> google.protobuf.Timestamp
+	30, // 11: synclet.publicapi.auth.v1.RefreshTokenResponse.refresh_token_expires_at:type_name -> google.protobuf.Timestamp
+	0,  // 12: synclet.publicapi.auth.v1.GetCurrentUserResponse.user:type_name -> synclet.publicapi.auth.v1.UserInfo
+	1,  // 13: synclet.publicapi.auth.v1.GetCurrentUserResponse.workspaces:type_name -> synclet.publicapi.auth.v1.WorkspaceMembership
+	0,  // 14: synclet.publicapi.auth.v1.UpdateProfileResponse.user:type_name -> synclet.publicapi.auth.v1.UserInfo
+	30, // 15: synclet.publicapi.auth.v1.APIKeyInfo.created_at:type_name -> google.protobuf.Timestamp
+	30, // 16: synclet.publicapi.auth.v1.APIKeyInfo.expires_at:type_name -> google.protobuf.Timestamp
+	30, // 17: synclet.publicapi.auth.v1.APIKeyInfo.last_used_at:type_name -> google.protobuf.Timestamp
+	30, // 18: synclet.publicapi.auth.v1.CreateAPIKeyRequest.expires_at:type_name -> google.protobuf.Timestamp
+	20, // 19: synclet.publicapi.auth.v1.CreateAPIKeyResponse.api_key:type_name -> synclet.publicapi.auth.v1.APIKeyInfo
+	20, // 20: synclet.publicapi.auth.v1.ListAPIKeysResponse.api_keys:type_name -> synclet.publicapi.auth.v1.APIKeyInfo
+	27, // 21: synclet.publicapi.auth.v1.GetOIDCProvidersResponse.providers:type_name -> synclet.publicapi.auth.v1.OIDCProviderInfo
+	2,  // 22: synclet.publicapi.auth.v1.AuthService.Register:input_type -> synclet.publicapi.auth.v1.RegisterRequest
+	4,  // 23: synclet.publicapi.auth.v1.AuthService.Login:input_type -> synclet.publicapi.auth.v1.LoginRequest
+	6,  // 24: synclet.publicapi.auth.v1.AuthService.RefreshToken:input_type -> synclet.publicapi.auth.v1.RefreshTokenRequest
+	8,  // 25: synclet.publicapi.auth.v1.AuthService.Logout:input_type -> synclet.publicapi.auth.v1.LogoutRequest
+	10, // 26: synclet.publicapi.auth.v1.AuthService.GetCurrentUser:input_type -> synclet.publicapi.auth.v1.GetCurrentUserRequest
+	12, // 27: synclet.publicapi.auth.v1.AuthService.UpdateProfile:input_type -> synclet.publicapi.auth.v1.UpdateProfileRequest
+	14, // 28: synclet.publicapi.auth.v1.AuthService.ChangePassword:input_type -> synclet.publicapi.auth.v1.ChangePasswordRequest
+	16, // 29: synclet.publicapi.auth.v1.AuthService.RequestPasswordReset:input_type -> synclet.publicapi.auth.v1.RequestPasswordResetRequest
+	18, // 30: synclet.publicapi.auth.v1.AuthService.ResetPassword:input_type -> synclet.publicapi.auth.v1.ResetPasswordRequest
+	21, // 31: synclet.publicapi.auth.v1.AuthService.CreateAPIKey:input_type -> synclet.publicapi.auth.v1.CreateAPIKeyRequest
+	23, // 32: synclet.publicapi.auth.v1.AuthService.RevokeAPIKey:input_type -> synclet.publicapi.auth.v1.RevokeAPIKeyRequest
+	25, // 33: synclet.publicapi.auth.v1.AuthService.ListAPIKeys:input_type -> synclet.publicapi.auth.v1.ListAPIKeysRequest
+	28, // 34: synclet.publicapi.auth.v1.AuthService.GetOIDCProviders:input_type -> synclet.publicapi.auth.v1.GetOIDCProvidersRequest
+	3,  // 35: synclet.publicapi.auth.v1.AuthService.Register:output_type -> synclet.publicapi.auth.v1.RegisterResponse
+	5,  // 36: synclet.publicapi.auth.v1.AuthService.Login:output_type -> synclet.publicapi.auth.v1.LoginResponse
+	7,  // 37: synclet.publicapi.auth.v1.AuthService.RefreshToken:output_type -> synclet.publicapi.auth.v1.RefreshTokenResponse
+	9,  // 38: synclet.publicapi.auth.v1.AuthService.Logout:output_type -> synclet.publicapi.auth.v1.LogoutResponse
+	11, // 39: synclet.publicapi.auth.v1.AuthService.GetCurrentUser:output_type -> synclet.publicapi.auth.v1.GetCurrentUserResponse
+	13, // 40: synclet.publicapi.auth.v1.AuthService.UpdateProfile:output_type -> synclet.publicapi.auth.v1.UpdateProfileResponse
+	15, // 41: synclet.publicapi.auth.v1.AuthService.ChangePassword:output_type -> synclet.publicapi.auth.v1.ChangePasswordResponse
+	17, // 42: synclet.publicapi.auth.v1.AuthService.RequestPasswordReset:output_type -> synclet.publicapi.auth.v1.RequestPasswordResetResponse
+	19, // 43: synclet.publicapi.auth.v1.AuthService.ResetPassword:output_type -> synclet.publicapi.auth.v1.ResetPasswordResponse
+	22, // 44: synclet.publicapi.auth.v1.AuthService.CreateAPIKey:output_type -> synclet.publicapi.auth.v1.CreateAPIKeyResponse
+	24, // 45: synclet.publicapi.auth.v1.AuthService.RevokeAPIKey:output_type -> synclet.publicapi.auth.v1.RevokeAPIKeyResponse
+	26, // 46: synclet.publicapi.auth.v1.AuthService.ListAPIKeys:output_type -> synclet.publicapi.auth.v1.ListAPIKeysResponse
+	29, // 47: synclet.publicapi.auth.v1.AuthService.GetOIDCProviders:output_type -> synclet.publicapi.auth.v1.GetOIDCProvidersResponse
+	35, // [35:48] is the sub-list for method output_type
+	22, // [22:35] is the sub-list for method input_type
+	22, // [22:22] is the sub-list for extension type_name
+	22, // [22:22] is the sub-list for extension extendee
+	0,  // [0:22] is the sub-list for field type_name
 }
 
 func init() { file_synclet_publicapi_auth_v1_auth_proto_init() }

@@ -31,17 +31,19 @@ function mapMembership(proto: ProtoWorkspaceMembership): WorkspaceMembership {
   }
 }
 
-export async function login(email: string, password: string): Promise<{ user: User | undefined }> {
+export async function login(email: string, password: string): Promise<{ user: User | undefined, workspaces: WorkspaceMembership[] }> {
   const res = await authClient.login({ email, password })
   return {
     user: res.user ? mapUser(res.user) : undefined,
+    workspaces: (res.workspaces || []).map(mapMembership),
   }
 }
 
-export async function register(email: string, password: string, name: string): Promise<{ user: User | undefined }> {
+export async function register(email: string, password: string, name: string): Promise<{ user: User | undefined, workspaces: WorkspaceMembership[] }> {
   const res = await authClient.register({ email, password, name })
   return {
     user: res.user ? mapUser(res.user) : undefined,
+    workspaces: (res.workspaces || []).map(mapMembership),
   }
 }
 

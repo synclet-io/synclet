@@ -6,6 +6,7 @@ import { clearWorkspaceId, getAuthMeta, getWorkspaceId, setWorkspaceId } from '.
 
 const user = ref<User | null>(null)
 const workspaces = ref<WorkspaceMembership[]>([])
+const workspacesLoaded = ref(false)
 const currentWorkspaceId = ref<string | null>(getWorkspaceId())
 const hasSession = ref(getAuthMeta() !== null)
 
@@ -15,12 +16,14 @@ async function login(email: string, password: string) {
   const result = await authApi.login(email, password)
   hasSession.value = true
   user.value = result.user ?? null
+  setWorkspaces(result.workspaces)
 }
 
 async function register(email: string, password: string, name: string) {
   const result = await authApi.register(email, password, name)
   hasSession.value = true
   user.value = result.user ?? null
+  setWorkspaces(result.workspaces)
 }
 
 async function logout() {
@@ -59,6 +62,7 @@ async function reloadWorkspaces() {
 
 function setWorkspaces(ws: WorkspaceMembership[]) {
   workspaces.value = ws
+  workspacesLoaded.value = true
   const saved = getWorkspaceId()
   const validSaved = saved && ws.some(w => w.workspaceId === saved)
   if (validSaved) {
@@ -83,6 +87,7 @@ function clearState() {
   hasSession.value = false
   user.value = null
   workspaces.value = []
+  workspacesLoaded.value = false
   currentWorkspaceId.value = null
 }
 
@@ -116,6 +121,7 @@ export function useAuth() {
   return {
     user: readonly(user),
     workspaces: readonly(workspaces),
+    workspacesLoaded: readonly(workspacesLoaded),
     isAuthenticated,
     currentWorkspaceId: readonly(currentWorkspaceId),
     login,

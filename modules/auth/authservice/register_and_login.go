@@ -21,8 +21,9 @@ type RegisterAndLoginParams struct {
 
 // RegisterAndLoginResult holds the result of register-and-login.
 type RegisterAndLoginResult struct {
-	Tokens *TokenPair
-	User   *User
+	Tokens     *TokenPair
+	User       *User
+	Workspaces []WorkspaceMembership
 }
 
 // RegisterAndLogin combines user registration with automatic login.
@@ -30,16 +31,18 @@ type RegisterAndLogin struct {
 	register              *Register
 	login                 *Login
 	workspaceAutoAssigner WorkspaceAutoAssigner
+	listUserWorkspaces    *ListUserWorkspaces
 	audit                 AuditRecorder
 	config                Config
 }
 
 // NewRegisterAndLogin creates a new RegisterAndLogin use case.
-func NewRegisterAndLogin(register *Register, login *Login, workspaceAutoAssigner WorkspaceAutoAssigner, audit AuditRecorder, config Config) *RegisterAndLogin {
+func NewRegisterAndLogin(register *Register, login *Login, workspaceAutoAssigner WorkspaceAutoAssigner, listUserWorkspaces *ListUserWorkspaces, audit AuditRecorder, config Config) *RegisterAndLogin {
 	return &RegisterAndLogin{
 		register:              register,
 		login:                 login,
 		workspaceAutoAssigner: workspaceAutoAssigner,
+		listUserWorkspaces:    listUserWorkspaces,
 		audit:                 audit,
 		config:                config,
 	}
@@ -69,9 +72,15 @@ func (uc *RegisterAndLogin) Execute(ctx context.Context, params RegisterAndLogin
 		return nil, fmt.Errorf("auto-login after registration: %w", err)
 	}
 
+	workspaces, err := uc.listUserWorkspaces.Execute(ctx, user.ID)
+	if err != nil {
+		return nil, fmt.Errorf("listing user workspaces: %w", err)
+	}
+
 	return &RegisterAndLoginResult{
-		Tokens: tokens,
-		User:   user,
+		Tokens:     tokens,
+		User:       user,
+		Workspaces: workspaces,
 	}, nil
 }
 

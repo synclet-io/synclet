@@ -13,8 +13,9 @@ type LoginWithUserInfoParams struct {
 
 // LoginWithUserInfoResult holds the result of login with user info.
 type LoginWithUserInfoResult struct {
-	Tokens *TokenPair
-	User   *User
+	Tokens     *TokenPair
+	User       *User
+	Workspaces []WorkspaceMembership
 }
 
 // LoginWithUserInfo authenticates a user and returns tokens along with full user info.
@@ -22,18 +23,20 @@ type LoginWithUserInfo struct {
 	login               *Login
 	validateAccessToken *ValidateAccessToken
 	getUserByID         *GetUserByID
+	listUserWorkspaces  *ListUserWorkspaces
 }
 
 // NewLoginWithUserInfo creates a new LoginWithUserInfo use case.
-func NewLoginWithUserInfo(login *Login, validateAccessToken *ValidateAccessToken, getUserByID *GetUserByID) *LoginWithUserInfo {
+func NewLoginWithUserInfo(login *Login, validateAccessToken *ValidateAccessToken, getUserByID *GetUserByID, listUserWorkspaces *ListUserWorkspaces) *LoginWithUserInfo {
 	return &LoginWithUserInfo{
 		login:               login,
 		validateAccessToken: validateAccessToken,
 		getUserByID:         getUserByID,
+		listUserWorkspaces:  listUserWorkspaces,
 	}
 }
 
-// Execute logs in and returns tokens with the full user profile.
+// Execute logs in and returns tokens with the full user profile and workspace memberships.
 func (uc *LoginWithUserInfo) Execute(ctx context.Context, params LoginWithUserInfoParams) (*LoginWithUserInfoResult, error) {
 	tokens, err := uc.login.Execute(ctx, params.Email, params.Password)
 	if err != nil {
@@ -50,8 +53,14 @@ func (uc *LoginWithUserInfo) Execute(ctx context.Context, params LoginWithUserIn
 		return nil, fmt.Errorf("getting user: %w", err)
 	}
 
+	workspaces, err := uc.listUserWorkspaces.Execute(ctx, user.ID)
+	if err != nil {
+		return nil, fmt.Errorf("listing user workspaces: %w", err)
+	}
+
 	return &LoginWithUserInfoResult{
-		Tokens: tokens,
-		User:   user,
+		Tokens:     tokens,
+		User:       user,
+		Workspaces: workspaces,
 	}, nil
 }

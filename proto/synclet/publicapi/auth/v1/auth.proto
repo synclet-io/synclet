@@ -53,6 +53,7 @@ message RegisterResponse {
   google.protobuf.Timestamp expires_at = 1;
   UserInfo user = 2;
   google.protobuf.Timestamp refresh_token_expires_at = 3;
+  repeated WorkspaceMembership workspaces = 4;
 }
 
 message LoginRequest {
@@ -64,6 +65,7 @@ message LoginResponse {
   google.protobuf.Timestamp expires_at = 1;
   UserInfo user = 2;
   google.protobuf.Timestamp refresh_token_expires_at = 3;
+  repeated WorkspaceMembership workspaces = 4;
 }
 
 message RefreshTokenRequest {}
