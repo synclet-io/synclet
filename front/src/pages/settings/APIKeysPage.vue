@@ -1,59 +1,48 @@
 <script setup lang="ts">
-import type { APIKey } from '@entities/auth'
 import type { Column } from '@shared/ui'
-import { createAPIKey, listAPIKeys, revokeAPIKey, useAuth } from '@entities/auth'
+import { useAuth } from '@entities/auth'
+import { useAPIKeys, useCreateAPIKey, useRevokeAPIKey } from '@entities/auth/apiKeys'
 import { getErrorMessage } from '@shared/lib/errorUtils'
-import { SAlert, SButton, SConfirmDialog, SInput, STable, useToast } from '@shared/ui'
+import { PageHeader, SAlert, SButton, SConfirmDialog, SInput, STable, useToast } from '@shared/ui'
 import { Check, Copy, Trash2 } from 'lucide-vue-next'
-import { onMounted, ref } from 'vue'
+import { ref, watch } from 'vue'
 
 const auth = useAuth()
 const toast = useToast()
 
-const keys = ref<APIKey[]>([])
-const loading = ref(false)
+const { data: keys, isLoading, error: loadError } = useAPIKeys()
+const createMutation = useCreateAPIKey()
+const revokeMutation = useRevokeAPIKey()
+
 const error = ref('')
 const newKeyName = ref('')
-const creating = ref(false)
 const createdRawKey = ref<string | null>(null)
 const copied = ref(false)
 const confirmRevoke = ref<{ open: boolean, id: string, name: string }>({ open: false, id: '', name: '' })
 
-async function loadKeys() {
-  if (!auth.currentWorkspaceId.value)
-    return
-  loading.value = true
-  try {
-    keys.value = await listAPIKeys(auth.currentWorkspaceId.value)
-  }
-  catch (e: unknown) {
-    error.value = getErrorMessage(e) || 'Failed to load API keys'
-  }
-  finally {
-    loading.value = false
-  }
-}
+watch(auth.currentWorkspaceId, () => {
+  createdRawKey.value = null
+  error.value = ''
+})
 
-onMounted(loadKeys)
+watch(loadError, (e) => {
+  if (e)
+    error.value = getErrorMessage(e) || 'Failed to load API keys'
+})
 
 async function handleCreate() {
-  if (!auth.currentWorkspaceId.value || !newKeyName.value)
+  if (!newKeyName.value)
     return
-  creating.value = true
   error.value = ''
   createdRawKey.value = null
   try {
-    const result = await createAPIKey(auth.currentWorkspaceId.value, newKeyName.value)
+    const result = await createMutation.mutateAsync(newKeyName.value)
     createdRawKey.value = result.rawKey
     newKeyName.value = ''
-    await loadKeys()
     toast.success('API key created')
   }
   catch (e: unknown) {
     error.value = getErrorMessage(e) || 'Failed to create API key'
-  }
-  finally {
-    creating.value = false
   }
 }
 
@@ -61,8 +50,7 @@ async function handleRevoke() {
   const id = confirmRevoke.value.id
   confirmRevoke.value.open = false
   try {
-    await revokeAPIKey(id)
-    await loadKeys()
+    await revokeMutation.mutateAsync(id)
     toast.success('API key revoked')
   }
   catch (e: unknown) {
@@ -91,9 +79,7 @@ const columns: Column[] = [
 
 <template>
   <div class="space-y-6">
-    <h2 class="text-lg font-semibold text-heading">
-      API Keys
-    </h2>
+    <PageHeader title="API Keys" :level="2" />
     <SAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
       {{ error }}
     </SAlert>
@@ -116,12 +102,12 @@ const columns: Column[] = [
       <div class="flex-1">
         <SInput v-model="newKeyName" placeholder="Key name (e.g. CI/CD)" required />
       </div>
-      <SButton type="submit" :loading="creating">
+      <SButton type="submit" :loading="createMutation.isPending.value">
         Create key
       </SButton>
     </form>
 
-    <STable :columns="columns" :data="keys" :loading="loading" empty-text="No API keys yet.">
+    <STable :columns="columns" :data="keys ?? []" :loading="isLoading" empty-text="No API keys yet.">
       <template #cell-name="{ row }">
         <span class="font-medium text-text-primary">{{ row.name }}</span>
       </template>

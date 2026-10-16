@@ -13,7 +13,7 @@ import {
   useWorkspaceMembers,
 } from '@entities/workspace'
 import { getErrorMessage } from '@shared/lib/errorUtils'
-import { SAlert, SBadge, SButton, SConfirmDialog, SEmptyState, SInput, SSelect, STable, useToast } from '@shared/ui'
+import { PageHeader, SAlert, SBadge, SButton, SConfirmDialog, SEmptyState, SInput, SSelect, STable, useToast } from '@shared/ui'
 import { Check, Copy, RefreshCw, Trash2, UserPlus, X } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
 
@@ -237,9 +237,7 @@ const columns: Column[] = [
 
 <template>
   <div class="space-y-6">
-    <h2 class="text-lg font-semibold text-heading">
-      Members
-    </h2>
+    <PageHeader title="Members" :level="2" />
 
     <SAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
       {{ error }}

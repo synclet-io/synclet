@@ -22,9 +22,9 @@ const state = useOnboardingState()
         </p>
       </div>
       <SButton
-        v-if="state.allComplete.value"
         variant="ghost"
         size="sm"
+        aria-label="Dismiss quick start"
         @click="state.dismiss()"
       >
         <X class="w-4 h-4" /> Dismiss

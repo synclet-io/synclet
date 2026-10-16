@@ -2,12 +2,13 @@
 import { ArrowLeft } from 'lucide-vue-next'
 import { RouterLink } from 'vue-router'
 
-defineProps<{
+withDefaults(defineProps<{
   title: string
   description?: string
   backTo?: string | object
   backLabel?: string
-}>()
+  level?: 1 | 2
+}>(), { level: 1 })
 </script>
 
 <template>
@@ -21,9 +22,13 @@ defineProps<{
     <slot name="breadcrumb" />
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div>
-        <h1 class="text-xl font-semibold text-heading tracking-tight">
+        <component
+          :is="`h${level}`"
+          class="font-semibold text-heading tracking-tight"
+          :class="level === 1 ? 'text-xl' : 'text-lg'"
+        >
           {{ title }}
-        </h1>
+        </component>
         <p v-if="description" class="mt-1 text-sm text-text-secondary">
           {{ description }}
         </p>

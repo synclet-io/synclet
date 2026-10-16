@@ -3,8 +3,9 @@ import type { Column } from '@shared/ui'
 import { useManagedConnectors } from '@entities/connector'
 import { useConnectorTaskResult } from '@entities/connector-task'
 import { useDeleteDestination, useDestinations, useTestDestinationConnection } from '@entities/destination'
+import DeleteInstanceDialog from '@features/connector-instance/DeleteInstanceDialog.vue'
 import { getErrorMessage } from '@shared/lib/errorUtils'
-import { PageHeader, SAlert, SButton, SConfirmDialog, SEmptyState, SPagination, STable, useToast } from '@shared/ui'
+import { PageHeader, SAlert, SButton, SEmptyState, SPagination, STable, useToast } from '@shared/ui'
 import { Plus, Trash2, Zap } from 'lucide-vue-next'
 import { ref, watch } from 'vue'
 
@@ -43,6 +44,7 @@ function connectorLabel(managedConnectorId: string): string {
 }
 
 const confirmDelete = ref<{ open: boolean, id: string, name: string }>({ open: false, id: '', name: '' })
+const deleteError = ref('')
 
 async function testConnection(id: string) {
   try {
@@ -56,19 +58,21 @@ async function testConnection(id: string) {
 }
 
 function requestDelete(id: string, name: string) {
+  deleteError.value = ''
   confirmDelete.value = { open: true, id, name }
 }
 
 async function doDelete() {
-  const id = confirmDelete.value.id
-  confirmDelete.value.open = false
+  deleteError.value = ''
   try {
-    await deleteDestinationMutation.mutateAsync(id)
-    toast.success('Destination deleted')
+    await deleteDestinationMutation.mutateAsync(confirmDelete.value.id)
   }
   catch (e: unknown) {
-    toast.error(`Error: ${getErrorMessage(e)}`)
+    deleteError.value = getErrorMessage(e) || 'Failed to delete destination'
+    return
   }
+  confirmDelete.value.open = false
+  toast.success('Destination deleted')
 }
 
 const columns: Column[] = [
@@ -89,7 +93,7 @@ const columns: Column[] = [
   </PageHeader>
 
   <SAlert v-if="error" variant="danger" class="mb-4">
-    {{ error.message }}
+    {{ getErrorMessage(error) }}
   </SAlert>
 
   <STable :columns="columns" :data="data?.items" :loading="loading" empty-text="No destinations configured">
@@ -137,12 +141,12 @@ const columns: Column[] = [
     @page-change="currentPage = $event"
   />
 
-  <SConfirmDialog
+  <DeleteInstanceDialog
     :open="confirmDelete.open"
-    title="Delete destination"
-    :message="`Delete &quot;${confirmDelete.name}&quot;? This cannot be undone.`"
-    confirm-text="Delete"
+    kind="destination"
+    :name="confirmDelete.name"
     :loading="deleteDestinationMutation.isPending.value"
+    :error="deleteError"
     @confirm="doDelete"
     @cancel="confirmDelete.open = false"
   />

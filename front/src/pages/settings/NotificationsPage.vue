@@ -4,9 +4,12 @@ import type { Column } from '@shared/ui'
 import { useDeleteChannel, useNotificationChannels } from '@entities/notification'
 import NotificationChannelForm from '@features/notification-channels/NotificationChannelForm.vue'
 import { getErrorMessage } from '@shared/lib/errorUtils'
-import { SBadge, SButton, SCard, SConfirmDialog, SEmptyState, SSkeleton, STable } from '@shared/ui'
+import { PageHeader, SAlert, SBadge, SButton, SCard, SConfirmDialog, SEmptyState, SSkeleton, STable } from '@shared/ui'
 import { Bell, Hash, Mail, Pencil, Plus, Send, Trash2 } from 'lucide-vue-next'
-import { ref } from 'vue'
+import { computed, inject, ref } from 'vue'
+import { workspaceAdminKey } from './SettingsLayout.vue'
+
+const isAdmin = inject(workspaceAdminKey, computed(() => false))
 
 const { data: channels, isLoading } = useNotificationChannels()
 const deleteMutation = useDeleteChannel()
@@ -35,6 +38,7 @@ const columns: Column[] = [
   { key: 'status', label: 'Status' },
   { key: 'actions', label: 'Actions', align: 'right' },
 ]
+const visibleColumns = computed(() => isAdmin.value ? columns : columns.filter(c => c.key !== 'actions'))
 
 function openCreate() {
   editingChannel.value = undefined
@@ -69,9 +73,13 @@ async function confirmDelete() {
 </script>
 
 <template>
-  <div class="mt-6">
+  <div class="space-y-6">
+    <PageHeader title="Notifications" :level="2" />
+    <SAlert v-if="!isAdmin" variant="info">
+      You need admin permissions to manage notification channels.
+    </SAlert>
     <SCard title="Notification Channels">
-      <template #header>
+      <template v-if="isAdmin" #header>
         <SButton variant="primary" size="sm" @click="openCreate">
           <Plus class="w-4 h-4" />
           Add Channel
@@ -88,7 +96,7 @@ async function confirmDelete() {
           title="No notification channels"
           description="Add a channel to receive alerts about sync failures."
         >
-          <SButton variant="primary" size="sm" @click="openCreate">
+          <SButton v-if="isAdmin" variant="primary" size="sm" @click="openCreate">
             <Plus class="w-4 h-4" />
             Add Channel
           </SButton>
@@ -96,7 +104,7 @@ async function confirmDelete() {
       </template>
 
       <template v-else>
-        <STable :columns="columns" :data="channels" :padding="false">
+        <STable :columns="visibleColumns" :data="channels" :padding="false">
           <template #cell-type="{ row }">
             <div class="flex items-center gap-2">
               <component :is="channelTypeIcons[row.channelType as ChannelType]" class="w-4 h-4 text-text-secondary" />
@@ -115,12 +123,16 @@ async function confirmDelete() {
             <div class="flex items-center justify-end gap-1">
               <button
                 class="p-1.5 rounded-lg text-text-muted hover:text-heading hover:bg-surface-hover transition-colors"
+                title="Edit channel"
+                aria-label="Edit channel"
                 @click="openEdit(row)"
               >
                 <Pencil class="w-4 h-4" />
               </button>
               <button
                 class="p-1.5 rounded-lg text-text-muted hover:text-danger hover:bg-danger-bg transition-colors"
+                title="Delete channel"
+                aria-label="Delete channel"
                 @click="openDelete(row)"
               >
                 <Trash2 class="w-4 h-4" />

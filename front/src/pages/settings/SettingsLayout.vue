@@ -1,15 +1,21 @@
-<script setup lang="ts">
+<script lang="ts">
 import type { Tab } from '@shared/ui'
+import type { ComputedRef, InjectionKey } from 'vue'
 import { useAuth } from '@entities/auth'
-import { STabs } from '@shared/ui'
-import { computed } from 'vue'
+import { PageHeader, STabs } from '@shared/ui'
+import { computed, provide } from 'vue'
 import { RouterView } from 'vue-router'
 
+export const workspaceAdminKey: InjectionKey<ComputedRef<boolean>> = Symbol('workspaceAdmin')
+</script>
+
+<script setup lang="ts">
 const auth = useAuth()
 const isAdmin = computed(() => {
   const ws = auth.workspaces.value.find(w => w.workspaceId === auth.currentWorkspaceId.value)
   return ws?.role === 'admin'
 })
+provide(workspaceAdminKey, isAdmin)
 
 const tabs = computed<Tab[]>(() => {
   const allTabs: Tab[] = [
@@ -31,9 +37,7 @@ const tabs = computed<Tab[]>(() => {
 
 <template>
   <div>
-    <h1 class="text-2xl font-bold text-heading mb-6">
-      Settings
-    </h1>
+    <PageHeader title="Settings" />
     <STabs :tabs="tabs" />
     <RouterView />
   </div>

@@ -2,20 +2,24 @@
 import { useAuth } from '@entities/auth'
 import { useConnectorVersions, useManagedConnector } from '@entities/connector'
 import { useConnectorTaskResult } from '@entities/connector-task'
-import { discoverSourceSchema, useSource, useSourceCatalog, useUpdateSource } from '@entities/source'
+import { discoverSourceSchema, useDeleteSource, useSource, useSourceCatalog, useUpdateSource } from '@entities/source'
+import DeleteInstanceDialog from '@features/connector-instance/DeleteInstanceDialog.vue'
+import InstanceConnectionsCard from '@features/connector-instance/InstanceConnectionsCard.vue'
 import RuntimeConfigForm from '@features/runtime-config/RuntimeConfigForm.vue'
 import { getErrorMessage } from '@shared/lib/errorUtils'
 import { sourceKeys } from '@shared/lib/queryKeys'
 import { PageHeader, SAlert, SBadge, SButton, SCard, SSkeleton, useToast } from '@shared/ui'
 import { useQueryClient } from '@tanstack/vue-query'
-import { Pencil, RefreshCw } from 'lucide-vue-next'
+import { Pencil, RefreshCw, Trash2 } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 const route = useRoute()
+const router = useRouter()
 const sourceId = computed(() => route.params.id as string)
 const { data: source, isLoading, error } = useSource(sourceId)
 const updateSource = useUpdateSource()
+const deleteSource = useDeleteSource()
 const connectorId = computed(() => source.value?.managedConnectorId ?? '')
 const { data: connector } = useManagedConnector(connectorId)
 const connectorImage = computed(() => connector.value?.dockerImage ?? '')
@@ -114,6 +118,30 @@ async function handleResetRuntimeConfig() {
     toast.error(`Failed to reset runtime configuration: ${getErrorMessage(e)}`)
   }
 }
+
+const deleteOpen = ref(false)
+const deleteError = ref('')
+
+function requestDelete() {
+  deleteError.value = ''
+  deleteOpen.value = true
+}
+
+async function handleDelete() {
+  if (!source.value)
+    return
+  deleteError.value = ''
+  try {
+    await deleteSource.mutateAsync(source.value.id)
+  }
+  catch (e: unknown) {
+    deleteError.value = getErrorMessage(e) || 'Failed to delete source'
+    return
+  }
+  deleteOpen.value = false
+  toast.success('Source deleted')
+  router.push({ name: 'sources' })
+}
 </script>
 
 <template>
@@ -123,7 +151,7 @@ async function handleResetRuntimeConfig() {
   </div>
   <div v-else-if="error">
     <SAlert variant="danger">
-      Failed to load source: {{ error.message }}
+      Failed to load source: {{ getErrorMessage(error) }}
     </SAlert>
   </div>
   <div v-else-if="source">
@@ -140,22 +168,30 @@ async function handleResetRuntimeConfig() {
         <SButton variant="secondary" :to="`/sources/${source.id}/edit`">
           <Pencil class="w-4 h-4" /> Edit
         </SButton>
+        <SButton variant="danger" @click="requestDelete">
+          <Trash2 class="w-4 h-4" /> Delete
+        </SButton>
       </template>
     </PageHeader>
 
     <SCard class="mb-6">
-      <div class="grid grid-cols-2 gap-4 text-sm p-6">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm p-6">
         <div>
           <span class="text-text-muted">Connector</span>
           <p class="text-text-primary font-medium">
             {{ connectorLabel }}
           </p>
-          <div v-if="hasUpdate" class="mt-1 flex items-center gap-2">
+          <RouterLink
+            v-if="hasUpdate"
+            :to="{ name: 'settings-connectors' }"
+            class="mt-1 inline-flex items-center gap-2 hover:underline"
+            title="Manage connector versions"
+          >
             <SBadge variant="info">
               Update available
             </SBadge>
             <span class="text-xs text-primary">Latest: v{{ versionInfo!.latestVersion }}</span>
-          </div>
+          </RouterLink>
         </div>
         <div>
           <span class="text-text-muted">Created</span>
@@ -178,12 +214,24 @@ async function handleResetRuntimeConfig() {
       </div>
     </SCard>
 
+    <InstanceConnectionsCard kind="source" :instance-id="source.id" />
+
     <RuntimeConfigForm
       :runtime-config="source.runtimeConfig"
       entity-type="source"
       :saving="updateSource.isPending.value"
       @save="handleSaveRuntimeConfig"
       @reset="handleResetRuntimeConfig"
+    />
+
+    <DeleteInstanceDialog
+      :open="deleteOpen"
+      kind="source"
+      :name="source.name"
+      :loading="deleteSource.isPending.value"
+      :error="deleteError"
+      @confirm="handleDelete"
+      @cancel="deleteOpen = false"
     />
   </div>
 </template>

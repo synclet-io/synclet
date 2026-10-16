@@ -12,6 +12,7 @@ import {
 } from '@entities/webhook'
 import { getErrorMessage } from '@shared/lib/errorUtils'
 import {
+  PageHeader,
   SAlert,
   SBadge,
   SButton,
@@ -196,14 +197,13 @@ function eventLabel(value: WebhookEvent): string {
 
 <template>
   <div class="space-y-6">
-    <div class="flex items-center justify-between">
-      <h2 class="text-lg font-semibold text-heading">
-        Webhooks
-      </h2>
-      <SButton v-if="isAdmin && (webhooks?.length ?? 0) > 0" @click="openCreate">
-        Create webhook
-      </SButton>
-    </div>
+    <PageHeader title="Webhooks" :level="2">
+      <template #actions>
+        <SButton v-if="isAdmin && (webhooks?.length ?? 0) > 0" @click="openCreate">
+          Create webhook
+        </SButton>
+      </template>
+    </PageHeader>
 
     <SAlert v-if="!isAdmin" variant="info">
       You need admin permissions to manage webhooks.

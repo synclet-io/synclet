@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ref } from 'vue'
-import { deriveOnboardingState } from '../useOnboardingState'
+import { deriveOnboardingState, hasSuccessfulSync } from '../useOnboardingState'
 
 function allFalse() {
   return {
@@ -83,5 +83,19 @@ describe('deriveOnboardingState', () => {
       expect(step.cta.label).not.toBe('')
       expect(step.cta.to).toMatch(/^\//)
     }
+  })
+})
+
+describe('hasSuccessfulSync', () => {
+  it('is false without stats', () => {
+    expect(hasSuccessfulSync(undefined)).toBe(false)
+  })
+
+  it('does not count failed syncs as success', () => {
+    expect(hasSuccessfulSync({ totalSyncs: 3, failedSyncs: 3 })).toBe(false)
+  })
+
+  it('is true once any sync succeeded', () => {
+    expect(hasSuccessfulSync({ totalSyncs: 3, failedSyncs: 2 })).toBe(true)
   })
 })

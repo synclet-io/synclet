@@ -1,17 +1,21 @@
 <script setup lang="ts">
 import { useConnectorVersions, useManagedConnector } from '@entities/connector'
-import { useDestination, useUpdateDestination } from '@entities/destination'
+import { useDeleteDestination, useDestination, useUpdateDestination } from '@entities/destination'
+import DeleteInstanceDialog from '@features/connector-instance/DeleteInstanceDialog.vue'
+import InstanceConnectionsCard from '@features/connector-instance/InstanceConnectionsCard.vue'
 import RuntimeConfigForm from '@features/runtime-config/RuntimeConfigForm.vue'
 import { getErrorMessage } from '@shared/lib/errorUtils'
 import { PageHeader, SAlert, SBadge, SButton, SCard, SSkeleton, useToast } from '@shared/ui'
-import { Pencil } from 'lucide-vue-next'
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { Pencil, Trash2 } from 'lucide-vue-next'
+import { computed, ref } from 'vue'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 const route = useRoute()
+const router = useRouter()
 const destinationId = computed(() => route.params.id as string)
 const { data: destination, isLoading, error } = useDestination(destinationId)
 const updateDestination = useUpdateDestination()
+const deleteDestination = useDeleteDestination()
 const connectorId = computed(() => destination.value?.managedConnectorId ?? '')
 const { data: connector } = useManagedConnector(connectorId)
 const connectorImage = computed(() => connector.value?.dockerImage ?? '')
@@ -49,6 +53,30 @@ async function handleResetRuntimeConfig() {
     toast.error(`Failed to reset runtime configuration: ${getErrorMessage(e)}`)
   }
 }
+
+const deleteOpen = ref(false)
+const deleteError = ref('')
+
+function requestDelete() {
+  deleteError.value = ''
+  deleteOpen.value = true
+}
+
+async function handleDelete() {
+  if (!destination.value)
+    return
+  deleteError.value = ''
+  try {
+    await deleteDestination.mutateAsync(destination.value.id)
+  }
+  catch (e: unknown) {
+    deleteError.value = getErrorMessage(e) || 'Failed to delete destination'
+    return
+  }
+  deleteOpen.value = false
+  toast.success('Destination deleted')
+  router.push({ name: 'destinations' })
+}
 </script>
 
 <template>
@@ -58,7 +86,7 @@ async function handleResetRuntimeConfig() {
   </div>
   <div v-else-if="error">
     <SAlert variant="danger">
-      Failed to load destination: {{ error.message }}
+      Failed to load destination: {{ getErrorMessage(error) }}
     </SAlert>
   </div>
   <div v-else-if="destination">
@@ -72,22 +100,30 @@ async function handleResetRuntimeConfig() {
         <SButton variant="secondary" :to="`/destinations/${destination.id}/edit`">
           <Pencil class="w-4 h-4" /> Edit
         </SButton>
+        <SButton variant="danger" @click="requestDelete">
+          <Trash2 class="w-4 h-4" /> Delete
+        </SButton>
       </template>
     </PageHeader>
 
     <SCard class="mb-6">
-      <div class="grid grid-cols-2 gap-4 text-sm p-6">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm p-6">
         <div>
           <span class="text-text-muted">Connector</span>
           <p class="text-text-primary font-medium">
             {{ connectorLabel }}
           </p>
-          <div v-if="hasUpdate" class="mt-1 flex items-center gap-2">
+          <RouterLink
+            v-if="hasUpdate"
+            :to="{ name: 'settings-connectors' }"
+            class="mt-1 inline-flex items-center gap-2 hover:underline"
+            title="Manage connector versions"
+          >
             <SBadge variant="info">
               Update available
             </SBadge>
             <span class="text-xs text-primary">Latest: v{{ versionInfo!.latestVersion }}</span>
-          </div>
+          </RouterLink>
         </div>
         <div>
           <span class="text-text-muted">Created</span>
@@ -98,12 +134,24 @@ async function handleResetRuntimeConfig() {
       </div>
     </SCard>
 
+    <InstanceConnectionsCard kind="destination" :instance-id="destination.id" />
+
     <RuntimeConfigForm
       :runtime-config="destination.runtimeConfig"
       entity-type="destination"
       :saving="updateDestination.isPending.value"
       @save="handleSaveRuntimeConfig"
       @reset="handleResetRuntimeConfig"
+    />
+
+    <DeleteInstanceDialog
+      :open="deleteOpen"
+      kind="destination"
+      :name="destination.name"
+      :loading="deleteDestination.isPending.value"
+      :error="deleteError"
+      @confirm="handleDelete"
+      @cancel="deleteOpen = false"
     />
   </div>
 </template>

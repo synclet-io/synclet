@@ -1,30 +1,59 @@
 <script setup lang="ts">
-import type { Workspace } from '@entities/workspace'
 import { useAuth } from '@entities/auth'
 import { deleteWorkspace, getWorkspace, updateWorkspace } from '@entities/workspace/api'
 import { useExportConfig, useImportConfig } from '@entities/workspace/composables'
 import { connectionClient } from '@shared/api/services'
 import { getErrorMessage } from '@shared/lib/errorUtils'
-import { SAlert, SButton, SCard, SConfirmDialog, SInput, useToast } from '@shared/ui'
+import { workspaceKeys } from '@shared/lib/queryKeys'
+import { PageHeader, SAlert, SButton, SCard, SConfirmDialog, SInput, SSkeleton, useToast } from '@shared/ui'
+import { useQuery, useQueryClient } from '@tanstack/vue-query'
 import { Download, Upload } from 'lucide-vue-next'
-import { onMounted, ref } from 'vue'
+import { computed, inject, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { workspaceAdminKey } from './SettingsLayout.vue'
 
 const auth = useAuth()
 const router = useRouter()
 const toast = useToast()
+const qc = useQueryClient()
+const isAdmin = inject(workspaceAdminKey, computed(() => false))
 
-const workspace = ref<Workspace | null>(null)
+const workspaceId = computed(() => auth.currentWorkspaceId.value ?? '')
+
+const workspaceQuery = useQuery({
+  queryKey: computed(() => workspaceKeys.detail(workspaceId.value)),
+  queryFn: () => getWorkspace(workspaceId.value),
+  enabled: computed(() => auth.isAuthenticated.value && !!workspaceId.value),
+})
+const settingsQuery = useQuery({
+  queryKey: computed(() => [...workspaceKeys.detail(workspaceId.value), 'pipelineSettings'] as const),
+  queryFn: async () => (await connectionClient.getPipelineSettings({})).settings?.maxJobsPerWorkspace ?? 0,
+  enabled: computed(() => auth.isAuthenticated.value && !!workspaceId.value),
+})
+
+const workspace = computed(() => workspaceQuery.data.value ?? null)
+const loading = computed(() => workspaceQuery.isLoading.value || settingsQuery.isLoading.value)
+
 const name = ref('')
-const loading = ref(false)
+const maxJobs = ref(0)
 const saving = ref(false)
 const deleting = ref(false)
 const error = ref('')
 const showDeleteConfirm = ref(false)
-const maxJobs = ref(0)
 const savingRetention = ref(false)
 
-// Config import/export
+watch(() => workspaceQuery.data.value, (ws) => {
+  name.value = ws?.name ?? ''
+}, { immediate: true })
+watch(() => settingsQuery.data.value, (value) => {
+  maxJobs.value = value ?? 0
+}, { immediate: true })
+watch([workspaceQuery.error, settingsQuery.error], ([wsErr, settingsErr]) => {
+  const e = wsErr ?? settingsErr
+  if (e)
+    error.value = getErrorMessage(e) || 'Failed to load workspace'
+})
+
 const exportMutation = useExportConfig()
 const importMutation = useImportConfig()
 const fileInput = ref<HTMLInputElement | null>(null)
@@ -32,23 +61,9 @@ const showImportConfirm = ref(false)
 const pendingFile = ref<File | null>(null)
 const importResult = ref<{ created: number, updated: number, errors: string[] } | null>(null)
 
-onMounted(async () => {
-  if (!auth.currentWorkspaceId.value)
-    return
-  loading.value = true
-  try {
-    const ws = await getWorkspace(auth.currentWorkspaceId.value)
-    workspace.value = ws ?? null
-    name.value = ws?.name ?? ''
-    const settingsRes = await connectionClient.getPipelineSettings({})
-    maxJobs.value = settingsRes.settings?.maxJobsPerWorkspace ?? 0
-  }
-  catch (e: unknown) {
-    error.value = getErrorMessage(e) || 'Failed to load workspace'
-  }
-  finally {
-    loading.value = false
-  }
+watch(workspaceId, () => {
+  error.value = ''
+  importResult.value = null
 })
 
 async function handleSave() {
@@ -58,7 +73,7 @@ async function handleSave() {
   error.value = ''
   try {
     const ws = await updateWorkspace(auth.currentWorkspaceId.value, { name: name.value })
-    workspace.value = ws ?? null
+    qc.setQueryData(workspaceKeys.detail(auth.currentWorkspaceId.value), ws)
     toast.success('Workspace updated')
     await auth.fetchCurrentUser()
   }
@@ -79,6 +94,7 @@ async function handleSaveRetention() {
     await connectionClient.updatePipelineSettings({
       maxJobsPerWorkspace: maxJobs.value,
     })
+    await settingsQuery.refetch()
     toast.success('Retention settings saved')
   }
   catch (e: unknown) {
@@ -161,27 +177,33 @@ async function handleImportConfirm() {
 
 <template>
   <div class="space-y-8">
-    <div v-if="loading" class="text-text-secondary">
-      Loading...
+    <PageHeader title="General" :level="2" />
+    <div v-if="loading" class="space-y-6">
+      <SSkeleton variant="rect" height="160px" />
+      <SSkeleton variant="rect" height="120px" />
     </div>
     <template v-else>
+      <SAlert v-if="!isAdmin" variant="info">
+        You need admin permissions to change workspace settings.
+      </SAlert>
+
       <SCard title="Workspace Settings">
         <SAlert v-if="error" variant="danger" class="mb-4" dismissible @dismiss="error = ''">
           {{ error }}
         </SAlert>
         <form class="space-y-4" @submit.prevent="handleSave">
-          <SInput v-model="name" label="Workspace name" required />
-          <SButton type="submit" :loading="saving">
+          <SInput v-model="name" label="Workspace name" required :disabled="!isAdmin" />
+          <SButton v-if="isAdmin" type="submit" :loading="saving">
             Save
           </SButton>
         </form>
       </SCard>
 
-      <SCard title="Configuration">
+      <SCard v-if="isAdmin" title="Configuration">
         <p class="text-sm text-text-secondary mb-4">
           Export or import workspace configuration as YAML. Secrets are replaced with placeholders on export.
         </p>
-        <div class="flex gap-3">
+        <div class="flex flex-wrap gap-3">
           <SButton variant="secondary" :loading="exportMutation.isPending.value" @click="handleExport">
             <Download class="w-4 h-4 mr-2" />
             Export Configuration
@@ -216,13 +238,14 @@ async function handleImportConfirm() {
           type="number"
           :min="0"
           placeholder="0 (unlimited)"
+          :disabled="!isAdmin"
         />
-        <SButton :loading="savingRetention" class="mt-4" @click="handleSaveRetention">
+        <SButton v-if="isAdmin" :loading="savingRetention" class="mt-4" @click="handleSaveRetention">
           Save
         </SButton>
       </SCard>
 
-      <SCard>
+      <SCard v-if="isAdmin">
         <h3 class="text-lg font-semibold text-danger mb-2">
           Danger Zone
         </h3>

@@ -10,19 +10,20 @@ import TimeRangeSelector from '@features/dashboard/TimeRangeSelector.vue'
 import TopConnectionsTable from '@features/dashboard/TopConnectionsTable.vue'
 import QuickStartChecklist from '@features/onboarding-checklist/QuickStartChecklist.vue'
 import { formatNumber, formatPercent, formatTrend } from '@shared/lib/format'
-import { PageHeader, SCard, SEmptyState, SSkeleton, SStatCard } from '@shared/ui'
+import { PageHeader, SAlert, SCard, SEmptyState, SSkeleton, SStatCard } from '@shared/ui'
 import { Activity, ArrowRightLeft, CheckCircle, Database, XCircle } from 'lucide-vue-next'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 
 const timeRange = ref<TimeRange>('24h')
 const { data: stats, isLoading, isError: statsError } = useWorkspaceStats(timeRange)
 const { data: timeline, isLoading: timelineLoading, isError: timelineError } = useSyncTimeline(timeRange)
+const rangeSuffix = computed(() => `(${timeRange.value})`)
 
 function trendColorClass(color: 'green' | 'red' | 'gray') {
   if (color === 'green')
-    return 'text-green-600'
+    return 'text-success'
   if (color === 'red')
-    return 'text-red-600'
+    return 'text-danger'
   return 'text-text-muted'
 }
 </script>
@@ -43,19 +44,14 @@ function trendColorClass(color: 'green' | 'red' | 'gray') {
     </div>
 
     <!-- Error state -->
-    <div v-else-if="statsError || timelineError" class="rounded-lg border border-red-200 bg-red-50 p-6 mb-8">
-      <div class="flex items-center gap-3">
-        <XCircle class="h-5 w-5 text-red-500 shrink-0" />
-        <div>
-          <p class="font-medium text-red-800">
-            Failed to load dashboard data
-          </p>
-          <p class="text-sm text-red-600 mt-1">
-            Please try refreshing the page. If the problem persists, check your connection.
-          </p>
-        </div>
-      </div>
-    </div>
+    <SAlert v-else-if="statsError || timelineError" variant="danger" class="mb-8">
+      <p class="font-medium">
+        Failed to load dashboard data
+      </p>
+      <p class="text-sm text-text-secondary mt-1">
+        Please try refreshing the page. If the problem persists, check your connection.
+      </p>
+    </SAlert>
 
     <!-- Empty state when no stats -->
     <SEmptyState
@@ -69,7 +65,7 @@ function trendColorClass(color: 'green' | 'red' | 'gray') {
     <div v-else>
       <!-- 5 Stat Cards Row -->
       <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
-        <SStatCard label="Total Syncs (24h)" :value="stats.totalSyncs" :icon="Activity" color="blue">
+        <SStatCard :label="`Total Syncs ${rangeSuffix}`" :value="stats.totalSyncs" :icon="Activity" color="blue">
           <template #default>
             <p class="text-xs mt-1" :class="trendColorClass(formatTrend(stats.totalSyncsDelta).color)">
               {{ formatTrend(stats.totalSyncsDelta).text }}
@@ -77,7 +73,7 @@ function trendColorClass(color: 'green' | 'red' | 'gray') {
           </template>
         </SStatCard>
 
-        <SStatCard label="Success Rate" :value="formatPercent(stats.successRate)" :icon="CheckCircle" color="green">
+        <SStatCard :label="`Success Rate ${rangeSuffix}`" :value="formatPercent(stats.successRate)" :icon="CheckCircle" color="green">
           <template #default>
             <p class="text-xs mt-1" :class="trendColorClass(formatTrend(stats.successRateDelta).color)">
               {{ formatTrend(stats.successRateDelta).text }}
@@ -85,7 +81,7 @@ function trendColorClass(color: 'green' | 'red' | 'gray') {
           </template>
         </SStatCard>
 
-        <SStatCard label="Records Synced (24h)" :value="formatNumber(stats.recordsSynced)" :icon="Database" color="purple">
+        <SStatCard :label="`Records Synced ${rangeSuffix}`" :value="formatNumber(stats.recordsSynced)" :icon="Database" color="purple">
           <template #default>
             <p class="text-xs mt-1" :class="trendColorClass(formatTrend(stats.recordsSyncedDelta).color)">
               {{ formatTrend(stats.recordsSyncedDelta).text }}
@@ -96,7 +92,7 @@ function trendColorClass(color: 'green' | 'red' | 'gray') {
         <SStatCard label="Active Connections" :value="stats.activeConnections" :icon="ArrowRightLeft" color="blue" />
 
         <SStatCard
-          label="Failed Syncs (24h)"
+          :label="`Failed Syncs ${rangeSuffix}`"
           :value="stats.failedSyncs"
           :icon="XCircle"
           color="amber"

@@ -1,9 +1,12 @@
+import type { WorkspaceStats } from '@entities/stats'
 import type { ComputedRef, MaybeRef } from 'vue'
 import { useAuth } from '@entities/auth'
-import { useConnections } from '@entities/connection'
-import { useDestinations } from '@entities/destination'
-import { useSources } from '@entities/source'
-import { useWorkspaceStats } from '@entities/stats'
+import { listConnections } from '@entities/connection/api'
+import { listDestinations } from '@entities/destination/api'
+import { listSources } from '@entities/source/api'
+import { getWorkspaceStats } from '@entities/stats/api'
+import { connectionKeys, destinationKeys, sourceKeys, statsKeys } from '@shared/lib/queryKeys'
+import { useQuery } from '@tanstack/vue-query'
 import { computed, ref, watch } from 'vue'
 
 // Onboarding starts at "configure a source" because default registries are
@@ -45,6 +48,12 @@ interface OnboardingSignals {
   hasDestination: MaybeRef<boolean>
   hasConnection: MaybeRef<boolean>
   hasSuccessfulSync: MaybeRef<boolean>
+}
+
+export function hasSuccessfulSync(stats: Pick<WorkspaceStats, 'totalSyncs' | 'failedSyncs'> | undefined): boolean {
+  if (!stats)
+    return false
+  return stats.totalSyncs - stats.failedSyncs > 0
 }
 
 /**
@@ -115,11 +124,6 @@ export function deriveOnboardingState(
 export function useOnboardingState(): OnboardingState {
   const { currentWorkspaceId, user } = useAuth()
 
-  const { data: sourcesPage } = useSources()
-  const { data: destinationsPage } = useDestinations()
-  const { data: connectionsPage } = useConnections()
-  const { data: stats } = useWorkspaceStats('30d')
-
   const dismissed = ref(false)
 
   function readDismissed(): boolean {
@@ -140,6 +144,31 @@ export function useOnboardingState(): OnboardingState {
     () => { dismissed.value = readDismissed() },
     { immediate: true },
   )
+
+  const workspaceId = computed(() => currentWorkspaceId.value ?? '')
+  const enabled = computed(() => !!workspaceId.value && !dismissed.value)
+  const probe = { pageSize: 1 }
+
+  const { data: sourcesPage } = useQuery({
+    queryKey: computed(() => [...sourceKeys.list(workspaceId.value), 'onboarding']),
+    queryFn: () => listSources(probe),
+    enabled,
+  })
+  const { data: destinationsPage } = useQuery({
+    queryKey: computed(() => [...destinationKeys.list(workspaceId.value), 'onboarding']),
+    queryFn: () => listDestinations(probe),
+    enabled,
+  })
+  const { data: connectionsPage } = useQuery({
+    queryKey: computed(() => [...connectionKeys.list(workspaceId.value), 'onboarding']),
+    queryFn: () => listConnections(probe),
+    enabled,
+  })
+  const { data: stats } = useQuery({
+    queryKey: computed(() => statsKeys.workspace(workspaceId.value, '30d')),
+    queryFn: () => getWorkspaceStats('30d'),
+    enabled,
+  })
 
   function dismiss() {
     const ws = currentWorkspaceId.value
@@ -167,10 +196,10 @@ export function useOnboardingState(): OnboardingState {
 
   const state = deriveOnboardingState(
     {
-      hasSource: computed(() => (sourcesPage.value?.items?.length ?? 0) > 0),
-      hasDestination: computed(() => (destinationsPage.value?.items?.length ?? 0) > 0),
-      hasConnection: computed(() => (connectionsPage.value?.items?.length ?? 0) > 0),
-      hasSuccessfulSync: computed(() => (stats.value?.totalSyncs ?? 0) > 0),
+      hasSource: computed(() => (sourcesPage.value?.total ?? 0) > 0),
+      hasDestination: computed(() => (destinationsPage.value?.total ?? 0) > 0),
+      hasConnection: computed(() => (connectionsPage.value?.total ?? 0) > 0),
+      hasSuccessfulSync: computed(() => hasSuccessfulSync(stats.value)),
     },
     dismissed,
   )
