@@ -93,14 +93,28 @@ function mapConnection(proto: ProtoConnection): Connection {
     customNamespaceFormat: proto.customNamespaceFormat || '',
     streamPrefix: proto.streamPrefix || '',
     pendingSchemaChanges: proto.pendingSchemaChanges,
+    sourceName: proto.sourceName,
+    destinationName: proto.destinationName,
+    sourceConnectorName: proto.sourceConnectorName,
+    destinationConnectorName: proto.destinationConnectorName,
   }
 }
 
-export async function listConnections(params: { pageSize?: number, offset?: number, includePendingSchemaChanges?: boolean } = {}): Promise<{ items: Connection[], total: number }> {
+export interface ListConnectionsParams {
+  pageSize?: number
+  offset?: number
+  includePendingSchemaChanges?: boolean
+  sourceId?: string
+  destinationId?: string
+}
+
+export async function listConnections(params: ListConnectionsParams = {}): Promise<{ items: Connection[], total: number }> {
   const res = await connectionClient.listConnections({
     pageSize: params.pageSize ?? 0,
     offset: params.offset ?? 0,
     includePendingSchemaChanges: params.includePendingSchemaChanges ?? false,
+    sourceId: params.sourceId ?? '',
+    destinationId: params.destinationId ?? '',
   })
   return {
     items: (res.connections || []).map(mapConnection),

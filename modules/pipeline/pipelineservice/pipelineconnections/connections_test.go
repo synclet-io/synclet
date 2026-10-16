@@ -2,6 +2,8 @@ package pipelineconnections_test
 
 import (
 	"context"
+	"fmt"
+	"slices"
 	"testing"
 
 	"github.com/go-pnp/go-pnp/pkg/optionutil"
@@ -42,10 +44,10 @@ func (s *createConnConnectionsStorage) Find(_ context.Context, f *pipelineservic
 	out := make([]*pipelineservice.Connection, 0, len(s.records))
 
 	for _, conn := range s.records {
-		if f.WorkspaceID != nil {
-			if wid, ok := f.WorkspaceID.(*filter.EqualsFilter[uuid.UUID]); ok && conn.WorkspaceID != wid.Value {
-				continue
-			}
+		if !matchesUUID(f.WorkspaceID, conn.WorkspaceID) ||
+			!matchesUUID(f.SourceID, conn.SourceID) ||
+			!matchesUUID(f.DestinationID, conn.DestinationID) {
+			continue
 		}
 
 		cp := *conn
@@ -80,6 +82,19 @@ func (s *createConnConnectionsStorage) Delete(_ context.Context, f *pipelineserv
 	}
 
 	return nil
+}
+
+func matchesUUID(f filter.Filter[uuid.UUID], value uuid.UUID) bool {
+	switch typed := f.(type) {
+	case nil:
+		return true
+	case *filter.EqualsFilter[uuid.UUID]:
+		return typed.Value == value
+	case *filter.InFilter[uuid.UUID]:
+		return slices.Contains(typed.Values, value)
+	default:
+		panic(fmt.Sprintf("unsupported filter %T", f))
+	}
 }
 
 func seedConnection(t *testing.T, store *createConnStore, conn *pipelineservice.Connection) {
@@ -141,6 +156,54 @@ func TestListConnections(t *testing.T) {
 		for _, c := range got {
 			assert.Equal(t, ws1, c.WorkspaceID)
 		}
+	})
+
+	t.Run("filters by source and destination within the workspace", func(t *testing.T) {
+		ws := uuid.New()
+		otherWs := uuid.New()
+		srcA, srcB := uuid.New(), uuid.New()
+		dstA, dstB := uuid.New(), uuid.New()
+		store := newCreateConnStore(ws, srcA, dstA)
+
+		aa := &pipelineservice.Connection{ID: uuid.New(), WorkspaceID: ws, SourceID: srcA, DestinationID: dstA}
+		ab := &pipelineservice.Connection{ID: uuid.New(), WorkspaceID: ws, SourceID: srcA, DestinationID: dstB}
+		ba := &pipelineservice.Connection{ID: uuid.New(), WorkspaceID: ws, SourceID: srcB, DestinationID: dstA}
+		foreign := &pipelineservice.Connection{ID: uuid.New(), WorkspaceID: otherWs, SourceID: srcA, DestinationID: dstA}
+
+		for _, c := range []*pipelineservice.Connection{aa, ab, ba, foreign} {
+			seedConnection(t, store, c)
+		}
+
+		ids := func(conns []*pipelineservice.Connection) []uuid.UUID {
+			out := make([]uuid.UUID, 0, len(conns))
+			for _, c := range conns {
+				out = append(out, c.ID)
+			}
+
+			return out
+		}
+
+		uc := pipelineconnections.NewListConnections(store)
+
+		got, err := uc.Execute(context.Background(), pipelineconnections.ListConnectionsParams{WorkspaceID: ws})
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []uuid.UUID{aa.ID, ab.ID, ba.ID}, ids(got))
+
+		got, err = uc.Execute(context.Background(), pipelineconnections.ListConnectionsParams{WorkspaceID: ws, SourceID: &srcA})
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []uuid.UUID{aa.ID, ab.ID}, ids(got))
+
+		got, err = uc.Execute(context.Background(), pipelineconnections.ListConnectionsParams{WorkspaceID: ws, DestinationID: &dstA})
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []uuid.UUID{aa.ID, ba.ID}, ids(got))
+
+		got, err = uc.Execute(context.Background(), pipelineconnections.ListConnectionsParams{WorkspaceID: ws, SourceID: &srcB, DestinationID: &dstA})
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []uuid.UUID{ba.ID}, ids(got))
+
+		got, err = uc.Execute(context.Background(), pipelineconnections.ListConnectionsParams{WorkspaceID: ws, SourceID: &srcB, DestinationID: &dstB})
+		require.NoError(t, err)
+		assert.Empty(t, got)
 	})
 
 	t.Run("returns empty slice when workspace has no connections", func(t *testing.T) {

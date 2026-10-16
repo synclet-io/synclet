@@ -37,6 +37,8 @@ type ConnectionHandler struct {
 	getConnection    *pipelineconnections.GetConnection
 	listConnections  *pipelineconnections.ListConnections
 
+	resolveConnectionEndpoints *pipelineconnections.ResolveConnectionEndpoints
+
 	// Composite connection use cases (with workspace verification)
 	enableConnection  *pipelineconnections.EnableConnection
 	disableConnection *pipelineconnections.DisableConnection
@@ -73,6 +75,7 @@ func NewConnectionHandler(
 	deleteConnection *pipelineconnections.DeleteConnection,
 	getConnection *pipelineconnections.GetConnection,
 	listConnections *pipelineconnections.ListConnections,
+	resolveConnectionEndpoints *pipelineconnections.ResolveConnectionEndpoints,
 	enableConnection *pipelineconnections.EnableConnection,
 	disableConnection *pipelineconnections.DisableConnection,
 	createDiscoverTask *pipelinetasks.CreateDiscoverTask,
@@ -96,6 +99,7 @@ func NewConnectionHandler(
 		deleteConnection:                  deleteConnection,
 		getConnection:                     getConnection,
 		listConnections:                   listConnections,
+		resolveConnectionEndpoints:        resolveConnectionEndpoints,
 		enableConnection:                  enableConnection,
 		disableConnection:                 disableConnection,
 		createDiscoverTask:                createDiscoverTask,
@@ -300,8 +304,20 @@ func (h *ConnectionHandler) ListConnections(ctx context.Context, req *connect.Re
 		return nil, err
 	}
 
+	sourceID, err := optionalUUID("source_id", req.Msg.GetSourceId())
+	if err != nil {
+		return nil, err
+	}
+
+	destinationID, err := optionalUUID("destination_id", req.Msg.GetDestinationId())
+	if err != nil {
+		return nil, err
+	}
+
 	conns, err := h.listConnections.Execute(ctx, pipelineconnections.ListConnectionsParams{
-		WorkspaceID: workspaceID,
+		WorkspaceID:   workspaceID,
+		SourceID:      sourceID,
+		DestinationID: destinationID,
 	})
 	if err != nil {
 		return nil, mapError(err)
@@ -317,6 +333,22 @@ func (h *ConnectionHandler) ListConnections(ctx context.Context, req *connect.Re
 		}
 	} else {
 		protoConns = lo.Map(page, func(c *pipelineservice.Connection, _ int) *pipelinev1.Connection { return connectionToProto(c) })
+	}
+
+	endpoints, err := h.resolveConnectionEndpoints.Execute(ctx, pipelineconnections.ResolveConnectionEndpointsParams{
+		WorkspaceID: workspaceID,
+		Connections: page,
+	})
+	if err != nil {
+		return nil, mapError(err)
+	}
+
+	for i, conn := range page {
+		ep := endpoints[conn.ID]
+		protoConns[i].SourceName = ep.SourceName
+		protoConns[i].SourceConnectorName = ep.SourceConnectorName
+		protoConns[i].DestinationName = ep.DestinationName
+		protoConns[i].DestinationConnectorName = ep.DestinationConnectorName
 	}
 
 	return connect.NewResponse(&pipelinev1.ListConnectionsResponse{
@@ -817,6 +849,19 @@ func connectionToProto(conn *pipelineservice.Connection) *pipelinev1.Connection 
 		StreamPrefix:          stringPtrOrEmpty(conn.StreamPrefix),
 		NextScheduledAt:       timestampPtrOrNil(conn.NextScheduledAt),
 	}
+}
+
+func optionalUUID(field, value string) (*uuid.UUID, error) {
+	if value == "" {
+		return nil, nil //nolint:nilnil // absent filter
+	}
+
+	id, err := uuid.Parse(value)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid %s: %w", field, err))
+	}
+
+	return &id, nil
 }
 
 func stringPtrOrEmpty(s *string) string {

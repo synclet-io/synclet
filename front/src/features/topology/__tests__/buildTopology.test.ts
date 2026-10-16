@@ -48,6 +48,10 @@ function mkConn(id: string, name: string, srcId: string, destId: string, status:
     customNamespaceFormat: '',
     streamPrefix: '',
     pendingSchemaChanges: 0,
+    sourceName: '',
+    destinationName: '',
+    sourceConnectorName: '',
+    destinationConnectorName: '',
   }
 }
 

@@ -3,25 +3,66 @@ import type { Column } from '@shared/ui'
 import { useAuth } from '@entities/auth'
 import { useConnections } from '@entities/connection'
 import * as connectionApi from '@entities/connection/api'
+import { useDestinations } from '@entities/destination'
+import { useSources } from '@entities/source'
 import { BulkActionToolbar, useBulkConnectionActions, useConnectionSelection } from '@features/connection-bulk-ops'
+import { buildConnectionListQuery, parseConnectionListQuery } from '@features/connection-filters/listQuery'
 import SchemaDriftBadge from '@features/schema-changes/SchemaDriftBadge.vue'
 import { getErrorMessage } from '@shared/lib/errorUtils'
 import { statusVariant } from '@shared/lib/format'
 import { connectionKeys } from '@shared/lib/queryKeys'
-import { PageHeader, SAlert, SBadge, SButton, SCheckbox, SConfirmDialog, SEmptyState, SPagination, STable, useToast } from '@shared/ui'
+import { PageHeader, SAlert, SBadge, SButton, SCheckbox, SConfirmDialog, SEmptyState, SPagination, SSelect, STable, useToast } from '@shared/ui'
 import { useQueryClient } from '@tanstack/vue-query'
-import { Copy, Pause, Play, Plus, Trash2 } from 'lucide-vue-next'
-import { computed, ref } from 'vue'
+import { Copy, FilterX, Pause, Play, Plus, Trash2 } from 'lucide-vue-next'
+import { computed, ref, watch } from 'vue'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 
-const currentPage = ref(1)
 const PAGE_SIZE = 20
-const { data, isLoading: loading, error } = useConnections({ page: currentPage, pageSize: PAGE_SIZE, includePendingSchemaChanges: true })
+const route = useRoute()
+const router = useRouter()
+
+const listQuery = computed(() => parseConnectionListQuery(route.query))
+const currentPage = computed(() => listQuery.value.page)
+const sourceId = computed(() => listQuery.value.sourceId)
+const destinationId = computed(() => listQuery.value.destinationId)
+const hasFilters = computed(() => !!sourceId.value || !!destinationId.value)
+
+function updateQuery(patch: Parameters<typeof buildConnectionListQuery>[1]) {
+  router.replace({ query: buildConnectionListQuery(route.query, patch) })
+}
+
+function clearFilters() {
+  updateQuery({ sourceId: '', destinationId: '' })
+}
+
+const { data, isLoading: loading, error } = useConnections({
+  page: currentPage,
+  pageSize: PAGE_SIZE,
+  includePendingSchemaChanges: true,
+  sourceId,
+  destinationId,
+})
+const { data: sources } = useSources()
+const { data: destinations } = useDestinations()
+
+const sourceOptions = computed(() => [
+  { label: 'All sources', value: '' },
+  ...(sources.value?.items ?? []).map(s => ({ label: s.name, value: s.id })),
+])
+const destinationOptions = computed(() => [
+  { label: 'All destinations', value: '' },
+  ...(destinations.value?.items ?? []).map(d => ({ label: d.name, value: d.id })),
+])
+
+const showFilters = computed(() => hasFilters.value || (data.value?.total ?? 0) > 0)
 const qc = useQueryClient()
 const { currentWorkspaceId } = useAuth()
 const toast = useToast()
 
 const selection = useConnectionSelection()
 const bulk = useBulkConnectionActions()
+
+watch([sourceId, destinationId], () => selection.clear())
 
 const pageIds = computed(() => data.value?.items.map(c => c.id) ?? [])
 const allOnPageSelected = computed(() => selection.allSelected(pageIds.value))
@@ -104,6 +145,8 @@ async function resumeAll() {
 const columns: Column[] = [
   { key: 'select', label: '', width: '40px' },
   { key: 'name', label: 'Name' },
+  { key: 'source', label: 'Source' },
+  { key: 'destination', label: 'Destination' },
   { key: 'status', label: 'Status' },
   { key: 'schedule', label: 'Schedule' },
   { key: 'createdAt', label: 'Created' },
@@ -113,7 +156,7 @@ const columns: Column[] = [
 
 <template>
   <PageHeader title="Connections" description="Source-to-destination data pipelines">
-    <template v-if="data?.items?.length" #actions>
+    <template v-if="showFilters" #actions>
       <SButton variant="secondary" :disabled="bulk.running.value" title="Disable every connection — future runs won't start. In-flight runs continue." @click="pauseAll">
         <Pause class="w-4 h-4" /> Pause all
       </SButton>
@@ -144,9 +187,40 @@ const columns: Column[] = [
     Working through {{ bulk.progress.value.completed }} / {{ bulk.progress.value.total }}…
   </SAlert>
 
+  <div v-if="showFilters" class="flex flex-wrap items-end gap-3 mb-4">
+    <SSelect
+      label="Source"
+      :options="sourceOptions"
+      :model-value="sourceId"
+      class="w-56"
+      @update:model-value="updateQuery({ sourceId: String($event) })"
+    />
+    <SSelect
+      label="Destination"
+      :options="destinationOptions"
+      :model-value="destinationId"
+      class="w-56"
+      @update:model-value="updateQuery({ destinationId: String($event) })"
+    />
+    <SButton v-if="hasFilters" variant="ghost" @click="clearFilters">
+      <FilterX class="w-4 h-4" /> Clear filters
+    </SButton>
+  </div>
+
   <STable :columns="columns" :data="data?.items" :loading="loading" empty-text="No connections configured">
     <template #empty>
       <SEmptyState
+        v-if="hasFilters"
+        :icon="FilterX"
+        title="No connections match these filters"
+        description="Filters are hiding all connections. Pick another source or destination, or clear the filters."
+      >
+        <SButton variant="secondary" size="sm" @click="clearFilters">
+          <FilterX class="w-4 h-4" /> Clear filters
+        </SButton>
+      </SEmptyState>
+      <SEmptyState
+        v-else
         title="No connections yet"
         description="A connection pairs a source with a destination. Configure a source and a destination first, then create a connection to start syncing."
       >
@@ -188,6 +262,22 @@ const columns: Column[] = [
         <SchemaDriftBadge :connection-id="row.id" :count="row.pendingSchemaChanges" />
       </div>
     </template>
+    <template #cell-source="{ row }">
+      <div class="min-w-0">
+        <RouterLink :to="{ name: 'source-detail', params: { id: row.sourceId } }" class="block text-sm text-primary hover:underline hover:text-primary-hover truncate">
+          {{ row.sourceName || row.sourceId }}
+        </RouterLink>
+        <span v-if="row.sourceConnectorName" class="block text-xs text-text-muted truncate">{{ row.sourceConnectorName }}</span>
+      </div>
+    </template>
+    <template #cell-destination="{ row }">
+      <div class="min-w-0">
+        <RouterLink :to="{ name: 'destination-detail', params: { id: row.destinationId } }" class="block text-sm text-primary hover:underline hover:text-primary-hover truncate">
+          {{ row.destinationName || row.destinationId }}
+        </RouterLink>
+        <span v-if="row.destinationConnectorName" class="block text-xs text-text-muted truncate">{{ row.destinationConnectorName }}</span>
+      </div>
+    </template>
     <template #cell-status="{ row }">
       <SBadge :variant="statusVariant(row.status)" dot>
         {{ row.status }}
@@ -222,7 +312,7 @@ const columns: Column[] = [
     :page-size="PAGE_SIZE"
     :current-page="currentPage"
     class="mt-4"
-    @page-change="currentPage = $event"
+    @page-change="updateQuery({ page: $event })"
   />
 
   <SConfirmDialog

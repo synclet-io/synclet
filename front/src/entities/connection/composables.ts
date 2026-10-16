@@ -52,20 +52,32 @@ export function useResetConnectionState() {
   })
 }
 
-export function useConnections(options?: { page?: Ref<number>, pageSize?: number, includePendingSchemaChanges?: boolean, enabled?: MaybeRef<boolean> }) {
+export function useConnections(options?: {
+  page?: Ref<number>
+  pageSize?: number
+  includePendingSchemaChanges?: boolean
+  sourceId?: MaybeRef<string>
+  destinationId?: MaybeRef<string>
+  enabled?: MaybeRef<boolean>
+}) {
   const { currentWorkspaceId } = useAuth()
   const page = options?.page
   const pageSize = options?.pageSize ?? 0
   const includePendingSchemaChanges = options?.includePendingSchemaChanges ?? false
+  const sourceId = computed(() => toValue(options?.sourceId) ?? '')
+  const destinationId = computed(() => toValue(options?.destinationId) ?? '')
   return useQuery({
     queryKey: computed(() => [
       ...connectionKeys.list(currentWorkspaceId.value ?? ''),
       page ? toValue(page) : 'all',
       ...(includePendingSchemaChanges ? ['pendingSchemaChanges'] : []),
+      ...(sourceId.value || destinationId.value ? [{ sourceId: sourceId.value, destinationId: destinationId.value }] : []),
     ]),
     queryFn: () => connectionApi.listConnections({
       ...(page ? { pageSize, offset: (toValue(page) - 1) * pageSize } : {}),
       includePendingSchemaChanges,
+      sourceId: sourceId.value,
+      destinationId: destinationId.value,
     }),
     enabled: computed(() => !!currentWorkspaceId.value && toValue(options?.enabled ?? true)),
   })

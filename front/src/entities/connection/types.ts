@@ -24,6 +24,10 @@ export interface Connection {
   customNamespaceFormat: string
   streamPrefix: string
   pendingSchemaChanges: number
+  sourceName: string
+  destinationName: string
+  sourceConnectorName: string
+  destinationConnectorName: string
 }
 
 export interface ConfiguredStream {

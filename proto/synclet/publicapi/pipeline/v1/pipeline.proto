@@ -404,6 +404,12 @@ message Connection {
   // latest discovered catalog. Set by GetConnection, and by ListConnections
   // when include_pending_schema_changes is true; zero otherwise.
   int32 pending_schema_changes = 17;
+  // Names of the referenced source and destination and of their connectors.
+  // Set by ListConnections; empty otherwise.
+  string source_name = 18;
+  string destination_name = 19;
+  string source_connector_name = 20;
+  string destination_connector_name = 21;
 }
 
 message CreateConnectionRequest {
@@ -460,6 +466,10 @@ message ListConnectionsRequest {
   int32 offset = 3;
   // Computes Connection.pending_schema_changes for the returned page.
   bool include_pending_schema_changes = 4;
+  // Restricts the result to connections reading from this source. Empty means any source.
+  string source_id = 5;
+  // Restricts the result to connections writing to this destination. Empty means any destination.
+  string destination_id = 6;
 }
 
 message ListConnectionsResponse {

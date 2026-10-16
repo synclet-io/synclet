@@ -11,11 +11,12 @@ const props = defineProps<{
   instanceId: string
 }>()
 
-const { data, isLoading } = useConnections()
+const { data, isLoading } = useConnections({
+  sourceId: computed(() => props.kind === 'source' ? props.instanceId : ''),
+  destinationId: computed(() => props.kind === 'destination' ? props.instanceId : ''),
+})
 
-const connections = computed(() => (data.value?.items ?? []).filter(c =>
-  props.kind === 'source' ? c.sourceId === props.instanceId : c.destinationId === props.instanceId,
-))
+const connections = computed(() => data.value?.items ?? [])
 
 const newConnectionRoute = computed(() => ({
   name: 'connection-new',

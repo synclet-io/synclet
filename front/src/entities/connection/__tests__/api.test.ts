@@ -21,7 +21,32 @@ describe('listConnections', () => {
 
     const { items } = await listConnections({ pageSize: 20, includePendingSchemaChanges: true })
 
-    expect(connectionClient.listConnections).toHaveBeenCalledWith({ pageSize: 20, offset: 0, includePendingSchemaChanges: true })
+    expect(connectionClient.listConnections).toHaveBeenCalledWith({ pageSize: 20, offset: 0, includePendingSchemaChanges: true, sourceId: '', destinationId: '' })
     expect(items[0]).toMatchObject({ status: 'unknown', pendingSchemaChanges: 3 })
+  })
+
+  it('forwards source and destination filters and maps endpoint names', async () => {
+    connectionClient.listConnections.mockResolvedValue({
+      connections: [{
+        id: 'c1',
+        sourceId: 's1',
+        destinationId: 'd1',
+        sourceName: 'Orders DB',
+        destinationName: 'Warehouse',
+        sourceConnectorName: 'Postgres',
+        destinationConnectorName: 'BigQuery',
+      }],
+      total: 1,
+    })
+
+    const { items } = await listConnections({ sourceId: 's1', destinationId: 'd1' })
+
+    expect(connectionClient.listConnections).toHaveBeenCalledWith({ pageSize: 0, offset: 0, includePendingSchemaChanges: false, sourceId: 's1', destinationId: 'd1' })
+    expect(items[0]).toMatchObject({
+      sourceName: 'Orders DB',
+      destinationName: 'Warehouse',
+      sourceConnectorName: 'Postgres',
+      destinationConnectorName: 'BigQuery',
+    })
   })
 })

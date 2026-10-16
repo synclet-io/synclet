@@ -2321,8 +2321,14 @@ type Connection struct {
 	// latest discovered catalog. Set by GetConnection, and by ListConnections
 	// when include_pending_schema_changes is true; zero otherwise.
 	PendingSchemaChanges int32 `protobuf:"varint,17,opt,name=pending_schema_changes,json=pendingSchemaChanges,proto3" json:"pending_schema_changes,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// Names of the referenced source and destination and of their connectors.
+	// Set by ListConnections; empty otherwise.
+	SourceName               string `protobuf:"bytes,18,opt,name=source_name,json=sourceName,proto3" json:"source_name,omitempty"`
+	DestinationName          string `protobuf:"bytes,19,opt,name=destination_name,json=destinationName,proto3" json:"destination_name,omitempty"`
+	SourceConnectorName      string `protobuf:"bytes,20,opt,name=source_connector_name,json=sourceConnectorName,proto3" json:"source_connector_name,omitempty"`
+	DestinationConnectorName string `protobuf:"bytes,21,opt,name=destination_connector_name,json=destinationConnectorName,proto3" json:"destination_connector_name,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *Connection) Reset() {
@@ -2465,6 +2471,34 @@ func (x *Connection) GetPendingSchemaChanges() int32 {
 		return x.PendingSchemaChanges
 	}
 	return 0
+}
+
+func (x *Connection) GetSourceName() string {
+	if x != nil {
+		return x.SourceName
+	}
+	return ""
+}
+
+func (x *Connection) GetDestinationName() string {
+	if x != nil {
+		return x.DestinationName
+	}
+	return ""
+}
+
+func (x *Connection) GetSourceConnectorName() string {
+	if x != nil {
+		return x.SourceConnectorName
+	}
+	return ""
+}
+
+func (x *Connection) GetDestinationConnectorName() string {
+	if x != nil {
+		return x.DestinationConnectorName
+	}
+	return ""
 }
 
 type CreateConnectionRequest struct {
@@ -2946,8 +2980,12 @@ type ListConnectionsRequest struct {
 	Offset      int32                  `protobuf:"varint,3,opt,name=offset,proto3" json:"offset,omitempty"`
 	// Computes Connection.pending_schema_changes for the returned page.
 	IncludePendingSchemaChanges bool `protobuf:"varint,4,opt,name=include_pending_schema_changes,json=includePendingSchemaChanges,proto3" json:"include_pending_schema_changes,omitempty"`
-	unknownFields               protoimpl.UnknownFields
-	sizeCache                   protoimpl.SizeCache
+	// Restricts the result to connections reading from this source. Empty means any source.
+	SourceId string `protobuf:"bytes,5,opt,name=source_id,json=sourceId,proto3" json:"source_id,omitempty"`
+	// Restricts the result to connections writing to this destination. Empty means any destination.
+	DestinationId string `protobuf:"bytes,6,opt,name=destination_id,json=destinationId,proto3" json:"destination_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ListConnectionsRequest) Reset() {
@@ -3006,6 +3044,20 @@ func (x *ListConnectionsRequest) GetIncludePendingSchemaChanges() bool {
 		return x.IncludePendingSchemaChanges
 	}
 	return false
+}
+
+func (x *ListConnectionsRequest) GetSourceId() string {
+	if x != nil {
+		return x.SourceId
+	}
+	return ""
+}
+
+func (x *ListConnectionsRequest) GetDestinationId() string {
+	if x != nil {
+		return x.DestinationId
+	}
+	return ""
 }
 
 type ListConnectionsResponse struct {
@@ -6015,7 +6067,7 @@ const file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDesc = "" +
 	"\x14managed_connector_id\x18\x02 \x01(\tR\x12managedConnectorId\x12/\n" +
 	"\x06config\x18\x03 \x01(\v2\x17.google.protobuf.StructR\x06config\"<\n" +
 	"!TestDestinationConnectionResponse\x12\x17\n" +
-	"\atask_id\x18\x01 \x01(\tR\x06taskId\"\xdd\x06\n" +
+	"\atask_id\x18\x01 \x01(\tR\x06taskId\"\x9b\b\n" +
 	"\n" +
 	"Connection\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
@@ -6036,7 +6088,12 @@ const file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDesc = "" +
 	"\x17custom_namespace_format\x18\x0e \x01(\tR\x15customNamespaceFormat\x12#\n" +
 	"\rstream_prefix\x18\x0f \x01(\tR\fstreamPrefix\x12K\n" +
 	"\x11next_scheduled_at\x18\x10 \x01(\v2\x1a.google.protobuf.TimestampH\x00R\x0fnextScheduledAt\x88\x01\x01\x124\n" +
-	"\x16pending_schema_changes\x18\x11 \x01(\x05R\x14pendingSchemaChangesB\x14\n" +
+	"\x16pending_schema_changes\x18\x11 \x01(\x05R\x14pendingSchemaChanges\x12\x1f\n" +
+	"\vsource_name\x18\x12 \x01(\tR\n" +
+	"sourceName\x12)\n" +
+	"\x10destination_name\x18\x13 \x01(\tR\x0fdestinationName\x122\n" +
+	"\x15source_connector_name\x18\x14 \x01(\tR\x13sourceConnectorName\x12<\n" +
+	"\x1adestination_connector_name\x18\x15 \x01(\tR\x18destinationConnectorNameB\x14\n" +
 	"\x12_next_scheduled_atJ\x04\b\f\x10\r\"\x94\x04\n" +
 	"\x17CreateConnectionRequest\x12!\n" +
 	"\fworkspace_id\x18\x01 \x01(\tR\vworkspaceId\x12\x12\n" +
@@ -6083,12 +6140,14 @@ const file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDesc = "" +
 	"\x15GetConnectionResponse\x12I\n" +
 	"\n" +
 	"connection\x18\x01 \x01(\v2).synclet.publicapi.pipeline.v1.ConnectionR\n" +
-	"connection\"\xb5\x01\n" +
+	"connection\"\xf9\x01\n" +
 	"\x16ListConnectionsRequest\x12!\n" +
 	"\fworkspace_id\x18\x01 \x01(\tR\vworkspaceId\x12\x1b\n" +
 	"\tpage_size\x18\x02 \x01(\x05R\bpageSize\x12\x16\n" +
 	"\x06offset\x18\x03 \x01(\x05R\x06offset\x12C\n" +
-	"\x1einclude_pending_schema_changes\x18\x04 \x01(\bR\x1bincludePendingSchemaChanges\"|\n" +
+	"\x1einclude_pending_schema_changes\x18\x04 \x01(\bR\x1bincludePendingSchemaChanges\x12\x1b\n" +
+	"\tsource_id\x18\x05 \x01(\tR\bsourceId\x12%\n" +
+	"\x0edestination_id\x18\x06 \x01(\tR\rdestinationId\"|\n" +
 	"\x17ListConnectionsResponse\x12K\n" +
 	"\vconnections\x18\x01 \x03(\v2).synclet.publicapi.pipeline.v1.ConnectionR\vconnections\x12\x14\n" +
 	"\x05total\x18\x02 \x01(\x05R\x05total\")\n" +
