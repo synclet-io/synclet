@@ -30,7 +30,7 @@ onMounted(async () => {
 <template>
   <div class="min-h-screen flex items-center justify-center bg-page">
     <div class="text-center">
-      <div v-if="error" class="text-red-500 mb-4">
+      <div v-if="error" role="alert" class="text-danger mb-4">
         {{ error }}
       </div>
       <div v-else class="text-text-secondary">

@@ -141,9 +141,10 @@ function updateObjectField(key: string, subValue: Record<string, unknown>) {
 // Track secret field visibility separately from form data
 const showSecret = ref<Record<string, boolean>>({})
 
-const inputClass = 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm'
-const inputErrorClass = 'w-full px-3 py-2 border border-danger-500 rounded-lg bg-white dark:bg-gray-700 text-sm'
-const labelClass = 'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'
+const inputBase = 'w-full px-3 py-2 border rounded-lg bg-surface text-heading text-sm placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary'
+const inputClass = `${inputBase} border-border-strong`
+const inputErrorClass = `${inputBase} border-danger`
+const labelClass = 'block text-sm font-medium text-heading mb-1'
 </script>
 
 <template>
@@ -155,9 +156,9 @@ const labelClass = 'block text-sm font-medium text-gray-700 dark:text-gray-300 m
           <div>
             <label :class="labelClass">
               {{ getLabel(key, resolvedSchema.properties[key]) }}
-              <span v-if="requiredSet.has(key)" class="text-danger-500">*</span>
+              <span v-if="requiredSet.has(key)" class="text-danger">*</span>
             </label>
-            <p v-if="resolvedSchema.properties[key].description" class="text-xs text-gray-500 mb-2 [&_a]:text-primary [&_a]:underline" v-html="DOMPurify.sanitize(resolvedSchema.properties[key].description)" />
+            <p v-if="resolvedSchema.properties[key].description" class="text-xs text-text-muted mb-2 [&_a]:text-primary [&_a]:underline" v-html="DOMPurify.sanitize(resolvedSchema.properties[key].description)" />
 
             <select
               :value="getOneOfBranchIndex(key)"
@@ -177,7 +178,7 @@ const labelClass = 'block text-sm font-medium text-gray-700 dark:text-gray-300 m
             <!-- Render active branch fields -->
             <div
               v-if="getOneOfBranchIndex(key) >= 0 && resolvedSchema.properties[key].oneOf![getOneOfBranchIndex(key)]?.properties"
-              class="pl-4 border-l-2 border-gray-200 dark:border-gray-600"
+              class="pl-4 border-l-2 border-border"
             >
               <JsonSchemaForm
                 :schema="resolvedSchema.properties[key].oneOf![getOneOfBranchIndex(key)]"
@@ -191,12 +192,12 @@ const labelClass = 'block text-sm font-medium text-gray-700 dark:text-gray-300 m
 
         <!-- Nested object field -->
         <template v-else-if="resolvedSchema.properties[key].type === 'object' && resolvedSchema.properties[key].properties">
-          <fieldset class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-            <legend class="text-sm font-medium text-gray-700 dark:text-gray-300 px-2">
+          <fieldset class="border border-border rounded-lg p-4">
+            <legend class="text-sm font-medium text-heading px-2">
               {{ getLabel(key, resolvedSchema.properties[key]) }}
-              <span v-if="requiredSet.has(key)" class="text-danger-500">*</span>
+              <span v-if="requiredSet.has(key)" class="text-danger">*</span>
             </legend>
-            <p v-if="resolvedSchema.properties[key].description" class="text-xs text-gray-500 mb-3 [&_a]:text-primary [&_a]:underline" v-html="DOMPurify.sanitize(resolvedSchema.properties[key].description)" />
+            <p v-if="resolvedSchema.properties[key].description" class="text-xs text-text-muted mb-3 [&_a]:text-primary [&_a]:underline" v-html="DOMPurify.sanitize(resolvedSchema.properties[key].description)" />
             <JsonSchemaForm
               :schema="resolvedSchema.properties[key]"
               :model-value="(modelValue[key] as Record<string, unknown>) ?? {}"
@@ -213,14 +214,14 @@ const labelClass = 'block text-sm font-medium text-gray-700 dark:text-gray-300 m
               :id="`field-${key}`"
               type="checkbox"
               :checked="!!modelValue[key]"
-              class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+              class="h-4 w-4 rounded border-border-strong accent-primary-solid focus:ring-primary"
               @change="updateField(key, ($event.target as HTMLInputElement).checked)"
             >
-            <label :for="`field-${key}`" class="text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label :for="`field-${key}`" class="text-sm font-medium text-heading">
               {{ getLabel(key, resolvedSchema.properties[key]) }}
-              <span v-if="requiredSet.has(key)" class="text-danger-500">*</span>
+              <span v-if="requiredSet.has(key)" class="text-danger">*</span>
             </label>
-            <span v-if="resolvedSchema.properties[key].description" class="text-xs text-gray-500 [&_a]:text-primary [&_a]:underline" v-html="DOMPurify.sanitize(resolvedSchema.properties[key].description)" />
+            <span v-if="resolvedSchema.properties[key].description" class="text-xs text-text-muted [&_a]:text-primary [&_a]:underline" v-html="DOMPurify.sanitize(resolvedSchema.properties[key].description)" />
           </div>
         </template>
 
@@ -229,7 +230,7 @@ const labelClass = 'block text-sm font-medium text-gray-700 dark:text-gray-300 m
           <div>
             <label :for="`field-${key}`" :class="labelClass">
               {{ getLabel(key, resolvedSchema.properties[key]) }}
-              <span v-if="requiredSet.has(key)" class="text-danger-500">*</span>
+              <span v-if="requiredSet.has(key)" class="text-danger">*</span>
             </label>
             <select
               :id="`field-${key}`"
@@ -244,8 +245,8 @@ const labelClass = 'block text-sm font-medium text-gray-700 dark:text-gray-300 m
                 {{ opt }}
               </option>
             </select>
-            <p v-if="resolvedSchema.properties[key].description" class="text-xs text-gray-500 mt-1 [&_a]:text-primary [&_a]:underline" v-html="DOMPurify.sanitize(resolvedSchema.properties[key].description)" />
-            <p v-if="getError(key, resolvedSchema.properties[key])" class="text-xs text-danger-600 mt-1">
+            <p v-if="resolvedSchema.properties[key].description" class="text-xs text-text-muted mt-1 [&_a]:text-primary [&_a]:underline" v-html="DOMPurify.sanitize(resolvedSchema.properties[key].description)" />
+            <p v-if="getError(key, resolvedSchema.properties[key])" class="text-xs text-danger mt-1">
               {{ getError(key, resolvedSchema.properties[key]) }}
             </p>
           </div>
@@ -256,7 +257,7 @@ const labelClass = 'block text-sm font-medium text-gray-700 dark:text-gray-300 m
           <div>
             <label :for="`field-${key}`" :class="labelClass">
               {{ getLabel(key, resolvedSchema.properties[key]) }}
-              <span v-if="requiredSet.has(key)" class="text-danger-500">*</span>
+              <span v-if="requiredSet.has(key)" class="text-danger">*</span>
             </label>
             <input
               :id="`field-${key}`"
@@ -267,8 +268,8 @@ const labelClass = 'block text-sm font-medium text-gray-700 dark:text-gray-300 m
               @input="updateArrayField(key, ($event.target as HTMLInputElement).value)"
               @blur="markTouched(key)"
             >
-            <p v-if="resolvedSchema.properties[key].description" class="text-xs text-gray-500 mt-1 [&_a]:text-primary [&_a]:underline" v-html="DOMPurify.sanitize(resolvedSchema.properties[key].description)" />
-            <p v-if="getError(key, resolvedSchema.properties[key])" class="text-xs text-danger-600 mt-1">
+            <p v-if="resolvedSchema.properties[key].description" class="text-xs text-text-muted mt-1 [&_a]:text-primary [&_a]:underline" v-html="DOMPurify.sanitize(resolvedSchema.properties[key].description)" />
+            <p v-if="getError(key, resolvedSchema.properties[key])" class="text-xs text-danger mt-1">
               {{ getError(key, resolvedSchema.properties[key]) }}
             </p>
           </div>
@@ -279,7 +280,7 @@ const labelClass = 'block text-sm font-medium text-gray-700 dark:text-gray-300 m
           <div>
             <label :for="`field-${key}`" :class="labelClass">
               {{ getLabel(key, resolvedSchema.properties[key]) }}
-              <span v-if="requiredSet.has(key)" class="text-danger-500">*</span>
+              <span v-if="requiredSet.has(key)" class="text-danger">*</span>
             </label>
             <input
               :id="`field-${key}`"
@@ -290,8 +291,8 @@ const labelClass = 'block text-sm font-medium text-gray-700 dark:text-gray-300 m
               @input="updateField(key, ($event.target as HTMLInputElement).value === '' ? undefined : Number(($event.target as HTMLInputElement).value))"
               @blur="markTouched(key)"
             >
-            <p v-if="resolvedSchema.properties[key].description" class="text-xs text-gray-500 mt-1 [&_a]:text-primary [&_a]:underline" v-html="DOMPurify.sanitize(resolvedSchema.properties[key].description)" />
-            <p v-if="getError(key, resolvedSchema.properties[key])" class="text-xs text-danger-600 mt-1">
+            <p v-if="resolvedSchema.properties[key].description" class="text-xs text-text-muted mt-1 [&_a]:text-primary [&_a]:underline" v-html="DOMPurify.sanitize(resolvedSchema.properties[key].description)" />
+            <p v-if="getError(key, resolvedSchema.properties[key])" class="text-xs text-danger mt-1">
               {{ getError(key, resolvedSchema.properties[key]) }}
             </p>
           </div>
@@ -302,7 +303,7 @@ const labelClass = 'block text-sm font-medium text-gray-700 dark:text-gray-300 m
           <div>
             <label :for="`field-${key}`" :class="labelClass">
               {{ getLabel(key, resolvedSchema.properties[key]) }}
-              <span v-if="requiredSet.has(key)" class="text-danger-500">*</span>
+              <span v-if="requiredSet.has(key)" class="text-danger">*</span>
             </label>
             <textarea
               :id="`field-${key}`"
@@ -313,8 +314,8 @@ const labelClass = 'block text-sm font-medium text-gray-700 dark:text-gray-300 m
               @input="updateField(key, ($event.target as HTMLTextAreaElement).value)"
               @blur="markTouched(key)"
             />
-            <p v-if="resolvedSchema.properties[key].description" class="text-xs text-gray-500 mt-1 [&_a]:text-primary [&_a]:underline" v-html="DOMPurify.sanitize(resolvedSchema.properties[key].description)" />
-            <p v-if="getError(key, resolvedSchema.properties[key])" class="text-xs text-danger-600 mt-1">
+            <p v-if="resolvedSchema.properties[key].description" class="text-xs text-text-muted mt-1 [&_a]:text-primary [&_a]:underline" v-html="DOMPurify.sanitize(resolvedSchema.properties[key].description)" />
+            <p v-if="getError(key, resolvedSchema.properties[key])" class="text-xs text-danger mt-1">
               {{ getError(key, resolvedSchema.properties[key]) }}
             </p>
           </div>
@@ -325,7 +326,7 @@ const labelClass = 'block text-sm font-medium text-gray-700 dark:text-gray-300 m
           <div>
             <label :for="`field-${key}`" :class="labelClass">
               {{ getLabel(key, resolvedSchema.properties[key]) }}
-              <span v-if="requiredSet.has(key)" class="text-danger-500">*</span>
+              <span v-if="requiredSet.has(key)" class="text-danger">*</span>
             </label>
             <div class="relative">
               <input
@@ -339,14 +340,14 @@ const labelClass = 'block text-sm font-medium text-gray-700 dark:text-gray-300 m
               >
               <button
                 type="button"
-                class="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500 hover:text-gray-700"
+                class="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-text-muted hover:text-text-primary"
                 @click="showSecret[key] = !showSecret[key]"
               >
                 {{ showSecret[key] ? 'Hide' : 'Show' }}
               </button>
             </div>
-            <p v-if="resolvedSchema.properties[key].description" class="text-xs text-gray-500 mt-1 [&_a]:text-primary [&_a]:underline" v-html="DOMPurify.sanitize(resolvedSchema.properties[key].description)" />
-            <p v-if="getError(key, resolvedSchema.properties[key])" class="text-xs text-danger-600 mt-1">
+            <p v-if="resolvedSchema.properties[key].description" class="text-xs text-text-muted mt-1 [&_a]:text-primary [&_a]:underline" v-html="DOMPurify.sanitize(resolvedSchema.properties[key].description)" />
+            <p v-if="getError(key, resolvedSchema.properties[key])" class="text-xs text-danger mt-1">
               {{ getError(key, resolvedSchema.properties[key]) }}
             </p>
           </div>
@@ -357,7 +358,7 @@ const labelClass = 'block text-sm font-medium text-gray-700 dark:text-gray-300 m
           <div>
             <label :for="`field-${key}`" :class="labelClass">
               {{ getLabel(key, resolvedSchema.properties[key]) }}
-              <span v-if="requiredSet.has(key)" class="text-danger-500">*</span>
+              <span v-if="requiredSet.has(key)" class="text-danger">*</span>
             </label>
             <input
               :id="`field-${key}`"
@@ -368,8 +369,8 @@ const labelClass = 'block text-sm font-medium text-gray-700 dark:text-gray-300 m
               @input="updateField(key, ($event.target as HTMLInputElement).value)"
               @blur="markTouched(key)"
             >
-            <p v-if="resolvedSchema.properties[key].description" class="text-xs text-gray-500 mt-1 [&_a]:text-primary [&_a]:underline" v-html="DOMPurify.sanitize(resolvedSchema.properties[key].description)" />
-            <p v-if="getError(key, resolvedSchema.properties[key])" class="text-xs text-danger-600 mt-1">
+            <p v-if="resolvedSchema.properties[key].description" class="text-xs text-text-muted mt-1 [&_a]:text-primary [&_a]:underline" v-html="DOMPurify.sanitize(resolvedSchema.properties[key].description)" />
+            <p v-if="getError(key, resolvedSchema.properties[key])" class="text-xs text-danger mt-1">
               {{ getError(key, resolvedSchema.properties[key]) }}
             </p>
           </div>

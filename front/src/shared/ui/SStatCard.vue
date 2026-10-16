@@ -12,10 +12,10 @@ const props = defineProps<{
 
 const iconBg = computed(() => {
   const map: Record<string, string> = {
-    blue: 'bg-blue-50 text-blue-600',
-    green: 'bg-green-50 text-green-600',
-    amber: 'bg-amber-50 text-amber-600',
-    purple: 'bg-purple-50 text-purple-600',
+    blue: 'bg-info-bg text-info',
+    green: 'bg-success-bg text-success',
+    amber: 'bg-warning-bg text-warning',
+    purple: 'bg-accent-bg text-accent',
   }
   return map[props.color || 'blue']
 })

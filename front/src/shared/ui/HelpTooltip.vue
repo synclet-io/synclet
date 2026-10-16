@@ -31,7 +31,7 @@ function toggle() {
     <span
       v-if="open"
       role="tooltip"
-      class="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-30 w-64 px-3 py-2 rounded-lg bg-slate-900 text-white text-xs leading-snug shadow-overlay"
+      class="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-30 w-64 px-3 py-2 rounded-lg bg-tooltip text-tooltip-text text-xs leading-snug shadow-overlay"
     >
       {{ text }}
     </span>

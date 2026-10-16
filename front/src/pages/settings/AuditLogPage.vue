@@ -294,7 +294,7 @@ function formatValue(v: unknown): string {
               Only events for this {{ event.resourceType }}
             </SButton>
           </div>
-          <div v-if="event.diffTruncated" class="text-xs text-amber-600 mb-2">
+          <div v-if="event.diffTruncated" class="text-xs text-warning mb-2">
             Diff truncated to 8 KB.
           </div>
           <table v-if="event.changes.length > 0" class="w-full text-xs">

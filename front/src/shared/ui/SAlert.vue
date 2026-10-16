@@ -14,10 +14,10 @@ const emit = defineEmits<{ dismiss: [] }>()
 
 const styles = computed(() => {
   const map: Record<string, string> = {
-    info: 'bg-info-bg border-primary-200 text-text-primary',
-    success: 'bg-success-bg border-success-100 text-text-primary',
-    warning: 'bg-warning-bg border-warning-100 text-text-primary',
-    danger: 'bg-danger-bg border-danger-200 text-text-primary',
+    info: 'bg-info-bg border-info-border text-text-primary',
+    success: 'bg-success-bg border-success-border text-text-primary',
+    warning: 'bg-warning-bg border-warning-border text-text-primary',
+    danger: 'bg-danger-bg border-danger-border text-text-primary',
   }
   return map[props.variant]
 })
@@ -43,8 +43,8 @@ const icons: Record<string, any> = {
     <div class="flex-1">
       <slot />
     </div>
-    <button v-if="dismissible" class="shrink-0 p-0.5 text-text-muted hover:text-text-primary transition-colors" @click="emit('dismiss')">
-      <X class="w-4 h-4" />
+    <button v-if="dismissible" type="button" aria-label="Dismiss" class="shrink-0 p-0.5 rounded text-text-muted hover:text-text-primary transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50" @click="emit('dismiss')">
+      <X class="w-4 h-4" aria-hidden="true" />
     </button>
   </div>
 </template>

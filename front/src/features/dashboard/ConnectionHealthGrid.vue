@@ -7,37 +7,34 @@ defineProps<{
   connections: ConnectionHealth[]
 }>()
 
-const tileColor: Record<HealthStatus, string> = {
-  healthy: 'bg-green-500',
-  warning: 'bg-amber-500',
-  failing: 'bg-red-500',
-  disabled: 'bg-slate-300',
+const tileStyle: Record<HealthStatus, { tile: string, dot: string, label: string }> = {
+  healthy: { tile: 'bg-success-bg border-success-border', dot: 'bg-success', label: 'Healthy' },
+  warning: { tile: 'bg-warning-bg border-warning-border', dot: 'bg-warning', label: 'Warning' },
+  failing: { tile: 'bg-danger-bg border-danger-border', dot: 'bg-danger', label: 'Failing' },
+  disabled: { tile: 'bg-surface-raised border-border', dot: 'bg-text-disabled', label: 'Disabled' },
 }
 
-const textColor: Record<HealthStatus, string> = {
-  healthy: 'text-white',
-  warning: 'text-white',
-  failing: 'text-white',
-  disabled: 'text-text-secondary',
-}
-
-function tileTooltip(conn: ConnectionHealth): string {
-  const lastSync = conn.lastSyncAt ? formatRelativeTime(conn.lastSyncAt) : 'Never'
-  return `${conn.connectionName} -- Last sync: ${lastSync}, Status: ${conn.health}`
+function lastSync(conn: ConnectionHealth): string {
+  return conn.lastSyncAt ? formatRelativeTime(conn.lastSyncAt) : 'Never'
 }
 </script>
 
 <template>
-  <div class="flex flex-wrap gap-2">
-    <RouterLink
-      v-for="conn in connections"
-      :key="conn.connectionId"
-      :to="`/connections/${conn.connectionId}`"
-      class="w-16 h-16 rounded-lg flex items-center justify-center cursor-pointer transition-opacity hover:opacity-80"
-      :class="[tileColor[conn.health], textColor[conn.health]]"
-      :title="tileTooltip(conn)"
-    >
-      <span class="text-xs font-medium truncate px-1">{{ conn.connectionName }}</span>
-    </RouterLink>
-  </div>
+  <ul class="flex flex-wrap gap-2">
+    <li v-for="conn in connections" :key="conn.connectionId">
+      <RouterLink
+        :to="`/connections/${conn.connectionId}`"
+        class="flex flex-col justify-between w-28 h-16 px-2 py-1.5 rounded-lg border transition-colors hover:border-border-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        :class="tileStyle[conn.health].tile"
+        :title="`${conn.connectionName}: ${tileStyle[conn.health].label}, last sync ${lastSync(conn)}`"
+      >
+        <span class="text-xs font-medium text-heading truncate">{{ conn.connectionName }}</span>
+        <span class="flex items-center gap-1.5 text-xs text-text-secondary">
+          <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="tileStyle[conn.health].dot" aria-hidden="true" />
+          {{ tileStyle[conn.health].label }}
+          <span class="sr-only">, last sync {{ lastSync(conn) }}</span>
+        </span>
+      </RouterLink>
+    </li>
+  </ul>
 </template>

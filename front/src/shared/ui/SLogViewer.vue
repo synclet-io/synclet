@@ -43,13 +43,13 @@ watch(() => props.lines.length, () => {
   <div class="relative">
     <div
       ref="container"
-      class="bg-gray-950 text-gray-200 font-mono text-sm p-4 rounded-lg overflow-auto max-h-[600px] min-h-[200px]"
+      class="bg-code text-code-text font-mono text-sm p-4 rounded-lg overflow-auto max-h-[600px] min-h-[200px]"
       @scroll="onScroll"
     >
-      <div v-if="loading && lines.length === 0" class="text-gray-500">
+      <div v-if="loading && lines.length === 0" class="text-code-muted">
         Loading logs...
       </div>
-      <div v-else-if="lines.length === 0" class="text-gray-500">
+      <div v-else-if="lines.length === 0" class="text-code-muted">
         No log output yet.
       </div>
       <div v-else>
@@ -60,7 +60,7 @@ watch(() => props.lines.length, () => {
     <Transition name="fade">
       <button
         v-if="!isAtBottom && lines.length > 0"
-        class="absolute bottom-4 right-4 bg-gray-700 hover:bg-gray-600 text-white text-xs px-3 py-1.5 rounded-full shadow-lg"
+        class="absolute bottom-4 right-4 bg-code-control hover:bg-code-control-hover text-code-text text-xs px-3 py-1.5 rounded-full shadow-lg"
         @click="scrollToBottom"
       >
         Jump to bottom
