@@ -28,6 +28,8 @@ jobs:
         with:
           go-version-file: go.mod
       - name: Run tests with coverage
+        env:
+          TEST_DATABASE_DSN: postgres://postgres:test@localhost:5432/synclet_test?sslmode=disable
         run: go test ./... -count=1 -coverprofile=coverage.out -covermode=atomic
       - name: Print coverage summary
         run: go tool cover -func=coverage.out | tail -1
