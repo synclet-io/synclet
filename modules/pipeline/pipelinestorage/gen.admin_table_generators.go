@@ -1944,6 +1944,21 @@ func NewTableGenerators() table.GeneratorList {
 				}
 				return values
 			}
+			info.AddField("Attempt", "attempt", db.Int)
+			info.FieldSortable()
+			formList.AddField("Attempt", "attempt", db.Int, form.Text)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
 			info.AddField("LogLine", "log_line", db.Text)
 			info.FieldSortable()
 			formList.AddField("LogLine", "log_line", db.Text, form.Text)
@@ -1962,6 +1977,220 @@ func NewTableGenerators() table.GeneratorList {
 			info.AddField("CreatedAt", "created_at", db.Timestamp)
 			info.FieldSortable()
 			formList.AddField("CreatedAt", "created_at", db.Timestamp, form.Datetime)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+
+			return table
+		},
+		"job_log_segment": func(ctx *context.Context) table.Table {
+			tableConfig := table.DefaultConfigWithDriver("postgresql")
+			tableConfig.PrimaryKey.Type = db.UUID
+			tableConfig.PrimaryKey.Name = "job_id"
+			table := table.NewDefaultTable(ctx, tableConfig)
+			info := table.GetInfo()
+			formList := table.GetForm()
+			info.SetTable("pipeline\".\"job_log_segments").SetTitle("JobLogSegment").SetDescription("JobLogSegment")
+			formList.SetTable("pipeline\".\"job_log_segments").SetTitle("JobLogSegment").SetDescription("JobLogSegment")
+			info.AddField("JobID", "job_id", db.UUID)
+			info.FieldSortable()
+			info.FieldFilterable(types.FilterType{
+				FormType: form.Text,
+			},
+			)
+			formList.AddField("JobID", "job_id", db.UUID, form.Text)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+			info.AddField("Attempt", "attempt", db.Int)
+			info.FieldSortable()
+			info.FieldFilterable(types.FilterType{
+				FormType: form.Text,
+			},
+			)
+			formList.AddField("Attempt", "attempt", db.Int, form.Text)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+			info.AddField("Status", "status", db.Enum)
+			info.FieldSortable()
+			info.FieldFilterable(types.FilterType{
+				FormType: form.SelectSingle,
+
+				Options: types.FieldOptions{
+					{Value: "open", Text: "Open"},
+					{Value: "archived", Text: "Archived"},
+				},
+			},
+			)
+			formList.AddField("Status", "status", db.Enum, form.SelectSingle)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+
+			formList.FieldOptions(types.FieldOptions{
+				{Value: "open", Text: "Open"},
+				{Value: "archived", Text: "Archived"},
+			})
+			info.AddField("LineCount", "line_count", db.Int)
+			info.FieldSortable()
+			formList.AddField("LineCount", "line_count", db.Int, form.Text)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+			info.AddField("DroppedCount", "dropped_count", db.Int)
+			info.FieldSortable()
+			formList.AddField("DroppedCount", "dropped_count", db.Int, form.Text)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+			info.AddField("MarkerLogID", "marker_log_id", db.Int)
+			info.FieldSortable()
+			formList.AddField("MarkerLogID", "marker_log_id", db.Int, form.Text)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+			info.AddField("FirstLogID", "first_log_id", db.Int)
+			info.FieldSortable()
+			formList.AddField("FirstLogID", "first_log_id", db.Int, form.Text)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+			info.AddField("LastLogID", "last_log_id", db.Int)
+			info.FieldSortable()
+			formList.AddField("LastLogID", "last_log_id", db.Int, form.Text)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+			info.AddField("ArchiveKey", "archive_key", db.Text)
+			info.FieldSortable()
+			formList.AddField("ArchiveKey", "archive_key", db.Text, form.Text)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+			info.AddField("SizeBytes", "size_bytes", db.Int)
+			info.FieldSortable()
+			formList.AddField("SizeBytes", "size_bytes", db.Int, form.Text)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+			info.AddField("CreatedAt", "created_at", db.Timestamp)
+			info.FieldSortable()
+			formList.AddField("CreatedAt", "created_at", db.Timestamp, form.Datetime)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+			info.AddField("ArchivedAt", "archived_at", db.Timestamp)
+			info.FieldSortable()
+			formList.AddField("ArchivedAt", "archived_at", db.Timestamp, form.Datetime)
 			formList.PreProcessFn = func(values form1.Values) form1.Values {
 				for k, v := range values {
 					for i, v := range v {

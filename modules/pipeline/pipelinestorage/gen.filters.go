@@ -661,6 +661,60 @@ func buildJobLogFilterExpr(filter *pipelineservice.JobLogFilter, options ...func
 		}),
 	)
 }
+func buildJobLogSegmentFilterExpr(filter *pipelineservice.JobLogSegmentFilter, options ...func(*filterOptions)) (clause.Expression, error) {
+	if filter == nil {
+		return nil, nil
+	}
+
+	opts := &filterOptions{}
+	for _, opt := range options {
+		opt(opts)
+	}
+
+	return dbutil.BuildFilterExpression(
+		dbutil.ColumnFilter[uuid.UUID]{
+			Column: opts.columnPrefix + "job_id",
+			Filter: filter.JobID,
+		},
+		dbutil.ColumnFilter[int]{
+			Column: opts.columnPrefix + "attempt",
+			Filter: filter.Attempt,
+		},
+		dbutil.MappedColumnFilter[pipelineservice.JobLogSegmentStatus, string]{
+			Column: opts.columnPrefix + "status",
+			Filter: filter.Status,
+			Mapper: convertJobLogSegmentStatusToDB,
+		},
+		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
+			if filter.Or == nil {
+				return nil, nil
+			}
+			exprs := make([]clause.Expression, 0, len(filter.Or))
+			for _, orFilter := range filter.Or {
+				expr, err := buildJobLogSegmentFilterExpr(orFilter)
+				if err != nil {
+					return nil, err
+				}
+				exprs = append(exprs, expr)
+			}
+			return clause.Or(exprs...), nil
+		}),
+		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
+			if filter.And == nil {
+				return nil, nil
+			}
+			exprs := make([]clause.Expression, 0, len(filter.And))
+			for _, andFilter := range filter.And {
+				expr, err := buildJobLogSegmentFilterExpr(andFilter)
+				if err != nil {
+					return nil, err
+				}
+				exprs = append(exprs, expr)
+			}
+			return clause.And(exprs...), nil
+		}),
+	)
+}
 func buildConnectionStateFilterExpr(filter *pipelineservice.ConnectionStateFilter, options ...func(*filterOptions)) (clause.Expression, error) {
 	if filter == nil {
 		return nil, nil

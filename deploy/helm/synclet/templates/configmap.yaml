@@ -52,6 +52,32 @@ data:
   PIPELINE_STATS_ROLLUP_HOURLY_LOOKBACK: {{ .Values.pipeline.statsRollupHourlyLookback | quote }}
   PIPELINE_STATS_ROLLUP_DAILY_LOOKBACK: {{ .Values.pipeline.statsRollupDailyLookback | quote }}
   PIPELINE_REGISTRY_FETCH_TIMEOUT: {{ .Values.pipeline.registryFetchTimeout | quote }}
+  ## Pipeline: job logs
+  PIPELINE_LOG_MAX_LINES_PER_ATTEMPT: {{ .Values.pipeline.logMaxLinesPerAttempt | quote }}
+  PIPELINE_LOG_ARCHIVE_BACKEND: {{ .Values.logArchive.backend | quote }}
+  {{- if eq .Values.logArchive.backend "filesystem" }}
+  {{- if not .Values.logArchive.persistence.existingClaim }}
+  {{- fail "logArchive.backend=filesystem needs logArchive.persistence.existingClaim (a ReadWriteMany PVC shared by the server and jobs pods)" }}
+  {{- end }}
+  PIPELINE_LOG_ARCHIVE_DIR: {{ .Values.logArchive.dir | quote }}
+  {{- end }}
+  {{- if eq .Values.logArchive.backend "s3" }}
+  {{- if not .Values.logArchive.s3.bucket }}
+  {{- fail "logArchive.backend=s3 needs logArchive.s3.bucket" }}
+  {{- end }}
+  PIPELINE_LOG_ARCHIVE_S3_ENDPOINT: {{ .Values.logArchive.s3.endpoint | quote }}
+  PIPELINE_LOG_ARCHIVE_S3_REGION: {{ .Values.logArchive.s3.region | quote }}
+  PIPELINE_LOG_ARCHIVE_S3_BUCKET: {{ .Values.logArchive.s3.bucket | quote }}
+  PIPELINE_LOG_ARCHIVE_S3_PREFIX: {{ .Values.logArchive.s3.prefix | quote }}
+  PIPELINE_LOG_ARCHIVE_S3_USE_PATH_STYLE: {{ .Values.logArchive.s3.usePathStyle | quote }}
+  {{- end }}
+  {{- if eq .Values.logArchive.backend "gcs" }}
+  {{- if not .Values.logArchive.gcs.bucket }}
+  {{- fail "logArchive.backend=gcs needs logArchive.gcs.bucket" }}
+  {{- end }}
+  PIPELINE_LOG_ARCHIVE_GCS_BUCKET: {{ .Values.logArchive.gcs.bucket | quote }}
+  PIPELINE_LOG_ARCHIVE_GCS_PREFIX: {{ .Values.logArchive.gcs.prefix | quote }}
+  {{- end }}
   ## Pipeline: default K8s resources for connector pods
   {{- if .Values.pipeline.resources.cpuRequest }}
   PIPELINE_RUNTIME_CPU_REQUEST: {{ .Values.pipeline.resources.cpuRequest | quote }}

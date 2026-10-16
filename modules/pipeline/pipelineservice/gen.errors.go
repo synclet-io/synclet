@@ -87,6 +87,10 @@ const (
 	ErrJobLogAlreadyExists = AlreadyExistsError("JobLog")
 )
 const (
+	ErrJobLogSegmentNotFound      = NotFoundError("JobLogSegment")
+	ErrJobLogSegmentAlreadyExists = AlreadyExistsError("JobLogSegment")
+)
+const (
 	ErrConnectionStateNotFound      = NotFoundError("ConnectionState")
 	ErrConnectionStateAlreadyExists = AlreadyExistsError("ConnectionState")
 )

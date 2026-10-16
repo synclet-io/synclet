@@ -59,6 +59,9 @@ func (s Storages) ConfiguredCatalogs() pipelinesvc.ConfiguredCatalogsStorage {
 func (s Storages) JobLogs() pipelinesvc.JobLogsStorage {
 	return NewJobLogsStorage(s.db, s.logger)
 }
+func (s Storages) JobLogSegments() pipelinesvc.JobLogSegmentsStorage {
+	return NewJobLogSegmentsStorage(s.db, s.logger)
+}
 func (s Storages) ConnectionStates() pipelinesvc.ConnectionStatesStorage {
 	return NewConnectionStatesStorage(s.db, s.logger)
 }
@@ -405,6 +408,7 @@ func NewJobLogsStorage(db *gorm.DB, logger *logging.Logger) pipelinesvc.JobLogsS
 			FieldMapping: map[any]clause.Column{
 				pipelinesvc.JobLogFieldID:        {Name: "id"},
 				pipelinesvc.JobLogFieldJobID:     {Name: "job_id"},
+				pipelinesvc.JobLogFieldAttempt:   {Name: "attempt"},
 				pipelinesvc.JobLogFieldLogLine:   {Name: "log_line"},
 				pipelinesvc.JobLogFieldCreatedAt: {Name: "created_at"},
 			},
@@ -412,6 +416,44 @@ func NewJobLogsStorage(db *gorm.DB, logger *logging.Logger) pipelinesvc.JobLogsS
 		},
 		// user code 'JobLog custom metods'
 		// end user code 'JobLog custom metods'
+	}
+}
+
+type JobLogSegmentsStorage struct {
+	dbutil.GormEntityStorage[pipelinesvc.JobLogSegment, dbJobLogSegment, pipelinesvc.JobLogSegmentFilter]
+}
+
+// user code 'JobLogSegment custom methods'
+// end user code 'JobLogSegment custom methods'
+func NewJobLogSegmentsStorage(db *gorm.DB, logger *logging.Logger) pipelinesvc.JobLogSegmentsStorage {
+	return &JobLogSegmentsStorage{
+		GormEntityStorage: dbutil.GormEntityStorage[pipelinesvc.JobLogSegment, dbJobLogSegment, pipelinesvc.JobLogSegmentFilter]{
+			Logger:            logger,
+			DB:                db,
+			DBErrorsWrapper:   wrapJobLogSegmentQueryError,
+			ConvertToInternal: convertJobLogSegmentToDB,
+			ConvertToExternal: convertJobLogSegmentFromDB,
+			BuildFilterExpression: func(filter *pipelinesvc.JobLogSegmentFilter) (clause.Expression, error) {
+				return buildJobLogSegmentFilterExpr(filter)
+			},
+			FieldMapping: map[any]clause.Column{
+				pipelinesvc.JobLogSegmentFieldJobID:        {Name: "job_id"},
+				pipelinesvc.JobLogSegmentFieldAttempt:      {Name: "attempt"},
+				pipelinesvc.JobLogSegmentFieldStatus:       {Name: "status"},
+				pipelinesvc.JobLogSegmentFieldLineCount:    {Name: "line_count"},
+				pipelinesvc.JobLogSegmentFieldDroppedCount: {Name: "dropped_count"},
+				pipelinesvc.JobLogSegmentFieldMarkerLogID:  {Name: "marker_log_id"},
+				pipelinesvc.JobLogSegmentFieldFirstLogID:   {Name: "first_log_id"},
+				pipelinesvc.JobLogSegmentFieldLastLogID:    {Name: "last_log_id"},
+				pipelinesvc.JobLogSegmentFieldArchiveKey:   {Name: "archive_key"},
+				pipelinesvc.JobLogSegmentFieldSizeBytes:    {Name: "size_bytes"},
+				pipelinesvc.JobLogSegmentFieldCreatedAt:    {Name: "created_at"},
+				pipelinesvc.JobLogSegmentFieldArchivedAt:   {Name: "archived_at"},
+			},
+			LockScope: "pipeline.JobLogSegments",
+		},
+		// user code 'JobLogSegment custom metods'
+		// end user code 'JobLogSegment custom metods'
 	}
 }
 

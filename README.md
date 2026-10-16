@@ -131,12 +131,59 @@ helm install synclet deploy/helm/synclet/ -f values.yaml
 | `PIPELINE_MAX_CONCURRENT_JOBS` | Concurrent sync jobs | `10` |
 | `PIPELINE_IDLE_TIMEOUT` | Cancel a sync that receives no records for this long | `10m` |
 | `PIPELINE_JOB_SCHEDULER_INTERVAL` | How often due connections are scheduled | `30s` |
+| `PIPELINE_LOG_MAX_LINES_PER_ATTEMPT` | Stored log lines per job attempt; `0` disables the cap | `100000` |
+| `PIPELINE_LOG_ARCHIVE_BACKEND` | Where logs of finished jobs go: `none`, `filesystem`, `s3` or `gcs` | `none` |
+| `PIPELINE_LOG_ARCHIVE_DIR` | Base directory for the `filesystem` backend | empty |
+| `PIPELINE_LOG_ARCHIVE_S3_*` | `ENDPOINT`, `REGION`, `BUCKET`, `PREFIX`, `ACCESS_KEY_ID`, `SECRET_ACCESS_KEY`, `USE_PATH_STYLE` for the `s3` backend | empty |
+| `PIPELINE_LOG_ARCHIVE_GCS_*` | `BUCKET`, `PREFIX`, `CREDENTIALS_FILE` for the `gcs` backend | empty |
 | `DOCKER_EXECUTOR_MAX_SYNC_DURATION` | Maximum sync run time on the Docker executor | `24h` |
 | `DOCKER_EXECUTOR_TEMP_DIR_ROOT` | Scratch directory shared with the host Docker daemon | empty |
 | `K8S_EXECUTOR_NAMESPACE` | Namespace for connector pods | empty |
 | `EXECUTOR_API_URL` | Internal server URL used by distributed executors | empty |
 | `EXECUTOR_API_TOKEN` | Token distributed executors present to the internal server | empty |
 | `WATERMILL_TRANSPORT` | Event bus transport | `sql` |
+
+### Job Log Storage
+
+While a job runs, its log lines are stored in Postgres and the UI tails them from there. Each attempt keeps at most `PIPELINE_LOG_MAX_LINES_PER_ATTEMPT` lines; later lines are dropped and counted in a single `[synclet] log truncated: N further lines dropped` line.
+
+With `PIPELINE_LOG_ARCHIVE_BACKEND=none` (the default) logs stay in Postgres until job retention deletes the job. With `filesystem`, `s3` or `gcs`, a finished job's logs are moved out of Postgres into one gzipped NDJSON object per attempt, keyed `logs/<workspace>/<connection>/<job>/<attempt>.ndjson.gz`, and read back from there; retention and workspace deletion remove the objects too.
+
+- `filesystem` writes under `PIPELINE_LOG_ARCHIVE_DIR`. Every server replica must see the same directory, so use a shared volume.
+- `s3` works with AWS S3, MinIO, Cloudflare R2 and Google Cloud Storage (HMAC keys via its S3 interoperability endpoint). Set `PIPELINE_LOG_ARCHIVE_S3_ENDPOINT` for anything but AWS, and `PIPELINE_LOG_ARCHIVE_S3_USE_PATH_STYLE=true` for MinIO. Without static keys the default AWS credential chain is used (environment, IRSA, instance profile).
+- `gcs` uses the native Google Cloud Storage API. With `PIPELINE_LOG_ARCHIVE_GCS_CREDENTIALS_FILE` it authenticates with that service account key; without it, Application Default Credentials (GKE Workload Identity, `GOOGLE_APPLICATION_CREDENTIALS`, or `gcloud auth application-default login` locally). The server logs which credential source it uses at startup. Credentials are resolved on first use, so missing ADC shows up as archive errors, not a startup failure.
+
+#### GCS with GKE Workload Identity (Helm)
+
+No key file is needed. The server and jobs pods run as the chart's Kubernetes service account; bind it to a Google service account that can write the bucket:
+
+```bash
+gcloud storage buckets add-iam-policy-binding gs://<bucket> \
+  --member "serviceAccount:<gsa>@<project>.iam.gserviceaccount.com" \
+  --role roles/storage.objectAdmin
+
+gcloud iam service-accounts add-iam-policy-binding <gsa>@<project>.iam.gserviceaccount.com \
+  --role roles/iam.workloadIdentityUser \
+  --member "serviceAccount:<project>.svc.id.goog[<namespace>/<ksa>]"
+```
+
+`<ksa>` is the chart's service account (`<release>-synclet` unless `serviceAccount.name` is set). Then:
+
+```yaml
+serviceAccount:
+  annotations:
+    iam.gke.io/gcp-service-account: <gsa>@<project>.iam.gserviceaccount.com
+logArchive:
+  backend: gcs
+  gcs:
+    bucket: <bucket>
+```
+
+Outside Workload Identity, store a service account key in a Secret and set `logArchive.gcs.credentialsSecret` (key `key.json` by default); it is mounted only into the server and jobs pods.
+
+The executor deployment (distributed mode) shares this service account because it needs its RBAC to launch connector pods. Connector pods run in `k8s.namespace` under `pipeline.resources.serviceAccountName` (or that namespace's default account), so they get no bucket access.
+
+Switching back to `none` leaves already archived logs where they are, but they can no longer be read.
 
 ### Connector Configuration
 

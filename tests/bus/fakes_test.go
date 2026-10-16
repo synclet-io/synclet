@@ -161,7 +161,11 @@ func (unlimitedRetention) Execute(_ context.Context, workspaceID uuid.UUID) (*pi
 	return &pipelineservice.WorkspaceSettings{WorkspaceID: workspaceID, MaxJobsPerWorkspace: 0}, nil
 }
 
-func (unlimitedRetention) DeleteOldestTerminalJobs(context.Context, uuid.UUID, int) (int64, error) {
+func (unlimitedRetention) ListExcessTerminalJobIDs(context.Context, uuid.UUID, int, int) ([]uuid.UUID, error) {
+	return nil, nil
+}
+
+func (unlimitedRetention) DeleteJobs(context.Context, []uuid.UUID) (int64, error) {
 	return 0, nil
 }
 

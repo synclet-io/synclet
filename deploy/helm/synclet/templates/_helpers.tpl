@@ -239,6 +239,58 @@ Comma-separated OIDC provider slugs.
 {{/*
 SMTP password (inline value only; empty = no password).
 */}}
+{{/*
+"true" when the chart-managed Secret holds the log archive S3 keys, else empty.
+*/}}
+{{- define "synclet.logArchive.chartManagedS3Keys" -}}
+{{- if and (eq .Values.logArchive.backend "s3") .Values.logArchive.s3.accessKeyID (not .Values.logArchive.s3.existingSecret) -}}
+true
+{{- end -}}
+{{- end }}
+
+{{/*
+Log archive volume mounts, volumes and env for the server and jobs pods: the
+filesystem backend's PVC and the GCS service account key.
+*/}}
+{{- define "synclet.logArchive.gcsKeyDir" -}}
+/var/run/secrets/synclet/gcs
+{{- end }}
+
+{{- define "synclet.logArchive.volumeMount" -}}
+{{- if and (eq .Values.logArchive.backend "filesystem") .Values.logArchive.persistence.existingClaim }}
+- name: log-archive
+  mountPath: {{ .Values.logArchive.dir }}
+{{- end }}
+{{- if and (eq .Values.logArchive.backend "gcs") .Values.logArchive.gcs.credentialsSecret }}
+- name: log-archive-gcs-key
+  mountPath: {{ include "synclet.logArchive.gcsKeyDir" . }}
+  readOnly: true
+{{- end }}
+{{- end }}
+
+{{- define "synclet.logArchive.volume" -}}
+{{- if and (eq .Values.logArchive.backend "filesystem") .Values.logArchive.persistence.existingClaim }}
+- name: log-archive
+  persistentVolumeClaim:
+    claimName: {{ .Values.logArchive.persistence.existingClaim }}
+{{- end }}
+{{- if and (eq .Values.logArchive.backend "gcs") .Values.logArchive.gcs.credentialsSecret }}
+- name: log-archive-gcs-key
+  secret:
+    secretName: {{ .Values.logArchive.gcs.credentialsSecret }}
+    items:
+      - key: {{ .Values.logArchive.gcs.credentialsSecretKey }}
+        path: key.json
+{{- end }}
+{{- end }}
+
+{{- define "synclet.logArchive.env" -}}
+{{- if and (eq .Values.logArchive.backend "gcs") .Values.logArchive.gcs.credentialsSecret }}
+- name: PIPELINE_LOG_ARCHIVE_GCS_CREDENTIALS_FILE
+  value: {{ printf "%s/key.json" (include "synclet.logArchive.gcsKeyDir" .) | quote }}
+{{- end }}
+{{- end }}
+
 {{- define "synclet.smtp.secretRef" -}}
 {{- if .Values.smtp.existingSecret }}
 name: {{ .Values.smtp.existingSecret }}
@@ -374,6 +426,30 @@ Common secret env vars shared across all deployments.
       name: {{ include "synclet.secretName" $ }}
       key: oidc-{{ .slug }}-client-secret
       {{- end }}
+{{- end }}
+{{- if eq .Values.logArchive.backend "s3" }}
+{{- if or .Values.logArchive.s3.existingSecret .Values.logArchive.s3.accessKeyID }}
+- name: PIPELINE_LOG_ARCHIVE_S3_ACCESS_KEY_ID
+  valueFrom:
+    secretKeyRef:
+      {{- if .Values.logArchive.s3.existingSecret }}
+      name: {{ .Values.logArchive.s3.existingSecret }}
+      key: {{ .Values.logArchive.s3.existingSecretAccessKeyIDKey }}
+      {{- else }}
+      name: {{ include "synclet.secretName" . }}
+      key: log-archive-s3-access-key-id
+      {{- end }}
+- name: PIPELINE_LOG_ARCHIVE_S3_SECRET_ACCESS_KEY
+  valueFrom:
+    secretKeyRef:
+      {{- if .Values.logArchive.s3.existingSecret }}
+      name: {{ .Values.logArchive.s3.existingSecret }}
+      key: {{ .Values.logArchive.s3.existingSecretSecretAccessKeyKey }}
+      {{- else }}
+      name: {{ include "synclet.secretName" . }}
+      key: log-archive-s3-secret-access-key
+      {{- end }}
+{{- end }}
 {{- end }}
 {{- if eq .Values.mode "distributed" }}
 - name: EXECUTOR_API_TOKEN

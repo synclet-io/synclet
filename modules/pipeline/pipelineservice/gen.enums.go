@@ -150,6 +150,35 @@ func (j JobType) String() string {
 	return names[indexes[j-1]:indexes[j]]
 }
 
+type JobLogSegmentStatus byte
+
+const (
+	JobLogSegmentStatusOpen JobLogSegmentStatus = iota + 1
+	JobLogSegmentStatusArchived
+)
+
+// user code 'JobLogSegmentStatus methods'
+// end user code 'JobLogSegmentStatus methods'
+func (j JobLogSegmentStatus) IsValid() bool {
+	return j > 0 && j < 3
+}
+func (j JobLogSegmentStatus) IsOpen() bool {
+	return j == JobLogSegmentStatusOpen
+}
+func (j JobLogSegmentStatus) IsArchived() bool {
+	return j == JobLogSegmentStatusArchived
+}
+func (j JobLogSegmentStatus) String() string {
+	const names = "OpenArchived"
+
+	var indexes = [...]int32{0, 4, 12}
+	if j < 1 || j > 2 {
+		return "JobLogSegmentStatus(" + strconv.FormatInt(int64(j), 10) + ")"
+	}
+
+	return names[indexes[j-1]:indexes[j]]
+}
+
 type NamespaceDefinition byte
 
 const (

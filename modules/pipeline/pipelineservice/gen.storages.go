@@ -26,6 +26,7 @@ type Storage interface {
 	CatalogDiscoveries() CatalogDiscoveriesStorage
 	ConfiguredCatalogs() ConfiguredCatalogsStorage
 	JobLogs() JobLogsStorage
+	JobLogSegments() JobLogSegmentsStorage
 	ConnectionStates() ConnectionStatesStorage
 	WorkspaceSettings() WorkspaceSettingsStorage
 	ConnectorTasks() ConnectorTasksStorage
@@ -77,14 +78,31 @@ type ConfiguredCatalogsStorage dbutil.EntityStorage[ConfiguredCatalog, Configure
 type JobLogsStorage interface {
 	dbutil.EntityStorage[JobLog, JobLogFilter]
 	// user code 'JobLog metods'
-	AppendLog(ctx context.Context, jobID uuid.UUID, line string) error
 	GetLogs(ctx context.Context, jobID uuid.UUID, afterID int64, limit int) ([]JobLog, error)
-	BatchAppendLogs(ctx context.Context, jobID uuid.UUID, lines []string) error
+	InsertLines(ctx context.Context, jobID uuid.UUID, attempt int, lines []string) error
+	InsertLine(ctx context.Context, jobID uuid.UUID, attempt int, line string) (int64, error)
+	UpdateLine(ctx context.Context, id int64, line string) (bool, error)
+	MaxLogID(ctx context.Context, jobID uuid.UUID, attempt int) (int64, error)
+	ListAttemptLogs(ctx context.Context, jobID uuid.UUID, attempt int, afterID, upToID int64, limit int) ([]JobLog, error)
+	DeleteAttemptLogs(ctx context.Context, jobID uuid.UUID, attempt int, upToID int64) error
+	ListUnarchivedAttempts(ctx context.Context, jobID uuid.UUID) ([]int, error)
 	// end user code 'JobLog metods'
 }
 
 // user code 'JobLog definitions'
 // end user code 'JobLog definitions'
+type JobLogSegmentsStorage interface {
+	dbutil.EntityStorage[JobLogSegment, JobLogSegmentFilter]
+	// user code 'JobLogSegment metods'
+	LockCurrent(ctx context.Context, jobID uuid.UUID) (*JobLogSegment, error)
+	Lock(ctx context.Context, jobID uuid.UUID, attempt int) (*JobLogSegment, error)
+	MarkArchived(ctx context.Context, segment *JobLogSegment) (bool, error)
+	ListWorkspaceArchiveKeys(ctx context.Context, workspaceID uuid.UUID) ([]string, error)
+	// end user code 'JobLogSegment metods'
+}
+
+// user code 'JobLogSegment definitions'
+// end user code 'JobLogSegment definitions'
 type ConnectionStatesStorage dbutil.EntityStorage[ConnectionState, ConnectionStateFilter]
 type WorkspaceSettingsStorage dbutil.EntityStorage[WorkspaceSettings, WorkspaceSettingsFilter]
 type ConnectorTasksStorage interface {

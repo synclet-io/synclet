@@ -1,7 +1,11 @@
 package app
 
 import (
+	"context"
+	"errors"
+	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"connectrpc.com/connect"
@@ -29,6 +33,7 @@ import (
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinesettings"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelinestorage"
 	"github.com/synclet-io/synclet/pkg/connectutil"
+	"github.com/synclet-io/synclet/pkg/logarchive"
 )
 
 // pipelineJobsConfig holds intervals for all pipeline background jobs.
@@ -51,24 +56,59 @@ type pipelineRuntimeConfig struct {
 	ServiceAccountName string `env:"SERVICE_ACCOUNT_NAME"`
 }
 
+// pipelineLogArchiveS3Config configures the s3 log archive backend.
+type pipelineLogArchiveS3Config struct {
+	Endpoint        string `env:"ENDPOINT"`
+	Region          string `env:"REGION"`
+	Bucket          string `env:"BUCKET"`
+	Prefix          string `env:"PREFIX"`
+	AccessKeyID     string `env:"ACCESS_KEY_ID"`
+	SecretAccessKey string `env:"SECRET_ACCESS_KEY"`
+	UsePathStyle    bool   `env:"USE_PATH_STYLE" envDefault:"false"`
+}
+
+// pipelineLogArchiveGCSConfig configures the gcs log archive backend.
+type pipelineLogArchiveGCSConfig struct {
+	Bucket          string `env:"BUCKET"`
+	Prefix          string `env:"PREFIX"`
+	CredentialsFile string `env:"CREDENTIALS_FILE"`
+}
+
+// pipelineLogArchiveConfig selects where the logs of finished jobs are stored.
+type pipelineLogArchiveConfig struct {
+	Backend string                      `env:"BACKEND" envDefault:"none"`
+	Dir     string                      `env:"DIR"`
+	S3      pipelineLogArchiveS3Config  `envPrefix:"S3_"`
+	GCS     pipelineLogArchiveGCSConfig `envPrefix:"GCS_"`
+}
+
+const (
+	logArchiveBackendNone       = "none"
+	logArchiveBackendFilesystem = "filesystem"
+	logArchiveBackendS3         = "s3"
+	logArchiveBackendGCS        = "gcs"
+)
+
 // pipelineConfig holds pipeline module configuration loaded from environment variables.
 type pipelineConfig struct {
-	Jobs                        pipelineJobsConfig    `envPrefix:"JOB_"`
-	Runtime                     pipelineRuntimeConfig `envPrefix:"RUNTIME_"`
-	MaxConcurrentJobs           int                   `env:"MAX_CONCURRENT_JOBS" envDefault:"10"`
-	IdleTimeout                 time.Duration         `env:"IDLE_TIMEOUT" envDefault:"10m"`
-	ExecutorAPIToken            string                `env:"EXECUTOR_API_TOKEN"`
-	ConnectorTaskRetention      time.Duration         `env:"CONNECTOR_TASK_RETENTION" envDefault:"24h"`
-	ConnectorTaskRunningTimeout time.Duration         `env:"CONNECTOR_TASK_RUNNING_TIMEOUT" envDefault:"5m"`
-	ConnectorTaskPendingTimeout time.Duration         `env:"CONNECTOR_TASK_PENDING_TIMEOUT" envDefault:"1m"`
-	DefaultMaxAttempts          int                   `env:"DEFAULT_MAX_ATTEMPTS" envDefault:"3"`
-	HeartbeatTimeout            time.Duration         `env:"HEARTBEAT_TIMEOUT" envDefault:"30s"`
-	ConnectionCheckTimeout      time.Duration         `env:"CONNECTION_CHECK_TIMEOUT" envDefault:"2m"`
-	ConnectorTaskPollInterval   time.Duration         `env:"CONNECTOR_TASK_POLL_INTERVAL" envDefault:"500ms"`
-	EventEmitTimeout            time.Duration         `env:"EVENT_EMIT_TIMEOUT" envDefault:"30s"`
-	StatsRollupHourlyLookback   time.Duration         `env:"STATS_ROLLUP_HOURLY_LOOKBACK" envDefault:"2h"`
-	StatsRollupDailyLookback    time.Duration         `env:"STATS_ROLLUP_DAILY_LOOKBACK" envDefault:"48h"`
-	RegistryFetchTimeout        time.Duration         `env:"REGISTRY_FETCH_TIMEOUT" envDefault:"60s"`
+	Jobs                        pipelineJobsConfig       `envPrefix:"JOB_"`
+	Runtime                     pipelineRuntimeConfig    `envPrefix:"RUNTIME_"`
+	MaxConcurrentJobs           int                      `env:"MAX_CONCURRENT_JOBS" envDefault:"10"`
+	IdleTimeout                 time.Duration            `env:"IDLE_TIMEOUT" envDefault:"10m"`
+	ExecutorAPIToken            string                   `env:"EXECUTOR_API_TOKEN"`
+	ConnectorTaskRetention      time.Duration            `env:"CONNECTOR_TASK_RETENTION" envDefault:"24h"`
+	ConnectorTaskRunningTimeout time.Duration            `env:"CONNECTOR_TASK_RUNNING_TIMEOUT" envDefault:"5m"`
+	ConnectorTaskPendingTimeout time.Duration            `env:"CONNECTOR_TASK_PENDING_TIMEOUT" envDefault:"1m"`
+	DefaultMaxAttempts          int                      `env:"DEFAULT_MAX_ATTEMPTS" envDefault:"3"`
+	HeartbeatTimeout            time.Duration            `env:"HEARTBEAT_TIMEOUT" envDefault:"30s"`
+	ConnectionCheckTimeout      time.Duration            `env:"CONNECTION_CHECK_TIMEOUT" envDefault:"2m"`
+	ConnectorTaskPollInterval   time.Duration            `env:"CONNECTOR_TASK_POLL_INTERVAL" envDefault:"500ms"`
+	EventEmitTimeout            time.Duration            `env:"EVENT_EMIT_TIMEOUT" envDefault:"30s"`
+	StatsRollupHourlyLookback   time.Duration            `env:"STATS_ROLLUP_HOURLY_LOOKBACK" envDefault:"2h"`
+	StatsRollupDailyLookback    time.Duration            `env:"STATS_ROLLUP_DAILY_LOOKBACK" envDefault:"48h"`
+	RegistryFetchTimeout        time.Duration            `env:"REGISTRY_FETCH_TIMEOUT" envDefault:"60s"`
+	LogArchive                  pipelineLogArchiveConfig `envPrefix:"LOG_ARCHIVE_"`
+	MaxLogLinesPerAttempt       int                      `env:"LOG_MAX_LINES_PER_ATTEMPT" envDefault:"100000"`
 }
 
 // runtimeDefaults converts pipelineRuntimeConfig to RuntimeDefaults.
@@ -98,6 +138,7 @@ func pipelineEventHandlersModule() fx.Option {
 		fx.Provide(
 			pnpwatermill.HandlerProvider(pipelineeventhandle.NewWorkspaceCreatedHandler),
 			pnpwatermill.HandlerProvider(pipelineeventhandle.NewWorkspaceDeletedHandler),
+			pnpwatermill.HandlerProvider(pipelineeventhandle.NewJobLogArchiveHandler),
 		),
 	)
 }
@@ -128,6 +169,7 @@ func pipelineDependenciesModule() fx.Option {
 			fx.Annotate(pipelineadapt.NewConnectorSpecFetcherAdapter, fx.As(new(pipelineservice.ConnectorSpecFetcher))),
 			fx.Annotate(pipelineadapt.NewImagePullerAdapter, fx.As(new(pipelineservice.ImagePuller))),
 			fx.Annotate(pipelineadapt.NewAuditRecorder, fx.As(new(pipelineservice.AuditRecorder))),
+			newPipelineLogArchive,
 		),
 
 		// Storage
@@ -181,6 +223,61 @@ func newPipelineServiceConfig(cfg *pipelineConfig) pipelineservice.Config {
 		StatsRollupDailyLookback:    cfg.StatsRollupDailyLookback,
 		RegistryFetchTimeout:        cfg.RegistryFetchTimeout,
 		HeartbeatTimeout:            cfg.HeartbeatTimeout,
+		LogArchiveEnabled:           cfg.LogArchive.Backend != logArchiveBackendNone,
+		MaxLogLinesPerAttempt:       cfg.MaxLogLinesPerAttempt,
+	}
+}
+
+func newPipelineLogArchive(lc fx.Lifecycle, cfg *pipelineConfig, logger *logging.Logger) (pipelineservice.LogArchive, error) {
+	archiveCfg := cfg.LogArchive
+
+	switch archiveCfg.Backend {
+	case logArchiveBackendNone:
+		return logarchive.None{}, nil
+	case logArchiveBackendFilesystem:
+		if archiveCfg.Dir == "" {
+			return nil, fmt.Errorf("PIPELINE_LOG_ARCHIVE_DIR is required when PIPELINE_LOG_ARCHIVE_BACKEND=%s", logArchiveBackendFilesystem)
+		}
+
+		archive, err := logarchive.NewFilesystem(archiveCfg.Dir)
+		if err != nil {
+			return nil, fmt.Errorf("PIPELINE_LOG_ARCHIVE_DIR: %w", err)
+		}
+
+		return archive, nil
+	case logArchiveBackendS3:
+		s3Cfg := archiveCfg.S3
+		if s3Cfg.Bucket == "" {
+			return nil, fmt.Errorf("PIPELINE_LOG_ARCHIVE_S3_BUCKET is required when PIPELINE_LOG_ARCHIVE_BACKEND=%s", logArchiveBackendS3)
+		}
+
+		if (s3Cfg.AccessKeyID == "") != (s3Cfg.SecretAccessKey == "") {
+			return nil, errors.New("PIPELINE_LOG_ARCHIVE_S3_ACCESS_KEY_ID and PIPELINE_LOG_ARCHIVE_S3_SECRET_ACCESS_KEY must be set together")
+		}
+
+		archive, err := logarchive.NewS3(context.Background(), logarchive.S3Config{
+			Endpoint:        s3Cfg.Endpoint,
+			Region:          s3Cfg.Region,
+			Bucket:          s3Cfg.Bucket,
+			Prefix:          s3Cfg.Prefix,
+			AccessKeyID:     s3Cfg.AccessKeyID,
+			SecretAccessKey: s3Cfg.SecretAccessKey,
+			UsePathStyle:    s3Cfg.UsePathStyle,
+		})
+		if errors.Is(err, logarchive.ErrNoRegion) {
+			return nil, fmt.Errorf("PIPELINE_LOG_ARCHIVE_S3_REGION is required when PIPELINE_LOG_ARCHIVE_BACKEND=%s and AWS_REGION is unset", logArchiveBackendS3)
+		}
+
+		if err != nil {
+			return nil, fmt.Errorf("configuring PIPELINE_LOG_ARCHIVE_S3_*: %w", err)
+		}
+
+		return archive, nil
+	case logArchiveBackendGCS:
+		return newGCSLogArchive(lc, archiveCfg.GCS, logger)
+	default:
+		return nil, fmt.Errorf("PIPELINE_LOG_ARCHIVE_BACKEND=%q is not one of %s, %s, %s, %s",
+			archiveCfg.Backend, logArchiveBackendNone, logArchiveBackendFilesystem, logArchiveBackendS3, logArchiveBackendGCS)
 	}
 }
 
@@ -251,4 +348,34 @@ func pipelineHTTPServerModule() fx.Option {
 			fx.Private,
 		),
 	)
+}
+
+func newGCSLogArchive(lc fx.Lifecycle, cfg pipelineLogArchiveGCSConfig, logger *logging.Logger) (pipelineservice.LogArchive, error) {
+	if cfg.Bucket == "" {
+		return nil, fmt.Errorf("PIPELINE_LOG_ARCHIVE_GCS_BUCKET is required when PIPELINE_LOG_ARCHIVE_BACKEND=%s", logArchiveBackendGCS)
+	}
+
+	if cfg.CredentialsFile != "" {
+		if _, err := os.Stat(cfg.CredentialsFile); err != nil {
+			return nil, fmt.Errorf("PIPELINE_LOG_ARCHIVE_GCS_CREDENTIALS_FILE: %w", err)
+		}
+	}
+
+	archive, err := logarchive.NewGCS(context.Background(), logarchive.GCSConfig{
+		Bucket:          cfg.Bucket,
+		Prefix:          cfg.Prefix,
+		CredentialsFile: cfg.CredentialsFile,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("configuring PIPELINE_LOG_ARCHIVE_GCS_*: %w", err)
+	}
+
+	logger.WithFields(map[string]interface{}{
+		"bucket":            cfg.Bucket,
+		"credential_source": archive.CredentialSource(),
+	}).Info(context.Background(), "job log archive: using GCS")
+
+	lc.Append(fx.StopHook(archive.Close))
+
+	return archive, nil
 }

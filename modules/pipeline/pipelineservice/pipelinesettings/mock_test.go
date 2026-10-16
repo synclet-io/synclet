@@ -32,6 +32,7 @@ func (m *mockStorage) ConfiguredCatalogs() pipelineservice.ConfiguredCatalogsSto
 	return nil
 }
 func (m *mockStorage) JobLogs() pipelineservice.JobLogsStorage                   { return nil }
+func (m *mockStorage) JobLogSegments() pipelineservice.JobLogSegmentsStorage     { return nil }
 func (m *mockStorage) ConnectionStates() pipelineservice.ConnectionStatesStorage { return nil }
 func (m *mockStorage) WorkspaceSettings() pipelineservice.WorkspaceSettingsStorage {
 	return m.workspaceSettings

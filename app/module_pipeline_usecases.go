@@ -170,6 +170,7 @@ func pipelineUseCasesModule() fx.Option {
 			pipelinelogs.NewAppendJobLog,
 			pipelinelogs.NewGetJobLog,
 			pipelinelogs.NewBatchAppendJobLogs,
+			pipelinelogs.NewArchiveJobLogs,
 		),
 
 		// Sync use cases

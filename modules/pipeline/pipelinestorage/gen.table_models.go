@@ -718,6 +718,7 @@ func (a dbConfiguredCatalog) TableName() string {
 type dbJobLog struct {
 	ID        int64     `gorm:"column:id;primaryKey"`
 	JobID     uuid.UUID `gorm:"column:job_id"`
+	Attempt   int       `gorm:"column:attempt"`
 	LogLine   string    `gorm:"column:log_line;type:text"`
 	CreatedAt time.Time `gorm:"column:created_at"`
 }
@@ -726,6 +727,7 @@ func convertJobLogToDB(src *pipelineservice.JobLog) (*dbJobLog, error) {
 	result := &dbJobLog{}
 	result.ID = src.ID
 	result.JobID = src.JobID
+	result.Attempt = src.Attempt
 	result.LogLine = src.LogLine
 	result.CreatedAt = (src.CreatedAt).UTC()
 	return result, nil
@@ -735,12 +737,113 @@ func convertJobLogFromDB(src *dbJobLog) (*pipelineservice.JobLog, error) {
 	result := &pipelineservice.JobLog{}
 	result.ID = src.ID
 	result.JobID = src.JobID
+	result.Attempt = src.Attempt
 	result.LogLine = src.LogLine
 	result.CreatedAt = src.CreatedAt
 	return result, nil
 }
 func (a dbJobLog) TableName() string {
 	return "pipeline.job_logs"
+}
+
+type dbJobLogSegment struct {
+	JobID        uuid.UUID  `gorm:"column:job_id;primaryKey"`
+	Attempt      int        `gorm:"column:attempt;primaryKey"`
+	Status       string     `gorm:"column:status;type:text"`
+	LineCount    int        `gorm:"column:line_count"`
+	DroppedCount int        `gorm:"column:dropped_count"`
+	MarkerLogID  *int64     `gorm:"column:marker_log_id"`
+	FirstLogID   *int64     `gorm:"column:first_log_id"`
+	LastLogID    *int64     `gorm:"column:last_log_id"`
+	ArchiveKey   *string    `gorm:"column:archive_key;type:text"`
+	SizeBytes    int64      `gorm:"column:size_bytes"`
+	CreatedAt    time.Time  `gorm:"column:created_at"`
+	ArchivedAt   *time.Time `gorm:"column:archived_at"`
+}
+
+func convertJobLogSegmentToDB(src *pipelineservice.JobLogSegment) (*dbJobLogSegment, error) {
+	result := &dbJobLogSegment{}
+	result.JobID = src.JobID
+	result.Attempt = src.Attempt
+	tmp2, err := convertJobLogSegmentStatusToDB(src.Status)
+	if err != nil {
+		return nil, err
+	}
+	result.Status = tmp2
+	result.LineCount = src.LineCount
+	result.DroppedCount = src.DroppedCount
+	if src.MarkerLogID == nil {
+		result.MarkerLogID = nil
+	} else {
+		result.MarkerLogID = toPtr(fromPtr(src.MarkerLogID))
+	}
+	if src.FirstLogID == nil {
+		result.FirstLogID = nil
+	} else {
+		result.FirstLogID = toPtr(fromPtr(src.FirstLogID))
+	}
+	if src.LastLogID == nil {
+		result.LastLogID = nil
+	} else {
+		result.LastLogID = toPtr(fromPtr(src.LastLogID))
+	}
+	if src.ArchiveKey == nil {
+		result.ArchiveKey = nil
+	} else {
+		result.ArchiveKey = toPtr(fromPtr(src.ArchiveKey))
+	}
+	result.SizeBytes = src.SizeBytes
+	result.CreatedAt = (src.CreatedAt).UTC()
+	if src.ArchivedAt == nil {
+		result.ArchivedAt = nil
+	} else {
+		result.ArchivedAt = toPtr((fromPtr(src.ArchivedAt)).UTC())
+	}
+	return result, nil
+}
+
+func convertJobLogSegmentFromDB(src *dbJobLogSegment) (*pipelineservice.JobLogSegment, error) {
+	result := &pipelineservice.JobLogSegment{}
+	result.JobID = src.JobID
+	result.Attempt = src.Attempt
+	tmp19, err := convertJobLogSegmentStatusFromDB(src.Status)
+	if err != nil {
+		return nil, err
+	}
+	result.Status = tmp19
+	result.LineCount = src.LineCount
+	result.DroppedCount = src.DroppedCount
+	if src.MarkerLogID == nil {
+		result.MarkerLogID = nil
+	} else {
+		result.MarkerLogID = toPtr(fromPtr(src.MarkerLogID))
+	}
+	if src.FirstLogID == nil {
+		result.FirstLogID = nil
+	} else {
+		result.FirstLogID = toPtr(fromPtr(src.FirstLogID))
+	}
+	if src.LastLogID == nil {
+		result.LastLogID = nil
+	} else {
+		result.LastLogID = toPtr(fromPtr(src.LastLogID))
+	}
+	if src.ArchiveKey == nil {
+		result.ArchiveKey = nil
+	} else {
+		result.ArchiveKey = toPtr(fromPtr(src.ArchiveKey))
+	}
+	result.SizeBytes = src.SizeBytes
+	result.CreatedAt = src.CreatedAt
+	if src.ArchivedAt == nil {
+		result.ArchivedAt = nil
+	} else {
+		result.ArchivedAt = toPtr(fromPtr(src.ArchivedAt))
+	}
+	return result, nil
+}
+func (a dbJobLogSegment) TableName() string {
+	return "pipeline.job_log_segments"
 }
 
 type dbConnectionState struct {

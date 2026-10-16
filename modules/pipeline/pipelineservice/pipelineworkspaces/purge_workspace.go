@@ -24,14 +24,21 @@ type PurgeWorkspace struct {
 	storage pipelineservice.Storage
 	stats   pipelineservice.StatsStorage
 	secrets pipelineservice.SecretsProvider
+	archive pipelineservice.LogArchive
 }
 
 // NewPurgeWorkspace creates a new PurgeWorkspace use case.
-func NewPurgeWorkspace(storage pipelineservice.Storage, stats pipelineservice.StatsStorage, secrets pipelineservice.SecretsProvider) *PurgeWorkspace {
-	return &PurgeWorkspace{storage: storage, stats: stats, secrets: secrets}
+func NewPurgeWorkspace(
+	storage pipelineservice.Storage,
+	stats pipelineservice.StatsStorage,
+	secrets pipelineservice.SecretsProvider,
+	archive pipelineservice.LogArchive,
+) *PurgeWorkspace {
+	return &PurgeWorkspace{storage: storage, stats: stats, secrets: secrets, archive: archive}
 }
 
-// Execute cancels the workspace's active jobs, then deletes its connections
+// Execute deletes the workspace's archived job logs, cancels its active jobs,
+// then deletes its connections
 // (cascading to jobs, attempts, logs, catalogs, state and stream generations),
 // sources, destinations, connector tasks, managed connectors, repositories
 // (cascading to repository connectors), workspace settings and stats
@@ -39,6 +46,15 @@ func NewPurgeWorkspace(storage pipelineservice.Storage, stats pipelineservice.St
 // step leaves the owners in place and a rerun finishes the job. Running it again on a purged
 // workspace is a no-op.
 func (uc *PurgeWorkspace) Execute(ctx context.Context, workspaceID uuid.UUID) error {
+	keys, err := uc.storage.JobLogSegments().ListWorkspaceArchiveKeys(ctx, workspaceID)
+	if err != nil {
+		return fmt.Errorf("listing archived job logs: %w", err)
+	}
+
+	if err := uc.archive.Delete(ctx, keys...); err != nil {
+		return fmt.Errorf("deleting archived job logs: %w", err)
+	}
+
 	if err := uc.purgeConnections(ctx, workspaceID); err != nil {
 		return err
 	}

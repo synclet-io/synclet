@@ -1809,6 +1809,7 @@ type JobLogField byte
 const (
 	JobLogFieldID JobLogField = iota + 1
 	JobLogFieldJobID
+	JobLogFieldAttempt
 	JobLogFieldLogLine
 	JobLogFieldCreatedAt
 )
@@ -1823,6 +1824,7 @@ type JobLogOrder order.Order[JobLogField]
 type JobLog struct {
 	ID        int64
 	JobID     uuid.UUID
+	Attempt   int
 	LogLine   string
 	CreatedAt time.Time
 }
@@ -1834,6 +1836,7 @@ func (j *JobLog) Copy() JobLog {
 	var result JobLog
 	result.ID = j.ID
 	result.JobID = j.JobID
+	result.Attempt = j.Attempt
 	result.LogLine = j.LogLine
 	result.CreatedAt = j.CreatedAt
 
@@ -1852,11 +1855,167 @@ func (j *JobLog) Equals(to *JobLog) bool {
 	if j.JobID != to.JobID {
 		return false
 	}
+	if j.Attempt != to.Attempt {
+		return false
+	}
 	if j.LogLine != to.LogLine {
 		return false
 	}
 	if j.CreatedAt != to.CreatedAt {
 		return false
+	}
+
+	return true
+}
+
+type JobLogSegmentField byte
+
+const (
+	JobLogSegmentFieldJobID JobLogSegmentField = iota + 1
+	JobLogSegmentFieldAttempt
+	JobLogSegmentFieldStatus
+	JobLogSegmentFieldLineCount
+	JobLogSegmentFieldDroppedCount
+	JobLogSegmentFieldMarkerLogID
+	JobLogSegmentFieldFirstLogID
+	JobLogSegmentFieldLastLogID
+	JobLogSegmentFieldArchiveKey
+	JobLogSegmentFieldSizeBytes
+	JobLogSegmentFieldCreatedAt
+	JobLogSegmentFieldArchivedAt
+)
+
+type JobLogSegmentFilter struct {
+	JobID   filter.Filter[uuid.UUID]
+	Attempt filter.Filter[int]
+	Status  filter.Filter[JobLogSegmentStatus]
+	Or      []*JobLogSegmentFilter
+	And     []*JobLogSegmentFilter
+}
+type JobLogSegmentOrder order.Order[JobLogSegmentField]
+
+type JobLogSegment struct {
+	JobID        uuid.UUID
+	Attempt      int
+	Status       JobLogSegmentStatus
+	LineCount    int
+	DroppedCount int
+	MarkerLogID  *int64
+	FirstLogID   *int64
+	LastLogID    *int64
+	ArchiveKey   *string
+	SizeBytes    int64
+	CreatedAt    time.Time
+	ArchivedAt   *time.Time
+}
+
+// user code 'JobLogSegment methods'
+// end user code 'JobLogSegment methods'
+
+func (j *JobLogSegment) Copy() JobLogSegment {
+	var result JobLogSegment
+	result.JobID = j.JobID
+	result.Attempt = j.Attempt
+	result.Status = j.Status // enum
+	result.LineCount = j.LineCount
+	result.DroppedCount = j.DroppedCount
+	if j.MarkerLogID != nil {
+		var tmp int64
+		tmp = (*j.MarkerLogID)
+		result.MarkerLogID = &tmp
+	}
+	if j.FirstLogID != nil {
+		var tmp1 int64
+		tmp1 = (*j.FirstLogID)
+		result.FirstLogID = &tmp1
+	}
+	if j.LastLogID != nil {
+		var tmp2 int64
+		tmp2 = (*j.LastLogID)
+		result.LastLogID = &tmp2
+	}
+	if j.ArchiveKey != nil {
+		var tmp3 string
+		tmp3 = (*j.ArchiveKey)
+		result.ArchiveKey = &tmp3
+	}
+	result.SizeBytes = j.SizeBytes
+	result.CreatedAt = j.CreatedAt
+	if j.ArchivedAt != nil {
+		var tmp4 time.Time
+		tmp4 = (*j.ArchivedAt)
+		result.ArchivedAt = &tmp4
+	}
+
+	return result
+}
+func (j *JobLogSegment) Equals(to *JobLogSegment) bool {
+	if (j == nil) != (to == nil) {
+		return false
+	}
+	if j == nil && to == nil {
+		return true
+	}
+	if j.JobID != to.JobID {
+		return false
+	}
+	if j.Attempt != to.Attempt {
+		return false
+	}
+	if j.Status != to.Status {
+		return false
+	}
+	if j.LineCount != to.LineCount {
+		return false
+	}
+	if j.DroppedCount != to.DroppedCount {
+		return false
+	}
+	if (j.MarkerLogID == nil) != (to.MarkerLogID == nil) {
+		return false
+	}
+	if j.MarkerLogID != nil && to.MarkerLogID != nil {
+		if (*j.MarkerLogID) != (*to.MarkerLogID) {
+			return false
+		}
+	}
+	if (j.FirstLogID == nil) != (to.FirstLogID == nil) {
+		return false
+	}
+	if j.FirstLogID != nil && to.FirstLogID != nil {
+		if (*j.FirstLogID) != (*to.FirstLogID) {
+			return false
+		}
+	}
+	if (j.LastLogID == nil) != (to.LastLogID == nil) {
+		return false
+	}
+	if j.LastLogID != nil && to.LastLogID != nil {
+		if (*j.LastLogID) != (*to.LastLogID) {
+			return false
+		}
+	}
+	if (j.ArchiveKey == nil) != (to.ArchiveKey == nil) {
+		return false
+	}
+	if j.ArchiveKey != nil && to.ArchiveKey != nil {
+		if (*j.ArchiveKey) != (*to.ArchiveKey) {
+			return false
+		}
+	}
+	if j.SizeBytes != to.SizeBytes {
+		return false
+	}
+	if j.CreatedAt != to.CreatedAt {
+		return false
+	}
+	if (j.ArchivedAt == nil) != (to.ArchivedAt == nil) {
+		return false
+	}
+	if j.ArchivedAt != nil && to.ArchivedAt != nil {
+		if (*j.ArchivedAt) != (*to.ArchivedAt) {
+			return false
+		}
 	}
 
 	return true

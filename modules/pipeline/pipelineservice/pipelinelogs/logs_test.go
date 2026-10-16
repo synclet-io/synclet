@@ -2,255 +2,379 @@ package pipelinelogs_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
-	"github.com/go-pnp/go-pnp/pkg/optionutil"
 	"github.com/google/uuid"
-	"github.com/saturn4er/boilerplate-go/lib/dbutil"
-	"github.com/saturn4er/boilerplate-go/lib/filter"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinelogs"
+	"github.com/synclet-io/synclet/pkg/logarchive"
 )
 
-type logStore struct {
-	pipelineservice.Storage
-	jobs        *logJobsStorage
-	connections *logConnectionsStorage
-	jobLogs     *logJobLogsStorage
+type logFixture struct {
+	workspaceID uuid.UUID
+	connID      uuid.UUID
+	jobID       uuid.UUID
+	store       *logStore
+	archive     *countingArchive
 }
 
-func (s *logStore) Jobs() pipelineservice.JobsStorage               { return s.jobs }
-func (s *logStore) Connections() pipelineservice.ConnectionsStorage { return s.connections }
-func (s *logStore) JobLogs() pipelineservice.JobLogsStorage         { return s.jobLogs }
+func newLogFixture(t *testing.T) *logFixture {
+	t.Helper()
 
-type logJobsStorage struct {
-	pipelineservice.JobsStorage
-	records map[uuid.UUID]*pipelineservice.Job
+	f := &logFixture{workspaceID: uuid.New(), connID: uuid.New(), jobID: uuid.New()}
+	f.store = newLogStore(f.workspaceID, f.jobID, f.connID)
+	f.archive = newCountingArchive(t)
+
+	return f
 }
 
-func (m *logJobsStorage) First(_ context.Context, f *pipelineservice.JobFilter, _ ...optionutil.Option[dbutil.SelectOptions]) (*pipelineservice.Job, error) {
-	id := f.ID.(*filter.EqualsFilter[uuid.UUID]).Value
-	rec, ok := m.records[id]
+func (f *logFixture) append(t *testing.T, maxLines int, lines ...string) {
+	t.Helper()
 
-	if !ok {
-		return nil, pipelineservice.ErrJobNotFound
-	}
-
-	cp := *rec
-
-	return &cp, nil
+	uc := pipelinelogs.NewBatchAppendJobLogs(f.store, pipelineservice.Config{MaxLogLinesPerAttempt: maxLines})
+	require.NoError(t, uc.Execute(context.Background(), pipelinelogs.BatchAppendJobLogsParams{JobID: f.jobID, LogLines: lines}))
 }
 
-type logConnectionsStorage struct {
-	pipelineservice.ConnectionsStorage
-	records map[uuid.UUID]*pipelineservice.Connection
+func (f *logFixture) get(t *testing.T, afterID int64, limit int) *pipelinelogs.GetJobLogResult {
+	t.Helper()
+
+	result, err := pipelinelogs.NewGetJobLog(f.store, f.archive).Execute(context.Background(), pipelinelogs.GetJobLogParams{
+		WorkspaceID: f.workspaceID,
+		JobID:       f.jobID,
+		AfterID:     afterID,
+		Limit:       limit,
+	})
+	require.NoError(t, err)
+
+	return result
 }
 
-func (m *logConnectionsStorage) First(_ context.Context, f *pipelineservice.ConnectionFilter, _ ...optionutil.Option[dbutil.SelectOptions]) (*pipelineservice.Connection, error) {
-	for _, conn := range m.records {
-		if f.ID != nil {
-			if eq, ok := f.ID.(*filter.EqualsFilter[uuid.UUID]); ok && conn.ID != eq.Value {
-				continue
-			}
+// pages reads the whole log with the given page size and returns each page.
+func (f *logFixture) pages(t *testing.T, limit int) []*pipelinelogs.GetJobLogResult {
+	t.Helper()
+
+	var (
+		out    []*pipelinelogs.GetJobLogResult
+		cursor int64
+	)
+
+	for {
+		page := f.get(t, cursor, limit)
+		out = append(out, page)
+
+		if !page.HasMore {
+			return out
 		}
 
-		if f.WorkspaceID != nil {
-			if eq, ok := f.WorkspaceID.(*filter.EqualsFilter[uuid.UUID]); ok && conn.WorkspaceID != eq.Value {
-				continue
-			}
-		}
-
-		cp := *conn
-
-		return &cp, nil
+		cursor = page.LastID
 	}
-
-	return nil, pipelineservice.ErrConnectionNotFound
 }
 
-type logJobLogsStorage struct {
-	pipelineservice.JobLogsStorage
-	logs map[uuid.UUID][]pipelineservice.JobLog
-	next int64
+func (f *logFixture) archiver(enabled bool) *pipelinelogs.ArchiveJobLogs {
+	return pipelinelogs.NewArchiveJobLogs(f.store, f.archive, pipelineservice.Config{LogArchiveEnabled: enabled})
 }
 
-func (m *logJobLogsStorage) AppendLog(_ context.Context, jobID uuid.UUID, line string) error {
-	m.next++
-	m.logs[jobID] = append(m.logs[jobID], pipelineservice.JobLog{ID: m.next, JobID: jobID, LogLine: line})
-
-	return nil
+func (f *logFixture) finish(status pipelineservice.JobStatus) {
+	f.store.jobs[f.jobID].Status = status
 }
 
-func (m *logJobLogsStorage) BatchAppendLogs(_ context.Context, jobID uuid.UUID, lines []string) error {
-	for _, l := range lines {
-		m.next++
-		m.logs[jobID] = append(m.logs[jobID], pipelineservice.JobLog{ID: m.next, JobID: jobID, LogLine: l})
-	}
-
-	return nil
+func (f *logFixture) retry() {
+	f.store.jobs[f.jobID].Attempt++
 }
 
-func (m *logJobLogsStorage) GetLogs(_ context.Context, jobID uuid.UUID, afterID int64, limit int) ([]pipelineservice.JobLog, error) {
-	out := make([]pipelineservice.JobLog, 0)
-
-	for _, log := range m.logs[jobID] {
-		if log.ID <= afterID {
-			continue
-		}
-
-		out = append(out, log)
-		if limit > 0 && len(out) >= limit {
-			break
-		}
-	}
-
-	return out, nil
-}
-
-func newLogStore(workspaceID, jobID, connID uuid.UUID) *logStore {
-	return &logStore{
-		jobs: &logJobsStorage{records: map[uuid.UUID]*pipelineservice.Job{
-			jobID: {ID: jobID, ConnectionID: connID},
-		}},
-		connections: &logConnectionsStorage{records: map[uuid.UUID]*pipelineservice.Connection{
-			connID: {ID: connID, WorkspaceID: workspaceID},
-		}},
-		jobLogs: &logJobLogsStorage{logs: map[uuid.UUID][]pipelineservice.JobLog{}},
-	}
+func (f *logFixture) key(attempt int) string {
+	return pipelineservice.LogArchiveKey(f.workspaceID, f.connID, f.jobID, attempt)
 }
 
 func TestAppendAndGetJobLog(t *testing.T) {
-	workspaceID := uuid.New()
-	jobID := uuid.New()
-	connID := uuid.New()
-	store := newLogStore(workspaceID, jobID, connID)
+	f := newLogFixture(t)
 
-	appendUC := pipelinelogs.NewAppendJobLog(store)
-	require.NoError(t, appendUC.Execute(context.Background(), pipelinelogs.AppendJobLogParams{JobID: jobID, LogLine: "line-1"}))
-	require.NoError(t, appendUC.Execute(context.Background(), pipelinelogs.AppendJobLogParams{JobID: jobID, LogLine: "line-2"}))
+	appendUC := pipelinelogs.NewAppendJobLog(f.store, pipelineservice.Config{})
+	require.NoError(t, appendUC.Execute(context.Background(), pipelinelogs.AppendJobLogParams{JobID: f.jobID, LogLine: "line-1"}))
+	require.NoError(t, appendUC.Execute(context.Background(), pipelinelogs.AppendJobLogParams{JobID: f.jobID, LogLine: "line-2"}))
 
-	getUC := pipelinelogs.NewGetJobLog(store)
-	result, err := getUC.Execute(context.Background(), pipelinelogs.GetJobLogParams{
-		WorkspaceID: workspaceID,
-		JobID:       jobID,
-	})
-	require.NoError(t, err)
+	result := f.get(t, 0, 0)
 	assert.Equal(t, []string{"line-1", "line-2"}, result.Lines)
 	assert.Equal(t, int64(2), result.LastID)
 	assert.False(t, result.HasMore)
 }
 
-func TestBatchAppendJobLogs(t *testing.T) {
-	workspaceID := uuid.New()
-	jobID := uuid.New()
-	connID := uuid.New()
-	store := newLogStore(workspaceID, jobID, connID)
+func TestAppendJobLog_UnknownJob(t *testing.T) {
+	f := newLogFixture(t)
 
-	batch := pipelinelogs.NewBatchAppendJobLogs(store)
-	require.NoError(t, batch.Execute(context.Background(), pipelinelogs.BatchAppendJobLogsParams{
-		JobID:    jobID,
-		LogLines: []string{"a", "b", "c"},
-	}))
+	uc := pipelinelogs.NewBatchAppendJobLogs(f.store, pipelineservice.Config{})
+	err := uc.Execute(context.Background(), pipelinelogs.BatchAppendJobLogsParams{JobID: uuid.New(), LogLines: []string{"x"}})
+	require.ErrorIs(t, err, pipelineservice.ErrJobNotFound)
+}
 
-	getUC := pipelinelogs.NewGetJobLog(store)
-	result, err := getUC.Execute(context.Background(), pipelinelogs.GetJobLogParams{WorkspaceID: workspaceID, JobID: jobID})
-	require.NoError(t, err)
-	assert.Equal(t, []string{"a", "b", "c"}, result.Lines)
+func TestBatchAppendJobLogs_TagsCurrentAttempt(t *testing.T) {
+	f := newLogFixture(t)
+
+	f.append(t, 0, "a", "b")
+	f.retry()
+	f.append(t, 0, "c")
+
+	attempts := make([]int, 0, len(f.store.logs))
+	for _, l := range f.store.logs {
+		attempts = append(attempts, l.Attempt)
+	}
+
+	assert.Equal(t, []int{1, 1, 2}, attempts)
+	assert.Equal(t, []string{"a", "b", "c"}, f.get(t, 0, 0).Lines)
+}
+
+func TestBatchAppendJobLogs_CapsLinesPerAttempt(t *testing.T) {
+	f := newLogFixture(t)
+
+	f.append(t, 3, "1", "2", "3", "4", "5")
+	assert.Equal(t, []string{"1", "2", "3", "[synclet] log truncated: 2 further lines dropped"}, f.get(t, 0, 0).Lines)
+
+	f.append(t, 3, "6", "7")
+	assert.Equal(t, []string{"1", "2", "3", "[synclet] log truncated: 4 further lines dropped"}, f.get(t, 0, 0).Lines)
+
+	segment := f.store.segments[segmentKey{f.jobID, 1}]
+	assert.Equal(t, 3, segment.LineCount)
+	assert.Equal(t, 4, segment.DroppedCount)
+
+	f.retry()
+	f.append(t, 3, "a", "b")
+	assert.Equal(t, []string{"1", "2", "3", "[synclet] log truncated: 4 further lines dropped", "a", "b"}, f.get(t, 0, 0).Lines)
+}
+
+func TestBatchAppendJobLogs_ReinsertsMarkerAfterItWasArchived(t *testing.T) {
+	f := newLogFixture(t)
+
+	f.append(t, 1, "1", "2")
+	f.finish(pipelineservice.JobStatusFailed)
+	require.NoError(t, f.archiver(true).Execute(context.Background(), f.jobID))
+
+	f.append(t, 1, "late")
+	assert.Equal(t, []string{
+		"1",
+		"[synclet] log truncated: 1 further lines dropped",
+		"[synclet] log truncated: 2 further lines dropped",
+	}, f.get(t, 0, 0).Lines)
 }
 
 func TestGetJobLog_PaginationWithCursor(t *testing.T) {
-	workspaceID := uuid.New()
-	jobID := uuid.New()
-	connID := uuid.New()
-	store := newLogStore(workspaceID, jobID, connID)
+	f := newLogFixture(t)
+	f.append(t, 0, "a", "b", "c", "d", "e")
 
-	batch := pipelinelogs.NewBatchAppendJobLogs(store)
-	require.NoError(t, batch.Execute(context.Background(), pipelinelogs.BatchAppendJobLogsParams{
-		JobID:    jobID,
-		LogLines: []string{"a", "b", "c", "d", "e"},
-	}))
-
-	getUC := pipelinelogs.NewGetJobLog(store)
-	first, err := getUC.Execute(context.Background(), pipelinelogs.GetJobLogParams{
-		WorkspaceID: workspaceID,
-		JobID:       jobID,
-		Limit:       2,
-	})
-	require.NoError(t, err)
-	assert.Equal(t, []string{"a", "b"}, first.Lines)
-	assert.Equal(t, int64(2), first.LastID)
-	assert.True(t, first.HasMore)
-
-	second, err := getUC.Execute(context.Background(), pipelinelogs.GetJobLogParams{
-		WorkspaceID: workspaceID,
-		JobID:       jobID,
-		AfterID:     first.LastID,
-		Limit:       2,
-	})
-	require.NoError(t, err)
-	assert.Equal(t, []string{"c", "d"}, second.Lines)
-	assert.True(t, second.HasMore)
-
-	third, err := getUC.Execute(context.Background(), pipelinelogs.GetJobLogParams{
-		WorkspaceID: workspaceID,
-		JobID:       jobID,
-		AfterID:     second.LastID,
-		Limit:       2,
-	})
-	require.NoError(t, err)
-	assert.Equal(t, []string{"e"}, third.Lines)
-	assert.False(t, third.HasMore)
+	pages := f.pages(t, 2)
+	require.Len(t, pages, 3)
+	assert.Equal(t, []string{"a", "b"}, pages[0].Lines)
+	assert.Equal(t, int64(2), pages[0].LastID)
+	assert.Equal(t, []string{"c", "d"}, pages[1].Lines)
+	assert.Equal(t, []string{"e"}, pages[2].Lines)
+	assert.False(t, pages[2].HasMore)
 }
 
 func TestGetJobLog_RefusesCrossWorkspace(t *testing.T) {
-	workspaceID := uuid.New()
-	jobID := uuid.New()
-	connID := uuid.New()
-	store := newLogStore(workspaceID, jobID, connID)
+	f := newLogFixture(t)
+	f.append(t, 0, "hi")
 
-	require.NoError(t, pipelinelogs.NewAppendJobLog(store).Execute(context.Background(), pipelinelogs.AppendJobLogParams{JobID: jobID, LogLine: "hi"}))
-
-	getUC := pipelinelogs.NewGetJobLog(store)
-	_, err := getUC.Execute(context.Background(), pipelinelogs.GetJobLogParams{
-		WorkspaceID: uuid.New(), // different workspace
-		JobID:       jobID,
+	_, err := pipelinelogs.NewGetJobLog(f.store, f.archive).Execute(context.Background(), pipelinelogs.GetJobLogParams{
+		WorkspaceID: uuid.New(),
+		JobID:       f.jobID,
 	})
 	require.Error(t, err)
 }
 
 func TestGetJobLog_DefaultAndMaxLimit(t *testing.T) {
-	workspaceID := uuid.New()
-	jobID := uuid.New()
-	connID := uuid.New()
-	store := newLogStore(workspaceID, jobID, connID)
+	f := newLogFixture(t)
 
 	lines := make([]string, pipelinelogs.MaxLogLimit+10)
 	for i := range lines {
 		lines[i] = "line"
 	}
 
-	require.NoError(t, pipelinelogs.NewBatchAppendJobLogs(store).Execute(context.Background(), pipelinelogs.BatchAppendJobLogsParams{
-		JobID:    jobID,
-		LogLines: lines,
-	}))
+	f.append(t, 0, lines...)
 
-	getUC := pipelinelogs.NewGetJobLog(store)
-
-	byDefault, err := getUC.Execute(context.Background(), pipelinelogs.GetJobLogParams{WorkspaceID: workspaceID, JobID: jobID})
-	require.NoError(t, err)
+	byDefault := f.get(t, 0, 0)
 	assert.Len(t, byDefault.Lines, pipelinelogs.DefaultLogLimit)
 	assert.True(t, byDefault.HasMore)
 
-	capped, err := getUC.Execute(context.Background(), pipelinelogs.GetJobLogParams{WorkspaceID: workspaceID, JobID: jobID, Limit: pipelinelogs.MaxLogLimit * 2})
-	require.NoError(t, err)
+	capped := f.get(t, 0, pipelinelogs.MaxLogLimit*2)
 	assert.Len(t, capped.Lines, pipelinelogs.MaxLogLimit)
 	assert.True(t, capped.HasMore)
 
-	rest, err := getUC.Execute(context.Background(), pipelinelogs.GetJobLogParams{WorkspaceID: workspaceID, JobID: jobID, AfterID: capped.LastID, Limit: pipelinelogs.MaxLogLimit})
-	require.NoError(t, err)
+	rest := f.get(t, capped.LastID, pipelinelogs.MaxLogLimit)
 	assert.Len(t, rest.Lines, 10)
 	assert.False(t, rest.HasMore)
+}
+
+func TestArchiveJobLogs_WritesObjectsThenDeletesRows(t *testing.T) {
+	f := newLogFixture(t)
+	f.append(t, 0, "a1", "a2", "a3")
+	f.retry()
+	f.append(t, 0, "b1", "b2")
+	f.finish(pipelineservice.JobStatusCompleted)
+
+	before := f.pages(t, 2)
+
+	require.NoError(t, f.archiver(true).Execute(context.Background(), f.jobID))
+
+	assert.Empty(t, f.store.logs)
+	assert.True(t, f.archive.exists(t, f.key(1)))
+	assert.True(t, f.archive.exists(t, f.key(2)))
+
+	segment := f.store.segments[segmentKey{f.jobID, 1}]
+	assert.Equal(t, pipelineservice.JobLogSegmentStatusArchived, segment.Status)
+	require.NotNil(t, segment.ArchiveKey)
+	assert.Equal(t, f.key(1), *segment.ArchiveKey)
+	assert.Equal(t, int64(1), *segment.FirstLogID)
+	assert.Equal(t, int64(3), *segment.LastLogID)
+	assert.Positive(t, segment.SizeBytes)
+	assert.NotNil(t, segment.ArchivedAt)
+
+	assert.Equal(t, before, f.pages(t, 2), "archived reads return the same pages and cursors")
+}
+
+func TestArchiveJobLogs_CursorFromLiveTailSurvivesArchiving(t *testing.T) {
+	f := newLogFixture(t)
+	f.append(t, 0, "a", "b", "c")
+
+	tail := f.get(t, 0, 0)
+	f.append(t, 0, "d")
+	f.finish(pipelineservice.JobStatusCompleted)
+	require.NoError(t, f.archiver(true).Execute(context.Background(), f.jobID))
+
+	next := f.get(t, tail.LastID, 0)
+	assert.Equal(t, []string{"d"}, next.Lines)
+	assert.Equal(t, int64(4), next.LastID)
+	assert.False(t, next.HasMore)
+}
+
+func TestArchiveJobLogs_NoOpUnlessEnabledAndFinished(t *testing.T) {
+	f := newLogFixture(t)
+	f.append(t, 0, "a")
+
+	require.NoError(t, f.archiver(true).Execute(context.Background(), f.jobID), "running job")
+	f.finish(pipelineservice.JobStatusCancelled)
+	require.NoError(t, f.archiver(false).Execute(context.Background(), f.jobID), "archiving disabled")
+	require.NoError(t, f.archiver(true).Execute(context.Background(), uuid.New()), "unknown job")
+
+	assert.Len(t, f.store.logs, 1)
+	assert.Zero(t, f.archive.puts)
+}
+
+func TestArchiveJobLogs_RetryAfterFailedWrite(t *testing.T) {
+	f := newLogFixture(t)
+	f.append(t, 0, "a1", "a2")
+	f.retry()
+	f.append(t, 0, "b1")
+	f.finish(pipelineservice.JobStatusFailed)
+
+	f.archive.failPut[f.key(2)] = true
+	require.ErrorIs(t, f.archiver(true).Execute(context.Background(), f.jobID), errPutFailed)
+
+	assert.True(t, f.archive.exists(t, f.key(1)))
+	assert.False(t, f.archive.exists(t, f.key(2)))
+	assert.Equal(t, []string{"b1"}, []string{f.store.logs[0].LogLine}, "rows of the failed attempt stay")
+	assert.Equal(t, []string{"a1", "a2", "b1"}, f.get(t, 0, 0).Lines, "mixed archived and live attempts read in order")
+
+	delete(f.archive.failPut, f.key(2))
+	require.NoError(t, f.archiver(true).Execute(context.Background(), f.jobID))
+
+	assert.Empty(t, f.store.logs)
+	assert.Equal(t, 2, f.archive.puts, "the archived attempt is not rewritten")
+	assert.Equal(t, []string{"a1", "a2", "b1"}, f.get(t, 0, 0).Lines)
+}
+
+func TestArchiveJobLogs_RetryAfterFailedMark(t *testing.T) {
+	f := newLogFixture(t)
+	f.append(t, 0, "a1")
+	f.finish(pipelineservice.JobStatusCompleted)
+
+	f.store.markArchivedErr = errPutFailed
+	require.Error(t, f.archiver(true).Execute(context.Background(), f.jobID))
+
+	assert.True(t, f.archive.exists(t, f.key(1)))
+	assert.Len(t, f.store.logs, 1, "rows stay until the attempt is marked archived")
+
+	require.NoError(t, f.archiver(true).Execute(context.Background(), f.jobID))
+	assert.Empty(t, f.store.logs)
+
+	require.NoError(t, f.archiver(true).Execute(context.Background(), f.jobID))
+	assert.Equal(t, 2, f.archive.puts, "a finished job is not archived again")
+	assert.Equal(t, []string{"a1"}, f.get(t, 0, 0).Lines)
+}
+
+func TestArchiveJobLogs_LinesAfterArchivingStayInPostgres(t *testing.T) {
+	f := newLogFixture(t)
+	f.append(t, 0, "a", "b")
+	f.finish(pipelineservice.JobStatusCompleted)
+	require.NoError(t, f.archiver(true).Execute(context.Background(), f.jobID))
+
+	f.append(t, 0, "late")
+	require.NoError(t, f.archiver(true).Execute(context.Background(), f.jobID))
+
+	assert.Equal(t, []string{"late"}, []string{f.store.logs[0].LogLine})
+	assert.Equal(t, []string{"a", "b", "late"}, f.get(t, 0, 0).Lines)
+
+	pages := f.pages(t, 2)
+	require.Len(t, pages, 2)
+	assert.Equal(t, []string{"a", "b"}, pages[0].Lines)
+	assert.Equal(t, []string{"late"}, pages[1].Lines)
+}
+
+func TestArchiveJobLogs_DeletesObjectOfDeletedJob(t *testing.T) {
+	f := newLogFixture(t)
+	f.append(t, 0, "a")
+	f.finish(pipelineservice.JobStatusCompleted)
+
+	f.store.beforeMark = func() { delete(f.store.segments, segmentKey{f.jobID, 1}) }
+	require.NoError(t, f.archiver(true).Execute(context.Background(), f.jobID))
+
+	assert.Equal(t, 1, f.archive.puts)
+	assert.False(t, f.archive.exists(t, f.key(1)))
+}
+
+func TestGetJobLog_ArchivedPagesAcrossAttempts(t *testing.T) {
+	f := newLogFixture(t)
+
+	for attempt := 1; attempt <= 3; attempt++ {
+		lines := make([]string, 4)
+		for i := range lines {
+			lines[i] = fmt.Sprintf("%d-%d", attempt, i)
+		}
+
+		f.append(t, 0, lines...)
+
+		if attempt < 3 {
+			f.retry()
+		}
+	}
+
+	f.finish(pipelineservice.JobStatusCompleted)
+	require.NoError(t, f.archiver(true).Execute(context.Background(), f.jobID))
+
+	var got []string
+	for _, page := range f.pages(t, 5) {
+		got = append(got, page.Lines...)
+	}
+
+	assert.Equal(t, []string{"1-0", "1-1", "1-2", "1-3", "2-0", "2-1", "2-2", "2-3", "3-0", "3-1", "3-2", "3-3"}, got)
+
+	last := f.get(t, 12, 0)
+	assert.Empty(t, last.Lines)
+	assert.False(t, last.HasMore)
+}
+
+func TestGetJobLog_MissingArchiveObject(t *testing.T) {
+	f := newLogFixture(t)
+	f.append(t, 0, "a")
+	f.finish(pipelineservice.JobStatusCompleted)
+	require.NoError(t, f.archiver(true).Execute(context.Background(), f.jobID))
+	require.NoError(t, f.archive.Delete(context.Background(), f.key(1)))
+
+	_, err := pipelinelogs.NewGetJobLog(f.store, f.archive).Execute(context.Background(), pipelinelogs.GetJobLogParams{
+		WorkspaceID: f.workspaceID,
+		JobID:       f.jobID,
+	})
+	require.ErrorIs(t, err, logarchive.ErrNotFound)
 }

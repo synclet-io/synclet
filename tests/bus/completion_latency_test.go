@@ -17,6 +17,7 @@ import (
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineevent"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinejobs"
+	"github.com/synclet-io/synclet/pkg/logarchive"
 )
 
 // TestReportCompletion_NotBlockedBySlowWebhook shows that reporting a sync
@@ -54,7 +55,7 @@ func TestReportCompletion_NotBlockedBySlowWebhook(t *testing.T) {
 	reportCompletion := pipelinejobs.NewReportCompletion(
 		pipelinejobs.NewUpdateJobStatus(store),
 		store,
-		pipelinejobs.NewCleanupOldJobs(store, unlimitedRetention{}, unlimitedRetention{}, logger),
+		pipelinejobs.NewCleanupOldJobs(store, unlimitedRetention{}, unlimitedRetention{}, logarchive.None{}, logger),
 		logger,
 		cfg,
 	)

@@ -20,3 +20,4 @@
 ./modules/pipeline/pipelineservice/pipelineworkspaces 60
 ./modules/workspace/workspaceservice 60
 ./modules/secret/secretservice 60
+./pkg/logarchive 58

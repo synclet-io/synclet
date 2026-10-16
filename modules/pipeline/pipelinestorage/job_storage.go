@@ -18,22 +18,36 @@ func NewJobRetentionStorage(db *gorm.DB) *JobRetentionStorageImpl {
 	return &JobRetentionStorageImpl{DB: db}
 }
 
-// DeleteOldestTerminalJobs deletes terminal jobs exceeding keepCount for a workspace.
-// Uses subquery with OFFSET to keep the N most recent terminal jobs.
-// CASCADE handles job_attempts and job_logs deletion automatically.
-func (s *JobRetentionStorageImpl) DeleteOldestTerminalJobs(ctx context.Context, workspaceID uuid.UUID, keepCount int) (int64, error) {
-	result := s.DB.WithContext(ctx).Exec(`
-		DELETE FROM pipeline.jobs
-		WHERE id IN (
-			SELECT j.id FROM pipeline.jobs j
-			JOIN pipeline.connections c ON c.id = j.connection_id
-			WHERE c.workspace_id = ?
-			  AND j.status IN (?, ?, ?)
-			ORDER BY j.created_at DESC
-			OFFSET ?
-		)`, workspaceID, jobStatusCompleted, jobStatusFailed, jobStatusCancelled, keepCount)
+// ListExcessTerminalJobIDs returns up to limit terminal jobs of a workspace
+// beyond the keepCount most recent ones, newest first.
+func (s *JobRetentionStorageImpl) ListExcessTerminalJobIDs(ctx context.Context, workspaceID uuid.UUID, keepCount, limit int) ([]uuid.UUID, error) {
+	var ids []uuid.UUID
+
+	if err := s.DB.WithContext(ctx).Raw(`
+		SELECT j.id FROM pipeline.jobs j
+		JOIN pipeline.connections c ON c.id = j.connection_id
+		WHERE c.workspace_id = ?
+		  AND j.status IN (?, ?, ?)
+		ORDER BY j.created_at DESC
+		OFFSET ? LIMIT ?`,
+		workspaceID, jobStatusCompleted, jobStatusFailed, jobStatusCancelled, keepCount, limit,
+	).Scan(&ids).Error; err != nil {
+		return nil, fmt.Errorf("listing excess terminal jobs: %w", err)
+	}
+
+	return ids, nil
+}
+
+// DeleteJobs deletes the given jobs. CASCADE removes their attempts, logs and
+// log segments.
+func (s *JobRetentionStorageImpl) DeleteJobs(ctx context.Context, ids []uuid.UUID) (int64, error) {
+	if len(ids) == 0 {
+		return 0, nil
+	}
+
+	result := s.DB.WithContext(ctx).Exec(`DELETE FROM pipeline.jobs WHERE id IN ?`, ids)
 	if result.Error != nil {
-		return 0, fmt.Errorf("deleting old jobs: %w", result.Error)
+		return 0, fmt.Errorf("deleting jobs: %w", result.Error)
 	}
 
 	return result.RowsAffected, nil

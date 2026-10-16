@@ -222,6 +222,25 @@ func wrapJobLogQueryError(err error) error {
 
 	return err
 }
+func wrapJobLogSegmentQueryError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return errors.WithStack(errors1.Join(pipelinesvc.ErrJobLogSegmentNotFound, err))
+	}
+
+	var pgErr *pgconn.PgError
+
+	if errors.As(err, &pgErr) {
+		if pgErr.Code == "23505" {
+			return errors.WithStack(errors1.Join(pipelinesvc.ErrJobLogSegmentAlreadyExists, err))
+		}
+	}
+
+	return err
+}
 func wrapConnectionStateQueryError(err error) error {
 	if err == nil {
 		return nil

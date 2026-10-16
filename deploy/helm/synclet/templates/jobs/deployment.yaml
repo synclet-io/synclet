@@ -58,6 +58,9 @@ spec:
             {{- end }}
           env:
             {{- include "synclet.secretEnvVars" . | nindent 12 }}
+            {{- with include "synclet.logArchive.env" . | trim }}
+            {{- . | nindent 12 }}
+            {{- end }}
           {{- if .Values.jobs.livenessProbe.enabled }}
           livenessProbe:
             httpGet:
@@ -87,10 +90,16 @@ spec:
           volumeMounts:
             - name: tmp
               mountPath: /tmp
+            {{- with include "synclet.logArchive.volumeMount" . | trim }}
+            {{- . | nindent 12 }}
+            {{- end }}
       volumes:
         - name: tmp
           emptyDir:
             sizeLimit: 64Mi
+        {{- with include "synclet.logArchive.volume" . | trim }}
+        {{- . | nindent 8 }}
+        {{- end }}
       {{- with .Values.jobs.topologySpreadConstraints }}
       topologySpreadConstraints:
         {{- toYaml . | nindent 8 }}

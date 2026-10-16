@@ -18,4 +18,8 @@ type Config struct {
 	StatsRollupDailyLookback    time.Duration
 	RegistryFetchTimeout        time.Duration
 	HeartbeatTimeout            time.Duration
+	// LogArchiveEnabled moves the logs of finished jobs from Postgres to the LogArchive.
+	LogArchiveEnabled bool
+	// MaxLogLinesPerAttempt caps stored log lines per job attempt; 0 disables the cap.
+	MaxLogLinesPerAttempt int
 }

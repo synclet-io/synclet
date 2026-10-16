@@ -28,6 +28,13 @@ types:
         stringer: true
         is: true
 
+    - name: JobLogSegmentStatus
+      values: [ Open, Archived ]
+      helpers:
+        is_valid: true
+        stringer: true
+        is: true
+
     - name: NamespaceDefinition
       values: [ Source, Destination, Custom ]
       helpers:
@@ -325,8 +332,26 @@ types:
       fields:
         - { name: ID, type: int64, primary_key: true }
         - { name: JobID, type: uuid, filterable: true }
+        - { name: Attempt, type: int }
         - { name: LogLine, type: string }
         - { name: CreatedAt, type: timestamp }
+
+    - name: JobLogSegment
+      table_name: pipeline.job_log_segments
+      has_custom_db_methods: true
+      fields:
+        - { name: JobID, type: uuid, primary_key: true, filterable: true }
+        - { name: Attempt, type: int, primary_key: true, filterable: true }
+        - { name: Status, type: JobLogSegmentStatus, filterable: true }
+        - { name: LineCount, type: int }
+        - { name: DroppedCount, type: int }
+        - { name: MarkerLogID, type: "*int64" }
+        - { name: FirstLogID, type: "*int64" }
+        - { name: LastLogID, type: "*int64" }
+        - { name: ArchiveKey, type: "*string" }
+        - { name: SizeBytes, type: int64 }
+        - { name: CreatedAt, type: timestamp }
+        - { name: ArchivedAt, type: "*timestamp" }
 
     - name: ConnectionState
       table_name: pipeline.connection_state

@@ -1090,6 +1090,7 @@ func convertConfiguredCatalogFromJsonModel(src *jsonConfiguredCatalog) (*pipelin
 type jsonJobLog struct {
 	ID        int64     `json:"id"`
 	JobID     uuid.UUID `json:"job_id"`
+	Attempt   int       `json:"attempt"`
 	LogLine   string    `json:"log_line"`
 	CreatedAt time.Time `json:"created_at"`
 }
@@ -1106,6 +1107,7 @@ func convertJobLogToJsonModel(src *pipelineservice.JobLog) (*jsonJobLog, error) 
 	result := &jsonJobLog{}
 	result.ID = src.ID
 	result.JobID = src.JobID
+	result.Attempt = src.Attempt
 	result.LogLine = src.LogLine
 	result.CreatedAt = (src.CreatedAt).UTC()
 	return result, nil
@@ -1115,8 +1117,114 @@ func convertJobLogFromJsonModel(src *jsonJobLog) (*pipelineservice.JobLog, error
 	result := &pipelineservice.JobLog{}
 	result.ID = src.ID
 	result.JobID = src.JobID
+	result.Attempt = src.Attempt
 	result.LogLine = src.LogLine
 	result.CreatedAt = src.CreatedAt
+	return result, nil
+}
+
+type jsonJobLogSegment struct {
+	JobID        uuid.UUID  `json:"job_id"`
+	Attempt      int        `json:"attempt"`
+	Status       string     `json:"status"`
+	LineCount    int        `json:"line_count"`
+	DroppedCount int        `json:"dropped_count"`
+	MarkerLogID  *int64     `json:"marker_log_id"`
+	FirstLogID   *int64     `json:"first_log_id"`
+	LastLogID    *int64     `json:"last_log_id"`
+	ArchiveKey   *string    `json:"archive_key"`
+	SizeBytes    int64      `json:"size_bytes"`
+	CreatedAt    time.Time  `json:"created_at"`
+	ArchivedAt   *time.Time `json:"archived_at"`
+}
+
+func (j *jsonJobLogSegment) Scan(value any) error {
+	return json.Unmarshal(value.([]byte), j)
+}
+
+func (j jsonJobLogSegment) Value() (driver.Value, error) {
+	return json.Marshal(j)
+}
+
+func convertJobLogSegmentToJsonModel(src *pipelineservice.JobLogSegment) (*jsonJobLogSegment, error) {
+	result := &jsonJobLogSegment{}
+	result.JobID = src.JobID
+	result.Attempt = src.Attempt
+	tmp2, err := convertJobLogSegmentStatusToDB(src.Status)
+	if err != nil {
+		return nil, err
+	}
+	result.Status = tmp2
+	result.LineCount = src.LineCount
+	result.DroppedCount = src.DroppedCount
+	if src.MarkerLogID == nil {
+		result.MarkerLogID = nil
+	} else {
+		result.MarkerLogID = toPtr(fromPtr(src.MarkerLogID))
+	}
+	if src.FirstLogID == nil {
+		result.FirstLogID = nil
+	} else {
+		result.FirstLogID = toPtr(fromPtr(src.FirstLogID))
+	}
+	if src.LastLogID == nil {
+		result.LastLogID = nil
+	} else {
+		result.LastLogID = toPtr(fromPtr(src.LastLogID))
+	}
+	if src.ArchiveKey == nil {
+		result.ArchiveKey = nil
+	} else {
+		result.ArchiveKey = toPtr(fromPtr(src.ArchiveKey))
+	}
+	result.SizeBytes = src.SizeBytes
+	result.CreatedAt = (src.CreatedAt).UTC()
+	if src.ArchivedAt == nil {
+		result.ArchivedAt = nil
+	} else {
+		result.ArchivedAt = toPtr((fromPtr(src.ArchivedAt)).UTC())
+	}
+	return result, nil
+}
+
+func convertJobLogSegmentFromJsonModel(src *jsonJobLogSegment) (*pipelineservice.JobLogSegment, error) {
+	result := &pipelineservice.JobLogSegment{}
+	result.JobID = src.JobID
+	result.Attempt = src.Attempt
+	tmp19, err := convertJobLogSegmentStatusFromDB(src.Status)
+	if err != nil {
+		return nil, err
+	}
+	result.Status = tmp19
+	result.LineCount = src.LineCount
+	result.DroppedCount = src.DroppedCount
+	if src.MarkerLogID == nil {
+		result.MarkerLogID = nil
+	} else {
+		result.MarkerLogID = toPtr(fromPtr(src.MarkerLogID))
+	}
+	if src.FirstLogID == nil {
+		result.FirstLogID = nil
+	} else {
+		result.FirstLogID = toPtr(fromPtr(src.FirstLogID))
+	}
+	if src.LastLogID == nil {
+		result.LastLogID = nil
+	} else {
+		result.LastLogID = toPtr(fromPtr(src.LastLogID))
+	}
+	if src.ArchiveKey == nil {
+		result.ArchiveKey = nil
+	} else {
+		result.ArchiveKey = toPtr(fromPtr(src.ArchiveKey))
+	}
+	result.SizeBytes = src.SizeBytes
+	result.CreatedAt = src.CreatedAt
+	if src.ArchivedAt == nil {
+		result.ArchivedAt = nil
+	} else {
+		result.ArchivedAt = toPtr(fromPtr(src.ArchivedAt))
+	}
 	return result, nil
 }
 

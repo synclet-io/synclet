@@ -16,15 +16,17 @@ type BatchAppendJobLogsParams struct {
 
 // BatchAppendJobLogs appends multiple log lines to a job's log in one call.
 type BatchAppendJobLogs struct {
-	storage pipelineservice.Storage
+	storage  pipelineservice.Storage
+	maxLines int
 }
 
 // NewBatchAppendJobLogs creates a new BatchAppendJobLogs use case.
-func NewBatchAppendJobLogs(storage pipelineservice.Storage) *BatchAppendJobLogs {
-	return &BatchAppendJobLogs{storage: storage}
+func NewBatchAppendJobLogs(storage pipelineservice.Storage, config pipelineservice.Config) *BatchAppendJobLogs {
+	return &BatchAppendJobLogs{storage: storage, maxLines: config.MaxLogLinesPerAttempt}
 }
 
-// Execute appends the log lines to the job's log storage.
+// Execute appends the log lines to the job's current attempt, subject to the
+// per-attempt line cap.
 func (uc *BatchAppendJobLogs) Execute(ctx context.Context, params BatchAppendJobLogsParams) error {
-	return uc.storage.JobLogs().BatchAppendLogs(ctx, params.JobID, params.LogLines)
+	return appendLines(ctx, uc.storage, uc.maxLines, params.JobID, params.LogLines)
 }

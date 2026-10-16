@@ -138,6 +138,33 @@ func convertJobTypeFromDB(jobTypeValue string) (pipelineservice.JobType, error) 
 }
 
 const (
+	jobLogSegmentStatusOpen     = "open"
+	jobLogSegmentStatusArchived = "archived"
+)
+
+func convertJobLogSegmentStatusToDB(jobLogSegmentStatusValue pipelineservice.JobLogSegmentStatus) (string, error) {
+	result, ok := map[pipelineservice.JobLogSegmentStatus]string{
+		pipelineservice.JobLogSegmentStatusOpen:     jobLogSegmentStatusOpen,
+		pipelineservice.JobLogSegmentStatusArchived: jobLogSegmentStatusArchived,
+	}[jobLogSegmentStatusValue]
+	if !ok {
+		return "", fmt.Errorf("unknown JobLogSegmentStatus value: %d", jobLogSegmentStatusValue)
+	}
+	return result, nil
+}
+
+func convertJobLogSegmentStatusFromDB(jobLogSegmentStatusValue string) (pipelineservice.JobLogSegmentStatus, error) {
+	result, ok := map[string]pipelineservice.JobLogSegmentStatus{
+		jobLogSegmentStatusOpen:     pipelineservice.JobLogSegmentStatusOpen,
+		jobLogSegmentStatusArchived: pipelineservice.JobLogSegmentStatusArchived,
+	}[jobLogSegmentStatusValue]
+	if !ok {
+		return 0, fmt.Errorf("unknown JobLogSegmentStatus db value: %s", jobLogSegmentStatusValue)
+	}
+	return result, nil
+}
+
+const (
 	namespaceDefinitionSource      = "source"
 	namespaceDefinitionDestination = "destination"
 	namespaceDefinitionCustom      = "custom"

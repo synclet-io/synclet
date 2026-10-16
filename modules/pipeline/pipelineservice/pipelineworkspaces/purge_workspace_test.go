@@ -3,6 +3,8 @@ package pipelineworkspaces_test
 import (
 	"context"
 	"errors"
+	"io"
+	"strings"
 	"testing"
 
 	"github.com/go-pnp/go-pnp/pkg/optionutil"
@@ -30,9 +32,45 @@ type purgeStore struct {
 	tasks        []*pipelineservice.ConnectorTask
 	repositories []*pipelineservice.Repository
 
-	jobFilter         *pipelineservice.JobFilter
-	cancelledJobs     []*pipelineservice.Job
-	sourceDeleteError error
+	archiveKeys []string
+
+	jobFilter          *pipelineservice.JobFilter
+	cancelledJobs      []*pipelineservice.Job
+	sourceDeleteError  error
+	archiveDeleteError error
+}
+
+func (s *purgeStore) JobLogSegments() pipelineservice.JobLogSegmentsStorage {
+	return &purgeSegments{store: s}
+}
+
+type purgeSegments struct {
+	pipelineservice.JobLogSegmentsStorage
+	store *purgeStore
+}
+
+func (p *purgeSegments) ListWorkspaceArchiveKeys(context.Context, uuid.UUID) ([]string, error) {
+	return p.store.archiveKeys, nil
+}
+
+type purgeArchive struct {
+	store *purgeStore
+}
+
+func (a *purgeArchive) Put(context.Context, string, io.Reader) error { return nil }
+
+func (a *purgeArchive) Open(context.Context, string) (io.ReadCloser, error) { return nil, nil }
+
+func (a *purgeArchive) Delete(_ context.Context, keys ...string) error {
+	if a.store.archiveDeleteError != nil {
+		return a.store.archiveDeleteError
+	}
+
+	if len(keys) > 0 {
+		a.store.log = append(a.store.log, "delete archives "+strings.Join(keys, ","))
+	}
+
+	return nil
 }
 
 func (s *purgeStore) Connections() pipelineservice.ConnectionsStorage {
@@ -230,12 +268,14 @@ func TestPurgeWorkspace(t *testing.T) {
 			destinations: []*pipelineservice.Destination{dest},
 			tasks:        []*pipelineservice.ConnectorTask{directCheck, specTask},
 			repositories: []*pipelineservice.Repository{repo},
+			archiveKeys:  []string{"logs/a/1.ndjson.gz", "logs/a/2.ndjson.gz"},
 		}
 
-		uc := pipelineworkspaces.NewPurgeWorkspace(store, &purgeStats{store: store}, &purgeSecrets{store: store})
+		uc := pipelineworkspaces.NewPurgeWorkspace(store, &purgeStats{store: store}, &purgeSecrets{store: store}, &purgeArchive{store: store})
 		require.NoError(t, uc.Execute(ctx, workspaceID))
 
 		assert.Equal(t, []string{
+			"delete archives logs/a/1.ndjson.gz,logs/a/2.ndjson.gz",
 			"cancel job",
 			"delete connections",
 			"secrets source " + src.ID.String(),
@@ -265,7 +305,7 @@ func TestPurgeWorkspace(t *testing.T) {
 	t.Run("rerun on an emptied workspace only issues the scoped deletes", func(t *testing.T) {
 		store := &purgeStore{}
 
-		uc := pipelineworkspaces.NewPurgeWorkspace(store, &purgeStats{store: store}, &purgeSecrets{store: store})
+		uc := pipelineworkspaces.NewPurgeWorkspace(store, &purgeStats{store: store}, &purgeSecrets{store: store}, &purgeArchive{store: store})
 		require.NoError(t, uc.Execute(ctx, workspaceID))
 
 		assert.Equal(t, []string{
@@ -283,10 +323,25 @@ func TestPurgeWorkspace(t *testing.T) {
 		src := &pipelineservice.Source{ID: uuid.New(), WorkspaceID: workspaceID}
 		store := &purgeStore{sources: []*pipelineservice.Source{src}, sourceDeleteError: errBoom}
 
-		uc := pipelineworkspaces.NewPurgeWorkspace(store, &purgeStats{store: store}, &purgeSecrets{store: store})
+		uc := pipelineworkspaces.NewPurgeWorkspace(store, &purgeStats{store: store}, &purgeSecrets{store: store}, &purgeArchive{store: store})
 		require.ErrorIs(t, uc.Execute(ctx, workspaceID), errBoom)
 
 		assert.NotContains(t, store.log, "delete destinations")
 		assert.Len(t, store.sources, 1)
+	})
+
+	t.Run("keeps every row when archived logs cannot be deleted", func(t *testing.T) {
+		conn := &pipelineservice.Connection{ID: uuid.New(), WorkspaceID: workspaceID}
+		store := &purgeStore{
+			connections:        []*pipelineservice.Connection{conn},
+			archiveKeys:        []string{"logs/a/1.ndjson.gz"},
+			archiveDeleteError: errBoom,
+		}
+
+		uc := pipelineworkspaces.NewPurgeWorkspace(store, &purgeStats{store: store}, &purgeSecrets{store: store}, &purgeArchive{store: store})
+		require.ErrorIs(t, uc.Execute(ctx, workspaceID), errBoom)
+
+		assert.Empty(t, store.log)
+		assert.Len(t, store.connections, 1)
 	})
 }

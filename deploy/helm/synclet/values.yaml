@@ -345,6 +345,8 @@ pipeline:
   statsRollupDailyLookback: "48h"
   ## HTTP timeout for fetching connector registry JSON.
   registryFetchTimeout: "60s"
+  ## Stored log lines per job attempt; later lines are dropped and counted in one marker line. 0 disables the cap.
+  logMaxLinesPerAttempt: 100000
 
   ## Default K8s resource requests/limits applied to connector pods when not overridden per-connection.
   resources:
@@ -354,6 +356,48 @@ pipeline:
     memoryLimit: ""
     ## K8s service account name for connector pods (e.g. for Workload Identity).
     serviceAccountName: ""
+
+## @section Job log archive
+## Where the logs of finished jobs are stored. While a job runs its logs are always in Postgres.
+logArchive:
+  ## none: logs stay in Postgres. filesystem: files under dir. s3: any S3-compatible bucket.
+  ## gcs: Google Cloud Storage bucket.
+  backend: none
+  ## Base directory for the filesystem backend. Server and jobs pods must share it, so it
+  ## needs a ReadWriteMany volume: set persistence.existingClaim to a PVC created beforehand.
+  dir: /var/lib/synclet/job-logs
+  persistence:
+    ## Pre-created PVC mounted at dir in the server and jobs pods (required for filesystem).
+    existingClaim: ""
+  s3:
+    ## Endpoint for S3-compatible stores (MinIO, R2, GCS interoperability). Empty for AWS S3.
+    endpoint: ""
+    ## Bucket region; R2 uses "auto".
+    region: ""
+    bucket: ""
+    ## Key prefix inside the bucket.
+    prefix: ""
+    ## Path-style addressing, needed by MinIO and most self-hosted stores.
+    usePathStyle: false
+    ## Static credentials, stored in the chart-managed Secret. Leave empty to use the default
+    ## AWS credential chain (e.g. IRSA via serviceAccount annotations).
+    accessKeyID: ""
+    secretAccessKey: ""
+    ## Use a pre-created K8s Secret holding both keys instead.
+    existingSecret: ""
+    existingSecretAccessKeyIDKey: "log-archive-s3-access-key-id"
+    existingSecretSecretAccessKeyKey: "log-archive-s3-secret-access-key"
+  gcs:
+    bucket: ""
+    ## Object name prefix inside the bucket.
+    prefix: ""
+    ## On GKE with Workload Identity leave this empty: annotate serviceAccount with
+    ## iam.gke.io/gcp-service-account and the client uses Application Default Credentials
+    ## from the metadata server, no key file needed.
+    ## Otherwise name a pre-created Secret holding a service account JSON key; it is mounted
+    ## read-only into the server and jobs pods only.
+    credentialsSecret: ""
+    credentialsSecretKey: "key.json"
 
 ## @section Secrets
 ## Each secret supports 3 modes:
@@ -472,9 +516,16 @@ vso:
     refreshAfter: 60s
 
 ## @section Service Account
+## Used by the server, jobs and executor deployments. Connector pods run in k8s.namespace
+## under pipeline.resources.serviceAccountName (or that namespace's default account), so
+## they do not get this account's cloud permissions.
 serviceAccount:
   create: true
   name: ""
+  ## GKE Workload Identity for logArchive.backend=gcs:
+  ##   iam.gke.io/gcp-service-account: <gsa>@<project>.iam.gserviceaccount.com
+  ## EKS IRSA for logArchive.backend=s3:
+  ##   eks.amazonaws.com/role-arn: arn:aws:iam::<account>:role/<role>
   annotations: {}
 
 ## @section Misc
