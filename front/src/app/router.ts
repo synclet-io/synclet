@@ -1,6 +1,6 @@
 import { useAuth } from '@entities/auth'
+import { safeRedirect } from '@entities/auth/pendingInvite'
 import { getSystemInfo } from '@entities/system/api'
-import { listWorkspaces } from '@entities/workspace/api'
 import { setOnAuthFailure } from '@shared/api/transport'
 import { createRouter, createWebHistory } from 'vue-router'
 
@@ -194,6 +194,11 @@ export const router = createRouter({
             },
           ],
         },
+        {
+          path: ':pathMatch(.*)*',
+          name: 'not-found',
+          component: () => import('@pages/NotFoundPage.vue'),
+        },
       ],
     },
   ],
@@ -211,7 +216,10 @@ router.beforeEach(async (to) => {
     await auth.init()
     setOnAuthFailure(() => {
       auth.logout()
-      router.push('/login')
+      const current = router.currentRoute.value
+      router.push(current.meta.public
+        ? { name: 'login' }
+        : { name: 'login', query: { redirect: current.fullPath } })
     })
   }
 
@@ -219,7 +227,7 @@ router.beforeEach(async (to) => {
   if (to.meta.public) {
     // Redirect authenticated users away from login/register.
     if (auth.isAuthenticated.value && (to.name === 'login' || to.name === 'register')) {
-      return { name: 'dashboard' }
+      return safeRedirect(to.query.redirect) ?? { name: 'dashboard' }
     }
     return
   }
@@ -244,12 +252,7 @@ router.beforeEach(async (to) => {
 
   // Load workspaces if not yet loaded.
   if (auth.workspaces.value.length === 0) {
-    const ws = await listWorkspaces()
-    auth.setWorkspaces(ws.map(({ workspace, role }) => ({
-      workspaceId: workspace.id,
-      workspaceName: workspace.name,
-      role,
-    })))
+    await auth.reloadWorkspaces()
   }
 
   // Block admin-only routes for non-admins.

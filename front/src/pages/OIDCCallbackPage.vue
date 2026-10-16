@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useAuth } from '@entities/auth'
+import { postAuthPath, takeOIDCRedirect } from '@entities/auth/pendingInvite'
 import { getAuthMeta } from '@entities/auth/token'
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -7,7 +8,6 @@ import { useRouter } from 'vue-router'
 const router = useRouter()
 const auth = useAuth()
 const error = ref('')
-const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 onMounted(async () => {
   // Backend set cookies via the redirect — check they exist.
@@ -23,14 +23,7 @@ onMounted(async () => {
     // User loaded, proceed anyway.
   }
 
-  const pendingInviteToken = localStorage.getItem('pendingInviteToken')
-  localStorage.removeItem('pendingInviteToken')
-  if (pendingInviteToken && uuidRegex.test(pendingInviteToken)) {
-    router.replace(`/invite/${pendingInviteToken}`)
-  }
-  else {
-    router.replace('/')
-  }
+  router.replace(postAuthPath(takeOIDCRedirect()))
 })
 </script>
 

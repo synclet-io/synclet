@@ -36,11 +36,14 @@ export function useRemoveMember() {
 
 export function useUpdateMemberRole() {
   const qc = useQueryClient()
+  const auth = useAuth()
   return useMutation({
     mutationFn: (params: { workspaceId: string, userId: string, role: MemberRole }) =>
       workspaceApi.updateMemberRole(params.workspaceId, params.userId, params.role),
-    onSuccess: (_data, variables) => {
+    onSuccess: async (_data, variables) => {
       qc.invalidateQueries({ queryKey: workspaceKeys.members(variables.workspaceId) })
+      if (variables.userId === auth.user.value?.id)
+        await auth.reloadWorkspaces()
     },
   })
 }
@@ -63,8 +66,15 @@ export function useCreateInvite() {
 }
 
 export function useAcceptInvite() {
+  const qc = useQueryClient()
+  const auth = useAuth()
   return useMutation({
     mutationFn: (token: string) => workspaceApi.acceptInvite(token),
+    onSuccess: async ({ workspaceId }) => {
+      qc.invalidateQueries({ queryKey: workspaceKeys.all })
+      await auth.reloadWorkspaces()
+      auth.switchWorkspace(workspaceId)
+    },
   })
 }
 

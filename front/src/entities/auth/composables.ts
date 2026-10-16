@@ -1,4 +1,5 @@
 import type { User, WorkspaceMembership } from './types'
+import { listWorkspaces } from '@entities/workspace/api'
 import { computed, readonly, ref } from 'vue'
 import * as authApi from './api'
 import { clearWorkspaceId, getAuthMeta, getWorkspaceId, setWorkspaceId } from './token'
@@ -41,9 +42,23 @@ async function refreshAccessToken(): Promise<boolean> {
   }
 }
 
-async function fetchCurrentUser() {
+async function loadUser() {
   const result = await authApi.getCurrentUser()
   user.value = result.user ?? null
+}
+
+async function fetchCurrentUser() {
+  await loadUser()
+  await reloadWorkspaces()
+}
+
+async function reloadWorkspaces() {
+  const ws = await listWorkspaces()
+  setWorkspaces(ws.map(({ workspace, role }) => ({
+    workspaceId: workspace.id,
+    workspaceName: workspace.name,
+    role,
+  })))
 }
 
 function setWorkspaces(ws: WorkspaceMembership[]) {
@@ -55,6 +70,10 @@ function setWorkspaces(ws: WorkspaceMembership[]) {
   }
   else if (ws.length > 0) {
     switchWorkspace(ws[0].workspaceId)
+  }
+  else {
+    clearWorkspaceId()
+    currentWorkspaceId.value = null
   }
 }
 
@@ -77,7 +96,7 @@ async function init() {
     return
 
   try {
-    await fetchCurrentUser()
+    await loadUser()
   }
   catch {
     // Token invalid or expired — try refresh
@@ -85,7 +104,7 @@ async function init() {
       const refreshed = await refreshAccessToken()
       if (refreshed) {
         try {
-          await fetchCurrentUser()
+          await loadUser()
         }
         catch {
           clearState()
@@ -108,6 +127,7 @@ export function useAuth() {
     logout,
     refreshAccessToken,
     fetchCurrentUser,
+    reloadWorkspaces,
     setWorkspaces,
     switchWorkspace,
     init,

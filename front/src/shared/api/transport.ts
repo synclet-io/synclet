@@ -29,24 +29,27 @@ const workspaceInterceptor: Interceptor = next => async (req) => {
   }
   catch (err: unknown) {
     if (err instanceof ConnectError && err.code === 16 /* Unauthenticated */) {
-      const refreshed = await tryRefreshToken()
-      if (refreshed) {
+      if (await refreshSession()) {
         return await next(req)
       }
-      onAuthFailure?.()
     }
     throw err
   }
 }
 
-async function tryRefreshToken(): Promise<boolean> {
-  try {
-    await refreshClient.refreshToken({})
-    return true
-  }
-  catch {
-    return false
-  }
+let refreshInFlight: Promise<boolean> | null = null
+
+// The backend rotates the refresh token on use, so concurrent callers must share one refresh.
+function refreshSession(): Promise<boolean> {
+  refreshInFlight ??= refreshClient.refreshToken({})
+    .then(() => true, () => {
+      onAuthFailure?.()
+      return false
+    })
+    .finally(() => {
+      refreshInFlight = null
+    })
+  return refreshInFlight
 }
 
 export const transport = createConnectTransport({

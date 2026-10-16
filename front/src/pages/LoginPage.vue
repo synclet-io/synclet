@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { OIDCProvider } from '@entities/auth'
 import { getOIDCProviders, useAuth } from '@entities/auth'
+import { postAuthPath, rememberOIDCRedirect } from '@entities/auth/pendingInvite'
 import { useSystemInfo } from '@entities/system'
 import { getErrorMessage } from '@shared/lib/errorUtils'
 import { SAlert, SButton, SInput, SyncletLogo } from '@shared/ui'
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 const route = useRoute()
@@ -16,7 +17,7 @@ const error = ref('')
 const loading = ref(false)
 const oidcProviders = ref<OIDCProvider[]>([])
 const { data: systemInfo } = useSystemInfo()
-const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const registerLink = computed(() => ({ path: '/register', query: route.query.redirect ? { redirect: route.query.redirect } : {} }))
 
 onMounted(async () => {
   try {
@@ -32,14 +33,7 @@ async function handleLogin() {
   error.value = ''
   try {
     await auth.login(email.value, password.value)
-    const pendingInviteToken = localStorage.getItem('pendingInviteToken')
-    localStorage.removeItem('pendingInviteToken')
-    if (pendingInviteToken && uuidRegex.test(pendingInviteToken)) {
-      router.push(`/invite/${pendingInviteToken}`)
-    }
-    else {
-      router.push('/')
-    }
+    router.push(postAuthPath(route.query.redirect))
   }
   catch (e: unknown) {
     error.value = getErrorMessage(e) || 'Login failed'
@@ -50,6 +44,7 @@ async function handleLogin() {
 }
 
 function startOIDCLogin(slug: string) {
+  rememberOIDCRedirect(route.query.redirect)
   window.location.href = `/auth/oidc/${slug}/login`
 }
 </script>
@@ -128,7 +123,7 @@ function startOIDCLogin(slug: string) {
 
         <p v-if="systemInfo?.registrationEnabled !== false" class="mt-6 text-center text-sm text-text-secondary">
           Don't have an account?
-          <RouterLink to="/register" class="text-primary hover:text-primary-hover font-medium ml-1">
+          <RouterLink :to="registerLink" class="text-primary hover:text-primary-hover font-medium ml-1">
             Create one
           </RouterLink>
         </p>

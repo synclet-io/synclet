@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { useAuth } from '@entities/auth'
+import { postAuthPath } from '@entities/auth/pendingInvite'
 import { useSystemInfo } from '@entities/system'
 import { getErrorMessage } from '@shared/lib/errorUtils'
 import { SAlert, SButton, SInput, SyncletLogo } from '@shared/ui'
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 const route = useRoute()
@@ -15,12 +16,12 @@ const email = ref((route.query.email as string) || '')
 const password = ref('')
 const error = ref('')
 const loading = ref(false)
-const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const loginLink = computed(() => ({ path: '/login', query: route.query.redirect ? { redirect: route.query.redirect } : {} }))
 
 // Redirect to login if registration is disabled.
 watch(systemInfo, (info) => {
   if (info && !info.registrationEnabled) {
-    router.replace('/login')
+    router.replace(loginLink.value)
   }
 }, { immediate: true })
 
@@ -29,14 +30,7 @@ async function handleRegister() {
   error.value = ''
   try {
     await auth.register(email.value, password.value, name.value)
-    const pendingInviteToken = localStorage.getItem('pendingInviteToken')
-    localStorage.removeItem('pendingInviteToken')
-    if (pendingInviteToken && uuidRegex.test(pendingInviteToken)) {
-      router.push(`/invite/${pendingInviteToken}`)
-    }
-    else {
-      router.push('/')
-    }
+    router.push(postAuthPath(route.query.redirect))
   }
   catch (e: unknown) {
     error.value = getErrorMessage(e) || 'Registration failed'
@@ -99,7 +93,7 @@ async function handleRegister() {
 
         <p class="mt-6 text-center text-sm text-text-secondary">
           Already have an account?
-          <RouterLink to="/login" class="text-primary hover:text-primary-hover font-medium ml-1">
+          <RouterLink :to="loginLink" class="text-primary hover:text-primary-hover font-medium ml-1">
             Sign in
           </RouterLink>
         </p>
