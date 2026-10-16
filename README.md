@@ -25,7 +25,7 @@ Data synchronization platform built on the Airbyte connector protocol. Connect a
 
 ## Architecture
 
-Synclet is a **modular monolith** -- a single Go binary runs the API server, scheduler, and workers as goroutines. Each domain module (auth, workspace, pipeline, notify) is a bounded context with its own storage, service layer, and ConnectRPC handlers.
+Synclet is a **modular monolith** -- a single Go binary runs the API server, scheduler, and workers as goroutines. Each domain module (auth, workspace, pipeline, notify, secret, audit) is a bounded context with its own storage, service layer, and ConnectRPC handlers; `app` serves the frontend.
 
 - **Backend**: Go 1.25, ConnectRPC (protobuf), PostgreSQL, GORM, Uber FX
 - **Frontend**: Vue 3, TypeScript, TanStack Vue Query, Tailwind CSS
@@ -48,41 +48,52 @@ Synclet is a **modular monolith** -- a single Go binary runs the API server, sch
    git clone https://github.com/synclet-io/synclet && cd synclet
    ```
 
-2. Start PostgreSQL:
+2. Configure environment:
    ```bash
-   docker compose up -d
+   cp .env.dist .env
+   go run . generate dotenv   # optional: append every other variable with its default
    ```
 
-3. Configure environment:
+3. Start PostgreSQL and run database migrations:
    ```bash
-   cp .env.example .env
-   # Edit .env with your database URL and encryption key
+   task db:up
+   go run . migrate up
    ```
 
-4. Run database migrations:
-   ```bash
-   go run main.go migrate up
-   ```
-
-5. Start backend (with hot reload):
+4. Start backend (with hot reload):
    ```bash
    task dev
    ```
 
-6. Start frontend:
+5. Start frontend:
    ```bash
    cd front && bun install && bun run dev
    ```
 
-The API server runs on `http://localhost:8080` and the frontend dev server on `http://localhost:5173`.
+The API server runs on `http://localhost:8086` and the frontend dev server on `http://localhost:5173`.
 
 ### Production Deployment
+
+Outside `ENVIRONMENT=development` the process refuses to start without `AUTH_JWT_SECRET` and `SECRET_ENCRYPTION_KEY`; generate each with `openssl rand -base64 32` and back up the encryption key, since stored connector secrets cannot be decrypted without it.
+
+**Docker Compose** (PostgreSQL, migrations and a standalone server with the Docker executor):
+```bash
+echo "AUTH_JWT_SECRET=$(openssl rand -base64 32)" >> .env
+echo "SECRET_ENCRYPTION_KEY=$(openssl rand -base64 32)" >> .env
+mkdir -p /tmp/synclet && chmod 1777 /tmp/synclet
+docker compose up -d
+```
+
+The image runs as UID 65532. On Linux, add `DOCKER_GID=$(stat -c %g /var/run/docker.sock)` to `.env` so the container can reach the Docker socket.
 
 **Docker:**
 ```bash
 docker build -t synclet .
-docker run -p 8080:8080 --env-file .env synclet server
+docker run --rm --env-file .env synclet migrate up
+docker run -p 8080:8080 --env-file .env -v /var/run/docker.sock:/var/run/docker.sock synclet server --standalone
 ```
+
+`server` alone serves the API only; `--standalone` also runs the scheduler, event consumers and an executor in the same process. Without it, run `synclet jobs` and `synclet docker-executor` (or `k8s-executor`) as separate processes.
 
 **Helm (Kubernetes):**
 ```bash
@@ -93,22 +104,39 @@ helm install synclet deploy/helm/synclet/ -f values.yaml
 
 ### Environment Variables
 
+`synclet generate dotenv` appends every variable the binary reads, with its default, to `.env` (or the first `--dotenv` file). The most common ones:
+
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `DATABASE_URL` | PostgreSQL connection string | required |
-| `JWT_SECRET` | Secret for signing JWT tokens | required |
-| `SECRET_ENCRYPTION_KEY` | Base64-encoded 32-byte AES key for secrets | required |
-| `PIPELINE_LOG_STORE_DIR` | Directory for sync log storage | `./data/logs` |
-| `PIPELINE_WORKER_INTERVAL` | Worker polling interval | `1s` |
-| `PIPELINE_SCHEDULER_INTERVAL` | Cron scheduler interval | `30s` |
-| `PIPELINE_MAX_SYNC_DURATION` | Maximum sync execution time | `24h` |
-| `PIPELINE_IDLE_TIMEOUT` | Idle timeout before sync cancellation | `10m` |
-| `REGISTRATION_ENABLED` | Enable or disable user registration | `true` |
-| `SMTP_HOST` | SMTP server for email notifications | optional |
-| `SMTP_PORT` | SMTP port | `587` |
-| `SMTP_USERNAME` | SMTP authentication username | optional |
-| `SMTP_PASSWORD` | SMTP authentication password | optional |
-| `OIDC_PROVIDER_*` | OIDC provider configuration (issuer, client ID, secret) | optional |
+| `ENVIRONMENT` | `development` allows generated secrets and `migrate down` without `--yes` | `development` |
+| `LOG_LEVEL` | Log level | `info` |
+| `DB_DSN` | PostgreSQL connection string | required |
+| `AUTH_JWT_SECRET` | Secret for signing JWT tokens | required outside development |
+| `SECRET_ENCRYPTION_KEY` | Base64-encoded 32-byte AES key for connector secrets | required outside development |
+| `SECRET_ENCRYPTION_KEY_PREVIOUS` | Previous key, kept during key rotation | empty |
+| `PUBLIC_HTTP_SERVER_ADDR` | Public API and UI listen address | `0.0.0.0:8080` |
+| `INTERNAL_HTTP_SERVER_ADDR` | Executor API and the `/live`, `/ready` probes | `0.0.0.0:8081` |
+| `PUBLIC_HTTP_SERVER_CORS_ALLOWED_ORIGINS` | Comma-separated hostnames whose browser origins may call the API | empty |
+| `AUTH_REGISTRATION_ENABLED` | Allow email/password sign-up | `true` |
+| `AUTH_SECURE_COOKIES` | Mark auth cookies HTTPS-only | `false` |
+| `AUTH_OIDC_PROVIDERS` | Comma-separated OIDC provider slugs, each configured by `AUTH_OIDC_<SLUG>_*` | empty |
+| `AUTH_OIDC_CALLBACK_BASE_URL` | Base URL for OIDC callbacks | empty |
+| `WORKSPACE_MODE` | `single` shared workspace or `multi` | `single` |
+| `WORKSPACE_FRONTEND_URL` | Base URL used in invite links | `http://localhost:5173` |
+| `NOTIFY_SMTP_HOST` | SMTP server; empty disables email | empty |
+| `NOTIFY_SMTP_PORT` | SMTP port | `587` |
+| `NOTIFY_SMTP_USER` | SMTP username | empty |
+| `NOTIFY_SMTP_PASSWORD` | SMTP password | empty |
+| `NOTIFY_SMTP_FROM` | Sender address | `noreply@synclet.io` |
+| `PIPELINE_MAX_CONCURRENT_JOBS` | Concurrent sync jobs | `10` |
+| `PIPELINE_IDLE_TIMEOUT` | Cancel a sync that receives no records for this long | `10m` |
+| `PIPELINE_JOB_SCHEDULER_INTERVAL` | How often due connections are scheduled | `30s` |
+| `DOCKER_EXECUTOR_MAX_SYNC_DURATION` | Maximum sync run time on the Docker executor | `24h` |
+| `DOCKER_EXECUTOR_TEMP_DIR_ROOT` | Scratch directory shared with the host Docker daemon | empty |
+| `K8S_EXECUTOR_NAMESPACE` | Namespace for connector pods | empty |
+| `EXECUTOR_API_URL` | Internal server URL used by distributed executors | empty |
+| `EXECUTOR_API_TOKEN` | Token distributed executors present to the internal server | empty |
+| `WATERMILL_TRANSPORT` | Event bus transport | `sql` |
 
 ### Connector Configuration
 
@@ -149,24 +177,25 @@ Services:
 ```
 synclet/
 ├── main.go               # Entry point
-├── cmd/                   # CLI commands (cobra)
-├── app/                   # DI wiring (Uber FX modules)
-├── modules/               # Domain modules
-│   ├── auth/              # Authentication & users
-│   ├── workspace/         # Multi-tenancy, roles
-│   ├── pipeline/          # Sources, destinations, connections, jobs, sync
-│   └── notify/            # Webhooks & notifications
-├── connectors/            # Go-native Airbyte connectors
-├── pkg/                   # Shared utilities
-│   ├── docker/            # Docker container runner
-│   ├── k8s/               # Kubernetes orchestrator
-│   ├── protocol/          # Airbyte protocol message handling
-│   └── connector/         # Connector client
-├── proto/                 # Protobuf definitions
-├── front/                 # Frontend (Vue 3 + TypeScript)
-├── deploy/                # Helm charts, Dockerfiles
-└── docs/                  # Documentation
+├── cmd/                  # CLI commands (cobra)
+├── app/                  # DI wiring (Uber FX modules)
+├── modules/              # Domain modules
+│   ├── app/              # Embedded frontend handler
+│   ├── audit/            # Audit log
+│   ├── auth/             # Authentication, users, API keys, OIDC
+│   ├── notify/           # Notification channels, rules, webhooks
+│   ├── pipeline/         # Sources, destinations, connections, jobs, executors
+│   ├── secret/           # Encrypted secret storage
+│   └── workspace/        # Workspaces, members, invites
+├── pkg/                  # Shared libraries (coordinator, protocol, eventbus, migrations, ...)
+├── connectors/           # Go-native Airbyte connectors
+├── proto/                # Protobuf definitions
+├── gen/                  # Generated Go protobuf code
+├── front/                # Frontend (Vue 3 + TypeScript)
+└── deploy/helm/          # Helm chart
 ```
+
+User documentation lives in the separate docs site repository (`synclet_site`).
 
 ## Development
 
@@ -182,16 +211,23 @@ synclet/
 
 ### CLI Reference
 
+Every command accepts `--dotenv <file>` (repeatable) to load environment files first.
+
 | Command | Description |
 |---------|-------------|
-| `synclet server` | Start the API server, scheduler, and workers |
-| `synclet server --standalone` | Start in standalone mode (no external dependencies) |
-| `synclet run <config.yaml>` | Run a one-off sync from a YAML config file |
-| `synclet migrate up` | Apply database migrations |
-| `synclet migrate down` | Rollback the last database migration |
-| `synclet connector list` | List available connectors |
-| `synclet connector validate` | Validate connector specifications |
-| `synclet orchestrate` | Start the K8s orchestrator (distributed mode) |
+| `synclet server` | Public API, UI and internal executor API |
+| `synclet server --standalone` | Also run background jobs, event consumers and an executor (Kubernetes inside a pod, Docker otherwise) |
+| `synclet jobs` | Background jobs and event consumers only (distributed mode) |
+| `synclet docker-executor [--standalone]` | Docker sync executor; distributed by default, talking to `EXECUTOR_API_URL` |
+| `synclet k8s-executor [--standalone]` | Kubernetes sync executor; distributed by default |
+| `synclet migrate up [--module <name>]` | Apply pending migrations |
+| `synclet migrate down --module <name>` | Roll back the latest migration of one module |
+| `synclet migrate down --all` | Roll back the latest migration of every module |
+| `synclet migrate status [--module <name>]` | Show applied and pending migrations |
+| `synclet migrate create <module> <name>` | Create an empty migration file |
+| `synclet generate dotenv` | Append every missing configuration variable to `.env` |
+
+`migrate down` also needs `--yes` when `ENVIRONMENT` is anything other than `development`. `synclet --help` and `synclet <command> --help` list every flag.
 
 ## License
 

@@ -32,10 +32,11 @@ proto/node_modules/
 
 # Temporary files
 tmp/
-.air.toml
 
 # Synclet local state
 .synclet/
+
+# Internal notes and plans; user docs live in the synclet_site repository
 docs/
 
 # Planning and agent artifacts (not for public repo)

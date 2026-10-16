@@ -46,6 +46,10 @@ spec:
           image: {{ include "synclet.image" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command: ["synclet", "jobs"]
+          ports:
+            - name: internal
+              containerPort: {{ .Values.server.containerPorts.internal }}
+              protocol: TCP
           envFrom:
             - configMapRef:
                 name: {{ include "synclet.fullname" . }}
@@ -58,7 +62,7 @@ spec:
           livenessProbe:
             httpGet:
               path: {{ .Values.jobs.livenessProbe.path }}
-              port: {{ .Values.jobs.livenessProbe.port }}
+              port: internal
             initialDelaySeconds: {{ .Values.jobs.livenessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.jobs.livenessProbe.periodSeconds }}
           {{- end }}
@@ -66,7 +70,7 @@ spec:
           readinessProbe:
             httpGet:
               path: {{ .Values.jobs.readinessProbe.path }}
-              port: {{ .Values.jobs.readinessProbe.port }}
+              port: internal
             initialDelaySeconds: {{ .Values.jobs.readinessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.jobs.readinessProbe.periodSeconds }}
           {{- end }}

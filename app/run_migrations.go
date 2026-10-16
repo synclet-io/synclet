@@ -31,8 +31,13 @@ func init() {
 }
 
 func RunMigrationUp(opts ...RunOption) error {
-	return runGooseCommand(nil, func(_ string, db *sql.DB) error {
-		return goose.Up(db, ".")
+	return runGooseCommand(nil, func(ctx context.Context, module string, provider *goose.Provider) error {
+		results, err := provider.Up(ctx)
+		for _, result := range results {
+			fmt.Printf("module %s: applied %s (%s)\n", module, path.Base(result.Source.Path), result.Duration.Round(time.Millisecond))
+		}
+
+		return err
 	}, opts...)
 }
 
@@ -68,8 +73,8 @@ func RunMigrationDown(target MigrationDownTarget, opts ...RunOption) error {
 		return nil
 	}
 
-	return runGooseCommand(confirm, func(module string, sqlDB *sql.DB) error {
-		version, err := goose.GetDBVersion(sqlDB)
+	return runGooseCommand(confirm, func(ctx context.Context, module string, provider *goose.Provider) error {
+		version, err := provider.GetDBVersion(ctx)
 		if err != nil {
 			return err
 		}
@@ -82,17 +87,38 @@ func RunMigrationDown(target MigrationDownTarget, opts ...RunOption) error {
 
 		fmt.Printf("module %s: rolling back version %d\n", module, version)
 
-		return goose.Down(sqlDB, ".")
+		_, err = provider.Down(ctx)
+
+		return err
 	}, opts...)
 }
 
 func RunMigrationStatus(opts ...RunOption) error {
-	return runGooseCommand(nil, func(_ string, db *sql.DB) error {
-		return goose.Status(db, ".")
+	return runGooseCommand(nil, func(ctx context.Context, module string, provider *goose.Provider) error {
+		statuses, err := provider.Status(ctx)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("module %s:\n", module)
+
+		for _, status := range statuses {
+			appliedAt := "Pending"
+			if status.State == goose.StateApplied {
+				appliedAt = status.AppliedAt.UTC().Format(time.DateTime)
+			}
+
+			fmt.Printf("  %-19s  %s\n", appliedAt, path.Base(status.Source.Path))
+		}
+
+		return nil
 	}, opts...)
 }
 
-func runGooseCommand(check func() error, proceed func(module string, db *sql.DB) error, optionsList ...RunOption) error {
+// runGooseCommand runs proceed for every selected module. Each module's
+// provider holds a Postgres advisory session lock for the duration of each
+// operation, so concurrent migrators (one per server replica) run one at a time.
+func runGooseCommand(check func() error, proceed func(ctx context.Context, module string, provider *goose.Provider) error, optionsList ...RunOption) error {
 	bootLogger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 
 	options := optionutil.ApplyOptions(&RunAppOptions{
@@ -123,27 +149,39 @@ func runGooseCommand(check func() error, proceed func(module string, db *sql.DB)
 			return err
 		}
 
-		locker, err := lock.NewPostgresSessionLocker()
-		if err != nil {
-			return err
-		}
-
 		for _, migration := range migrations.Sources() {
 			if !options.needToRunModule(migration.Module) {
 				continue
 			}
 
-			goose.WithSessionLocker(locker)
-			goose.SetTableName(migration.Module + "_goose_db_version")
-			goose.SetBaseFS(migration.FS)
+			provider, err := newMigrationProvider(sqlDB, migration)
+			if err != nil {
+				return fmt.Errorf("module %s: %w", migration.Module, err)
+			}
 
-			if err := proceed(migration.Module, sqlDB); err != nil {
+			if err := proceed(ctx, migration.Module, provider); err != nil {
 				return fmt.Errorf("module %s: %w", migration.Module, err)
 			}
 		}
 
 		return nil
 	}, NewFxAppOptions(options))
+}
+
+func newMigrationProvider(sqlDB *sql.DB, migration migrations.Source) (*goose.Provider, error) {
+	locker, err := lock.NewPostgresSessionLocker()
+	if err != nil {
+		return nil, err
+	}
+
+	return goose.NewProvider(
+		goose.DialectPostgres,
+		sqlDB,
+		migration.FS,
+		goose.WithTableName(migration.Module+"_goose_db_version"),
+		goose.WithSessionLocker(locker),
+		goose.WithDisableGlobalRegistry(true),
+	)
 }
 
 func RunMigrationsCreate(module, migrationName string) error {

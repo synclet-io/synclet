@@ -11,6 +11,9 @@ import (
 // internalHTTPServerModule creates a separate HTTP server for cluster-internal APIs.
 // This server is not exposed via ingress. Individual modules register their handlers
 // via MuxHandlerRegistrarProvider with per-handler authentication.
+//
+// The server always carries the /live and /ready probes. A jobs-only process
+// starts it with nothing else mounted, so its pods can be probed too.
 func internalHTTPServerModule(options *RunAppOptions) fx.Option {
 	return fx.Module(
 		"internal-http-server",
@@ -22,10 +25,11 @@ func internalHTTPServerModule(options *RunAppOptions) fx.Option {
 		pnphttpserver.Module(
 			pnphttpserver.WithFxPrivate(),
 			pnphttpserver.WithConfigPrefix("INTERNAL_HTTP_SERVER_"),
-			pnphttpserver.Start(options.RunInternalHTTPServer),
+			pnphttpserver.Start(options.RunInternalHTTPServer || options.RunJobs),
 		),
+		healthcheckModule(options),
 
 		// Per-module handler registration.
-		pipelineInternalHTTPServerModule(),
+		conditionalFxOptions(options.RunInternalHTTPServer, pipelineInternalHTTPServerModule),
 	)
 }

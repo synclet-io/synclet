@@ -49,9 +49,11 @@ server:
     readOnlyRootFilesystem: true
     capabilities:
       drop: ["ALL"]
+  ## Probes hit the internal port. /live answers while the process serves HTTP;
+  ## /ready also requires the database, background jobs and the event router.
   startupProbe:
     enabled: true
-    path: /health
+    path: /live
     initialDelaySeconds: 5
     periodSeconds: 5
     failureThreshold: 30
@@ -59,12 +61,12 @@ server:
     enabled: true
     initialDelaySeconds: 10
     periodSeconds: 15
-    path: /health
+    path: /live
   readinessProbe:
     enabled: true
     initialDelaySeconds: 5
     periodSeconds: 10
-    path: /health
+    path: /ready
   service:
     type: ClusterIP
     ports:
@@ -127,16 +129,15 @@ jobs:
     readOnlyRootFilesystem: true
     capabilities:
       drop: ["ALL"]
+  ## Jobs pods serve only /live and /ready, on server.containerPorts.internal.
   livenessProbe:
-    enabled: false
-    path: /health
-    port: 8080
+    enabled: true
+    path: /live
     initialDelaySeconds: 10
     periodSeconds: 15
   readinessProbe:
-    enabled: false
-    path: /health
-    port: 8080
+    enabled: true
+    path: /ready
     initialDelaySeconds: 5
     periodSeconds: 10
   extraEnvFrom: []      # additional envFrom entries (configMapRef, secretRef)
@@ -177,14 +178,14 @@ executor:
       drop: ["ALL"]
   livenessProbe:
     enabled: false
-    path: /health
-    port: 8080
+    path: /live
+    port: 8081
     initialDelaySeconds: 10
     periodSeconds: 15
   readinessProbe:
     enabled: false
-    path: /health
-    port: 8080
+    path: /ready
+    port: 8081
     initialDelaySeconds: 5
     periodSeconds: 10
   extraEnvFrom: []      # additional envFrom entries (configMapRef, secretRef)
@@ -296,14 +297,14 @@ invites:
 ## Tune sync scheduling, worker polling, timeouts, and K8s resource defaults.
 pipeline:
   ## Worker & scheduling intervals
-  ## How often the sync worker polls for new jobs to execute.
-  workerInterval: "1s"
+  ## How often the Kubernetes executor polls for queued sync jobs and connector tasks.
+  workerInterval: "5s"
   ## How often the scheduler checks connections for due syncs and enqueues jobs.
   schedulerInterval: "30s"
   ## How often the watchdog checks for stale jobs with expired heartbeats.
   watchdogInterval: "10s"
-  ## How often orphaned Docker containers (from crashed syncs) are cleaned up.
-  dockerResourceCleanupInterval: "5m"
+  ## How often the Kubernetes executor removes connector pods and secrets left by finished or crashed syncs.
+  resourceCleanupInterval: "5m"
 
   ## Sync limits
   ## Maximum wall-clock time a single sync job is allowed to run before being killed.
@@ -316,8 +317,10 @@ pipeline:
   ## Connector tasks
   ## How long completed connector task results (spec/check/discover) are retained.
   connectorTaskRetention: "24h"
-  ## How long a pending connector task waits before being marked as timed out.
-  connectorTaskTimeout: "5m"
+  ## How long a running connector task may go without finishing before it is failed.
+  connectorTaskRunningTimeout: "5m"
+  ## How long a connector task may wait for an executor to claim it before it is failed.
+  connectorTaskPendingTimeout: "1m"
   ## Default max retry attempts for sync jobs when not configured per-connection.
   defaultMaxAttempts: 3
   ## Heartbeat interval for sync worker health reporting.
@@ -467,4 +470,6 @@ serviceAccount:
   annotations: {}
 
 ## @section Misc
+## Every synclet process waits up to 110s for in-flight work on SIGTERM
+## (app.shutdownTimeout); keep this above that plus the server's 5s preStop sleep.
 terminationGracePeriodSeconds: 120

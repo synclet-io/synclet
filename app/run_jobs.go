@@ -30,5 +30,8 @@ func RunJobs(optionsList ...RunOption) {
 
 	applyEnvDefaults(bootLogger)
 
-	fx.New(NewFxAppOptions(options)).Run()
+	fx.New(
+		NewFxAppOptions(options),
+		fx.StopTimeout(shutdownTimeout),
+	).Run()
 }

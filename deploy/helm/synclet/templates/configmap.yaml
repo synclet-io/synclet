@@ -33,17 +33,16 @@ data:
   NOTIFY_WEBHOOK_HTTP_TIMEOUT: {{ .Values.notify.webhookHTTPTimeout | quote }}
   NOTIFY_WEBHOOK_MAX_RETRIES: {{ .Values.notify.webhookMaxRetries | quote }}
   ## Pipeline: worker & scheduling
-  PIPELINE_JOB_WORKER_INTERVAL: {{ .Values.pipeline.workerInterval | quote }}
   PIPELINE_JOB_SCHEDULER_INTERVAL: {{ .Values.pipeline.schedulerInterval | quote }}
   PIPELINE_JOB_WATCHDOG_INTERVAL: {{ .Values.pipeline.watchdogInterval | quote }}
-  DOCKER_EXECUTOR_JOB_CLEANUP_INTERVAL: {{ .Values.pipeline.dockerResourceCleanupInterval | quote }}
   ## Docker executor: sync limits
   DOCKER_EXECUTOR_MAX_SYNC_DURATION: {{ .Values.pipeline.maxSyncDuration | quote }}
   DOCKER_EXECUTOR_MAX_CONCURRENT_JOBS: {{ .Values.pipeline.maxConcurrentJobs | quote }}
   PIPELINE_IDLE_TIMEOUT: {{ .Values.pipeline.idleTimeout | quote }}
   ## Pipeline: connector tasks
   PIPELINE_CONNECTOR_TASK_RETENTION: {{ .Values.pipeline.connectorTaskRetention | quote }}
-  PIPELINE_CONNECTOR_TASK_TIMEOUT: {{ .Values.pipeline.connectorTaskTimeout | quote }}
+  PIPELINE_CONNECTOR_TASK_RUNNING_TIMEOUT: {{ .Values.pipeline.connectorTaskRunningTimeout | quote }}
+  PIPELINE_CONNECTOR_TASK_PENDING_TIMEOUT: {{ .Values.pipeline.connectorTaskPendingTimeout | quote }}
   PIPELINE_DEFAULT_MAX_ATTEMPTS: {{ .Values.pipeline.defaultMaxAttempts | quote }}
   DOCKER_EXECUTOR_HEARTBEAT_INTERVAL: {{ .Values.pipeline.heartbeatInterval | quote }}
   PIPELINE_CONNECTION_CHECK_TIMEOUT: {{ .Values.pipeline.connectionCheckTimeout | quote }}
@@ -116,6 +115,8 @@ data:
   K8S_EXECUTOR_SERVER_ADDR: {{ include "synclet.internalServerAddr" . | quote }}
   K8S_EXECUTOR_DEFAULT_MEMORY: {{ .Values.k8s.defaultMemory | quote }}
   K8S_EXECUTOR_DEFAULT_CPU: {{ .Values.k8s.defaultCPU | quote }}
+  K8S_EXECUTOR_JOB_WORKER_INTERVAL: {{ .Values.pipeline.workerInterval | quote }}
+  K8S_EXECUTOR_JOB_RESOURCE_CLEANUP_INTERVAL: {{ .Values.pipeline.resourceCleanupInterval | quote }}
   {{- if .Values.k8s.imagePullSecret }}
   K8S_EXECUTOR_IMAGE_PULL_SECRET: {{ .Values.k8s.imagePullSecret | quote }}
   {{- end }}

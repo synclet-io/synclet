@@ -4,7 +4,7 @@ Vue 3, TypeScript, TanStack Vue Query, ConnectRPC, Tailwind CSS.
 
 ## Import Aliases
 
-`@` = `./src`, `@entities` = `./src/entities`, `@features` = `./src/features`, `@shared` = `./src/shared`, `@pages` = `./src/pages`, `@widgets` = `./src/widgets`
+`@` = `./src`, `@app` = `./src/app`, `@entities` = `./src/entities`, `@features` = `./src/features`, `@shared` = `./src/shared`, `@pages` = `./src/pages`
 
 ## Entity Layer (`src/entities/`)
 

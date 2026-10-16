@@ -1,0 +1,17 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  bin = "./tmp/synclet server"
+  cmd = "go build -o ./tmp/synclet ."
+  delay = 1000
+  exclude_dir = ["tmp", "front", "node_modules", "proto", "docs", ".git"]
+  exclude_regex = ["_test.go"]
+  include_ext = ["go"]
+  kill_delay = 500
+
+[log]
+  time = false
+
+[misc]
+  clean_on_exit = true
