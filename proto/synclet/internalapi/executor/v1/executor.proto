@@ -31,6 +31,7 @@ enum NamespaceDefinition {
 service ExecutorService {
   // Existing RPCs (from OrchestratorService, renamed)
   rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+  rpc MarkJobRunning(MarkJobRunningRequest) returns (MarkJobRunningResponse);
   rpc ReportState(ReportStateRequest) returns (ReportStateResponse);
   rpc ReportCompletion(ReportCompletionRequest) returns (ReportCompletionResponse);
   rpc ReportConfigUpdate(ReportConfigUpdateRequest) returns (ReportConfigUpdateResponse);
@@ -60,6 +61,13 @@ message HeartbeatRequest {
 message HeartbeatResponse {
   bool cancelled = 1;
 }
+
+// MarkJobRunning: executor reports that the job's connectors have started.
+message MarkJobRunningRequest {
+  string job_id = 1;
+}
+
+message MarkJobRunningResponse {}
 
 message ReportStateRequest {
   string job_id = 1;

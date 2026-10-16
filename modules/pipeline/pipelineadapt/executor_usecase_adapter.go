@@ -23,6 +23,7 @@ import (
 type UseCaseExecutorBackend struct {
 	claimJobBundle     *pipelinejobs.ClaimJobBundle
 	updateJobStatus    *pipelinejobs.UpdateJobStatus
+	markJobRunning     *pipelinejobs.MarkJobRunning
 	updateHeartbeat    *pipelinejobs.UpdateHeartbeat
 	checkJobCancelled  *pipelinejobs.CheckJobCancelled
 	reportCompletion   *pipelinejobs.ReportCompletion
@@ -39,6 +40,7 @@ type UseCaseExecutorBackend struct {
 func NewUseCaseExecutorBackend(
 	claimJobBundle *pipelinejobs.ClaimJobBundle,
 	updateJobStatus *pipelinejobs.UpdateJobStatus,
+	markJobRunning *pipelinejobs.MarkJobRunning,
 	updateHeartbeat *pipelinejobs.UpdateHeartbeat,
 	checkJobCancelled *pipelinejobs.CheckJobCancelled,
 	reportCompletion *pipelinejobs.ReportCompletion,
@@ -53,6 +55,7 @@ func NewUseCaseExecutorBackend(
 	return &UseCaseExecutorBackend{
 		claimJobBundle:     claimJobBundle,
 		updateJobStatus:    updateJobStatus,
+		markJobRunning:     markJobRunning,
 		updateHeartbeat:    updateHeartbeat,
 		checkJobCancelled:  checkJobCancelled,
 		reportCompletion:   reportCompletion,
@@ -93,6 +96,15 @@ func (a *UseCaseExecutorBackend) UpdateJobStatus(ctx context.Context, params pip
 		BytesSynced:  params.BytesSynced,
 		DurationMs:   params.DurationMs,
 	})
+}
+
+// MarkJobRunning moves a starting job to running.
+func (a *UseCaseExecutorBackend) MarkJobRunning(ctx context.Context, jobID uuid.UUID) error {
+	if err := a.markJobRunning.Execute(ctx, pipelinejobs.MarkJobRunningParams{ID: jobID}); err != nil {
+		return fmt.Errorf("marking job running: %w", err)
+	}
+
+	return nil
 }
 
 // Heartbeat updates the heartbeat timestamp and checks for cancellation.

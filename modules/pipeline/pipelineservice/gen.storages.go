@@ -67,6 +67,7 @@ type JobsStorage interface {
 	CountActiveJobs(ctx context.Context) (int, error)
 	UpdateIfStatus(ctx context.Context, job *Job, fromStatuses ...JobStatus) (bool, error)
 	TouchHeartbeat(ctx context.Context, id uuid.UUID, at time.Time) (bool, error)
+	MarkRunning(ctx context.Context, id uuid.UUID) (bool, error)
 	// end user code 'Job metods'
 }
 

@@ -25,6 +25,7 @@ import (
 type ExecutorHandler struct {
 	reportCompletion   *pipelinejobs.ReportCompletion
 	updateHeartbeat    *pipelinejobs.UpdateHeartbeat
+	markJobRunning     *pipelinejobs.MarkJobRunning
 	handleConfigUpdate *pipelinejobs.HandleConfigUpdate
 	saveSyncState      *pipelinestate.SaveSyncState
 	claimJobBundle     *pipelinejobs.ClaimJobBundle
@@ -41,6 +42,7 @@ type ExecutorHandler struct {
 func NewExecutorHandler(
 	reportCompletion *pipelinejobs.ReportCompletion,
 	updateHeartbeat *pipelinejobs.UpdateHeartbeat,
+	markJobRunning *pipelinejobs.MarkJobRunning,
 	handleConfigUpdate *pipelinejobs.HandleConfigUpdate,
 	saveSyncState *pipelinestate.SaveSyncState,
 	claimJobBundle *pipelinejobs.ClaimJobBundle,
@@ -55,6 +57,7 @@ func NewExecutorHandler(
 	return &ExecutorHandler{
 		reportCompletion:   reportCompletion,
 		updateHeartbeat:    updateHeartbeat,
+		markJobRunning:     markJobRunning,
 		handleConfigUpdate: handleConfigUpdate,
 		saveSyncState:      saveSyncState,
 		claimJobBundle:     claimJobBundle,
@@ -95,6 +98,23 @@ func (h *ExecutorHandler) Heartbeat(ctx context.Context, req *connect.Request[ex
 	return connect.NewResponse(&executorv1.HeartbeatResponse{
 		Cancelled: cancelled,
 	}), nil
+}
+
+// MarkJobRunning moves a starting job to running once its connectors have started.
+func (h *ExecutorHandler) MarkJobRunning(ctx context.Context, req *connect.Request[executorv1.MarkJobRunningRequest]) (*connect.Response[executorv1.MarkJobRunningResponse], error) {
+	jobID, err := uuid.Parse(req.Msg.GetJobId())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid job_id: %w", err))
+	}
+
+	if err := h.markJobRunning.Execute(ctx, pipelinejobs.MarkJobRunningParams{ID: jobID}); err != nil {
+		h.logger.WithError(err).Error(ctx, "executor: mark job running failed",
+			"job_id", req.Msg.GetJobId())
+
+		return nil, mapError(err)
+	}
+
+	return connect.NewResponse(&executorv1.MarkJobRunningResponse{}), nil
 }
 
 // ReportState persists a state checkpoint from the executor.

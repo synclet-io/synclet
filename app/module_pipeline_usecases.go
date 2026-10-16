@@ -117,6 +117,7 @@ func pipelineUseCasesModule() fx.Option {
 			pipelinejobs.NewClaimJob,
 			pipelinejobs.NewUpdateJobStatus,
 			pipelinejobs.NewUpdateHeartbeat,
+			pipelinejobs.NewMarkJobRunning,
 			pipelinejobs.NewFailStaleJobs,
 			pipelinejobs.NewSetK8sJobName,
 			pipelinejobs.NewTriggerSync,

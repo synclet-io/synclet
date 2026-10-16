@@ -36,6 +36,9 @@ const (
 	// ExecutorServiceHeartbeatProcedure is the fully-qualified name of the ExecutorService's Heartbeat
 	// RPC.
 	ExecutorServiceHeartbeatProcedure = "/synclet.internalapi.executor.v1.ExecutorService/Heartbeat"
+	// ExecutorServiceMarkJobRunningProcedure is the fully-qualified name of the ExecutorService's
+	// MarkJobRunning RPC.
+	ExecutorServiceMarkJobRunningProcedure = "/synclet.internalapi.executor.v1.ExecutorService/MarkJobRunning"
 	// ExecutorServiceReportStateProcedure is the fully-qualified name of the ExecutorService's
 	// ReportState RPC.
 	ExecutorServiceReportStateProcedure = "/synclet.internalapi.executor.v1.ExecutorService/ReportState"
@@ -75,6 +78,7 @@ const (
 type ExecutorServiceClient interface {
 	// Existing RPCs (from OrchestratorService, renamed)
 	Heartbeat(context.Context, *connect.Request[v1.HeartbeatRequest]) (*connect.Response[v1.HeartbeatResponse], error)
+	MarkJobRunning(context.Context, *connect.Request[v1.MarkJobRunningRequest]) (*connect.Response[v1.MarkJobRunningResponse], error)
 	ReportState(context.Context, *connect.Request[v1.ReportStateRequest]) (*connect.Response[v1.ReportStateResponse], error)
 	ReportCompletion(context.Context, *connect.Request[v1.ReportCompletionRequest]) (*connect.Response[v1.ReportCompletionResponse], error)
 	ReportConfigUpdate(context.Context, *connect.Request[v1.ReportConfigUpdateRequest]) (*connect.Response[v1.ReportConfigUpdateResponse], error)
@@ -107,6 +111,12 @@ func NewExecutorServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			httpClient,
 			baseURL+ExecutorServiceHeartbeatProcedure,
 			connect.WithSchema(executorServiceMethods.ByName("Heartbeat")),
+			connect.WithClientOptions(opts...),
+		),
+		markJobRunning: connect.NewClient[v1.MarkJobRunningRequest, v1.MarkJobRunningResponse](
+			httpClient,
+			baseURL+ExecutorServiceMarkJobRunningProcedure,
+			connect.WithSchema(executorServiceMethods.ByName("MarkJobRunning")),
 			connect.WithClientOptions(opts...),
 		),
 		reportState: connect.NewClient[v1.ReportStateRequest, v1.ReportStateResponse](
@@ -181,6 +191,7 @@ func NewExecutorServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 // executorServiceClient implements ExecutorServiceClient.
 type executorServiceClient struct {
 	heartbeat                 *connect.Client[v1.HeartbeatRequest, v1.HeartbeatResponse]
+	markJobRunning            *connect.Client[v1.MarkJobRunningRequest, v1.MarkJobRunningResponse]
 	reportState               *connect.Client[v1.ReportStateRequest, v1.ReportStateResponse]
 	reportCompletion          *connect.Client[v1.ReportCompletionRequest, v1.ReportCompletionResponse]
 	reportConfigUpdate        *connect.Client[v1.ReportConfigUpdateRequest, v1.ReportConfigUpdateResponse]
@@ -197,6 +208,11 @@ type executorServiceClient struct {
 // Heartbeat calls synclet.internalapi.executor.v1.ExecutorService.Heartbeat.
 func (c *executorServiceClient) Heartbeat(ctx context.Context, req *connect.Request[v1.HeartbeatRequest]) (*connect.Response[v1.HeartbeatResponse], error) {
 	return c.heartbeat.CallUnary(ctx, req)
+}
+
+// MarkJobRunning calls synclet.internalapi.executor.v1.ExecutorService.MarkJobRunning.
+func (c *executorServiceClient) MarkJobRunning(ctx context.Context, req *connect.Request[v1.MarkJobRunningRequest]) (*connect.Response[v1.MarkJobRunningResponse], error) {
+	return c.markJobRunning.CallUnary(ctx, req)
 }
 
 // ReportState calls synclet.internalapi.executor.v1.ExecutorService.ReportState.
@@ -260,6 +276,7 @@ func (c *executorServiceClient) FailJob(ctx context.Context, req *connect.Reques
 type ExecutorServiceHandler interface {
 	// Existing RPCs (from OrchestratorService, renamed)
 	Heartbeat(context.Context, *connect.Request[v1.HeartbeatRequest]) (*connect.Response[v1.HeartbeatResponse], error)
+	MarkJobRunning(context.Context, *connect.Request[v1.MarkJobRunningRequest]) (*connect.Response[v1.MarkJobRunningResponse], error)
 	ReportState(context.Context, *connect.Request[v1.ReportStateRequest]) (*connect.Response[v1.ReportStateResponse], error)
 	ReportCompletion(context.Context, *connect.Request[v1.ReportCompletionRequest]) (*connect.Response[v1.ReportCompletionResponse], error)
 	ReportConfigUpdate(context.Context, *connect.Request[v1.ReportConfigUpdateRequest]) (*connect.Response[v1.ReportConfigUpdateResponse], error)
@@ -287,6 +304,12 @@ func NewExecutorServiceHandler(svc ExecutorServiceHandler, opts ...connect.Handl
 		ExecutorServiceHeartbeatProcedure,
 		svc.Heartbeat,
 		connect.WithSchema(executorServiceMethods.ByName("Heartbeat")),
+		connect.WithHandlerOptions(opts...),
+	)
+	executorServiceMarkJobRunningHandler := connect.NewUnaryHandler(
+		ExecutorServiceMarkJobRunningProcedure,
+		svc.MarkJobRunning,
+		connect.WithSchema(executorServiceMethods.ByName("MarkJobRunning")),
 		connect.WithHandlerOptions(opts...),
 	)
 	executorServiceReportStateHandler := connect.NewUnaryHandler(
@@ -359,6 +382,8 @@ func NewExecutorServiceHandler(svc ExecutorServiceHandler, opts ...connect.Handl
 		switch r.URL.Path {
 		case ExecutorServiceHeartbeatProcedure:
 			executorServiceHeartbeatHandler.ServeHTTP(w, r)
+		case ExecutorServiceMarkJobRunningProcedure:
+			executorServiceMarkJobRunningHandler.ServeHTTP(w, r)
 		case ExecutorServiceReportStateProcedure:
 			executorServiceReportStateHandler.ServeHTTP(w, r)
 		case ExecutorServiceReportCompletionProcedure:
@@ -392,6 +417,10 @@ type UnimplementedExecutorServiceHandler struct{}
 
 func (UnimplementedExecutorServiceHandler) Heartbeat(context.Context, *connect.Request[v1.HeartbeatRequest]) (*connect.Response[v1.HeartbeatResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("synclet.internalapi.executor.v1.ExecutorService.Heartbeat is not implemented"))
+}
+
+func (UnimplementedExecutorServiceHandler) MarkJobRunning(context.Context, *connect.Request[v1.MarkJobRunningRequest]) (*connect.Response[v1.MarkJobRunningResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("synclet.internalapi.executor.v1.ExecutorService.MarkJobRunning is not implemented"))
 }
 
 func (UnimplementedExecutorServiceHandler) ReportState(context.Context, *connect.Request[v1.ReportStateRequest]) (*connect.Response[v1.ReportStateResponse], error) {

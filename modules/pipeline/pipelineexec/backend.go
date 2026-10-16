@@ -58,6 +58,8 @@ type ReportConnectorTaskResultParams struct {
 type ExecutorBackend interface {
 	ClaimJob(ctx context.Context, workerID string) (*pipelinejobs.ClaimJobBundleResult, error)
 	UpdateJobStatus(ctx context.Context, params UpdateJobStatusParams) error
+	// MarkJobRunning reports that the job's connectors have started.
+	MarkJobRunning(ctx context.Context, jobID uuid.UUID) error
 	Heartbeat(ctx context.Context, jobID uuid.UUID, recordsRead, bytesSynced int64) (*HeartbeatResult, error)
 	ReportState(ctx context.Context, connectionID, jobID uuid.UUID, stateMsg *protocol.AirbyteStateMessage) error
 	ReportCompletion(ctx context.Context, params ReportCompletionParams) error

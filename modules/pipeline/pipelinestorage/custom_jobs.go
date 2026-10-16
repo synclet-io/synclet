@@ -99,3 +99,16 @@ func (s *JobsStorage) TouchHeartbeat(ctx context.Context, id uuid.UUID, at time.
 
 	return result.RowsAffected > 0, nil
 }
+
+// MarkRunning sets a starting job to running. Returns false when the job is
+// missing or no longer starting.
+func (s *JobsStorage) MarkRunning(ctx context.Context, id uuid.UUID) (bool, error) {
+	result := s.DB.WithContext(ctx).
+		Exec(`UPDATE pipeline.jobs SET status = ? WHERE id = ? AND status = ?`,
+			jobStatusRunning, id, jobStatusStarting)
+	if result.Error != nil {
+		return false, wrapJobQueryError(fmt.Errorf("marking job running: %w", result.Error))
+	}
+
+	return result.RowsAffected > 0, nil
+}

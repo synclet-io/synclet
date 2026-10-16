@@ -110,6 +110,9 @@ async function toggleEnabled() {
         <SBadge :variant="statusVariant(connection.status)" dot>
           {{ connection.status }}
         </SBadge>
+        <SBadge v-if="activeJob" :variant="statusVariant(activeJob.status)" dot>
+          Sync {{ activeJob.status }}
+        </SBadge>
         <SButton variant="secondary" @click="toggleEnabled">
           <component :is="connection.status === 'active' ? Pause : Play" class="w-4 h-4" />
           {{ connection.status === 'active' ? 'Disable' : 'Enable' }}

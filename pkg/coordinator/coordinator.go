@@ -194,6 +194,8 @@ func runPipeline(ctx context.Context, cfg Config, reporter *Reporter) (*pipeline
 
 	defer func() { _ = destStdout.Close() }()
 
+	reporter.ReportRunning(ctx)
+
 	// Create K8s handler for side effects (state, config updates).
 	handler := pipelineexeck8s.NewK8sHandler(pipelineexeck8s.K8sHandlerParams{
 		Logger:        slog.Default(),

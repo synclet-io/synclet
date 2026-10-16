@@ -28,6 +28,10 @@ func (m *mockBackend) UpdateJobStatus(_ context.Context, _ pipelineexec.UpdateJo
 	return nil
 }
 
+func (m *mockBackend) MarkJobRunning(_ context.Context, _ uuid.UUID) error {
+	return nil
+}
+
 func (m *mockBackend) Heartbeat(_ context.Context, _ uuid.UUID, _, _ int64) (*pipelineexec.HeartbeatResult, error) {
 	return &pipelineexec.HeartbeatResult{}, nil
 }

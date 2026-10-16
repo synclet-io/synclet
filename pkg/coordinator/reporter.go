@@ -127,6 +127,21 @@ func (r *Reporter) SendHeartbeat(ctx context.Context, recordsRead, bytesSynced i
 	return resp.Msg.GetCancelled()
 }
 
+// ReportRunning reports in the background that the job's connectors have started.
+func (r *Reporter) ReportRunning(ctx context.Context) {
+	r.wg.Add(1)
+
+	go func() {
+		defer r.wg.Done()
+
+		r.sendWithRetry(ctx, "running", func(ctx context.Context) error {
+			_, err := r.client.MarkJobRunning(ctx, connect.NewRequest(&executorv1.MarkJobRunningRequest{JobId: r.jobID}))
+
+			return err
+		})
+	}()
+}
+
 // QueueState queues a state checkpoint for reliable delivery.
 // The msg is serialized to JSON and sent as the state_data blob. It blocks
 // while the buffer is full, so a slow server throttles the sync instead of

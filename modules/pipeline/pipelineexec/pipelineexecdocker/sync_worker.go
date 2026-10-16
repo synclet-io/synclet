@@ -20,7 +20,7 @@ import (
 
 // syncExecutor abstracts DockerSyncExecutor for testability.
 type syncExecutor interface {
-	Execute(ctx context.Context, bundle *pipelineexec.SyncBundle) (*pipelineservice.SyncStats, error)
+	Execute(ctx context.Context, bundle *pipelineexec.SyncBundle, onStarted func()) (*pipelineservice.SyncStats, error)
 }
 
 // DockerSyncWorker is a jobber that polls for scheduled jobs, claims them,
@@ -165,7 +165,7 @@ func (w *DockerSyncWorker) executeJob(ctx context.Context, result *pipelinejobs.
 	go w.heartbeatAndCancel(execCtx, cancelExec, result.Job.ID)
 
 	// Execute the sync with timeout-bounded context.
-	stats, execErr := w.executor.Execute(execCtx, bundle)
+	stats, execErr := w.executor.Execute(execCtx, bundle, func() { w.markRunning(execCtx, result.Job.ID) })
 
 	// Read the context state before cancelExec, which would otherwise make every failure look cancelled.
 	execCtxErr := execCtx.Err()
@@ -250,6 +250,14 @@ func (w *DockerSyncWorker) recordMetrics(ctx context.Context, result *pipelinejo
 		}
 
 		w.logger.WithFields(map[string]interface{}{"worker_id": w.workerID, "job_id": result.Job.ID.String()}).Info(ctx, "job completed")
+	}
+}
+
+// markRunning reports that the job's containers have started. A failed report
+// is logged and the sync goes on; the job then completes from starting.
+func (w *DockerSyncWorker) markRunning(ctx context.Context, jobID uuid.UUID) {
+	if err := w.backend.MarkJobRunning(ctx, jobID); err != nil {
+		w.logger.WithError(err).WithField("job_id", jobID.String()).Warn(ctx, "mark job running failed")
 	}
 }
 

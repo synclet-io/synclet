@@ -30,6 +30,7 @@ type mockBackend struct {
 	heartbeatErr     error
 	updateCalled     atomic.Int32
 	lastUpdateParams pipelineexec.UpdateJobStatusParams
+	markRunningCalls []uuid.UUID
 }
 
 func (m *mockBackend) ClaimJob(_ context.Context, _ string) (*pipelinejobs.ClaimJobBundleResult, error) {
@@ -41,6 +42,12 @@ func (m *mockBackend) UpdateJobStatus(_ context.Context, params pipelineexec.Upd
 	m.lastUpdateParams = params
 
 	return m.updateErr
+}
+
+func (m *mockBackend) MarkJobRunning(_ context.Context, jobID uuid.UUID) error {
+	m.markRunningCalls = append(m.markRunningCalls, jobID)
+
+	return nil
 }
 
 func (m *mockBackend) Heartbeat(_ context.Context, _ uuid.UUID, _, _ int64) (*pipelineexec.HeartbeatResult, error) {
@@ -91,13 +98,23 @@ type mockExecutor struct {
 	stats      *pipelineservice.SyncStats
 	err        error
 	waitCtx    bool
+	starts     bool
+	onRunning  func()
 	called     atomic.Int32
 	lastBundle *pipelineexec.SyncBundle
 }
 
-func (m *mockExecutor) Execute(ctx context.Context, bundle *pipelineexec.SyncBundle) (*pipelineservice.SyncStats, error) {
+func (m *mockExecutor) Execute(ctx context.Context, bundle *pipelineexec.SyncBundle, onStarted func()) (*pipelineservice.SyncStats, error) {
 	m.called.Add(1)
 	m.lastBundle = bundle
+
+	if m.starts {
+		onStarted()
+
+		if m.onRunning != nil {
+			m.onRunning()
+		}
+	}
 
 	if m.waitCtx {
 		<-ctx.Done()
@@ -207,6 +224,36 @@ func TestDockerSyncWorker_Execute_SkipsStatusUpdateWhenCancelledViaHeartbeat(t *
 	worker.executeJob(context.Background(), backend.claimResult)
 
 	assert.Equal(t, int32(0), backend.updateCalled.Load())
+}
+
+func TestDockerSyncWorker_Execute_MarksJobRunningOnceConnectorsStart(t *testing.T) {
+	backend := &mockBackend{claimResult: newClaimResult()}
+	executor := &mockExecutor{starts: true, stats: &pipelineservice.SyncStats{}}
+
+	var runningWhileExecuting []uuid.UUID
+
+	executor.onRunning = func() {
+		runningWhileExecuting = append(runningWhileExecuting, backend.markRunningCalls...)
+	}
+
+	worker := newTestWorker(backend, executor)
+
+	worker.executeJob(context.Background(), backend.claimResult)
+
+	assert.Equal(t, []uuid.UUID{backend.claimResult.Job.ID}, runningWhileExecuting)
+	assert.Equal(t, []uuid.UUID{backend.claimResult.Job.ID}, backend.markRunningCalls)
+	assert.True(t, backend.lastUpdateParams.Success)
+}
+
+func TestDockerSyncWorker_Execute_DoesNotMarkRunningWhenConnectorsFailToStart(t *testing.T) {
+	backend := &mockBackend{claimResult: newClaimResult()}
+	executor := &mockExecutor{err: errors.New("starting source read: image not found")}
+	worker := newTestWorker(backend, executor)
+
+	worker.executeJob(context.Background(), backend.claimResult)
+
+	assert.Empty(t, backend.markRunningCalls)
+	assert.False(t, backend.lastUpdateParams.Success)
 }
 
 func TestDockerSyncWorker_Execute_ReturnsNilWhenNoJobs(t *testing.T) {

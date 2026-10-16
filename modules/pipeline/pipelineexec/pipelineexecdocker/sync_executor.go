@@ -73,8 +73,9 @@ func NewDockerSyncExecutor(params DockerSyncExecutorParams) *DockerSyncExecutor 
 	}
 }
 
-// Execute runs a sync for the given bundle of pre-loaded data.
-func (e *DockerSyncExecutor) Execute(ctx context.Context, bundle *pipelineexec.SyncBundle) (*pipelineservice.SyncStats, error) {
+// Execute runs a sync for the given bundle of pre-loaded data. onStarted is
+// called once both the source and destination containers have started.
+func (e *DockerSyncExecutor) Execute(ctx context.Context, bundle *pipelineexec.SyncBundle, onStarted func()) (*pipelineservice.SyncStats, error) {
 	catalog := bundle.ConfiguredCatalog
 
 	// Labels for container tracking and orphan cleanup.
@@ -133,6 +134,8 @@ func (e *DockerSyncExecutor) Execute(ctx context.Context, bundle *pipelineexec.S
 		return nil, fmt.Errorf("starting destination write: %w", err)
 	}
 	defer destCleanup()
+
+	onStarted()
 
 	// Create handler for Docker mode side effects.
 	handler := NewDockerHandler(DockerHandlerParams{

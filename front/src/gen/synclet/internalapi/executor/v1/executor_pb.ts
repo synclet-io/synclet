@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file synclet/internalapi/executor/v1/executor.proto.
  */
 export const file_synclet_internalapi_executor_v1_executor: GenFile = /*@__PURE__*/
-  fileDesc("Ci5zeW5jbGV0L2ludGVybmFsYXBpL2V4ZWN1dG9yL3YxL2V4ZWN1dG9yLnByb3RvEh9zeW5jbGV0LmludGVybmFsYXBpLmV4ZWN1dG9yLnYxIk4KEEhlYXJ0YmVhdFJlcXVlc3QSDgoGam9iX2lkGAEgASgJEhQKDHJlY29yZHNfcmVhZBgCIAEoAxIUCgxieXRlc19zeW5jZWQYBCABKAMiJgoRSGVhcnRiZWF0UmVzcG9uc2USEQoJY2FuY2VsbGVkGAEgASgIIoMBChJSZXBvcnRTdGF0ZVJlcXVlc3QSDgoGam9iX2lkGAEgASgJEhUKDWNvbm5lY3Rpb25faWQYAiABKAkSEgoKc3RhdGVfZGF0YRgDIAEoDBIyCgpzdGF0ZV90eXBlGAQgASgOMh4uc3luY2xldC5wcm90b2NvbC52MS5TdGF0ZVR5cGUiFQoTUmVwb3J0U3RhdGVSZXNwb25zZSLbAQoXUmVwb3J0Q29tcGxldGlvblJlcXVlc3QSDgoGam9iX2lkGAEgASgJEhUKDWNvbm5lY3Rpb25faWQYAiABKAkSDwoHc3VjY2VzcxgDIAEoCBIVCg1lcnJvcl9tZXNzYWdlGAQgASgJEhQKDHJlY29yZHNfcmVhZBgFIAEoAxIUCgxieXRlc19zeW5jZWQYByABKAMSEwoLZHVyYXRpb25fbXMYCCABKAMSGAoQc291cmNlX2V4aXRfY29kZRgJIAEoBRIWCg5kZXN0X2V4aXRfY29kZRgKIAEoBSIaChhSZXBvcnRDb21wbGV0aW9uUmVzcG9uc2UisAEKGVJlcG9ydENvbmZpZ1VwZGF0ZVJlcXVlc3QSDgoGam9iX2lkGAEgASgJEhUKDWNvbm5lY3Rpb25faWQYAiABKAkSRgoOY29ubmVjdG9yX3R5cGUYAyABKA4yLi5zeW5jbGV0LmludGVybmFsYXBpLmV4ZWN1dG9yLnYxLkNvbm5lY3RvclR5cGUSFAoMY29ubmVjdG9yX2lkGAQgASgJEg4KBmNvbmZpZxgFIAEoDCIcChpSZXBvcnRDb25maWdVcGRhdGVSZXNwb25zZSI1ChBSZXBvcnRMb2dSZXF1ZXN0Eg4KBmpvYl9pZBgBIAEoCRIRCglsb2dfbGluZXMYAiADKAkiEwoRUmVwb3J0TG9nUmVzcG9uc2UiJAoPQ2xhaW1Kb2JSZXF1ZXN0EhEKCXdvcmtlcl9pZBgBIAEoCSLDBAoQQ2xhaW1Kb2JSZXNwb25zZRIPCgdoYXNfam9iGAEgASgIEg4KBmpvYl9pZBgCIAEoCRIVCg1jb25uZWN0aW9uX2lkGAMgASgJEjoKCGpvYl90eXBlGAQgASgOMiguc3luY2xldC5pbnRlcm5hbGFwaS5leGVjdXRvci52MS5Kb2JUeXBlEhEKCXNvdXJjZV9pZBgFIAEoCRIWCg5kZXN0aW5hdGlvbl9pZBgGIAEoCRIUCgxzb3VyY2VfaW1hZ2UYByABKAkSFQoNc291cmNlX2NvbmZpZxgIIAEoDBISCgpkZXN0X2ltYWdlGAkgASgJEhMKC2Rlc3RfY29uZmlnGAogASgMEhoKEmNvbmZpZ3VyZWRfY2F0YWxvZxgLIAEoDBISCgpzdGF0ZV9ibG9iGAwgASgMEhYKDnJ1bnRpbWVfY29uZmlnGA0gASgJEhQKDHdvcmtzcGFjZV9pZBgOIAEoCRJSChRuYW1lc3BhY2VfZGVmaW5pdGlvbhgPIAEoDjI0LnN5bmNsZXQuaW50ZXJuYWxhcGkuZXhlY3V0b3IudjEuTmFtZXNwYWNlRGVmaW5pdGlvbhIfChdjdXN0b21fbmFtZXNwYWNlX2Zvcm1hdBgQIAEoCRIVCg1zdHJlYW1fcHJlZml4GBEgASgJEhQKDG1heF9hdHRlbXB0cxgSIAEoBRIdChVzb3VyY2VfcnVudGltZV9jb25maWcYEyABKAkSGwoTZGVzdF9ydW50aW1lX2NvbmZpZxgUIAEoCSKRAQoWVXBkYXRlSm9iU3RhdHVzUmVxdWVzdBIOCgZqb2JfaWQYASABKAkSDwoHc3VjY2VzcxgCIAEoCBIVCg1lcnJvcl9tZXNzYWdlGAMgASgJEhQKDHJlY29yZHNfcmVhZBgEIAEoAxIUCgxieXRlc19zeW5jZWQYBSABKAMSEwoLZHVyYXRpb25fbXMYBiABKAMiGQoXVXBkYXRlSm9iU3RhdHVzUmVzcG9uc2UiJAoSSXNKb2JBY3RpdmVSZXF1ZXN0Eg4KBmpvYl9pZBgBIAEoCSIlChNJc0pvYkFjdGl2ZVJlc3BvbnNlEg4KBmFjdGl2ZRgBIAEoCCIuChlDbGFpbUNvbm5lY3RvclRhc2tSZXF1ZXN0EhEKCXdvcmtlcl9pZBgBIAEoCSK5AQoaQ2xhaW1Db25uZWN0b3JUYXNrUmVzcG9uc2USEAoIaGFzX3Rhc2sYASABKAgSDwoHdGFza19pZBgCIAEoCRJDCgl0YXNrX3R5cGUYAyABKA4yMC5zeW5jbGV0LnB1YmxpY2FwaS5waXBlbGluZS52MS5Db25uZWN0b3JUYXNrVHlwZRINCgVpbWFnZRgEIAEoCRIOCgZjb25maWcYBSABKAwSFAoMd29ya3NwYWNlX2lkGAYgASgJImsKIFJlcG9ydENvbm5lY3RvclRhc2tSZXN1bHRSZXF1ZXN0Eg8KB3Rhc2tfaWQYASABKAkSDwoHc3VjY2VzcxgCIAEoCBIVCg1lcnJvcl9tZXNzYWdlGAMgASgJEg4KBnJlc3VsdBgEIAEoDCIjCiFSZXBvcnRDb25uZWN0b3JUYXNrUmVzdWx0UmVzcG9uc2UiJgoTSXNUYXNrQWN0aXZlUmVxdWVzdBIPCgd0YXNrX2lkGAEgASgJIiYKFElzVGFza0FjdGl2ZVJlc3BvbnNlEg4KBmFjdGl2ZRgBIAEoCCIwCg5GYWlsSm9iUmVxdWVzdBIOCgZqb2JfaWQYASABKAkSDgoGcmVhc29uGAIgASgJIhEKD0ZhaWxKb2JSZXNwb25zZSpqCg1Db25uZWN0b3JUeXBlEh4KGkNPTk5FQ1RPUl9UWVBFX1VOU1BFQ0lGSUVEEAASGQoVQ09OTkVDVE9SX1RZUEVfU09VUkNFEAESHgoaQ09OTkVDVE9SX1RZUEVfREVTVElOQVRJT04QAio2CgdKb2JUeXBlEhgKFEpPQl9UWVBFX1VOU1BFQ0lGSUVEEAASEQoNSk9CX1RZUEVfU1lOQxABKqMBChNOYW1lc3BhY2VEZWZpbml0aW9uEiQKIE5BTUVTUEFDRV9ERUZJTklUSU9OX1VOU1BFQ0lGSUVEEAASHwobTkFNRVNQQUNFX0RFRklOSVRJT05fU09VUkNFEAESJAogTkFNRVNQQUNFX0RFRklOSVRJT05fREVTVElOQVRJT04QAhIfChtOQU1FU1BBQ0VfREVGSU5JVElPTl9DVVNUT00QAzKfDAoPRXhlY3V0b3JTZXJ2aWNlEnIKCUhlYXJ0YmVhdBIxLnN5bmNsZXQuaW50ZXJuYWxhcGkuZXhlY3V0b3IudjEuSGVhcnRiZWF0UmVxdWVzdBoyLnN5bmNsZXQuaW50ZXJuYWxhcGkuZXhlY3V0b3IudjEuSGVhcnRiZWF0UmVzcG9uc2USeAoLUmVwb3J0U3RhdGUSMy5zeW5jbGV0LmludGVybmFsYXBpLmV4ZWN1dG9yLnYxLlJlcG9ydFN0YXRlUmVxdWVzdBo0LnN5bmNsZXQuaW50ZXJuYWxhcGkuZXhlY3V0b3IudjEuUmVwb3J0U3RhdGVSZXNwb25zZRKHAQoQUmVwb3J0Q29tcGxldGlvbhI4LnN5bmNsZXQuaW50ZXJuYWxhcGkuZXhlY3V0b3IudjEuUmVwb3J0Q29tcGxldGlvblJlcXVlc3QaOS5zeW5jbGV0LmludGVybmFsYXBpLmV4ZWN1dG9yLnYxLlJlcG9ydENvbXBsZXRpb25SZXNwb25zZRKNAQoSUmVwb3J0Q29uZmlnVXBkYXRlEjouc3luY2xldC5pbnRlcm5hbGFwaS5leGVjdXRvci52MS5SZXBvcnRDb25maWdVcGRhdGVSZXF1ZXN0Gjsuc3luY2xldC5pbnRlcm5hbGFwaS5leGVjdXRvci52MS5SZXBvcnRDb25maWdVcGRhdGVSZXNwb25zZRJyCglSZXBvcnRMb2cSMS5zeW5jbGV0LmludGVybmFsYXBpLmV4ZWN1dG9yLnYxLlJlcG9ydExvZ1JlcXVlc3QaMi5zeW5jbGV0LmludGVybmFsYXBpLmV4ZWN1dG9yLnYxLlJlcG9ydExvZ1Jlc3BvbnNlEm8KCENsYWltSm9iEjAuc3luY2xldC5pbnRlcm5hbGFwaS5leGVjdXRvci52MS5DbGFpbUpvYlJlcXVlc3QaMS5zeW5jbGV0LmludGVybmFsYXBpLmV4ZWN1dG9yLnYxLkNsYWltSm9iUmVzcG9uc2UShAEKD1VwZGF0ZUpvYlN0YXR1cxI3LnN5bmNsZXQuaW50ZXJuYWxhcGkuZXhlY3V0b3IudjEuVXBkYXRlSm9iU3RhdHVzUmVxdWVzdBo4LnN5bmNsZXQuaW50ZXJuYWxhcGkuZXhlY3V0b3IudjEuVXBkYXRlSm9iU3RhdHVzUmVzcG9uc2USeAoLSXNKb2JBY3RpdmUSMy5zeW5jbGV0LmludGVybmFsYXBpLmV4ZWN1dG9yLnYxLklzSm9iQWN0aXZlUmVxdWVzdBo0LnN5bmNsZXQuaW50ZXJuYWxhcGkuZXhlY3V0b3IudjEuSXNKb2JBY3RpdmVSZXNwb25zZRKNAQoSQ2xhaW1Db25uZWN0b3JUYXNrEjouc3luY2xldC5pbnRlcm5hbGFwaS5leGVjdXRvci52MS5DbGFpbUNvbm5lY3RvclRhc2tSZXF1ZXN0Gjsuc3luY2xldC5pbnRlcm5hbGFwaS5leGVjdXRvci52MS5DbGFpbUNvbm5lY3RvclRhc2tSZXNwb25zZRKiAQoZUmVwb3J0Q29ubmVjdG9yVGFza1Jlc3VsdBJBLnN5bmNsZXQuaW50ZXJuYWxhcGkuZXhlY3V0b3IudjEuUmVwb3J0Q29ubmVjdG9yVGFza1Jlc3VsdFJlcXVlc3QaQi5zeW5jbGV0LmludGVybmFsYXBpLmV4ZWN1dG9yLnYxLlJlcG9ydENvbm5lY3RvclRhc2tSZXN1bHRSZXNwb25zZRJ7CgxJc1Rhc2tBY3RpdmUSNC5zeW5jbGV0LmludGVybmFsYXBpLmV4ZWN1dG9yLnYxLklzVGFza0FjdGl2ZVJlcXVlc3QaNS5zeW5jbGV0LmludGVybmFsYXBpLmV4ZWN1dG9yLnYxLklzVGFza0FjdGl2ZVJlc3BvbnNlEmwKB0ZhaWxKb2ISLy5zeW5jbGV0LmludGVybmFsYXBpLmV4ZWN1dG9yLnYxLkZhaWxKb2JSZXF1ZXN0GjAuc3luY2xldC5pbnRlcm5hbGFwaS5leGVjdXRvci52MS5GYWlsSm9iUmVzcG9uc2VCpwIKI2NvbS5zeW5jbGV0LmludGVybmFsYXBpLmV4ZWN1dG9yLnYxQg1FeGVjdXRvclByb3RvUAFaUmdpdGh1Yi5jb20vc3luY2xldC1pby9zeW5jbGV0L2dlbi9wcm90by9zeW5jbGV0L2ludGVybmFsYXBpL2V4ZWN1dG9yL3YxO2V4ZWN1dG9ydjGiAgNTSUWqAh9TeW5jbGV0LkludGVybmFsYXBpLkV4ZWN1dG9yLlYxygIfU3luY2xldFxJbnRlcm5hbGFwaVxFeGVjdXRvclxWMeICK1N5bmNsZXRcSW50ZXJuYWxhcGlcRXhlY3V0b3JcVjFcR1BCTWV0YWRhdGHqAiJTeW5jbGV0OjpJbnRlcm5hbGFwaTo6RXhlY3V0b3I6OlYxYgZwcm90bzM", [file_synclet_protocol_v1_protocol, file_synclet_publicapi_pipeline_v1_pipeline]);
+  fileDesc("Ci5zeW5jbGV0L2ludGVybmFsYXBpL2V4ZWN1dG9yL3YxL2V4ZWN1dG9yLnByb3RvEh9zeW5jbGV0LmludGVybmFsYXBpLmV4ZWN1dG9yLnYxIk4KEEhlYXJ0YmVhdFJlcXVlc3QSDgoGam9iX2lkGAEgASgJEhQKDHJlY29yZHNfcmVhZBgCIAEoAxIUCgxieXRlc19zeW5jZWQYBCABKAMiJgoRSGVhcnRiZWF0UmVzcG9uc2USEQoJY2FuY2VsbGVkGAEgASgIIicKFU1hcmtKb2JSdW5uaW5nUmVxdWVzdBIOCgZqb2JfaWQYASABKAkiGAoWTWFya0pvYlJ1bm5pbmdSZXNwb25zZSKDAQoSUmVwb3J0U3RhdGVSZXF1ZXN0Eg4KBmpvYl9pZBgBIAEoCRIVCg1jb25uZWN0aW9uX2lkGAIgASgJEhIKCnN0YXRlX2RhdGEYAyABKAwSMgoKc3RhdGVfdHlwZRgEIAEoDjIeLnN5bmNsZXQucHJvdG9jb2wudjEuU3RhdGVUeXBlIhUKE1JlcG9ydFN0YXRlUmVzcG9uc2Ui2wEKF1JlcG9ydENvbXBsZXRpb25SZXF1ZXN0Eg4KBmpvYl9pZBgBIAEoCRIVCg1jb25uZWN0aW9uX2lkGAIgASgJEg8KB3N1Y2Nlc3MYAyABKAgSFQoNZXJyb3JfbWVzc2FnZRgEIAEoCRIUCgxyZWNvcmRzX3JlYWQYBSABKAMSFAoMYnl0ZXNfc3luY2VkGAcgASgDEhMKC2R1cmF0aW9uX21zGAggASgDEhgKEHNvdXJjZV9leGl0X2NvZGUYCSABKAUSFgoOZGVzdF9leGl0X2NvZGUYCiABKAUiGgoYUmVwb3J0Q29tcGxldGlvblJlc3BvbnNlIrABChlSZXBvcnRDb25maWdVcGRhdGVSZXF1ZXN0Eg4KBmpvYl9pZBgBIAEoCRIVCg1jb25uZWN0aW9uX2lkGAIgASgJEkYKDmNvbm5lY3Rvcl90eXBlGAMgASgOMi4uc3luY2xldC5pbnRlcm5hbGFwaS5leGVjdXRvci52MS5Db25uZWN0b3JUeXBlEhQKDGNvbm5lY3Rvcl9pZBgEIAEoCRIOCgZjb25maWcYBSABKAwiHAoaUmVwb3J0Q29uZmlnVXBkYXRlUmVzcG9uc2UiNQoQUmVwb3J0TG9nUmVxdWVzdBIOCgZqb2JfaWQYASABKAkSEQoJbG9nX2xpbmVzGAIgAygJIhMKEVJlcG9ydExvZ1Jlc3BvbnNlIiQKD0NsYWltSm9iUmVxdWVzdBIRCgl3b3JrZXJfaWQYASABKAkiwwQKEENsYWltSm9iUmVzcG9uc2USDwoHaGFzX2pvYhgBIAEoCBIOCgZqb2JfaWQYAiABKAkSFQoNY29ubmVjdGlvbl9pZBgDIAEoCRI6Cghqb2JfdHlwZRgEIAEoDjIoLnN5bmNsZXQuaW50ZXJuYWxhcGkuZXhlY3V0b3IudjEuSm9iVHlwZRIRCglzb3VyY2VfaWQYBSABKAkSFgoOZGVzdGluYXRpb25faWQYBiABKAkSFAoMc291cmNlX2ltYWdlGAcgASgJEhUKDXNvdXJjZV9jb25maWcYCCABKAwSEgoKZGVzdF9pbWFnZRgJIAEoCRITCgtkZXN0X2NvbmZpZxgKIAEoDBIaChJjb25maWd1cmVkX2NhdGFsb2cYCyABKAwSEgoKc3RhdGVfYmxvYhgMIAEoDBIWCg5ydW50aW1lX2NvbmZpZxgNIAEoCRIUCgx3b3Jrc3BhY2VfaWQYDiABKAkSUgoUbmFtZXNwYWNlX2RlZmluaXRpb24YDyABKA4yNC5zeW5jbGV0LmludGVybmFsYXBpLmV4ZWN1dG9yLnYxLk5hbWVzcGFjZURlZmluaXRpb24SHwoXY3VzdG9tX25hbWVzcGFjZV9mb3JtYXQYECABKAkSFQoNc3RyZWFtX3ByZWZpeBgRIAEoCRIUCgxtYXhfYXR0ZW1wdHMYEiABKAUSHQoVc291cmNlX3J1bnRpbWVfY29uZmlnGBMgASgJEhsKE2Rlc3RfcnVudGltZV9jb25maWcYFCABKAkikQEKFlVwZGF0ZUpvYlN0YXR1c1JlcXVlc3QSDgoGam9iX2lkGAEgASgJEg8KB3N1Y2Nlc3MYAiABKAgSFQoNZXJyb3JfbWVzc2FnZRgDIAEoCRIUCgxyZWNvcmRzX3JlYWQYBCABKAMSFAoMYnl0ZXNfc3luY2VkGAUgASgDEhMKC2R1cmF0aW9uX21zGAYgASgDIhkKF1VwZGF0ZUpvYlN0YXR1c1Jlc3BvbnNlIiQKEklzSm9iQWN0aXZlUmVxdWVzdBIOCgZqb2JfaWQYASABKAkiJQoTSXNKb2JBY3RpdmVSZXNwb25zZRIOCgZhY3RpdmUYASABKAgiLgoZQ2xhaW1Db25uZWN0b3JUYXNrUmVxdWVzdBIRCgl3b3JrZXJfaWQYASABKAkiuQEKGkNsYWltQ29ubmVjdG9yVGFza1Jlc3BvbnNlEhAKCGhhc190YXNrGAEgASgIEg8KB3Rhc2tfaWQYAiABKAkSQwoJdGFza190eXBlGAMgASgOMjAuc3luY2xldC5wdWJsaWNhcGkucGlwZWxpbmUudjEuQ29ubmVjdG9yVGFza1R5cGUSDQoFaW1hZ2UYBCABKAkSDgoGY29uZmlnGAUgASgMEhQKDHdvcmtzcGFjZV9pZBgGIAEoCSJrCiBSZXBvcnRDb25uZWN0b3JUYXNrUmVzdWx0UmVxdWVzdBIPCgd0YXNrX2lkGAEgASgJEg8KB3N1Y2Nlc3MYAiABKAgSFQoNZXJyb3JfbWVzc2FnZRgDIAEoCRIOCgZyZXN1bHQYBCABKAwiIwohUmVwb3J0Q29ubmVjdG9yVGFza1Jlc3VsdFJlc3BvbnNlIiYKE0lzVGFza0FjdGl2ZVJlcXVlc3QSDwoHdGFza19pZBgBIAEoCSImChRJc1Rhc2tBY3RpdmVSZXNwb25zZRIOCgZhY3RpdmUYASABKAgiMAoORmFpbEpvYlJlcXVlc3QSDgoGam9iX2lkGAEgASgJEg4KBnJlYXNvbhgCIAEoCSIRCg9GYWlsSm9iUmVzcG9uc2UqagoNQ29ubmVjdG9yVHlwZRIeChpDT05ORUNUT1JfVFlQRV9VTlNQRUNJRklFRBAAEhkKFUNPTk5FQ1RPUl9UWVBFX1NPVVJDRRABEh4KGkNPTk5FQ1RPUl9UWVBFX0RFU1RJTkFUSU9OEAIqNgoHSm9iVHlwZRIYChRKT0JfVFlQRV9VTlNQRUNJRklFRBAAEhEKDUpPQl9UWVBFX1NZTkMQASqjAQoTTmFtZXNwYWNlRGVmaW5pdGlvbhIkCiBOQU1FU1BBQ0VfREVGSU5JVElPTl9VTlNQRUNJRklFRBAAEh8KG05BTUVTUEFDRV9ERUZJTklUSU9OX1NPVVJDRRABEiQKIE5BTUVTUEFDRV9ERUZJTklUSU9OX0RFU1RJTkFUSU9OEAISHwobTkFNRVNQQUNFX0RFRklOSVRJT05fQ1VTVE9NEAMyow0KD0V4ZWN1dG9yU2VydmljZRJyCglIZWFydGJlYXQSMS5zeW5jbGV0LmludGVybmFsYXBpLmV4ZWN1dG9yLnYxLkhlYXJ0YmVhdFJlcXVlc3QaMi5zeW5jbGV0LmludGVybmFsYXBpLmV4ZWN1dG9yLnYxLkhlYXJ0YmVhdFJlc3BvbnNlEoEBCg5NYXJrSm9iUnVubmluZxI2LnN5bmNsZXQuaW50ZXJuYWxhcGkuZXhlY3V0b3IudjEuTWFya0pvYlJ1bm5pbmdSZXF1ZXN0Gjcuc3luY2xldC5pbnRlcm5hbGFwaS5leGVjdXRvci52MS5NYXJrSm9iUnVubmluZ1Jlc3BvbnNlEngKC1JlcG9ydFN0YXRlEjMuc3luY2xldC5pbnRlcm5hbGFwaS5leGVjdXRvci52MS5SZXBvcnRTdGF0ZVJlcXVlc3QaNC5zeW5jbGV0LmludGVybmFsYXBpLmV4ZWN1dG9yLnYxLlJlcG9ydFN0YXRlUmVzcG9uc2UShwEKEFJlcG9ydENvbXBsZXRpb24SOC5zeW5jbGV0LmludGVybmFsYXBpLmV4ZWN1dG9yLnYxLlJlcG9ydENvbXBsZXRpb25SZXF1ZXN0Gjkuc3luY2xldC5pbnRlcm5hbGFwaS5leGVjdXRvci52MS5SZXBvcnRDb21wbGV0aW9uUmVzcG9uc2USjQEKElJlcG9ydENvbmZpZ1VwZGF0ZRI6LnN5bmNsZXQuaW50ZXJuYWxhcGkuZXhlY3V0b3IudjEuUmVwb3J0Q29uZmlnVXBkYXRlUmVxdWVzdBo7LnN5bmNsZXQuaW50ZXJuYWxhcGkuZXhlY3V0b3IudjEuUmVwb3J0Q29uZmlnVXBkYXRlUmVzcG9uc2UScgoJUmVwb3J0TG9nEjEuc3luY2xldC5pbnRlcm5hbGFwaS5leGVjdXRvci52MS5SZXBvcnRMb2dSZXF1ZXN0GjIuc3luY2xldC5pbnRlcm5hbGFwaS5leGVjdXRvci52MS5SZXBvcnRMb2dSZXNwb25zZRJvCghDbGFpbUpvYhIwLnN5bmNsZXQuaW50ZXJuYWxhcGkuZXhlY3V0b3IudjEuQ2xhaW1Kb2JSZXF1ZXN0GjEuc3luY2xldC5pbnRlcm5hbGFwaS5leGVjdXRvci52MS5DbGFpbUpvYlJlc3BvbnNlEoQBCg9VcGRhdGVKb2JTdGF0dXMSNy5zeW5jbGV0LmludGVybmFsYXBpLmV4ZWN1dG9yLnYxLlVwZGF0ZUpvYlN0YXR1c1JlcXVlc3QaOC5zeW5jbGV0LmludGVybmFsYXBpLmV4ZWN1dG9yLnYxLlVwZGF0ZUpvYlN0YXR1c1Jlc3BvbnNlEngKC0lzSm9iQWN0aXZlEjMuc3luY2xldC5pbnRlcm5hbGFwaS5leGVjdXRvci52MS5Jc0pvYkFjdGl2ZVJlcXVlc3QaNC5zeW5jbGV0LmludGVybmFsYXBpLmV4ZWN1dG9yLnYxLklzSm9iQWN0aXZlUmVzcG9uc2USjQEKEkNsYWltQ29ubmVjdG9yVGFzaxI6LnN5bmNsZXQuaW50ZXJuYWxhcGkuZXhlY3V0b3IudjEuQ2xhaW1Db25uZWN0b3JUYXNrUmVxdWVzdBo7LnN5bmNsZXQuaW50ZXJuYWxhcGkuZXhlY3V0b3IudjEuQ2xhaW1Db25uZWN0b3JUYXNrUmVzcG9uc2USogEKGVJlcG9ydENvbm5lY3RvclRhc2tSZXN1bHQSQS5zeW5jbGV0LmludGVybmFsYXBpLmV4ZWN1dG9yLnYxLlJlcG9ydENvbm5lY3RvclRhc2tSZXN1bHRSZXF1ZXN0GkIuc3luY2xldC5pbnRlcm5hbGFwaS5leGVjdXRvci52MS5SZXBvcnRDb25uZWN0b3JUYXNrUmVzdWx0UmVzcG9uc2USewoMSXNUYXNrQWN0aXZlEjQuc3luY2xldC5pbnRlcm5hbGFwaS5leGVjdXRvci52MS5Jc1Rhc2tBY3RpdmVSZXF1ZXN0GjUuc3luY2xldC5pbnRlcm5hbGFwaS5leGVjdXRvci52MS5Jc1Rhc2tBY3RpdmVSZXNwb25zZRJsCgdGYWlsSm9iEi8uc3luY2xldC5pbnRlcm5hbGFwaS5leGVjdXRvci52MS5GYWlsSm9iUmVxdWVzdBowLnN5bmNsZXQuaW50ZXJuYWxhcGkuZXhlY3V0b3IudjEuRmFpbEpvYlJlc3BvbnNlQqcCCiNjb20uc3luY2xldC5pbnRlcm5hbGFwaS5leGVjdXRvci52MUINRXhlY3V0b3JQcm90b1ABWlJnaXRodWIuY29tL3N5bmNsZXQtaW8vc3luY2xldC9nZW4vcHJvdG8vc3luY2xldC9pbnRlcm5hbGFwaS9leGVjdXRvci92MTtleGVjdXRvcnYxogIDU0lFqgIfU3luY2xldC5JbnRlcm5hbGFwaS5FeGVjdXRvci5WMcoCH1N5bmNsZXRcSW50ZXJuYWxhcGlcRXhlY3V0b3JcVjHiAitTeW5jbGV0XEludGVybmFsYXBpXEV4ZWN1dG9yXFYxXEdQQk1ldGFkYXRh6gIiU3luY2xldDo6SW50ZXJuYWxhcGk6OkV4ZWN1dG9yOjpWMWIGcHJvdG8z", [file_synclet_protocol_v1_protocol, file_synclet_publicapi_pipeline_v1_pipeline]);
 
 /**
  * @generated from message synclet.internalapi.executor.v1.HeartbeatRequest
@@ -63,6 +63,38 @@ export const HeartbeatResponseSchema: GenMessage<HeartbeatResponse> = /*@__PURE_
   messageDesc(file_synclet_internalapi_executor_v1_executor, 1);
 
 /**
+ * MarkJobRunning: executor reports that the job's connectors have started.
+ *
+ * @generated from message synclet.internalapi.executor.v1.MarkJobRunningRequest
+ */
+export type MarkJobRunningRequest = Message<"synclet.internalapi.executor.v1.MarkJobRunningRequest"> & {
+  /**
+   * @generated from field: string job_id = 1;
+   */
+  jobId: string;
+};
+
+/**
+ * Describes the message synclet.internalapi.executor.v1.MarkJobRunningRequest.
+ * Use `create(MarkJobRunningRequestSchema)` to create a new message.
+ */
+export const MarkJobRunningRequestSchema: GenMessage<MarkJobRunningRequest> = /*@__PURE__*/
+  messageDesc(file_synclet_internalapi_executor_v1_executor, 2);
+
+/**
+ * @generated from message synclet.internalapi.executor.v1.MarkJobRunningResponse
+ */
+export type MarkJobRunningResponse = Message<"synclet.internalapi.executor.v1.MarkJobRunningResponse"> & {
+};
+
+/**
+ * Describes the message synclet.internalapi.executor.v1.MarkJobRunningResponse.
+ * Use `create(MarkJobRunningResponseSchema)` to create a new message.
+ */
+export const MarkJobRunningResponseSchema: GenMessage<MarkJobRunningResponse> = /*@__PURE__*/
+  messageDesc(file_synclet_internalapi_executor_v1_executor, 3);
+
+/**
  * @generated from message synclet.internalapi.executor.v1.ReportStateRequest
  */
 export type ReportStateRequest = Message<"synclet.internalapi.executor.v1.ReportStateRequest"> & {
@@ -92,7 +124,7 @@ export type ReportStateRequest = Message<"synclet.internalapi.executor.v1.Report
  * Use `create(ReportStateRequestSchema)` to create a new message.
  */
 export const ReportStateRequestSchema: GenMessage<ReportStateRequest> = /*@__PURE__*/
-  messageDesc(file_synclet_internalapi_executor_v1_executor, 2);
+  messageDesc(file_synclet_internalapi_executor_v1_executor, 4);
 
 /**
  * @generated from message synclet.internalapi.executor.v1.ReportStateResponse
@@ -105,7 +137,7 @@ export type ReportStateResponse = Message<"synclet.internalapi.executor.v1.Repor
  * Use `create(ReportStateResponseSchema)` to create a new message.
  */
 export const ReportStateResponseSchema: GenMessage<ReportStateResponse> = /*@__PURE__*/
-  messageDesc(file_synclet_internalapi_executor_v1_executor, 3);
+  messageDesc(file_synclet_internalapi_executor_v1_executor, 5);
 
 /**
  * @generated from message synclet.internalapi.executor.v1.ReportCompletionRequest
@@ -162,7 +194,7 @@ export type ReportCompletionRequest = Message<"synclet.internalapi.executor.v1.R
  * Use `create(ReportCompletionRequestSchema)` to create a new message.
  */
 export const ReportCompletionRequestSchema: GenMessage<ReportCompletionRequest> = /*@__PURE__*/
-  messageDesc(file_synclet_internalapi_executor_v1_executor, 4);
+  messageDesc(file_synclet_internalapi_executor_v1_executor, 6);
 
 /**
  * @generated from message synclet.internalapi.executor.v1.ReportCompletionResponse
@@ -175,7 +207,7 @@ export type ReportCompletionResponse = Message<"synclet.internalapi.executor.v1.
  * Use `create(ReportCompletionResponseSchema)` to create a new message.
  */
 export const ReportCompletionResponseSchema: GenMessage<ReportCompletionResponse> = /*@__PURE__*/
-  messageDesc(file_synclet_internalapi_executor_v1_executor, 5);
+  messageDesc(file_synclet_internalapi_executor_v1_executor, 7);
 
 /**
  * @generated from message synclet.internalapi.executor.v1.ReportConfigUpdateRequest
@@ -216,7 +248,7 @@ export type ReportConfigUpdateRequest = Message<"synclet.internalapi.executor.v1
  * Use `create(ReportConfigUpdateRequestSchema)` to create a new message.
  */
 export const ReportConfigUpdateRequestSchema: GenMessage<ReportConfigUpdateRequest> = /*@__PURE__*/
-  messageDesc(file_synclet_internalapi_executor_v1_executor, 6);
+  messageDesc(file_synclet_internalapi_executor_v1_executor, 8);
 
 /**
  * @generated from message synclet.internalapi.executor.v1.ReportConfigUpdateResponse
@@ -229,7 +261,7 @@ export type ReportConfigUpdateResponse = Message<"synclet.internalapi.executor.v
  * Use `create(ReportConfigUpdateResponseSchema)` to create a new message.
  */
 export const ReportConfigUpdateResponseSchema: GenMessage<ReportConfigUpdateResponse> = /*@__PURE__*/
-  messageDesc(file_synclet_internalapi_executor_v1_executor, 7);
+  messageDesc(file_synclet_internalapi_executor_v1_executor, 9);
 
 /**
  * @generated from message synclet.internalapi.executor.v1.ReportLogRequest
@@ -251,7 +283,7 @@ export type ReportLogRequest = Message<"synclet.internalapi.executor.v1.ReportLo
  * Use `create(ReportLogRequestSchema)` to create a new message.
  */
 export const ReportLogRequestSchema: GenMessage<ReportLogRequest> = /*@__PURE__*/
-  messageDesc(file_synclet_internalapi_executor_v1_executor, 8);
+  messageDesc(file_synclet_internalapi_executor_v1_executor, 10);
 
 /**
  * @generated from message synclet.internalapi.executor.v1.ReportLogResponse
@@ -264,7 +296,7 @@ export type ReportLogResponse = Message<"synclet.internalapi.executor.v1.ReportL
  * Use `create(ReportLogResponseSchema)` to create a new message.
  */
 export const ReportLogResponseSchema: GenMessage<ReportLogResponse> = /*@__PURE__*/
-  messageDesc(file_synclet_internalapi_executor_v1_executor, 9);
+  messageDesc(file_synclet_internalapi_executor_v1_executor, 11);
 
 /**
  * ClaimJob: executor requests a job to run (D-02)
@@ -283,7 +315,7 @@ export type ClaimJobRequest = Message<"synclet.internalapi.executor.v1.ClaimJobR
  * Use `create(ClaimJobRequestSchema)` to create a new message.
  */
 export const ClaimJobRequestSchema: GenMessage<ClaimJobRequest> = /*@__PURE__*/
-  messageDesc(file_synclet_internalapi_executor_v1_executor, 10);
+  messageDesc(file_synclet_internalapi_executor_v1_executor, 12);
 
 /**
  * ClaimJobResponse: full bundle so executor has everything in one RPC call (D-02)
@@ -397,7 +429,7 @@ export type ClaimJobResponse = Message<"synclet.internalapi.executor.v1.ClaimJob
  * Use `create(ClaimJobResponseSchema)` to create a new message.
  */
 export const ClaimJobResponseSchema: GenMessage<ClaimJobResponse> = /*@__PURE__*/
-  messageDesc(file_synclet_internalapi_executor_v1_executor, 11);
+  messageDesc(file_synclet_internalapi_executor_v1_executor, 13);
 
 /**
  * UpdateJobStatus: executor reports job completion/failure (D-03)
@@ -441,7 +473,7 @@ export type UpdateJobStatusRequest = Message<"synclet.internalapi.executor.v1.Up
  * Use `create(UpdateJobStatusRequestSchema)` to create a new message.
  */
 export const UpdateJobStatusRequestSchema: GenMessage<UpdateJobStatusRequest> = /*@__PURE__*/
-  messageDesc(file_synclet_internalapi_executor_v1_executor, 12);
+  messageDesc(file_synclet_internalapi_executor_v1_executor, 14);
 
 /**
  * @generated from message synclet.internalapi.executor.v1.UpdateJobStatusResponse
@@ -454,7 +486,7 @@ export type UpdateJobStatusResponse = Message<"synclet.internalapi.executor.v1.U
  * Use `create(UpdateJobStatusResponseSchema)` to create a new message.
  */
 export const UpdateJobStatusResponseSchema: GenMessage<UpdateJobStatusResponse> = /*@__PURE__*/
-  messageDesc(file_synclet_internalapi_executor_v1_executor, 13);
+  messageDesc(file_synclet_internalapi_executor_v1_executor, 15);
 
 /**
  * IsJobActive: orphan checker queries whether a job is still active (D-04)
@@ -473,7 +505,7 @@ export type IsJobActiveRequest = Message<"synclet.internalapi.executor.v1.IsJobA
  * Use `create(IsJobActiveRequestSchema)` to create a new message.
  */
 export const IsJobActiveRequestSchema: GenMessage<IsJobActiveRequest> = /*@__PURE__*/
-  messageDesc(file_synclet_internalapi_executor_v1_executor, 14);
+  messageDesc(file_synclet_internalapi_executor_v1_executor, 16);
 
 /**
  * @generated from message synclet.internalapi.executor.v1.IsJobActiveResponse
@@ -490,7 +522,7 @@ export type IsJobActiveResponse = Message<"synclet.internalapi.executor.v1.IsJob
  * Use `create(IsJobActiveResponseSchema)` to create a new message.
  */
 export const IsJobActiveResponseSchema: GenMessage<IsJobActiveResponse> = /*@__PURE__*/
-  messageDesc(file_synclet_internalapi_executor_v1_executor, 15);
+  messageDesc(file_synclet_internalapi_executor_v1_executor, 17);
 
 /**
  * ClaimConnectorTask: executor requests a connector task to run (D-15)
@@ -509,7 +541,7 @@ export type ClaimConnectorTaskRequest = Message<"synclet.internalapi.executor.v1
  * Use `create(ClaimConnectorTaskRequestSchema)` to create a new message.
  */
 export const ClaimConnectorTaskRequestSchema: GenMessage<ClaimConnectorTaskRequest> = /*@__PURE__*/
-  messageDesc(file_synclet_internalapi_executor_v1_executor, 16);
+  messageDesc(file_synclet_internalapi_executor_v1_executor, 18);
 
 /**
  * @generated from message synclet.internalapi.executor.v1.ClaimConnectorTaskResponse
@@ -551,7 +583,7 @@ export type ClaimConnectorTaskResponse = Message<"synclet.internalapi.executor.v
  * Use `create(ClaimConnectorTaskResponseSchema)` to create a new message.
  */
 export const ClaimConnectorTaskResponseSchema: GenMessage<ClaimConnectorTaskResponse> = /*@__PURE__*/
-  messageDesc(file_synclet_internalapi_executor_v1_executor, 17);
+  messageDesc(file_synclet_internalapi_executor_v1_executor, 19);
 
 /**
  * ReportConnectorTaskResult: executor reports task completion (D-18)
@@ -585,7 +617,7 @@ export type ReportConnectorTaskResultRequest = Message<"synclet.internalapi.exec
  * Use `create(ReportConnectorTaskResultRequestSchema)` to create a new message.
  */
 export const ReportConnectorTaskResultRequestSchema: GenMessage<ReportConnectorTaskResultRequest> = /*@__PURE__*/
-  messageDesc(file_synclet_internalapi_executor_v1_executor, 18);
+  messageDesc(file_synclet_internalapi_executor_v1_executor, 20);
 
 /**
  * @generated from message synclet.internalapi.executor.v1.ReportConnectorTaskResultResponse
@@ -598,7 +630,7 @@ export type ReportConnectorTaskResultResponse = Message<"synclet.internalapi.exe
  * Use `create(ReportConnectorTaskResultResponseSchema)` to create a new message.
  */
 export const ReportConnectorTaskResultResponseSchema: GenMessage<ReportConnectorTaskResultResponse> = /*@__PURE__*/
-  messageDesc(file_synclet_internalapi_executor_v1_executor, 19);
+  messageDesc(file_synclet_internalapi_executor_v1_executor, 21);
 
 /**
  * IsTaskActive: reconciler queries whether a connector task is still active
@@ -617,7 +649,7 @@ export type IsTaskActiveRequest = Message<"synclet.internalapi.executor.v1.IsTas
  * Use `create(IsTaskActiveRequestSchema)` to create a new message.
  */
 export const IsTaskActiveRequestSchema: GenMessage<IsTaskActiveRequest> = /*@__PURE__*/
-  messageDesc(file_synclet_internalapi_executor_v1_executor, 20);
+  messageDesc(file_synclet_internalapi_executor_v1_executor, 22);
 
 /**
  * @generated from message synclet.internalapi.executor.v1.IsTaskActiveResponse
@@ -634,7 +666,7 @@ export type IsTaskActiveResponse = Message<"synclet.internalapi.executor.v1.IsTa
  * Use `create(IsTaskActiveResponseSchema)` to create a new message.
  */
 export const IsTaskActiveResponseSchema: GenMessage<IsTaskActiveResponse> = /*@__PURE__*/
-  messageDesc(file_synclet_internalapi_executor_v1_executor, 21);
+  messageDesc(file_synclet_internalapi_executor_v1_executor, 23);
 
 /**
  * FailJob: reconciler reports a job as failed with a reason
@@ -658,7 +690,7 @@ export type FailJobRequest = Message<"synclet.internalapi.executor.v1.FailJobReq
  * Use `create(FailJobRequestSchema)` to create a new message.
  */
 export const FailJobRequestSchema: GenMessage<FailJobRequest> = /*@__PURE__*/
-  messageDesc(file_synclet_internalapi_executor_v1_executor, 22);
+  messageDesc(file_synclet_internalapi_executor_v1_executor, 24);
 
 /**
  * @generated from message synclet.internalapi.executor.v1.FailJobResponse
@@ -671,7 +703,7 @@ export type FailJobResponse = Message<"synclet.internalapi.executor.v1.FailJobRe
  * Use `create(FailJobResponseSchema)` to create a new message.
  */
 export const FailJobResponseSchema: GenMessage<FailJobResponse> = /*@__PURE__*/
-  messageDesc(file_synclet_internalapi_executor_v1_executor, 23);
+  messageDesc(file_synclet_internalapi_executor_v1_executor, 25);
 
 /**
  * ConnectorType distinguishes source vs destination in config update reports (D-07).
@@ -770,6 +802,14 @@ export const ExecutorService: GenService<{
     methodKind: "unary";
     input: typeof HeartbeatRequestSchema;
     output: typeof HeartbeatResponseSchema;
+  },
+  /**
+   * @generated from rpc synclet.internalapi.executor.v1.ExecutorService.MarkJobRunning
+   */
+  markJobRunning: {
+    methodKind: "unary";
+    input: typeof MarkJobRunningRequestSchema;
+    output: typeof MarkJobRunningResponseSchema;
   },
   /**
    * @generated from rpc synclet.internalapi.executor.v1.ExecutorService.ReportState

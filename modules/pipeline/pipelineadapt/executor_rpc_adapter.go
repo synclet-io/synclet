@@ -170,6 +170,17 @@ func (a *RPCExecutorBackend) UpdateJobStatus(ctx context.Context, params pipelin
 	})
 }
 
+// MarkJobRunning calls the MarkJobRunning RPC with retry.
+func (a *RPCExecutorBackend) MarkJobRunning(ctx context.Context, jobID uuid.UUID) error {
+	return a.sendWithRetry(ctx, "MarkJobRunning", func(ctx context.Context) error {
+		_, err := a.client.MarkJobRunning(ctx, connect.NewRequest(&executorv1.MarkJobRunningRequest{
+			JobId: jobID.String(),
+		}))
+
+		return err
+	})
+}
+
 // Heartbeat calls the Heartbeat RPC with retry and returns cancellation status.
 func (a *RPCExecutorBackend) Heartbeat(ctx context.Context, jobID uuid.UUID, recordsRead, bytesSynced int64) (*pipelineexec.HeartbeatResult, error) {
 	var result *pipelineexec.HeartbeatResult

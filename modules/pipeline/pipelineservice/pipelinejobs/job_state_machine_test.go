@@ -99,6 +99,16 @@ func (j *jobStateJobs) UpdateIfStatus(_ context.Context, job *pipelineservice.Jo
 	return true, nil
 }
 
+func (j *jobStateJobs) MarkRunning(_ context.Context, _ uuid.UUID) (bool, error) {
+	if j.s.job.Status != pipelineservice.JobStatusStarting {
+		return false, nil
+	}
+
+	j.s.job.Status = pipelineservice.JobStatusRunning
+
+	return true, nil
+}
+
 func (j *jobStateJobs) TouchHeartbeat(_ context.Context, _ uuid.UUID, at time.Time) (bool, error) {
 	if !isJobInFlight(j.s.job.Status) {
 		return false, nil
@@ -291,4 +301,94 @@ func TestClaimJobBundle_MissingSourceFailsJobWithoutRetry(t *testing.T) {
 	require.NotNil(t, storage.job.Error)
 	assert.Contains(t, *storage.job.Error, "Source")
 	assert.Len(t, storage.attempts, 1)
+}
+
+func (j *jobStateJobs) Find(_ context.Context, _ *pipelineservice.JobFilter, _ ...optionutil.Option[dbutil.SelectOptions]) ([]*pipelineservice.Job, error) {
+	if !isJobInFlight(j.s.job.Status) {
+		return nil, nil
+	}
+
+	cp := *j.s.job
+
+	return []*pipelineservice.Job{&cp}, nil
+}
+
+func TestMarkJobRunning_MovesStartingJobToRunning(t *testing.T) {
+	storage := newJobStateStorage(pipelineservice.JobStatusStarting)
+
+	err := NewMarkJobRunning(storage).Execute(context.Background(), MarkJobRunningParams{ID: storage.job.ID})
+	require.NoError(t, err)
+
+	assert.Equal(t, pipelineservice.JobStatusRunning, storage.job.Status)
+	require.Len(t, storage.events, 1)
+
+	data := jobUpdatedData(t, storage.events[0])
+	assert.Equal(t, storage.conn.WorkspaceID, data.WorkspaceID)
+	assert.Equal(t, pipelineservice.JobStatusStarting, data.OldData.Status)
+	assert.Equal(t, pipelineservice.JobStatusRunning, data.NewData.Status)
+}
+
+func TestMarkJobRunning_LeavesOtherStatusesUnchanged(t *testing.T) {
+	for _, status := range []pipelineservice.JobStatus{
+		pipelineservice.JobStatusScheduled,
+		pipelineservice.JobStatusRunning,
+		pipelineservice.JobStatusCancelled,
+		pipelineservice.JobStatusCompleted,
+		pipelineservice.JobStatusFailed,
+	} {
+		t.Run(status.String(), func(t *testing.T) {
+			storage := newJobStateStorage(status)
+
+			err := NewMarkJobRunning(storage).Execute(context.Background(), MarkJobRunningParams{ID: storage.job.ID})
+			require.NoError(t, err)
+
+			assert.Equal(t, status, storage.job.Status)
+			assert.Empty(t, storage.events)
+		})
+	}
+}
+
+func TestMarkJobRunning_CancelledAfterReadIsUnchanged(t *testing.T) {
+	storage := newJobStateStorage(pipelineservice.JobStatusCancelled)
+	starting := *storage.job
+	starting.Status = pipelineservice.JobStatusStarting
+	storage.readJob = &starting
+
+	err := NewMarkJobRunning(storage).Execute(context.Background(), MarkJobRunningParams{ID: storage.job.ID})
+	require.NoError(t, err)
+
+	assert.Equal(t, pipelineservice.JobStatusCancelled, storage.job.Status)
+	assert.Empty(t, storage.events)
+}
+
+func TestUpdateJobStatus_FailsRunningJob(t *testing.T) {
+	storage := newJobStateStorage(pipelineservice.JobStatusRunning)
+	storage.job.MaxAttempts = 1
+
+	err := NewUpdateJobStatus(storage).Execute(context.Background(), UpdateJobStatusParams{
+		ID:      storage.job.ID,
+		SyncErr: errors.New("connector exited"),
+	})
+	require.NoError(t, err)
+
+	assert.Equal(t, pipelineservice.JobStatusFailed, storage.job.Status)
+	require.Len(t, storage.events, 1)
+	assert.Equal(t, pipelineservice.JobStatusRunning, jobUpdatedData(t, storage.events[0]).OldData.Status)
+}
+
+func TestFailStaleJobs_FailsStaleRunningJob(t *testing.T) {
+	storage := newJobStateStorage(pipelineservice.JobStatusRunning)
+	storage.job.MaxAttempts = 1
+	stale := time.Now().Add(-time.Hour)
+	storage.job.HeartbeatAt = &stale
+
+	uc := NewFailStaleJobs(nil, storage, NewUpdateJobStatus(storage), pipelineservice.Config{HeartbeatTimeout: time.Minute})
+
+	failed, err := uc.Execute(context.Background())
+	require.NoError(t, err)
+
+	assert.Equal(t, 1, failed)
+	assert.Equal(t, pipelineservice.JobStatusFailed, storage.job.Status)
+	require.NotNil(t, storage.job.Error)
+	assert.Contains(t, *storage.job.Error, "heartbeat timeout")
 }
