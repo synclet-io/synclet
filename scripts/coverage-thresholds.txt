@@ -6,7 +6,7 @@
 ./modules/pipeline/pipelineservice/pipelinecatalog 60
 ./modules/pipeline/pipelineservice/pipelineconfig 45
 ./modules/pipeline/pipelineservice/pipelineconnections 60
-./modules/pipeline/pipelineservice/pipelineconnectors 45
+./modules/pipeline/pipelineservice/pipelineconnectors 85
 ./modules/pipeline/pipelineservice/pipelinedestinations 60
 ./modules/pipeline/pipelineservice/pipelinejobs 50
 ./modules/pipeline/pipelineservice/pipelinelogs 60
