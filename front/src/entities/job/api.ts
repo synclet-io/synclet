@@ -19,6 +19,15 @@ function mapJobStatus(proto: ProtoJobStatus): JobStatus {
   }
 }
 
+const PROTO_JOB_STATUS: Record<JobStatus, ProtoJobStatus> = {
+  scheduled: ProtoJobStatus.SCHEDULED,
+  starting: ProtoJobStatus.STARTING,
+  running: ProtoJobStatus.RUNNING,
+  completed: ProtoJobStatus.COMPLETED,
+  failed: ProtoJobStatus.FAILED,
+  cancelled: ProtoJobStatus.CANCELLED,
+}
+
 function mapJobType(proto: ProtoJobType): JobType {
   switch (proto) {
     case ProtoJobType.SYNC: return 'sync'
@@ -66,11 +75,19 @@ function mapJob(proto: ProtoJob): Job {
   }
 }
 
-export async function listJobs(connectionId: string, params: { pageSize?: number, offset?: number } = {}): Promise<{ items: Job[], total: number }> {
+export interface ListJobsParams {
+  pageSize?: number
+  offset?: number
+  statuses?: readonly JobStatus[]
+}
+
+/** An empty `connectionId` lists jobs across every connection in the workspace. */
+export async function listJobs(connectionId: string, params: ListJobsParams = {}): Promise<{ items: Job[], total: number }> {
   const res = await jobClient.listJobs({
     connectionId,
     pageSize: params.pageSize ?? 0,
     offset: params.offset ?? 0,
+    statuses: (params.statuses ?? []).map(s => PROTO_JOB_STATUS[s]),
   })
   return {
     items: (res.jobs || []).map(mapJob),
@@ -92,11 +109,33 @@ export async function triggerSync(connectionId: string): Promise<Job | undefined
   return res.job ? mapJob(res.job) : undefined
 }
 
+const LOG_PAGE_SIZE = 5000
+
+/**
+ * Without a `limit`, follows `hasMore` until every line after `afterId` is loaded,
+ * one server-capped page per request.
+ */
 export async function getJobLogs(
   jobId: string,
   afterId: number = 0,
   limit: number = 0,
 ): Promise<{ lines: string[], lastId: number, hasMore: boolean }> {
+  if (limit > 0)
+    return getJobLogsPage(jobId, afterId, limit)
+
+  const lines: string[] = []
+  let lastId = afterId
+  for (;;) {
+    const page = await getJobLogsPage(jobId, lastId, LOG_PAGE_SIZE)
+    lines.push(...page.lines)
+    if (page.lines.length > 0)
+      lastId = page.lastId
+    if (!page.hasMore || page.lines.length === 0)
+      return { lines, lastId, hasMore: false }
+  }
+}
+
+async function getJobLogsPage(jobId: string, afterId: number, limit: number) {
   const res = await jobClient.getJobLogs({ jobId, afterId: BigInt(afterId), limit })
   return {
     lines: res.lines,

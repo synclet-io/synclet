@@ -6,6 +6,7 @@ const (
 	MaxNameLength        = 255
 	MaxDescriptionLength = 2000
 	MaxURLLength         = 2048
+	DefaultPageSize      = 25
 	MaxPageSize          = 100
 )
 

@@ -3,6 +3,7 @@ package pipelineconnect
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
@@ -119,29 +120,41 @@ func (h *JobHandler) ListJobs(ctx context.Context, req *connect.Request[pipeline
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	connID, err := uuid.Parse(req.Msg.GetConnectionId())
+	var connID *uuid.UUID
+
+	if raw := req.Msg.GetConnectionId(); raw != "" {
+		parsed, err := uuid.Parse(raw)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+
+		connID = &parsed
+	}
+
+	statuses, err := jobStatusesFromProto(req.Msg.GetStatuses())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	results, err := h.listJobsWithAttempts.Execute(ctx, pipelinejobs.ListJobsWithAttemptsParams{
-		ConnectionID: connID,
+	result, err := h.listJobsWithAttempts.Execute(ctx, pipelinejobs.ListJobsWithAttemptsParams{
 		WorkspaceID:  workspaceID,
+		ConnectionID: connID,
+		Statuses:     statuses,
+		Limit:        int(normalizePageSize(req.Msg.GetPageSize())),
+		Offset:       int(max(req.Msg.GetOffset(), 0)),
 	})
 	if err != nil {
 		return nil, mapError(err)
 	}
 
-	protoJobs := make([]*pipelinev1.Job, len(results))
-	for i, r := range results {
+	protoJobs := make([]*pipelinev1.Job, len(result.Jobs))
+	for i, r := range result.Jobs {
 		protoJobs[i] = jobToProto(r.Job, r.Attempts)
 	}
 
-	paginated, total := paginateSlice(protoJobs, req.Msg.GetPageSize(), req.Msg.GetOffset())
-
 	return connect.NewResponse(&pipelinev1.ListJobsResponse{
-		Jobs:  paginated,
-		Total: total,
+		Jobs:  protoJobs,
+		Total: int32(result.Total),
 	}), nil
 }
 
@@ -171,6 +184,31 @@ func (h *JobHandler) GetJobLogs(ctx context.Context, req *connect.Request[pipeli
 		LastId:  result.LastID,
 		HasMore: result.HasMore,
 	}), nil
+}
+
+func jobStatusesFromProto(statuses []pipelinev1.JobStatus) ([]pipelineservice.JobStatus, error) {
+	result := make([]pipelineservice.JobStatus, 0, len(statuses))
+
+	for _, status := range statuses {
+		switch status {
+		case pipelinev1.JobStatus_JOB_STATUS_SCHEDULED:
+			result = append(result, pipelineservice.JobStatusScheduled)
+		case pipelinev1.JobStatus_JOB_STATUS_STARTING:
+			result = append(result, pipelineservice.JobStatusStarting)
+		case pipelinev1.JobStatus_JOB_STATUS_RUNNING:
+			result = append(result, pipelineservice.JobStatusRunning)
+		case pipelinev1.JobStatus_JOB_STATUS_COMPLETED:
+			result = append(result, pipelineservice.JobStatusCompleted)
+		case pipelinev1.JobStatus_JOB_STATUS_FAILED:
+			result = append(result, pipelineservice.JobStatusFailed)
+		case pipelinev1.JobStatus_JOB_STATUS_CANCELLED:
+			result = append(result, pipelineservice.JobStatusCancelled)
+		default:
+			return nil, fmt.Errorf("unsupported job status filter: %s", status)
+		}
+	}
+
+	return result, nil
 }
 
 func jobToProto(job *pipelineservice.Job, attempts []*pipelineservice.JobAttempt) *pipelinev1.Job {

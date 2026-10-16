@@ -637,10 +637,11 @@ message GetJobResponse {
 }
 
 message ListJobsRequest {
-  string connection_id = 1;
-  int32 page_size = 2;
+  string connection_id = 1;  // empty = all connections in the workspace
+  int32 page_size = 2;       // 0 = server default, capped at 100
   string page_token = 3;
   int32 offset = 4;
+  repeated JobStatus statuses = 5;  // empty = any status
 }
 
 message ListJobsResponse {
@@ -652,7 +653,7 @@ message ListJobsResponse {
 message GetJobLogsRequest {
   string job_id = 1;
   int64 after_id = 2;   // cursor: return logs with id > after_id (0 = from start)
-  int32 limit = 3;      // max lines (0 = all)
+  int32 limit = 3;      // max lines (0 = server default, capped at 5000)
 }
 
 message GetJobLogsResponse {

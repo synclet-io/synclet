@@ -220,3 +220,37 @@ func TestGetJobLog_RefusesCrossWorkspace(t *testing.T) {
 	})
 	require.Error(t, err)
 }
+
+func TestGetJobLog_DefaultAndMaxLimit(t *testing.T) {
+	workspaceID := uuid.New()
+	jobID := uuid.New()
+	connID := uuid.New()
+	store := newLogStore(workspaceID, jobID, connID)
+
+	lines := make([]string, pipelinelogs.MaxLogLimit+10)
+	for i := range lines {
+		lines[i] = "line"
+	}
+
+	require.NoError(t, pipelinelogs.NewBatchAppendJobLogs(store).Execute(context.Background(), pipelinelogs.BatchAppendJobLogsParams{
+		JobID:    jobID,
+		LogLines: lines,
+	}))
+
+	getUC := pipelinelogs.NewGetJobLog(store)
+
+	byDefault, err := getUC.Execute(context.Background(), pipelinelogs.GetJobLogParams{WorkspaceID: workspaceID, JobID: jobID})
+	require.NoError(t, err)
+	assert.Len(t, byDefault.Lines, pipelinelogs.DefaultLogLimit)
+	assert.True(t, byDefault.HasMore)
+
+	capped, err := getUC.Execute(context.Background(), pipelinelogs.GetJobLogParams{WorkspaceID: workspaceID, JobID: jobID, Limit: pipelinelogs.MaxLogLimit * 2})
+	require.NoError(t, err)
+	assert.Len(t, capped.Lines, pipelinelogs.MaxLogLimit)
+	assert.True(t, capped.HasMore)
+
+	rest, err := getUC.Execute(context.Background(), pipelinelogs.GetJobLogParams{WorkspaceID: workspaceID, JobID: jobID, AfterID: capped.LastID, Limit: pipelinelogs.MaxLogLimit})
+	require.NoError(t, err)
+	assert.Len(t, rest.Lines, 10)
+	assert.False(t, rest.HasMore)
+}

@@ -15,8 +15,13 @@ type GetJobLogParams struct {
 	WorkspaceID uuid.UUID
 	JobID       uuid.UUID
 	AfterID     int64 // cursor: return logs with id > AfterID (0 = from beginning)
-	Limit       int   // max lines to return (0 = all)
+	Limit       int   // max lines to return (<= 0 = DefaultLogLimit, capped at MaxLogLimit)
 }
+
+const (
+	DefaultLogLimit = 1000
+	MaxLogLimit     = 5000
+)
 
 // GetJobLogResult holds the result of a job log query.
 type GetJobLogResult struct {
@@ -55,23 +60,19 @@ func (uc *GetJobLog) Execute(ctx context.Context, params GetJobLogParams) (*GetJ
 
 	limit := params.Limit
 	if limit <= 0 {
-		limit = 0 // no limit
+		limit = DefaultLogLimit
 	}
+
+	limit = min(limit, MaxLogLimit)
 
 	// Fetch limit+1 to detect hasMore.
-	fetchLimit := limit
-	if fetchLimit > 0 {
-		fetchLimit = limit + 1
-	}
-
-	logs, err := uc.storage.JobLogs().GetLogs(ctx, params.JobID, params.AfterID, fetchLimit)
+	logs, err := uc.storage.JobLogs().GetLogs(ctx, params.JobID, params.AfterID, limit+1)
 	if err != nil {
 		return nil, err
 	}
 
-	hasMore := false
-	if fetchLimit > 0 && len(logs) > limit {
-		hasMore = true
+	hasMore := len(logs) > limit
+	if hasMore {
 		logs = logs[:limit]
 	}
 
