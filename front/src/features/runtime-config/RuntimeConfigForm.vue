@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Tab } from '@shared/ui'
+import { useRuntimeDefaults } from '@entities/system'
 import { SAlert, SButton, SCard, SCheckbox, SConfirmDialog, SInput, STabs, STextarea } from '@shared/ui'
 import { Trash2 } from 'lucide-vue-next'
 import { computed, reactive, ref, watch } from 'vue'
@@ -36,6 +37,23 @@ const serviceAccountName = ref('')
 const tolerationsJson = ref('')
 const nodeSelectorJson = ref('')
 const affinityJson = ref('')
+
+const runtimeDefaults = useRuntimeDefaults()
+const defaults = computed(() => runtimeDefaults.data.value)
+
+function defaultPlaceholder(value: string | undefined, example: string): string {
+  if (!defaults.value)
+    return example
+  return value ? `Default: ${value}` : `No default (${example})`
+}
+
+const placeholders = computed(() => ({
+  cpuRequest: defaultPlaceholder(defaults.value?.cpuRequest, 'e.g. 250m'),
+  cpuLimit: defaultPlaceholder(defaults.value?.cpuLimit, 'e.g. 1000m'),
+  memoryRequest: defaultPlaceholder(defaults.value?.memoryRequest, 'e.g. 256Mi'),
+  memoryLimit: defaultPlaceholder(defaults.value?.memoryLimit, 'e.g. 512Mi'),
+  serviceAccountName: defaultPlaceholder(defaults.value?.serviceAccountName, 'e.g. my-sync-service-account'),
+}))
 
 const validationErrors = reactive<Record<string, string>>({})
 const confirmResetOpen = ref(false)
@@ -217,7 +235,7 @@ function removeVolume(index: number) {
             Runtime Configuration
           </h3>
           <p class="text-sm text-text-muted mt-1">
-            Configure container resources and executor-specific options for this {{ entityType }}. Empty fields fall back to global defaults.
+            Configure container resources and executor-specific options for this {{ entityType }}. Empty fields use the global default shown as their placeholder (see Settings &rsaquo; General &rsaquo; Runtime defaults).
           </p>
         </div>
       </div>
@@ -232,8 +250,8 @@ function removeVolume(index: number) {
           Resource limits apply to both Docker and Kubernetes executors. Requests (lower bounds) are Kubernetes-only — set them in the Kubernetes tab.
         </p>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <SInput v-model="cpuLimit" label="CPU Limit" placeholder="e.g. 1000m" :error="validationErrors.cpuLimit" />
-          <SInput v-model="memoryLimit" label="Memory Limit" placeholder="e.g. 512Mi" :error="validationErrors.memoryLimit" />
+          <SInput v-model="cpuLimit" label="CPU Limit" :placeholder="placeholders.cpuLimit" :error="validationErrors.cpuLimit" />
+          <SInput v-model="memoryLimit" label="Memory Limit" :placeholder="placeholders.memoryLimit" :error="validationErrors.memoryLimit" />
         </div>
       </div>
 
@@ -297,15 +315,15 @@ function removeVolume(index: number) {
             Lower bounds the scheduler reserves on the node. Limits set in the Common tab are the upper bounds.
           </p>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <SInput v-model="cpuRequest" label="CPU Request" placeholder="e.g. 250m" :error="validationErrors.cpuRequest" />
-            <SInput v-model="memoryRequest" label="Memory Request" placeholder="e.g. 256Mi" :error="validationErrors.memoryRequest" />
+            <SInput v-model="cpuRequest" label="CPU Request" :placeholder="placeholders.cpuRequest" :error="validationErrors.cpuRequest" />
+            <SInput v-model="memoryRequest" label="Memory Request" :placeholder="placeholders.memoryRequest" :error="validationErrors.memoryRequest" />
           </div>
         </div>
 
         <div>
-          <SInput v-model="serviceAccountName" label="Service Account Name" placeholder="e.g. my-sync-service-account" />
+          <SInput v-model="serviceAccountName" label="Service Account Name" :placeholder="placeholders.serviceAccountName" />
           <p class="text-xs text-text-muted mt-1">
-            Kubernetes service account for the replication pod. Leave blank to use the global default.
+            Kubernetes service account for the replication pod. Leave blank to use the global default shown above.
           </p>
         </div>
 

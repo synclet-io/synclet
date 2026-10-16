@@ -88,6 +88,7 @@ export const auditKeys = {
 export const systemKeys = {
   all: ['system'] as const,
   info: () => [...systemKeys.all, 'info'] as const,
+  runtimeDefaults: () => [...systemKeys.all, 'runtimeDefaults'] as const,
 } as const
 
 export const apiKeyKeys = {

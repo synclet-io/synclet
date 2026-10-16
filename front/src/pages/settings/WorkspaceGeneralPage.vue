@@ -2,6 +2,7 @@
 import { useAuth } from '@entities/auth'
 import { deleteWorkspace, getWorkspace, updateWorkspace } from '@entities/workspace/api'
 import { useExportConfig, useImportConfig } from '@entities/workspace/composables'
+import RuntimeDefaultsCard from '@features/runtime-config/RuntimeDefaultsCard.vue'
 import { connectionClient } from '@shared/api/services'
 import { getErrorMessage } from '@shared/lib/errorUtils'
 import { workspaceKeys } from '@shared/lib/queryKeys'
@@ -244,6 +245,8 @@ async function handleImportConfirm() {
           Save
         </SButton>
       </SCard>
+
+      <RuntimeDefaultsCard />
 
       <SCard v-if="isAdmin">
         <h3 class="text-lg font-semibold text-danger mb-2">

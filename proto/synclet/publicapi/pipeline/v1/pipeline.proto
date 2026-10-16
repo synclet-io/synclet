@@ -68,6 +68,14 @@ enum WorkspacesMode {
   WORKSPACES_MODE_MULTI = 2;
 }
 
+// Executor that runs syncs in this server process. UNSPECIFIED when syncs run
+// in a separate executor process.
+enum ExecutorType {
+  EXECUTOR_TYPE_UNSPECIFIED = 0;
+  EXECUTOR_TYPE_DOCKER = 1;
+  EXECUTOR_TYPE_K8S = 2;
+}
+
 // ==================== Services ====================
 
 service SourceService {
@@ -96,6 +104,9 @@ service SourceService {
     option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
   }
   rpc GetSystemInfo(GetSystemInfoRequest) returns (GetSystemInfoResponse) {}
+  rpc GetRuntimeDefaults(GetRuntimeDefaultsRequest) returns (GetRuntimeDefaultsResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
+  }
 }
 
 service DestinationService {
@@ -305,6 +316,31 @@ message GetSystemInfoResponse {
   WorkspacesMode workspaces_mode = 3;
   // Whether the server can send email (invites, email notifications).
   bool email_enabled = 4;
+  reserved 5;
+  reserved "runtime_defaults";
+}
+
+message GetRuntimeDefaultsRequest {}
+
+message GetRuntimeDefaultsResponse {
+  RuntimeDefaults runtime_defaults = 1;
+}
+
+// Global runtime settings applied when a source or destination has no
+// runtime config of its own. Empty resource strings mean no default is set.
+message RuntimeDefaults {
+  ExecutorType executor = 1;
+  string cpu_request = 2;
+  string cpu_limit = 3;
+  string memory_request = 4;
+  string memory_limit = 5;
+  string service_account_name = 6;
+  int32 max_concurrent_jobs = 7;
+  int64 idle_timeout_seconds = 8;
+  // Job log archive backend: none, filesystem, s3 or gcs.
+  string log_archive_backend = 9;
+  // Concurrent sync limit of the Docker executor; 0 for other executors.
+  int32 docker_max_concurrent_jobs = 10;
 }
 
 // ==================== Destination Messages ====================

@@ -67,6 +67,9 @@ const (
 	// SourceServiceGetSystemInfoProcedure is the fully-qualified name of the SourceService's
 	// GetSystemInfo RPC.
 	SourceServiceGetSystemInfoProcedure = "/synclet.publicapi.pipeline.v1.SourceService/GetSystemInfo"
+	// SourceServiceGetRuntimeDefaultsProcedure is the fully-qualified name of the SourceService's
+	// GetRuntimeDefaults RPC.
+	SourceServiceGetRuntimeDefaultsProcedure = "/synclet.publicapi.pipeline.v1.SourceService/GetRuntimeDefaults"
 	// DestinationServiceCreateDestinationProcedure is the fully-qualified name of the
 	// DestinationService's CreateDestination RPC.
 	DestinationServiceCreateDestinationProcedure = "/synclet.publicapi.pipeline.v1.DestinationService/CreateDestination"
@@ -171,6 +174,7 @@ type SourceServiceClient interface {
 	DiscoverSourceSchema(context.Context, *connect.Request[v1.DiscoverSourceSchemaRequest]) (*connect.Response[v1.DiscoverSourceSchemaResponse], error)
 	GetSourceCatalog(context.Context, *connect.Request[v1.GetSourceCatalogRequest]) (*connect.Response[v1.GetSourceCatalogResponse], error)
 	GetSystemInfo(context.Context, *connect.Request[v1.GetSystemInfoRequest]) (*connect.Response[v1.GetSystemInfoResponse], error)
+	GetRuntimeDefaults(context.Context, *connect.Request[v1.GetRuntimeDefaultsRequest]) (*connect.Response[v1.GetRuntimeDefaultsResponse], error)
 }
 
 // NewSourceServiceClient constructs a client for the synclet.publicapi.pipeline.v1.SourceService
@@ -238,6 +242,12 @@ func NewSourceServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(sourceServiceMethods.ByName("GetSystemInfo")),
 			connect.WithClientOptions(opts...),
 		),
+		getRuntimeDefaults: connect.NewClient[v1.GetRuntimeDefaultsRequest, v1.GetRuntimeDefaultsResponse](
+			httpClient,
+			baseURL+SourceServiceGetRuntimeDefaultsProcedure,
+			connect.WithSchema(sourceServiceMethods.ByName("GetRuntimeDefaults")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -252,6 +262,7 @@ type sourceServiceClient struct {
 	discoverSourceSchema *connect.Client[v1.DiscoverSourceSchemaRequest, v1.DiscoverSourceSchemaResponse]
 	getSourceCatalog     *connect.Client[v1.GetSourceCatalogRequest, v1.GetSourceCatalogResponse]
 	getSystemInfo        *connect.Client[v1.GetSystemInfoRequest, v1.GetSystemInfoResponse]
+	getRuntimeDefaults   *connect.Client[v1.GetRuntimeDefaultsRequest, v1.GetRuntimeDefaultsResponse]
 }
 
 // CreateSource calls synclet.publicapi.pipeline.v1.SourceService.CreateSource.
@@ -299,6 +310,11 @@ func (c *sourceServiceClient) GetSystemInfo(ctx context.Context, req *connect.Re
 	return c.getSystemInfo.CallUnary(ctx, req)
 }
 
+// GetRuntimeDefaults calls synclet.publicapi.pipeline.v1.SourceService.GetRuntimeDefaults.
+func (c *sourceServiceClient) GetRuntimeDefaults(ctx context.Context, req *connect.Request[v1.GetRuntimeDefaultsRequest]) (*connect.Response[v1.GetRuntimeDefaultsResponse], error) {
+	return c.getRuntimeDefaults.CallUnary(ctx, req)
+}
+
 // SourceServiceHandler is an implementation of the synclet.publicapi.pipeline.v1.SourceService
 // service.
 type SourceServiceHandler interface {
@@ -311,6 +327,7 @@ type SourceServiceHandler interface {
 	DiscoverSourceSchema(context.Context, *connect.Request[v1.DiscoverSourceSchemaRequest]) (*connect.Response[v1.DiscoverSourceSchemaResponse], error)
 	GetSourceCatalog(context.Context, *connect.Request[v1.GetSourceCatalogRequest]) (*connect.Response[v1.GetSourceCatalogResponse], error)
 	GetSystemInfo(context.Context, *connect.Request[v1.GetSystemInfoRequest]) (*connect.Response[v1.GetSystemInfoResponse], error)
+	GetRuntimeDefaults(context.Context, *connect.Request[v1.GetRuntimeDefaultsRequest]) (*connect.Response[v1.GetRuntimeDefaultsResponse], error)
 }
 
 // NewSourceServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -374,6 +391,12 @@ func NewSourceServiceHandler(svc SourceServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(sourceServiceMethods.ByName("GetSystemInfo")),
 		connect.WithHandlerOptions(opts...),
 	)
+	sourceServiceGetRuntimeDefaultsHandler := connect.NewUnaryHandler(
+		SourceServiceGetRuntimeDefaultsProcedure,
+		svc.GetRuntimeDefaults,
+		connect.WithSchema(sourceServiceMethods.ByName("GetRuntimeDefaults")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/synclet.publicapi.pipeline.v1.SourceService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case SourceServiceCreateSourceProcedure:
@@ -394,6 +417,8 @@ func NewSourceServiceHandler(svc SourceServiceHandler, opts ...connect.HandlerOp
 			sourceServiceGetSourceCatalogHandler.ServeHTTP(w, r)
 		case SourceServiceGetSystemInfoProcedure:
 			sourceServiceGetSystemInfoHandler.ServeHTTP(w, r)
+		case SourceServiceGetRuntimeDefaultsProcedure:
+			sourceServiceGetRuntimeDefaultsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -437,6 +462,10 @@ func (UnimplementedSourceServiceHandler) GetSourceCatalog(context.Context, *conn
 
 func (UnimplementedSourceServiceHandler) GetSystemInfo(context.Context, *connect.Request[v1.GetSystemInfoRequest]) (*connect.Response[v1.GetSystemInfoResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("synclet.publicapi.pipeline.v1.SourceService.GetSystemInfo is not implemented"))
+}
+
+func (UnimplementedSourceServiceHandler) GetRuntimeDefaults(context.Context, *connect.Request[v1.GetRuntimeDefaultsRequest]) (*connect.Response[v1.GetRuntimeDefaultsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("synclet.publicapi.pipeline.v1.SourceService.GetRuntimeDefaults is not implemented"))
 }
 
 // DestinationServiceClient is a client for the synclet.publicapi.pipeline.v1.DestinationService

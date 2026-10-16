@@ -195,11 +195,41 @@ func pipelineMetricsCollectorAdapter(c *pipelinemetrics.MetricsCollector) promet
 	return c
 }
 
-func newPipelineSourceHandlerConfig(authCfg *authConfig, wsCfg *workspaceConfig, notifyCfg *notifyConfig) pipelineconnect.SourceHandlerConfig {
+func newPipelineSourceHandlerConfig(
+	options *RunAppOptions,
+	authCfg *authConfig,
+	wsCfg *workspaceConfig,
+	notifyCfg *notifyConfig,
+	cfg *pipelineConfig,
+	dockerCfg *dockerExecutorConfig,
+) pipelineconnect.SourceHandlerConfig {
+	executor := pipelineconnect.ExecutorNone
+	dockerMaxConcurrentJobs := 0
+
+	switch {
+	case options.DockerExecutor:
+		executor = pipelineconnect.ExecutorDocker
+		dockerMaxConcurrentJobs = dockerCfg.MaxConcurrentJobs
+	case options.K8sExecutor:
+		executor = pipelineconnect.ExecutorK8s
+	}
+
 	return pipelineconnect.SourceHandlerConfig{
 		RegistrationEnabled: authCfg.RegistrationEnabled,
 		SingleWorkspaceMode: WorkspaceModeSingle == wsCfg.Mode,
 		EmailEnabled:        notifyCfg.SMTP.Host != "",
+		RuntimeDefaults: pipelineconnect.RuntimeDefaultsInfo{
+			Executor:                executor,
+			CPURequest:              cfg.Runtime.CPURequest,
+			CPULimit:                cfg.Runtime.CPULimit,
+			MemoryRequest:           cfg.Runtime.MemoryRequest,
+			MemoryLimit:             cfg.Runtime.MemoryLimit,
+			ServiceAccountName:      cfg.Runtime.ServiceAccountName,
+			MaxConcurrentJobs:       cfg.MaxConcurrentJobs,
+			IdleTimeout:             cfg.IdleTimeout,
+			LogArchiveBackend:       cfg.LogArchive.Backend,
+			DockerMaxConcurrentJobs: dockerMaxConcurrentJobs,
+		},
 	}
 }
 
