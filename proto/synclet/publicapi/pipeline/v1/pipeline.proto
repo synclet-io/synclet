@@ -341,6 +341,12 @@ message RuntimeDefaults {
   string log_archive_backend = 9;
   // Concurrent sync limit of the Docker executor; 0 for other executors.
   int32 docker_max_concurrent_jobs = 10;
+  // cpu_request and cpu_limit are the Kubernetes executor's fallback, applied
+  // because no runtime CPU default is set.
+  bool cpu_executor_default = 11;
+  // memory_request and memory_limit are the Kubernetes executor's fallback,
+  // applied because no runtime memory default is set.
+  bool memory_executor_default = 12;
 }
 
 // ==================== Destination Messages ====================

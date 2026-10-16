@@ -116,6 +116,50 @@ func TestSourceHandler_GetRuntimeDefaults(t *testing.T) {
 				LogArchiveBackend:  "gcs",
 			},
 		},
+		{
+			name: "k8s executor falls back to its default resources",
+			config: RuntimeDefaultsInfo{
+				Executor:         ExecutorK8s,
+				K8sDefaultCPU:    "1",
+				K8sDefaultMemory: "2Gi",
+			},
+			want: &pipelinev1.RuntimeDefaults{
+				Executor:              pipelinev1.ExecutorType_EXECUTOR_TYPE_K8S,
+				CpuRequest:            "1",
+				CpuLimit:              "1",
+				CpuExecutorDefault:    true,
+				MemoryRequest:         "2Gi",
+				MemoryLimit:           "2Gi",
+				MemoryExecutorDefault: true,
+			},
+		},
+		{
+			name: "k8s executor falls back only for the unset resource",
+			config: RuntimeDefaultsInfo{
+				Executor:         ExecutorK8s,
+				CPULimit:         "2",
+				K8sDefaultCPU:    "1",
+				K8sDefaultMemory: "2Gi",
+			},
+			want: &pipelinev1.RuntimeDefaults{
+				Executor:              pipelinev1.ExecutorType_EXECUTOR_TYPE_K8S,
+				CpuLimit:              "2",
+				MemoryRequest:         "2Gi",
+				MemoryLimit:           "2Gi",
+				MemoryExecutorDefault: true,
+			},
+		},
+		{
+			name: "docker executor ignores k8s defaults",
+			config: RuntimeDefaultsInfo{
+				Executor:         ExecutorDocker,
+				K8sDefaultCPU:    "1",
+				K8sDefaultMemory: "2Gi",
+			},
+			want: &pipelinev1.RuntimeDefaults{
+				Executor: pipelinev1.ExecutorType_EXECUTOR_TYPE_DOCKER,
+			},
+		},
 	}
 
 	for _, tt := range tests {

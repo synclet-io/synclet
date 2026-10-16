@@ -1737,8 +1737,14 @@ type RuntimeDefaults struct {
 	LogArchiveBackend string `protobuf:"bytes,9,opt,name=log_archive_backend,json=logArchiveBackend,proto3" json:"log_archive_backend,omitempty"`
 	// Concurrent sync limit of the Docker executor; 0 for other executors.
 	DockerMaxConcurrentJobs int32 `protobuf:"varint,10,opt,name=docker_max_concurrent_jobs,json=dockerMaxConcurrentJobs,proto3" json:"docker_max_concurrent_jobs,omitempty"`
-	unknownFields           protoimpl.UnknownFields
-	sizeCache               protoimpl.SizeCache
+	// cpu_request and cpu_limit are the Kubernetes executor's fallback, applied
+	// because no runtime CPU default is set.
+	CpuExecutorDefault bool `protobuf:"varint,11,opt,name=cpu_executor_default,json=cpuExecutorDefault,proto3" json:"cpu_executor_default,omitempty"`
+	// memory_request and memory_limit are the Kubernetes executor's fallback,
+	// applied because no runtime memory default is set.
+	MemoryExecutorDefault bool `protobuf:"varint,12,opt,name=memory_executor_default,json=memoryExecutorDefault,proto3" json:"memory_executor_default,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *RuntimeDefaults) Reset() {
@@ -1839,6 +1845,20 @@ func (x *RuntimeDefaults) GetDockerMaxConcurrentJobs() int32 {
 		return x.DockerMaxConcurrentJobs
 	}
 	return 0
+}
+
+func (x *RuntimeDefaults) GetCpuExecutorDefault() bool {
+	if x != nil {
+		return x.CpuExecutorDefault
+	}
+	return false
+}
+
+func (x *RuntimeDefaults) GetMemoryExecutorDefault() bool {
+	if x != nil {
+		return x.MemoryExecutorDefault
+	}
+	return false
 }
 
 type Destination struct {
@@ -6272,7 +6292,7 @@ const file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDesc = "" +
 	"\remail_enabled\x18\x04 \x01(\bR\femailEnabledJ\x04\b\x01\x10\x02J\x04\b\x05\x10\x06R\x10runtime_defaults\"\x1b\n" +
 	"\x19GetRuntimeDefaultsRequest\"w\n" +
 	"\x1aGetRuntimeDefaultsResponse\x12Y\n" +
-	"\x10runtime_defaults\x18\x01 \x01(\v2..synclet.publicapi.pipeline.v1.RuntimeDefaultsR\x0fruntimeDefaults\"\xe3\x03\n" +
+	"\x10runtime_defaults\x18\x01 \x01(\v2..synclet.publicapi.pipeline.v1.RuntimeDefaultsR\x0fruntimeDefaults\"\xcd\x04\n" +
 	"\x0fRuntimeDefaults\x12G\n" +
 	"\bexecutor\x18\x01 \x01(\x0e2+.synclet.publicapi.pipeline.v1.ExecutorTypeR\bexecutor\x12\x1f\n" +
 	"\vcpu_request\x18\x02 \x01(\tR\n" +
@@ -6285,7 +6305,9 @@ const file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDesc = "" +
 	"\x14idle_timeout_seconds\x18\b \x01(\x03R\x12idleTimeoutSeconds\x12.\n" +
 	"\x13log_archive_backend\x18\t \x01(\tR\x11logArchiveBackend\x12;\n" +
 	"\x1adocker_max_concurrent_jobs\x18\n" +
-	" \x01(\x05R\x17dockerMaxConcurrentJobs\"\xf2\x02\n" +
+	" \x01(\x05R\x17dockerMaxConcurrentJobs\x120\n" +
+	"\x14cpu_executor_default\x18\v \x01(\bR\x12cpuExecutorDefault\x126\n" +
+	"\x17memory_executor_default\x18\f \x01(\bR\x15memoryExecutorDefault\"\xf2\x02\n" +
 	"\vDestination\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
 	"\fworkspace_id\x18\x02 \x01(\tR\vworkspaceId\x12\x12\n" +

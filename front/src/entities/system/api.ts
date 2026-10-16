@@ -26,6 +26,8 @@ function toRuntimeDefaults(rd: RuntimeDefaultsProto | undefined): RuntimeDefault
     idleTimeoutSeconds: Number(rd?.idleTimeoutSeconds ?? 0),
     logArchiveBackend: rd?.logArchiveBackend ?? '',
     dockerMaxConcurrentJobs: rd?.dockerMaxConcurrentJobs ?? 0,
+    cpuExecutorDefault: rd?.cpuExecutorDefault ?? false,
+    memoryExecutorDefault: rd?.memoryExecutorDefault ?? false,
   }
 }
 

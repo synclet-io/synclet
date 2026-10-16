@@ -21,8 +21,8 @@ type Config struct {
 	Namespace       string
 	Kubeconfig      string
 	ImagePullSecret string
-	DefaultMemory   string
-	DefaultCPU      string
+	DefaultMemory   string // Memory request and limit of a sync container that has neither
+	DefaultCPU      string // CPU request and limit of a sync container that has neither
 	SyncletImage    string // Docker image containing the synclet binary (for orchestrator)
 	ServerAddr      string // Synclet server address reachable from pods
 	APIToken        string // Internal API token the in-pod coordinator sends to the server
@@ -82,6 +82,10 @@ type SyncRunner struct {
 
 // NewSyncRunner creates a new K8s sync runner.
 func NewSyncRunner(cfg Config) (*SyncRunner, error) {
+	if _, err := cfg.resourceDefaults(); err != nil {
+		return nil, err
+	}
+
 	var restConfig *rest.Config
 	var err error
 
@@ -274,9 +278,13 @@ func (r *SyncRunner) LaunchSync(ctx context.Context, opts SyncOptions) (string, 
 		},
 	}
 
-	// Per-container resource requirements.
-	sourceResources := buildResourceRequirements(opts.SourceMemoryLimit, opts.SourceCPULimit, opts.SourceMemoryRequest, opts.SourceCPURequest)
-	destResources := buildResourceRequirements(opts.DestMemoryLimit, opts.DestCPULimit, opts.DestMemoryRequest, opts.DestCPURequest)
+	defaults, err := r.config.resourceDefaults()
+	if err != nil {
+		return "", err
+	}
+
+	sourceResources := defaults.apply(buildResourceRequirements(opts.SourceMemoryLimit, opts.SourceCPULimit, opts.SourceMemoryRequest, opts.SourceCPURequest))
+	destResources := defaults.apply(buildResourceRequirements(opts.DestMemoryLimit, opts.DestCPULimit, opts.DestMemoryRequest, opts.DestCPURequest))
 
 	// SubPath mounts: source container gets config/catalog/state directly from Secret.
 	sourceVolumeMounts := []corev1.VolumeMount{sharedMount}
@@ -673,6 +681,70 @@ func buildResourceRequirements(memoryLimit int64, cpuLimit float64, memoryReques
 		}
 
 		reqs.Requests = requests
+	}
+
+	return reqs
+}
+
+// resourceDefaults holds the executor's fallback resources; a nil quantity
+// means no fallback for that resource.
+type resourceDefaults struct {
+	cpu    *resource.Quantity
+	memory *resource.Quantity
+}
+
+func (c Config) resourceDefaults() (resourceDefaults, error) {
+	var defaults resourceDefaults
+
+	if c.DefaultCPU != "" {
+		cpu, err := resource.ParseQuantity(c.DefaultCPU)
+		if err != nil {
+			return resourceDefaults{}, fmt.Errorf("parsing default CPU %q: %w", c.DefaultCPU, err)
+		}
+
+		defaults.cpu = &cpu
+	}
+
+	if c.DefaultMemory != "" {
+		memory, err := resource.ParseQuantity(c.DefaultMemory)
+		if err != nil {
+			return resourceDefaults{}, fmt.Errorf("parsing default memory %q: %w", c.DefaultMemory, err)
+		}
+
+		defaults.memory = &memory
+	}
+
+	return defaults, nil
+}
+
+// apply sets the default as both request and limit of each resource that has
+// neither.
+func (d resourceDefaults) apply(reqs corev1.ResourceRequirements) corev1.ResourceRequirements {
+	for name, quantity := range map[corev1.ResourceName]*resource.Quantity{
+		corev1.ResourceCPU:    d.cpu,
+		corev1.ResourceMemory: d.memory,
+	} {
+		if quantity == nil {
+			continue
+		}
+
+		_, hasLimit := reqs.Limits[name]
+		_, hasRequest := reqs.Requests[name]
+
+		if hasLimit || hasRequest {
+			continue
+		}
+
+		if reqs.Limits == nil {
+			reqs.Limits = corev1.ResourceList{}
+		}
+
+		if reqs.Requests == nil {
+			reqs.Requests = corev1.ResourceList{}
+		}
+
+		reqs.Limits[name] = quantity.DeepCopy()
+		reqs.Requests[name] = quantity.DeepCopy()
 	}
 
 	return reqs

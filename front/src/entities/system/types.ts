@@ -11,6 +11,8 @@ export interface RuntimeDefaults {
   idleTimeoutSeconds: number
   logArchiveBackend: string
   dockerMaxConcurrentJobs: number
+  cpuExecutorDefault: boolean
+  memoryExecutorDefault: boolean
 }
 
 export interface SystemInfo {

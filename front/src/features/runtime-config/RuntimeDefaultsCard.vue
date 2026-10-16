@@ -27,12 +27,14 @@ const rows = computed(() => {
   if (!rd)
     return []
   const notSet = 'Not set'
+  const resource = (value: string, executorDefault: boolean) =>
+    !value ? notSet : executorDefault ? `${value} (Kubernetes executor default)` : value
   return [
     { label: 'Executor', value: executorLabels[rd.executor] },
-    { label: 'CPU request', value: rd.cpuRequest || notSet },
-    { label: 'CPU limit', value: rd.cpuLimit || notSet },
-    { label: 'Memory request', value: rd.memoryRequest || notSet },
-    { label: 'Memory limit', value: rd.memoryLimit || notSet },
+    { label: 'CPU request', value: resource(rd.cpuRequest, rd.cpuExecutorDefault) },
+    { label: 'CPU limit', value: resource(rd.cpuLimit, rd.cpuExecutorDefault) },
+    { label: 'Memory request', value: resource(rd.memoryRequest, rd.memoryExecutorDefault) },
+    { label: 'Memory limit', value: resource(rd.memoryLimit, rd.memoryExecutorDefault) },
     { label: 'Service account', value: rd.serviceAccountName || notSet },
     { label: 'Max concurrent jobs', value: rd.maxConcurrentJobs > 0 ? String(rd.maxConcurrentJobs) : 'Unlimited' },
     ...(rd.executor === 'docker'

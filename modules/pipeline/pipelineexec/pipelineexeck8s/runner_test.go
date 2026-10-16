@@ -651,3 +651,58 @@ func TestLaunchConnectorTask_APIToken(t *testing.T) {
 		assert.NotEqual(t, "task-configs", m.Name, "connector must not see the API token or a missing task config")
 	}
 }
+
+func TestLaunchSync_ExecutorDefaultResources(t *testing.T) {
+	client := fake.NewSimpleClientset()
+	runner := newTestSyncRunner(client)
+	runner.config.DefaultCPU = "1"
+	runner.config.DefaultMemory = "2Gi"
+
+	jobName, err := runner.LaunchSync(context.Background(), SyncOptions{
+		JobID:         "test-job-defaults",
+		ConnectionID:  "test-conn-defaults",
+		SourceID:      "src-defaults",
+		DestinationID: "dest-defaults",
+		SourceImage:   "source:latest",
+		SourceConfig:  []byte(`{}`),
+		DestImage:     "dest:latest",
+		DestConfig:    []byte(`{}`),
+
+		DestMemoryLimit: 512 * 1024 * 1024,
+		DestCPURequest:  0.25,
+	})
+	require.NoError(t, err)
+
+	job, err := client.BatchV1().Jobs("test-ns").Get(context.Background(), jobName, metav1.GetOptions{})
+	require.NoError(t, err)
+
+	containers := job.Spec.Template.Spec.Containers
+	require.Len(t, containers, 3)
+
+	source := containers[1].Resources
+	require.NotNil(t, source.Limits)
+	require.NotNil(t, source.Requests)
+	assert.Equal(t, int64(1000), source.Limits.Cpu().MilliValue())
+	assert.Equal(t, int64(1000), source.Requests.Cpu().MilliValue())
+	assert.Equal(t, int64(2*1024*1024*1024), source.Limits.Memory().Value())
+	assert.Equal(t, int64(2*1024*1024*1024), source.Requests.Memory().Value())
+
+	dest := containers[2].Resources
+	assert.Equal(t, int64(512*1024*1024), dest.Limits.Memory().Value())
+	_, hasMemoryRequest := dest.Requests[corev1.ResourceMemory]
+	assert.False(t, hasMemoryRequest)
+	assert.Equal(t, int64(250), dest.Requests.Cpu().MilliValue())
+	_, hasCPULimit := dest.Limits[corev1.ResourceCPU]
+	assert.False(t, hasCPULimit)
+}
+
+func TestNewSyncRunner_InvalidDefaultResources(t *testing.T) {
+	for _, cfg := range []Config{
+		{Kubeconfig: "/nonexistent", DefaultCPU: "one"},
+		{Kubeconfig: "/nonexistent", DefaultMemory: "lots"},
+	} {
+		_, err := NewSyncRunner(cfg)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "default")
+	}
+}

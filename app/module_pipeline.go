@@ -195,40 +195,52 @@ func pipelineMetricsCollectorAdapter(c *pipelinemetrics.MetricsCollector) promet
 	return c
 }
 
-func newPipelineSourceHandlerConfig(
-	options *RunAppOptions,
-	authCfg *authConfig,
-	wsCfg *workspaceConfig,
-	notifyCfg *notifyConfig,
-	cfg *pipelineConfig,
-	dockerCfg *dockerExecutorConfig,
-) pipelineconnect.SourceHandlerConfig {
+type pipelineSourceHandlerConfigParams struct {
+	fx.In
+
+	Options   *RunAppOptions
+	AuthCfg   *authConfig
+	WsCfg     *workspaceConfig
+	NotifyCfg *notifyConfig
+	Cfg       *pipelineConfig
+	DockerCfg *dockerExecutorConfig
+	K8sCfg    *k8sExecutorConfig `optional:"true"`
+}
+
+func newPipelineSourceHandlerConfig(params pipelineSourceHandlerConfigParams) pipelineconnect.SourceHandlerConfig {
 	executor := pipelineconnect.ExecutorNone
 	dockerMaxConcurrentJobs := 0
+	k8sDefaultCPU, k8sDefaultMemory := "", ""
 
 	switch {
-	case options.DockerExecutor:
+	case params.Options.DockerExecutor:
 		executor = pipelineconnect.ExecutorDocker
-		dockerMaxConcurrentJobs = dockerCfg.MaxConcurrentJobs
-	case options.K8sExecutor:
+		dockerMaxConcurrentJobs = params.DockerCfg.MaxConcurrentJobs
+	case params.Options.K8sExecutor:
 		executor = pipelineconnect.ExecutorK8s
+
+		if params.K8sCfg != nil {
+			k8sDefaultCPU, k8sDefaultMemory = params.K8sCfg.DefaultCPU, params.K8sCfg.DefaultMemory
+		}
 	}
 
 	return pipelineconnect.SourceHandlerConfig{
-		RegistrationEnabled: authCfg.RegistrationEnabled,
-		SingleWorkspaceMode: WorkspaceModeSingle == wsCfg.Mode,
-		EmailEnabled:        notifyCfg.SMTP.Host != "",
+		RegistrationEnabled: params.AuthCfg.RegistrationEnabled,
+		SingleWorkspaceMode: WorkspaceModeSingle == params.WsCfg.Mode,
+		EmailEnabled:        params.NotifyCfg.SMTP.Host != "",
 		RuntimeDefaults: pipelineconnect.RuntimeDefaultsInfo{
 			Executor:                executor,
-			CPURequest:              cfg.Runtime.CPURequest,
-			CPULimit:                cfg.Runtime.CPULimit,
-			MemoryRequest:           cfg.Runtime.MemoryRequest,
-			MemoryLimit:             cfg.Runtime.MemoryLimit,
-			ServiceAccountName:      cfg.Runtime.ServiceAccountName,
-			MaxConcurrentJobs:       cfg.MaxConcurrentJobs,
-			IdleTimeout:             cfg.IdleTimeout,
-			LogArchiveBackend:       cfg.LogArchive.Backend,
+			CPURequest:              params.Cfg.Runtime.CPURequest,
+			CPULimit:                params.Cfg.Runtime.CPULimit,
+			MemoryRequest:           params.Cfg.Runtime.MemoryRequest,
+			MemoryLimit:             params.Cfg.Runtime.MemoryLimit,
+			ServiceAccountName:      params.Cfg.Runtime.ServiceAccountName,
+			MaxConcurrentJobs:       params.Cfg.MaxConcurrentJobs,
+			IdleTimeout:             params.Cfg.IdleTimeout,
+			LogArchiveBackend:       params.Cfg.LogArchive.Backend,
 			DockerMaxConcurrentJobs: dockerMaxConcurrentJobs,
+			K8sDefaultCPU:           k8sDefaultCPU,
+			K8sDefaultMemory:        k8sDefaultMemory,
 		},
 	}
 }

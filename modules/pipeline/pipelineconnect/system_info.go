@@ -43,6 +43,10 @@ type RuntimeDefaultsInfo struct {
 	// DockerMaxConcurrentJobs is the Docker executor's own sync limit, set
 	// only when the executor is Docker.
 	DockerMaxConcurrentJobs int
+	// K8sDefaultCPU and K8sDefaultMemory are the Kubernetes executor's
+	// request and limit for a sync container with no CPU or memory set.
+	K8sDefaultCPU    string
+	K8sDefaultMemory string
 }
 
 func (h *SourceHandler) GetSystemInfo(_ context.Context, _ *connect.Request[pipelinev1.GetSystemInfoRequest]) (*connect.Response[pipelinev1.GetSystemInfoResponse], error) {
@@ -64,7 +68,20 @@ func (h *SourceHandler) GetRuntimeDefaults(_ context.Context, _ *connect.Request
 	}), nil
 }
 
+// runtimeDefaultsToProto reports the resources a sync container gets: with
+// the Kubernetes executor, a resource with neither request nor limit set takes
+// the executor's default as both.
 func runtimeDefaultsToProto(info RuntimeDefaultsInfo) *pipelinev1.RuntimeDefaults {
+	cpuExecutorDefault := info.Executor == ExecutorK8s && info.CPURequest == "" && info.CPULimit == "" && info.K8sDefaultCPU != ""
+	if cpuExecutorDefault {
+		info.CPURequest, info.CPULimit = info.K8sDefaultCPU, info.K8sDefaultCPU
+	}
+
+	memoryExecutorDefault := info.Executor == ExecutorK8s && info.MemoryRequest == "" && info.MemoryLimit == "" && info.K8sDefaultMemory != ""
+	if memoryExecutorDefault {
+		info.MemoryRequest, info.MemoryLimit = info.K8sDefaultMemory, info.K8sDefaultMemory
+	}
+
 	return &pipelinev1.RuntimeDefaults{
 		Executor:                executorToProto(info.Executor),
 		CpuRequest:              info.CPURequest,
@@ -76,6 +93,8 @@ func runtimeDefaultsToProto(info RuntimeDefaultsInfo) *pipelinev1.RuntimeDefault
 		IdleTimeoutSeconds:      int64(info.IdleTimeout / time.Second),
 		LogArchiveBackend:       info.LogArchiveBackend,
 		DockerMaxConcurrentJobs: clampInt32(info.DockerMaxConcurrentJobs),
+		CpuExecutorDefault:      cpuExecutorDefault,
+		MemoryExecutorDefault:   memoryExecutorDefault,
 	}
 }
 

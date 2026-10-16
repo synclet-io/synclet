@@ -16,6 +16,8 @@ const defaults: RuntimeDefaults = {
   idleTimeoutSeconds: 600,
   logArchiveBackend: 's3',
   dockerMaxConcurrentJobs: 5,
+  cpuExecutorDefault: false,
+  memoryExecutorDefault: false,
 }
 
 const data = ref<RuntimeDefaults | undefined>()
@@ -47,6 +49,23 @@ describe('runtimeDefaultsCard', () => {
   it('hides the Docker limit for other executors', () => {
     data.value = { ...defaults, executor: 'k8s' }
     expect(mount(RuntimeDefaultsCard).text()).not.toContain('Docker executor concurrent syncs')
+  })
+
+  it('labels the Kubernetes executor fallback as the effective default', () => {
+    data.value = {
+      ...defaults,
+      executor: 'k8s',
+      cpuRequest: '1',
+      cpuLimit: '1',
+      cpuExecutorDefault: true,
+      memoryRequest: '512Mi',
+      memoryLimit: '1Gi',
+    }
+    const rows = mount(RuntimeDefaultsCard).findAll('dl > div').map(r => r.text())
+    expect(rows).toContain('CPU request1 (Kubernetes executor default)')
+    expect(rows).toContain('CPU limit1 (Kubernetes executor default)')
+    expect(rows).toContain('Memory request512Mi')
+    expect(rows).toContain('Memory limit1Gi')
   })
 
   it('shows a skeleton while loading', () => {
