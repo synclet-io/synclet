@@ -168,6 +168,23 @@ server:
 - **TLS.** TLS ends at the Gateway (`mode: Terminate`). The chart puts no certificate on the route, and cert-manager annotations go on the `Gateway`, not on the chart. Set `server.gateway.tls: true` (or `server.publicUrl` with `https://`) so invite links and OIDC callbacks use `https`. Keep `auth.secureCookies: true`.
 - **Client IPs.** Login and register rate limits trust `X-Forwarded-For` only from `rateLimit.trustedProxies`. Behind a Gateway, set it to the pod CIDR of the data-plane proxies (for Envoy Gateway, the `envoy-*` pods in the controller namespace), not to the ingress controller's.
 
+Removing a Gateway implementation: `helm uninstall` of the implementation does not remove everything it put in the cluster. Envoy Gateway, for example, leaves the `eg-gateway-helm-certgen:<namespace>` ClusterRole and ClusterRoleBinding, the `envoy-gateway-topology-injector.<namespace>` MutatingWebhookConfiguration and its CRDs, and a `GatewayClass` whose controller is gone keeps its `gateway-exists-finalizer.gateway.networking.k8s.io` finalizer and never finishes deleting. Remove them in this order:
+
+```bash
+kubectl delete gateway --all -n <gateway-namespace>      # before the controller, so it releases the GatewayClass
+kubectl delete gatewayclass <class>
+helm uninstall eg -n <gateway-namespace>
+kubectl delete clusterrole,clusterrolebinding eg-gateway-helm-certgen:<gateway-namespace>
+kubectl delete mutatingwebhookconfiguration envoy-gateway-topology-injector.<gateway-namespace>
+kubectl delete namespace <gateway-namespace>
+# A GatewayClass stuck in Terminating after the controller is gone:
+kubectl patch gatewayclass <class> --type merge -p '{"metadata":{"finalizers":null}}'
+# CRDs, only when nothing else in the cluster uses them (Gateway API CRDs are shared):
+kubectl get crd -o name | grep -E '\.gateway\.envoyproxy\.io$' | xargs kubectl delete
+```
+
+`task helm:test:orbstack` runs this cycle on the `orbstack` context: it installs Envoy Gateway and the chart in throwaway namespaces, checks that the UI answers through the route, removes everything, and fails if CRDs, cluster roles and bindings, webhooks, GatewayClasses, namespaces or PersistentVolumes differ from before the run. `GARAGE=1` adds the bundled Garage archive, `EXTRA_VALUES=<file>` passes more chart values, and `CHART_PROBES=1` keeps the chart's `/live` and `/ready` probes (by default the test points them at `/health` on the public port, which images up to 0.4.0 serve).
+
 Migrating from Ingress to a Gateway without downtime:
 
 1. Enable the route alongside the Ingress and set `server.publicUrl` to the URL users will end up on. Both objects route to the same Service, either with the old hostname on the Ingress and a new one on the route, or with the same hostname on both:

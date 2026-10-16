@@ -86,6 +86,11 @@ tasks:
     cmds:
       - ./deploy/helm/check-guards.sh
 
+  helm:test:orbstack:
+    desc: "Install Envoy Gateway and the chart on the orbstack context in throwaway namespaces, check the route, remove everything (GARAGE=1 adds bundled Garage)"
+    cmds:
+      - ./scripts/helm-orbstack-test.sh
+
   e2e:
     desc: Run e2e tests (requires Docker)
     cmds:
