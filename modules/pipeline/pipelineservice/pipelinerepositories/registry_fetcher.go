@@ -66,6 +66,14 @@ type airbyteBreakingChange struct {
 	UpgradeDeadline           string `json:"upgradeDeadline,omitempty"`
 }
 
+// metaBreakingChange is a breaking change in the connector meta format
+// published at an entry's top level, which uses snake_case keys.
+type metaBreakingChange struct {
+	Message                   string `json:"message"`
+	MigrationDocumentationURL string `json:"migration_documentation_url,omitempty"`
+	UpgradeDeadline           string `json:"upgrade_deadline,omitempty"`
+}
+
 // airbyteResourceRequirements represents the resourceRequirements section.
 type airbyteResourceRequirements struct {
 	JobSpecific []struct {
@@ -98,31 +106,32 @@ type airbyteAllowedHosts struct {
 
 // airbyteConnector represents a single connector entry in the Airbyte registry.
 type airbyteConnector struct {
-	Name                      string                       `json:"name"`
-	DockerRepository          string                       `json:"dockerRepository"`
-	DockerImageTag            string                       `json:"dockerImageTag"`
-	DocumentationURL          string                       `json:"documentationUrl"`
-	ReleaseStage              string                       `json:"releaseStage"`
-	Icon                      string                       `json:"icon"`
-	IconURL                   string                       `json:"iconUrl"`
-	Tombstone                 bool                         `json:"tombstone"`
-	Spec                      *airbyteSpec                 `json:"spec"`
-	SupportLevel              string                       `json:"supportLevel"`
-	License                   string                       `json:"license"`
-	SourceType                string                       `json:"sourceType"`
-	Releases                  *airbyteReleases             `json:"releases"`
-	ResourceRequirements      *airbyteResourceRequirements `json:"resourceRequirements"`
-	MaxSecondsBetweenMessages *int                         `json:"maxSecondsBetweenMessages"`
-	ExternalDocumentationURLs []airbyteExternalDocURL      `json:"externalDocumentationUrls"`
-	SuggestedStreams          *airbyteSuggestedStreams     `json:"suggestedStreams"`
-	AllowedHosts              *airbyteAllowedHosts         `json:"allowedHosts"`
-	ErdURL                    string                       `json:"erdUrl"`
-	ReleaseDate               string                       `json:"releaseDate"`
-	Language                  string                       `json:"language"`
-	Tags                      []string                     `json:"tags"`
-	SupportsRefreshes         bool                         `json:"supportsRefreshes"`
-	SupportsFileTransfer      bool                         `json:"supportsFileTransfer"`
-	SupportsDataActivation    bool                         `json:"supportsDataActivation"`
+	Name                      string                        `json:"name"`
+	DockerRepository          string                        `json:"dockerRepository"`
+	DockerImageTag            string                        `json:"dockerImageTag"`
+	DocumentationURL          string                        `json:"documentationUrl"`
+	ReleaseStage              string                        `json:"releaseStage"`
+	Icon                      string                        `json:"icon"`
+	IconURL                   string                        `json:"iconUrl"`
+	Tombstone                 bool                          `json:"tombstone"`
+	Spec                      *airbyteSpec                  `json:"spec"`
+	SupportLevel              string                        `json:"supportLevel"`
+	License                   string                        `json:"license"`
+	SourceType                string                        `json:"sourceType"`
+	Releases                  *airbyteReleases              `json:"releases"`
+	BreakingChanges           map[string]metaBreakingChange `json:"breakingChanges"`
+	ResourceRequirements      *airbyteResourceRequirements  `json:"resourceRequirements"`
+	MaxSecondsBetweenMessages *int                          `json:"maxSecondsBetweenMessages"`
+	ExternalDocumentationURLs []airbyteExternalDocURL       `json:"externalDocumentationUrls"`
+	SuggestedStreams          *airbyteSuggestedStreams      `json:"suggestedStreams"`
+	AllowedHosts              *airbyteAllowedHosts          `json:"allowedHosts"`
+	ErdURL                    string                        `json:"erdUrl"`
+	ReleaseDate               string                        `json:"releaseDate"`
+	Language                  string                        `json:"language"`
+	Tags                      []string                      `json:"tags"`
+	SupportsRefreshes         bool                          `json:"supportsRefreshes"`
+	SupportsFileTransfer      bool                          `json:"supportsFileTransfer"`
+	SupportsDataActivation    bool                          `json:"supportsDataActivation"`
 }
 
 // Fetch downloads and parses a registry JSON from the given URL,
@@ -205,6 +214,30 @@ func toConnectorData(connector airbyteConnector, connectorType pipelineservice.C
 	}
 }
 
+// mergeBreakingChanges combines the top-level breakingChanges with releases.breakingChanges;
+// the releases entry wins when both define the same version.
+func mergeBreakingChanges(connector airbyteConnector) map[string]pipelineservice.BreakingChange {
+	var fromReleases map[string]airbyteBreakingChange
+	if connector.Releases != nil {
+		fromReleases = connector.Releases.BreakingChanges
+	}
+
+	if len(connector.BreakingChanges) == 0 && len(fromReleases) == 0 {
+		return nil
+	}
+
+	merged := make(map[string]pipelineservice.BreakingChange, len(connector.BreakingChanges)+len(fromReleases))
+	for version, bc := range connector.BreakingChanges {
+		merged[version] = pipelineservice.BreakingChange(bc)
+	}
+
+	for version, bc := range fromReleases {
+		merged[version] = pipelineservice.BreakingChange(bc)
+	}
+
+	return merged
+}
+
 // buildMetadata constructs a RepositoryConnectorMetadata from an airbyteConnector.
 func buildMetadata(connector airbyteConnector) pipelineservice.RepositoryConnectorMetadata {
 	meta := pipelineservice.RepositoryConnectorMetadata{
@@ -218,19 +251,9 @@ func buildMetadata(connector airbyteConnector) pipelineservice.RepositoryConnect
 		SupportsDataActivation:    connector.SupportsDataActivation,
 	}
 
-	// Breaking changes from releases section.
-	if connector.Releases != nil {
-		if len(connector.Releases.BreakingChanges) > 0 {
-			meta.BreakingChanges = make(map[string]pipelineservice.BreakingChange, len(connector.Releases.BreakingChanges))
-			for version, bc := range connector.Releases.BreakingChanges {
-				meta.BreakingChanges[version] = pipelineservice.BreakingChange{
-					Message:                   bc.Message,
-					MigrationDocumentationURL: bc.MigrationDocumentationURL,
-					UpgradeDeadline:           bc.UpgradeDeadline,
-				}
-			}
-		}
+	meta.BreakingChanges = mergeBreakingChanges(connector)
 
+	if connector.Releases != nil {
 		meta.MigrationDocumentationURL = connector.Releases.MigrationDocumentationURL
 	}
 
