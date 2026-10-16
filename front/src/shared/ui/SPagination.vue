@@ -48,29 +48,37 @@ const isLastPage = computed(() => props.currentPage >= totalPages.value)
 
 <template>
   <div v-if="total > pageSize" class="flex flex-col items-center gap-2">
-    <div class="flex items-center gap-1">
+    <nav aria-label="Pagination" class="flex items-center gap-1">
       <button
         :disabled="isFirstPage"
-        class="w-8 h-8 flex items-center justify-center rounded-lg text-text-secondary hover:bg-surface-hover disabled:opacity-40 disabled:pointer-events-none"
+        type="button"
+        aria-label="First page"
+        class="w-8 h-8 flex items-center justify-center rounded-lg text-text-secondary hover:bg-surface-hover disabled:opacity-40 disabled:pointer-events-none focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
         @click="emit('pageChange', 1)"
       >
-        <ChevronsLeft class="w-4 h-4" />
+        <ChevronsLeft class="w-4 h-4" aria-hidden="true" />
       </button>
       <button
         :disabled="isFirstPage"
-        class="w-8 h-8 flex items-center justify-center rounded-lg text-text-secondary hover:bg-surface-hover disabled:opacity-40 disabled:pointer-events-none"
+        type="button"
+        aria-label="Previous page"
+        class="w-8 h-8 flex items-center justify-center rounded-lg text-text-secondary hover:bg-surface-hover disabled:opacity-40 disabled:pointer-events-none focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
         @click="emit('pageChange', currentPage - 1)"
       >
-        <ChevronLeft class="w-4 h-4" />
+        <ChevronLeft class="w-4 h-4" aria-hidden="true" />
       </button>
 
       <template v-for="page in visiblePages" :key="page">
-        <span v-if="page === '...'" class="w-8 h-8 flex items-center justify-center text-text-muted">...</span>
+        <span v-if="page === '...'" aria-hidden="true" class="w-8 h-8 flex items-center justify-center text-text-muted">...</span>
         <button
           v-else
-          class="min-w-[32px] h-8 px-2 flex items-center justify-center rounded-lg text-sm font-medium" :class="[
+          type="button"
+          :aria-label="`Page ${page}`"
+          :aria-current="page === currentPage ? 'page' : undefined"
+          class="min-w-[32px] h-8 px-2 flex items-center justify-center rounded-lg text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+          :class="[
             page === currentPage
-              ? 'bg-primary text-white'
+              ? 'bg-primary-solid text-on-primary'
               : 'text-text-secondary hover:bg-surface-hover',
           ]"
           @click="emit('pageChange', page as number)"
@@ -81,19 +89,23 @@ const isLastPage = computed(() => props.currentPage >= totalPages.value)
 
       <button
         :disabled="isLastPage"
-        class="w-8 h-8 flex items-center justify-center rounded-lg text-text-secondary hover:bg-surface-hover disabled:opacity-40 disabled:pointer-events-none"
+        type="button"
+        aria-label="Next page"
+        class="w-8 h-8 flex items-center justify-center rounded-lg text-text-secondary hover:bg-surface-hover disabled:opacity-40 disabled:pointer-events-none focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
         @click="emit('pageChange', currentPage + 1)"
       >
-        <ChevronRight class="w-4 h-4" />
+        <ChevronRight class="w-4 h-4" aria-hidden="true" />
       </button>
       <button
         :disabled="isLastPage"
-        class="w-8 h-8 flex items-center justify-center rounded-lg text-text-secondary hover:bg-surface-hover disabled:opacity-40 disabled:pointer-events-none"
+        type="button"
+        aria-label="Last page"
+        class="w-8 h-8 flex items-center justify-center rounded-lg text-text-secondary hover:bg-surface-hover disabled:opacity-40 disabled:pointer-events-none focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
         @click="emit('pageChange', totalPages)"
       >
-        <ChevronsRight class="w-4 h-4" />
+        <ChevronsRight class="w-4 h-4" aria-hidden="true" />
       </button>
-    </div>
+    </nav>
     <span class="text-xs text-text-muted">{{ rangeStart }}-{{ rangeEnd }} of {{ total }}</span>
   </div>
 </template>

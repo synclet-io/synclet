@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { describeCron, validateCron } from '@shared/lib/cron'
-import { computed, ref } from 'vue'
+import { computed, ref, useId } from 'vue'
 
 const props = defineProps<{
   modelValue: string
@@ -28,9 +28,14 @@ const presets = [
 const isPreset = presets.some(p => p.value === props.modelValue)
 const mode = ref<string>(isPreset ? props.modelValue : 'custom')
 
+const selectId = useId()
+const customId = `${selectId}-custom`
+const messageId = `${selectId}-message`
+
 const isCustom = computed(() => mode.value === 'custom')
 const cronError = computed(() => validateCron(props.modelValue))
 const cronDescription = computed(() => describeCron(props.modelValue))
+const showError = computed(() => !!props.modelValue && !!cronError.value)
 
 function onPresetChange(e: Event) {
   const val = (e.target as HTMLSelectElement).value
@@ -47,10 +52,12 @@ function onCustomInput(e: Event) {
 
 <template>
   <div>
-    <label v-if="label" class="block text-sm font-medium text-text-secondary mb-1.5">{{ label }}</label>
+    <label v-if="label" :for="selectId" class="block text-sm font-medium text-text-secondary mb-1.5">{{ label }}</label>
     <div class="space-y-2">
       <select
+        :id="selectId"
         :value="mode"
+        :aria-label="label ? undefined : 'Schedule'"
         class="w-full px-3 py-2 text-sm rounded-lg border border-border bg-surface text-text-primary focus:ring-1 focus:ring-primary/20 focus:border-primary"
         @change="onPresetChange"
       >
@@ -64,19 +71,23 @@ function onCustomInput(e: Event) {
 
       <input
         v-if="isCustom"
+        :id="customId"
         type="text"
+        aria-label="Cron expression"
+        :aria-invalid="showError || undefined"
+        :aria-describedby="showError || cronDescription ? messageId : undefined"
         :value="modelValue"
         placeholder="0 */6 * * *"
         class="w-full px-3 py-2 text-sm rounded-lg border border-border bg-surface text-text-primary focus:ring-1 focus:ring-primary/20 focus:border-primary"
-        :class="{ 'border-danger': modelValue && cronError }"
+        :class="{ 'border-danger': showError }"
         @input="onCustomInput"
       >
 
       <template v-if="isCustom">
-        <p v-if="modelValue && cronError" class="text-xs text-danger">
+        <p v-if="showError" :id="messageId" class="text-xs text-danger">
           {{ cronError }}
         </p>
-        <p v-else-if="cronDescription" class="text-xs text-text-muted">
+        <p v-else-if="cronDescription" :id="messageId" class="text-xs text-text-muted">
           {{ cronDescription }}
         </p>
       </template>
