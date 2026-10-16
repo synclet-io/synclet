@@ -4,9 +4,25 @@
 // of the bundled app code. Lives in /public so it stays out of the Vite
 // bundle and remains a "self"-origin script under strict CSP.
 (function () {
-  const t = localStorage.getItem('synclet-theme') || 'system'
-  const d = t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
-  if (d) {
+  let t = 'system'
+  try {
+    const stored = localStorage.getItem('synclet-theme')
+    if (stored === 'light' || stored === 'dark')
+      t = stored
+  }
+  catch {}
+  let systemDark = false
+  try {
+    systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+  }
+  catch {}
+  const d = t === 'dark' || (t === 'system' && systemDark)
+  if (d)
     document.documentElement.classList.add('dark')
+  if (t !== 'system') {
+    const color = d ? '#020617' : '#f8fafc'
+    document.querySelectorAll('meta[name="theme-color"]').forEach((m) => {
+      m.setAttribute('content', color)
+    })
   }
 })()

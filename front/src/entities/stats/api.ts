@@ -35,7 +35,7 @@ function mapHealthStatus(s: ProtoHealthStatus): HealthStatus {
     case ProtoHealthStatus.WARNING: return 'warning'
     case ProtoHealthStatus.FAILING: return 'failing'
     case ProtoHealthStatus.DISABLED: return 'disabled'
-    default: return 'disabled'
+    default: return 'unknown'
   }
 }
 

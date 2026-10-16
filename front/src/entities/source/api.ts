@@ -1,6 +1,7 @@
 import type { JsonObject } from '@bufbuild/protobuf'
 import type { Source, SourceCatalog } from './types'
 import type { Source as ProtoSource } from '@/gen/synclet/publicapi/pipeline/v1/pipeline_pb'
+import { Code, ConnectError } from '@connectrpc/connect'
 import { sourceClient } from '@shared/api/services'
 import { tsToDate } from '@shared/lib/formatting'
 
@@ -74,8 +75,10 @@ export async function getSourceCatalog(sourceId: string): Promise<SourceCatalog 
       discoveredAt: tsToDate(res.discoveredAt),
     }
   }
-  catch {
-    return null
+  catch (err) {
+    if (err instanceof ConnectError && err.code === Code.NotFound)
+      return null
+    throw err
   }
 }
 

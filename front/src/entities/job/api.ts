@@ -15,7 +15,7 @@ function mapJobStatus(proto: ProtoJobStatus): JobStatus {
     case ProtoJobStatus.COMPLETED: return 'completed'
     case ProtoJobStatus.FAILED: return 'failed'
     case ProtoJobStatus.CANCELLED: return 'cancelled'
-    default: return 'scheduled'
+    default: return 'unknown'
   }
 }
 
@@ -26,6 +26,7 @@ const PROTO_JOB_STATUS: Record<JobStatus, ProtoJobStatus> = {
   completed: ProtoJobStatus.COMPLETED,
   failed: ProtoJobStatus.FAILED,
   cancelled: ProtoJobStatus.CANCELLED,
+  unknown: ProtoJobStatus.UNSPECIFIED,
 }
 
 function mapJobType(proto: ProtoJobType): JobType {
@@ -33,7 +34,7 @@ function mapJobType(proto: ProtoJobType): JobType {
     case ProtoJobType.SYNC: return 'sync'
     case ProtoJobType.DISCOVER: return 'discover'
     case ProtoJobType.CHECK: return 'check'
-    default: return 'sync'
+    default: return 'unknown'
   }
 }
 

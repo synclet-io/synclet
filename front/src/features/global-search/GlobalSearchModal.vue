@@ -17,7 +17,7 @@ const dialogEl = ref<HTMLElement | null>(null)
 let returnFocusTo: HTMLElement | null = null
 
 const query = ref('')
-const { groups, flatResults, hasResults, isLoading, refreshAll } = useGlobalSearch(query)
+const { groups, flatResults, hasResults, isLoading } = useGlobalSearch(query, { enabled: computed(() => props.open) })
 
 const history = useRecentHistory({
   userId: () => auth.user.value?.id ?? '',
@@ -49,7 +49,6 @@ watch(() => props.open, async (open) => {
     returnFocusTo = document.activeElement instanceof HTMLElement ? document.activeElement : null
     query.value = ''
     activeIndex.value = 0
-    refreshAll()
     await nextTick()
     inputEl.value?.focus()
   }

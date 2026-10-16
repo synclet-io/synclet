@@ -43,7 +43,7 @@ export function getLeafFields(fields: SchemaField[]): SchemaField[] {
   return leaves
 }
 
-// Converts field path to dot-joined string for Set keys
+// Injective string key for a field path, so segments containing dots never collide
 export function pathKey(path: string[]): string {
-  return path.join('.')
+  return JSON.stringify(path)
 }

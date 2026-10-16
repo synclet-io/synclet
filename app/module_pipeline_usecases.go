@@ -97,6 +97,7 @@ func pipelineUseCasesModule() fx.Option {
 			pipelinecatalog.NewGetConfiguredCatalog,
 			pipelinecatalog.NewConfigureStreams,
 			pipelinecatalog.NewDetectSchemaChanges,
+			pipelinecatalog.NewCountPendingSchemaChanges,
 			pipelinecatalog.NewGetDiscoveredCatalogForConnection,
 			pipelinecatalog.NewGetSourceCatalog,
 			pipelinecatalog.NewPopulateGenerationIDs,

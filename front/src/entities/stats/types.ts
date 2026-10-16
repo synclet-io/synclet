@@ -1,5 +1,5 @@
 export type TimeRange = '24h' | '7d' | '30d'
-export type HealthStatus = 'healthy' | 'warning' | 'failing' | 'disabled'
+export type HealthStatus = 'healthy' | 'warning' | 'failing' | 'disabled' | 'unknown'
 export type SyncStatus = 'completed' | 'failed' | 'unknown'
 export type FailureCategoryName = 'timeout' | 'oom' | 'connector' | 'infrastructure' | 'unknown'
 

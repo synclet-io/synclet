@@ -110,13 +110,16 @@ func (s *fakeSources) First(_ context.Context, f *pipelineservice.SourceFilter, 
 type fakeDiscoveries struct {
 	pipelineservice.CatalogDiscoveriesStorage
 
-	records   []*pipelineservice.CatalogDiscovery
-	firstErr  error
-	createErr error
+	records    []*pipelineservice.CatalogDiscovery
+	firstErr   error
+	createErr  error
+	firstCalls int
 }
 
 // First returns the highest-version discovery for the filtered source.
 func (s *fakeDiscoveries) First(_ context.Context, f *pipelineservice.CatalogDiscoveryFilter, _ ...optionutil.Option[dbutil.SelectOptions]) (*pipelineservice.CatalogDiscovery, error) {
+	s.firstCalls++
+
 	if s.firstErr != nil {
 		return nil, s.firstErr
 	}
@@ -178,6 +181,28 @@ func (s *fakeConfiguredCatalogs) First(_ context.Context, f *pipelineservice.Con
 	cp := *rec
 
 	return &cp, nil
+}
+
+func (s *fakeConfiguredCatalogs) Find(_ context.Context, f *pipelineservice.ConfiguredCatalogFilter, _ ...optionutil.Option[dbutil.SelectOptions]) ([]*pipelineservice.ConfiguredCatalog, error) {
+	if s.firstErr != nil {
+		return nil, s.firstErr
+	}
+
+	in, ok := f.ConnectionID.(*filter.InFilter[uuid.UUID])
+	if !ok {
+		return nil, errors.New("fake supports only ConnectionID In filter")
+	}
+
+	var out []*pipelineservice.ConfiguredCatalog
+
+	for _, id := range in.Values {
+		if rec, ok := s.records[id]; ok {
+			cp := *rec
+			out = append(out, &cp)
+		}
+	}
+
+	return out, nil
 }
 
 func (s *fakeConfiguredCatalogs) Create(_ context.Context, rec *pipelineservice.ConfiguredCatalog) (*pipelineservice.ConfiguredCatalog, error) {

@@ -52,16 +52,22 @@ export function useResetConnectionState() {
   })
 }
 
-export function useConnections(options?: { page?: Ref<number>, pageSize?: number }) {
+export function useConnections(options?: { page?: Ref<number>, pageSize?: number, includePendingSchemaChanges?: boolean, enabled?: MaybeRef<boolean> }) {
   const { currentWorkspaceId } = useAuth()
   const page = options?.page
   const pageSize = options?.pageSize ?? 0
+  const includePendingSchemaChanges = options?.includePendingSchemaChanges ?? false
   return useQuery({
-    queryKey: computed(() => [...connectionKeys.list(currentWorkspaceId.value ?? ''), page ? toValue(page) : 'all']),
-    queryFn: () => connectionApi.listConnections(
-      page ? { pageSize, offset: (toValue(page) - 1) * pageSize } : {},
-    ),
-    enabled: computed(() => !!currentWorkspaceId.value),
+    queryKey: computed(() => [
+      ...connectionKeys.list(currentWorkspaceId.value ?? ''),
+      page ? toValue(page) : 'all',
+      ...(includePendingSchemaChanges ? ['pendingSchemaChanges'] : []),
+    ]),
+    queryFn: () => connectionApi.listConnections({
+      ...(page ? { pageSize, offset: (toValue(page) - 1) * pageSize } : {}),
+      includePendingSchemaChanges,
+    }),
+    enabled: computed(() => !!currentWorkspaceId.value && toValue(options?.enabled ?? true)),
   })
 }
 

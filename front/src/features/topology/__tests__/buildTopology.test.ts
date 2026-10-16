@@ -47,6 +47,7 @@ function mkConn(id: string, name: string, srcId: string, destId: string, status:
     namespaceDefinition: 'source',
     customNamespaceFormat: '',
     streamPrefix: '',
+    pendingSchemaChanges: 0,
   }
 }
 

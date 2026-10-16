@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
 import { computed, toValue } from 'vue'
 import * as destinationApi from './api'
 
-export function useDestinations(options?: { page?: Ref<number>, pageSize?: number }) {
+export function useDestinations(options?: { page?: Ref<number>, pageSize?: number, enabled?: MaybeRef<boolean> }) {
   const { currentWorkspaceId } = useAuth()
   const page = options?.page
   const pageSize = options?.pageSize ?? 0
@@ -14,7 +14,7 @@ export function useDestinations(options?: { page?: Ref<number>, pageSize?: numbe
     queryFn: () => destinationApi.listDestinations(
       page ? { pageSize, offset: (toValue(page) - 1) * pageSize } : {},
     ),
-    enabled: computed(() => !!currentWorkspaceId.value),
+    enabled: computed(() => !!currentWorkspaceId.value && toValue(options?.enabled ?? true)),
   })
 }
 

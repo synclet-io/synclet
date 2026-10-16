@@ -1,4 +1,4 @@
-export type ConnectionStatus = 'active' | 'inactive' | 'paused'
+export type ConnectionStatus = 'active' | 'inactive' | 'paused' | 'unknown'
 export type SchemaChangePolicy = 'propagate' | 'ignore' | 'pause'
 export type SyncMode = 'full_refresh' | 'incremental'
 export type DestinationSyncMode = 'overwrite' | 'append' | 'append_dedup'
@@ -23,6 +23,7 @@ export interface Connection {
   namespaceDefinition: NamespaceDefinition
   customNamespaceFormat: string
   streamPrefix: string
+  pendingSchemaChanges: number
 }
 
 export interface ConfiguredStream {

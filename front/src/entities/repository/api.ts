@@ -5,6 +5,7 @@ import type {
 } from '@/gen/synclet/publicapi/registry/v1/registry_pb'
 import { mapLicense, mapReleaseStage, mapSourceType, mapSupportLevel } from '@entities/connector/api'
 import { registryClient } from '@shared/api/services'
+import { requireField } from '@shared/lib/errorUtils'
 import {
   ConnectorType as ProtoConnectorType,
   License as ProtoLicense,
@@ -28,7 +29,7 @@ function mapRepository(proto: ProtoRepository): Repository {
     url: proto.url,
     hasAuth: proto.hasAuth,
     status: mapRepositoryStatus(proto.status),
-    lastSyncedAt: proto.lastSyncedAt || null,
+    lastSyncedAt: proto.lastSyncedAt ? new Date(proto.lastSyncedAt) : null,
     connectorCount: proto.connectorCount,
     lastError: proto.lastError || null,
   }
@@ -77,7 +78,7 @@ export async function addRepository(params: { name: string, url: string, authHea
     url: params.url,
     authHeader: params.authHeader ?? '',
   })
-  return mapRepository(res.repository!)
+  return mapRepository(requireField(res.repository, 'repository'))
 }
 
 export async function deleteRepository(id: string): Promise<{ affectedConnectors: number }> {
@@ -87,7 +88,7 @@ export async function deleteRepository(id: string): Promise<{ affectedConnectors
 
 export async function syncRepository(id: string): Promise<Repository> {
   const res = await registryClient.syncRepository({ id })
-  return mapRepository(res.repository!)
+  return mapRepository(requireField(res.repository, 'repository'))
 }
 
 export async function listRepositoryConnectors(

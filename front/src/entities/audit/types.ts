@@ -29,8 +29,8 @@ export interface AuditEvent {
   actorType: AuditActorType
   actorId: string
   actorLabel: string
-  action: AuditAction
-  resourceType: AuditResourceType
+  action: AuditAction | 'unknown'
+  resourceType: AuditResourceType | 'unknown'
   resourceId: string
   resourceLabel: string
   changes: AuditFieldChange[]

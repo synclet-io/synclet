@@ -2313,13 +2313,16 @@ type Connection struct {
 	CreatedAt             *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	UpdatedAt             *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	MaxAttempts           int32                  `protobuf:"varint,11,opt,name=max_attempts,json=maxAttempts,proto3" json:"max_attempts,omitempty"`
-	RetryDelayMinutes     int32                  `protobuf:"varint,12,opt,name=retry_delay_minutes,json=retryDelayMinutes,proto3" json:"retry_delay_minutes,omitempty"`
 	NamespaceDefinition   NamespaceDefinition    `protobuf:"varint,13,opt,name=namespace_definition,json=namespaceDefinition,proto3,enum=synclet.publicapi.pipeline.v1.NamespaceDefinition" json:"namespace_definition,omitempty"`
 	CustomNamespaceFormat string                 `protobuf:"bytes,14,opt,name=custom_namespace_format,json=customNamespaceFormat,proto3" json:"custom_namespace_format,omitempty"`
 	StreamPrefix          string                 `protobuf:"bytes,15,opt,name=stream_prefix,json=streamPrefix,proto3" json:"stream_prefix,omitempty"`
 	NextScheduledAt       *timestamppb.Timestamp `protobuf:"bytes,16,opt,name=next_scheduled_at,json=nextScheduledAt,proto3,oneof" json:"next_scheduled_at,omitempty"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	// Number of schema changes between the configured catalog and the source's
+	// latest discovered catalog. Set by GetConnection, and by ListConnections
+	// when include_pending_schema_changes is true; zero otherwise.
+	PendingSchemaChanges int32 `protobuf:"varint,17,opt,name=pending_schema_changes,json=pendingSchemaChanges,proto3" json:"pending_schema_changes,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *Connection) Reset() {
@@ -2429,13 +2432,6 @@ func (x *Connection) GetMaxAttempts() int32 {
 	return 0
 }
 
-func (x *Connection) GetRetryDelayMinutes() int32 {
-	if x != nil {
-		return x.RetryDelayMinutes
-	}
-	return 0
-}
-
 func (x *Connection) GetNamespaceDefinition() NamespaceDefinition {
 	if x != nil {
 		return x.NamespaceDefinition
@@ -2464,6 +2460,13 @@ func (x *Connection) GetNextScheduledAt() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *Connection) GetPendingSchemaChanges() int32 {
+	if x != nil {
+		return x.PendingSchemaChanges
+	}
+	return 0
+}
+
 type CreateConnectionRequest struct {
 	state                 protoimpl.MessageState `protogen:"open.v1"`
 	WorkspaceId           string                 `protobuf:"bytes,1,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
@@ -2473,7 +2476,6 @@ type CreateConnectionRequest struct {
 	Schedule              *string                `protobuf:"bytes,5,opt,name=schedule,proto3,oneof" json:"schedule,omitempty"`
 	SchemaChangePolicy    SchemaChangePolicy     `protobuf:"varint,6,opt,name=schema_change_policy,json=schemaChangePolicy,proto3,enum=synclet.publicapi.pipeline.v1.SchemaChangePolicy" json:"schema_change_policy,omitempty"`
 	MaxAttempts           int32                  `protobuf:"varint,7,opt,name=max_attempts,json=maxAttempts,proto3" json:"max_attempts,omitempty"`
-	RetryDelayMinutes     int32                  `protobuf:"varint,8,opt,name=retry_delay_minutes,json=retryDelayMinutes,proto3" json:"retry_delay_minutes,omitempty"`
 	NamespaceDefinition   NamespaceDefinition    `protobuf:"varint,9,opt,name=namespace_definition,json=namespaceDefinition,proto3,enum=synclet.publicapi.pipeline.v1.NamespaceDefinition" json:"namespace_definition,omitempty"`
 	CustomNamespaceFormat string                 `protobuf:"bytes,10,opt,name=custom_namespace_format,json=customNamespaceFormat,proto3" json:"custom_namespace_format,omitempty"`
 	StreamPrefix          string                 `protobuf:"bytes,11,opt,name=stream_prefix,json=streamPrefix,proto3" json:"stream_prefix,omitempty"`
@@ -2560,13 +2562,6 @@ func (x *CreateConnectionRequest) GetMaxAttempts() int32 {
 	return 0
 }
 
-func (x *CreateConnectionRequest) GetRetryDelayMinutes() int32 {
-	if x != nil {
-		return x.RetryDelayMinutes
-	}
-	return 0
-}
-
 func (x *CreateConnectionRequest) GetNamespaceDefinition() NamespaceDefinition {
 	if x != nil {
 		return x.NamespaceDefinition
@@ -2639,7 +2634,6 @@ type UpdateConnectionRequest struct {
 	Schedule              *string                `protobuf:"bytes,3,opt,name=schedule,proto3,oneof" json:"schedule,omitempty"`
 	SchemaChangePolicy    *SchemaChangePolicy    `protobuf:"varint,4,opt,name=schema_change_policy,json=schemaChangePolicy,proto3,enum=synclet.publicapi.pipeline.v1.SchemaChangePolicy,oneof" json:"schema_change_policy,omitempty"`
 	MaxAttempts           *int32                 `protobuf:"varint,5,opt,name=max_attempts,json=maxAttempts,proto3,oneof" json:"max_attempts,omitempty"`
-	RetryDelayMinutes     *int32                 `protobuf:"varint,6,opt,name=retry_delay_minutes,json=retryDelayMinutes,proto3,oneof" json:"retry_delay_minutes,omitempty"`
 	NamespaceDefinition   *NamespaceDefinition   `protobuf:"varint,7,opt,name=namespace_definition,json=namespaceDefinition,proto3,enum=synclet.publicapi.pipeline.v1.NamespaceDefinition,oneof" json:"namespace_definition,omitempty"`
 	CustomNamespaceFormat *string                `protobuf:"bytes,8,opt,name=custom_namespace_format,json=customNamespaceFormat,proto3,oneof" json:"custom_namespace_format,omitempty"`
 	StreamPrefix          *string                `protobuf:"bytes,9,opt,name=stream_prefix,json=streamPrefix,proto3,oneof" json:"stream_prefix,omitempty"`
@@ -2708,13 +2702,6 @@ func (x *UpdateConnectionRequest) GetSchemaChangePolicy() SchemaChangePolicy {
 func (x *UpdateConnectionRequest) GetMaxAttempts() int32 {
 	if x != nil && x.MaxAttempts != nil {
 		return *x.MaxAttempts
-	}
-	return 0
-}
-
-func (x *UpdateConnectionRequest) GetRetryDelayMinutes() int32 {
-	if x != nil && x.RetryDelayMinutes != nil {
-		return *x.RetryDelayMinutes
 	}
 	return 0
 }
@@ -2953,12 +2940,14 @@ func (x *GetConnectionResponse) GetConnection() *Connection {
 }
 
 type ListConnectionsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	WorkspaceId   string                 `protobuf:"bytes,1,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
-	PageSize      int32                  `protobuf:"varint,2,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
-	Offset        int32                  `protobuf:"varint,3,opt,name=offset,proto3" json:"offset,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	WorkspaceId string                 `protobuf:"bytes,1,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	PageSize    int32                  `protobuf:"varint,2,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	Offset      int32                  `protobuf:"varint,3,opt,name=offset,proto3" json:"offset,omitempty"`
+	// Computes Connection.pending_schema_changes for the returned page.
+	IncludePendingSchemaChanges bool `protobuf:"varint,4,opt,name=include_pending_schema_changes,json=includePendingSchemaChanges,proto3" json:"include_pending_schema_changes,omitempty"`
+	unknownFields               protoimpl.UnknownFields
+	sizeCache                   protoimpl.SizeCache
 }
 
 func (x *ListConnectionsRequest) Reset() {
@@ -3010,6 +2999,13 @@ func (x *ListConnectionsRequest) GetOffset() int32 {
 		return x.Offset
 	}
 	return 0
+}
+
+func (x *ListConnectionsRequest) GetIncludePendingSchemaChanges() bool {
+	if x != nil {
+		return x.IncludePendingSchemaChanges
+	}
+	return false
 }
 
 type ListConnectionsResponse struct {
@@ -6019,7 +6015,7 @@ const file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDesc = "" +
 	"\x14managed_connector_id\x18\x02 \x01(\tR\x12managedConnectorId\x12/\n" +
 	"\x06config\x18\x03 \x01(\v2\x17.google.protobuf.StructR\x06config\"<\n" +
 	"!TestDestinationConnectionResponse\x12\x17\n" +
-	"\atask_id\x18\x01 \x01(\tR\x06taskId\"\xd1\x06\n" +
+	"\atask_id\x18\x01 \x01(\tR\x06taskId\"\xdd\x06\n" +
 	"\n" +
 	"Connection\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
@@ -6035,13 +6031,13 @@ const file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDesc = "" +
 	"\n" +
 	"updated_at\x18\n" +
 	" \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12!\n" +
-	"\fmax_attempts\x18\v \x01(\x05R\vmaxAttempts\x12.\n" +
-	"\x13retry_delay_minutes\x18\f \x01(\x05R\x11retryDelayMinutes\x12e\n" +
+	"\fmax_attempts\x18\v \x01(\x05R\vmaxAttempts\x12e\n" +
 	"\x14namespace_definition\x18\r \x01(\x0e22.synclet.publicapi.pipeline.v1.NamespaceDefinitionR\x13namespaceDefinition\x126\n" +
 	"\x17custom_namespace_format\x18\x0e \x01(\tR\x15customNamespaceFormat\x12#\n" +
 	"\rstream_prefix\x18\x0f \x01(\tR\fstreamPrefix\x12K\n" +
-	"\x11next_scheduled_at\x18\x10 \x01(\v2\x1a.google.protobuf.TimestampH\x00R\x0fnextScheduledAt\x88\x01\x01B\x14\n" +
-	"\x12_next_scheduled_at\"\xbe\x04\n" +
+	"\x11next_scheduled_at\x18\x10 \x01(\v2\x1a.google.protobuf.TimestampH\x00R\x0fnextScheduledAt\x88\x01\x01\x124\n" +
+	"\x16pending_schema_changes\x18\x11 \x01(\x05R\x14pendingSchemaChangesB\x14\n" +
+	"\x12_next_scheduled_atJ\x04\b\f\x10\r\"\x94\x04\n" +
 	"\x17CreateConnectionRequest\x12!\n" +
 	"\fworkspace_id\x18\x01 \x01(\tR\vworkspaceId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1b\n" +
@@ -6049,35 +6045,32 @@ const file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDesc = "" +
 	"\x0edestination_id\x18\x04 \x01(\tR\rdestinationId\x12\x1f\n" +
 	"\bschedule\x18\x05 \x01(\tH\x00R\bschedule\x88\x01\x01\x12c\n" +
 	"\x14schema_change_policy\x18\x06 \x01(\x0e21.synclet.publicapi.pipeline.v1.SchemaChangePolicyR\x12schemaChangePolicy\x12!\n" +
-	"\fmax_attempts\x18\a \x01(\x05R\vmaxAttempts\x12.\n" +
-	"\x13retry_delay_minutes\x18\b \x01(\x05R\x11retryDelayMinutes\x12e\n" +
+	"\fmax_attempts\x18\a \x01(\x05R\vmaxAttempts\x12e\n" +
 	"\x14namespace_definition\x18\t \x01(\x0e22.synclet.publicapi.pipeline.v1.NamespaceDefinitionR\x13namespaceDefinition\x126\n" +
 	"\x17custom_namespace_format\x18\n" +
 	" \x01(\tR\x15customNamespaceFormat\x12#\n" +
 	"\rstream_prefix\x18\v \x01(\tR\fstreamPrefixB\v\n" +
-	"\t_schedule\"e\n" +
+	"\t_scheduleJ\x04\b\b\x10\t\"e\n" +
 	"\x18CreateConnectionResponse\x12I\n" +
 	"\n" +
 	"connection\x18\x01 \x01(\v2).synclet.publicapi.pipeline.v1.ConnectionR\n" +
-	"connection\"\x9c\x05\n" +
+	"connection\"\xd5\x04\n" +
 	"\x17UpdateConnectionRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\x04name\x18\x02 \x01(\tH\x00R\x04name\x88\x01\x01\x12\x1f\n" +
 	"\bschedule\x18\x03 \x01(\tH\x01R\bschedule\x88\x01\x01\x12h\n" +
 	"\x14schema_change_policy\x18\x04 \x01(\x0e21.synclet.publicapi.pipeline.v1.SchemaChangePolicyH\x02R\x12schemaChangePolicy\x88\x01\x01\x12&\n" +
-	"\fmax_attempts\x18\x05 \x01(\x05H\x03R\vmaxAttempts\x88\x01\x01\x123\n" +
-	"\x13retry_delay_minutes\x18\x06 \x01(\x05H\x04R\x11retryDelayMinutes\x88\x01\x01\x12j\n" +
-	"\x14namespace_definition\x18\a \x01(\x0e22.synclet.publicapi.pipeline.v1.NamespaceDefinitionH\x05R\x13namespaceDefinition\x88\x01\x01\x12;\n" +
-	"\x17custom_namespace_format\x18\b \x01(\tH\x06R\x15customNamespaceFormat\x88\x01\x01\x12(\n" +
-	"\rstream_prefix\x18\t \x01(\tH\aR\fstreamPrefix\x88\x01\x01B\a\n" +
+	"\fmax_attempts\x18\x05 \x01(\x05H\x03R\vmaxAttempts\x88\x01\x01\x12j\n" +
+	"\x14namespace_definition\x18\a \x01(\x0e22.synclet.publicapi.pipeline.v1.NamespaceDefinitionH\x04R\x13namespaceDefinition\x88\x01\x01\x12;\n" +
+	"\x17custom_namespace_format\x18\b \x01(\tH\x05R\x15customNamespaceFormat\x88\x01\x01\x12(\n" +
+	"\rstream_prefix\x18\t \x01(\tH\x06R\fstreamPrefix\x88\x01\x01B\a\n" +
 	"\x05_nameB\v\n" +
 	"\t_scheduleB\x17\n" +
 	"\x15_schema_change_policyB\x0f\n" +
-	"\r_max_attemptsB\x16\n" +
-	"\x14_retry_delay_minutesB\x17\n" +
+	"\r_max_attemptsB\x17\n" +
 	"\x15_namespace_definitionB\x1a\n" +
 	"\x18_custom_namespace_formatB\x10\n" +
-	"\x0e_stream_prefix\"e\n" +
+	"\x0e_stream_prefixJ\x04\b\x06\x10\a\"e\n" +
 	"\x18UpdateConnectionResponse\x12I\n" +
 	"\n" +
 	"connection\x18\x01 \x01(\v2).synclet.publicapi.pipeline.v1.ConnectionR\n" +
@@ -6090,11 +6083,12 @@ const file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDesc = "" +
 	"\x15GetConnectionResponse\x12I\n" +
 	"\n" +
 	"connection\x18\x01 \x01(\v2).synclet.publicapi.pipeline.v1.ConnectionR\n" +
-	"connection\"p\n" +
+	"connection\"\xb5\x01\n" +
 	"\x16ListConnectionsRequest\x12!\n" +
 	"\fworkspace_id\x18\x01 \x01(\tR\vworkspaceId\x12\x1b\n" +
 	"\tpage_size\x18\x02 \x01(\x05R\bpageSize\x12\x16\n" +
-	"\x06offset\x18\x03 \x01(\x05R\x06offset\"|\n" +
+	"\x06offset\x18\x03 \x01(\x05R\x06offset\x12C\n" +
+	"\x1einclude_pending_schema_changes\x18\x04 \x01(\bR\x1bincludePendingSchemaChanges\"|\n" +
 	"\x17ListConnectionsResponse\x12K\n" +
 	"\vconnections\x18\x01 \x03(\v2).synclet.publicapi.pipeline.v1.ConnectionR\vconnections\x12\x14\n" +
 	"\x05total\x18\x02 \x01(\x05R\x05total\")\n" +

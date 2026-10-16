@@ -1,6 +1,7 @@
 import type { ChannelType, NotificationChannel, NotificationCondition, NotificationRule } from './types'
 import type { NotificationChannel as ProtoNotificationChannel, NotificationRule as ProtoNotificationRule } from '@/gen/synclet/publicapi/notify/v1/notify_pb'
 import { notificationClient } from '@shared/api/services'
+import { requireField } from '@shared/lib/errorUtils'
 import { tsToDate } from '@shared/lib/formatting'
 import { NotificationChannelType, NotificationCondition as ProtoNotificationCondition } from '@/gen/synclet/publicapi/notify/v1/notify_pb'
 
@@ -28,24 +29,27 @@ const conditionToProto: Record<NotificationCondition, ProtoNotificationCondition
   on_zero_records: ProtoNotificationCondition.ON_ZERO_RECORDS,
 }
 
-function parseConfig(config: string | undefined | null): Record<string, string> {
+function parseConfig(config: string | undefined | null): { config: Record<string, string>, invalid: boolean } {
   if (!config)
-    return {}
+    return { config: {}, invalid: false }
   try {
-    return JSON.parse(config)
+    const parsed: unknown = JSON.parse(config)
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed))
+      return { config: parsed as Record<string, string>, invalid: false }
   }
-  catch {
-    return {}
-  }
+  catch {}
+  return { config: {}, invalid: true }
 }
 
 function mapChannel(proto: ProtoNotificationChannel): NotificationChannel {
+  const { config, invalid } = parseConfig(proto.config)
   return {
     id: proto.id || '',
     workspaceId: proto.workspaceId || '',
     name: proto.name || '',
     channelType: channelTypeFromProto[proto.channelType] ?? 'slack',
-    config: parseConfig(proto.config),
+    config,
+    configInvalid: invalid,
     enabled: proto.enabled ?? false,
     createdAt: tsToDate(proto.createdAt),
     updatedAt: tsToDate(proto.updatedAt),
@@ -85,7 +89,7 @@ export async function createChannel(params: {
     config: JSON.stringify(params.config),
     enabled: params.enabled,
   })
-  return mapChannel(res.channel!)
+  return mapChannel(requireField(res.channel, 'channel'))
 }
 
 export async function updateChannel(id: string, params: {
@@ -142,7 +146,7 @@ export async function createRule(params: {
     conditionValue: params.conditionValue,
     enabled: params.enabled,
   })
-  return mapRule(res.rule!)
+  return mapRule(requireField(res.rule, 'rule'))
 }
 
 export async function updateRule(id: string, params: {

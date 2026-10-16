@@ -42,11 +42,6 @@ func (uc *DetectSchemaChanges) Execute(ctx context.Context, params DetectSchemaC
 		return nil, fmt.Errorf("getting latest catalog: %w", err)
 	}
 
-	var latestCatalog protocol.AirbyteCatalog
-	if err := json.Unmarshal([]byte(latestRecord.CatalogJSON), &latestCatalog); err != nil {
-		return nil, fmt.Errorf("unmarshaling latest catalog: %w", err)
-	}
-
 	// Get the configured catalog.
 	configuredRecord, err := uc.storage.ConfiguredCatalogs().First(ctx, &pipelineservice.ConfiguredCatalogFilter{
 		ConnectionID: filter.Equals(params.ConnectionID),
@@ -61,12 +56,23 @@ func (uc *DetectSchemaChanges) Execute(ctx context.Context, params DetectSchemaC
 		return nil, fmt.Errorf("getting configured catalog: %w", err)
 	}
 
+	return diffConfiguredCatalog(latestRecord, configuredRecord)
+}
+
+// diffConfiguredCatalog returns the changes between the streams a connection
+// has configured and the latest discovered catalog of its source, or nil when
+// there are none.
+func diffConfiguredCatalog(latest *pipelineservice.CatalogDiscovery, configured *pipelineservice.ConfiguredCatalog) ([]SchemaChange, error) {
+	var latestCatalog protocol.AirbyteCatalog
+	if err := json.Unmarshal([]byte(latest.CatalogJSON), &latestCatalog); err != nil {
+		return nil, fmt.Errorf("unmarshaling latest catalog: %w", err)
+	}
+
 	var configuredStreams []protocol.ConfiguredAirbyteStream
-	if err := json.Unmarshal([]byte(configuredRecord.StreamsJSON), &configuredStreams); err != nil {
+	if err := json.Unmarshal([]byte(configured.StreamsJSON), &configuredStreams); err != nil {
 		return nil, fmt.Errorf("unmarshaling configured streams: %w", err)
 	}
 
-	// Build a catalog from configured streams for comparison.
 	oldCatalog := &protocol.AirbyteCatalog{
 		Streams: make([]protocol.AirbyteStream, len(configuredStreams)),
 	}

@@ -28,6 +28,7 @@ const healthBadge: Record<HealthStatus, { variant: 'success' | 'warning' | 'dang
   warning: { variant: 'warning', label: 'Warning' },
   failing: { variant: 'danger', label: 'Failing' },
   disabled: { variant: 'gray', label: 'Disabled' },
+  unknown: { variant: 'gray', label: 'Unknown' },
 }
 
 const syncing = computed(() => triggerSyncMutation.isPending.value)

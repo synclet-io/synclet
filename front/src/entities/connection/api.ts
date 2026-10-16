@@ -17,7 +17,7 @@ function mapConnectionStatus(proto: ProtoConnectionStatus): ConnectionStatus {
     case ProtoConnectionStatus.ACTIVE: return 'active'
     case ProtoConnectionStatus.INACTIVE: return 'inactive'
     case ProtoConnectionStatus.PAUSED: return 'paused'
-    default: return 'active'
+    default: return 'unknown'
   }
 }
 
@@ -92,13 +92,15 @@ function mapConnection(proto: ProtoConnection): Connection {
     namespaceDefinition: mapNamespaceDefinition(proto.namespaceDefinition),
     customNamespaceFormat: proto.customNamespaceFormat || '',
     streamPrefix: proto.streamPrefix || '',
+    pendingSchemaChanges: proto.pendingSchemaChanges,
   }
 }
 
-export async function listConnections(params: { pageSize?: number, offset?: number } = {}): Promise<{ items: Connection[], total: number }> {
+export async function listConnections(params: { pageSize?: number, offset?: number, includePendingSchemaChanges?: boolean } = {}): Promise<{ items: Connection[], total: number }> {
   const res = await connectionClient.listConnections({
     pageSize: params.pageSize ?? 0,
     offset: params.offset ?? 0,
+    includePendingSchemaChanges: params.includePendingSchemaChanges ?? false,
   })
   return {
     items: (res.connections || []).map(mapConnection),

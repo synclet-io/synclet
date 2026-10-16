@@ -395,11 +395,15 @@ message Connection {
   google.protobuf.Timestamp created_at = 9;
   google.protobuf.Timestamp updated_at = 10;
   int32 max_attempts = 11;
-  int32 retry_delay_minutes = 12;
+  reserved 12;
   NamespaceDefinition namespace_definition = 13;
   string custom_namespace_format = 14;
   string stream_prefix = 15;
   optional google.protobuf.Timestamp next_scheduled_at = 16;
+  // Number of schema changes between the configured catalog and the source's
+  // latest discovered catalog. Set by GetConnection, and by ListConnections
+  // when include_pending_schema_changes is true; zero otherwise.
+  int32 pending_schema_changes = 17;
 }
 
 message CreateConnectionRequest {
@@ -410,7 +414,7 @@ message CreateConnectionRequest {
   optional string schedule = 5;
   SchemaChangePolicy schema_change_policy = 6;
   int32 max_attempts = 7;
-  int32 retry_delay_minutes = 8;
+  reserved 8;
   NamespaceDefinition namespace_definition = 9;
   string custom_namespace_format = 10;
   string stream_prefix = 11;
@@ -426,7 +430,7 @@ message UpdateConnectionRequest {
   optional string schedule = 3;
   optional SchemaChangePolicy schema_change_policy = 4;
   optional int32 max_attempts = 5;
-  optional int32 retry_delay_minutes = 6;
+  reserved 6;
   optional NamespaceDefinition namespace_definition = 7;
   optional string custom_namespace_format = 8;
   optional string stream_prefix = 9;
@@ -454,6 +458,8 @@ message ListConnectionsRequest {
   string workspace_id = 1;
   int32 page_size = 2;
   int32 offset = 3;
+  // Computes Connection.pending_schema_changes for the returned page.
+  bool include_pending_schema_changes = 4;
 }
 
 message ListConnectionsResponse {

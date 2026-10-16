@@ -5,7 +5,7 @@ import { auditClient } from '@shared/api/services'
 import { tsToDate } from '@shared/lib/formatting'
 import { AuditAction as ProtoAuditAction, AuditActorType as ProtoAuditActorType, AuditResourceType as ProtoAuditResourceType } from '@/gen/synclet/publicapi/audit/v1/audit_pb'
 
-function mapAction(proto: ProtoAuditAction): AuditAction {
+function mapAction(proto: ProtoAuditAction): AuditAction | 'unknown' {
   switch (proto) {
     case ProtoAuditAction.CREATE: return 'create'
     case ProtoAuditAction.UPDATE: return 'update'
@@ -16,7 +16,7 @@ function mapAction(proto: ProtoAuditAction): AuditAction {
     case ProtoAuditAction.SYNC: return 'sync'
     case ProtoAuditAction.LOGIN: return 'login'
     case ProtoAuditAction.LOGOUT: return 'logout'
-    default: return 'update'
+    default: return 'unknown'
   }
 }
 
@@ -34,7 +34,7 @@ function toProtoAction(a: AuditAction): ProtoAuditAction {
   }
 }
 
-function mapResourceType(proto: ProtoAuditResourceType): AuditResourceType {
+function mapResourceType(proto: ProtoAuditResourceType): AuditResourceType | 'unknown' {
   switch (proto) {
     case ProtoAuditResourceType.SOURCE: return 'source'
     case ProtoAuditResourceType.DESTINATION: return 'destination'
@@ -49,7 +49,7 @@ function mapResourceType(proto: ProtoAuditResourceType): AuditResourceType {
     case ProtoAuditResourceType.WORKSPACE_INVITE: return 'workspace_invite'
     case ProtoAuditResourceType.API_KEY: return 'api_key'
     case ProtoAuditResourceType.USER: return 'user'
-    default: return 'connection'
+    default: return 'unknown'
   }
 }
 

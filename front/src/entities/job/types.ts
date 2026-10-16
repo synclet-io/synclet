@@ -1,5 +1,5 @@
-export type JobStatus = 'scheduled' | 'starting' | 'running' | 'completed' | 'failed' | 'cancelled'
-export type JobType = 'sync' | 'discover' | 'check'
+export type JobStatus = 'scheduled' | 'starting' | 'running' | 'completed' | 'failed' | 'cancelled' | 'unknown'
+export type JobType = 'sync' | 'discover' | 'check' | 'unknown'
 
 export interface Job {
   id: string

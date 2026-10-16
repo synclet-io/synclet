@@ -40,32 +40,24 @@ const parsedFields = computed<SchemaField[]>(() => {
 
 const leafFields = computed(() => getLeafFields(parsedFields.value))
 
-const selectedPaths = computed(() => {
-  const set = new Set<string>()
-  for (const sf of props.stream.selectedFields) {
-    set.add(pathKey(sf.fieldPath))
-  }
-  return set
-})
+function pathMap(paths: string[][]): Map<string, string[]> {
+  return new Map(paths.map(p => [pathKey(p), p]))
+}
 
-const forcedPaths = computed(() => {
-  const set = new Set<string>()
-  // Force PK fields
+const selectedPathMap = computed(() => pathMap(props.stream.selectedFields.map(sf => sf.fieldPath)))
+
+const forcedPathMap = computed(() => {
   const pkFields = props.stream.sourceDefinedPrimaryKey.length > 0
     ? props.stream.sourceDefinedPrimaryKey
     : props.stream.primaryKey
-  for (const pk of pkFields) {
-    set.add(pathKey(pk))
-  }
-  // Force cursor field
   const cursor = props.stream.sourceDefinedCursor
     ? props.stream.defaultCursorField
     : props.stream.cursorField
-  if (cursor.length > 0) {
-    set.add(pathKey(cursor))
-  }
-  return set
+  return pathMap(cursor.length > 0 ? [...pkFields, cursor] : pkFields)
 })
+
+const selectedPaths = computed(() => new Set(selectedPathMap.value.keys()))
+const forcedPaths = computed(() => new Set(forcedPathMap.value.keys()))
 
 const hasFieldsError = computed(() => props.validationErrors.some(e => e.type === 'missing_fields'))
 
@@ -73,36 +65,28 @@ function emitUpdate(partial: Partial<StreamRow>) {
   emit('update:stream', { ...props.stream, ...partial })
 }
 
+function emitSelected(paths: Map<string, string[]>) {
+  for (const [key, path] of forcedPathMap.value)
+    paths.set(key, path)
+  const selectedFields: SelectedField[] = Array.from(paths.values(), fieldPath => ({ fieldPath }))
+  emitUpdate({ selectedFields })
+}
+
 function handleFieldToggle(path: string[], selected: boolean) {
-  const key = pathKey(path)
-  const current = new Set(selectedPaths.value)
-  if (selected) {
-    current.add(key)
-  }
-  else {
-    current.delete(key)
-  }
-  // Also ensure forced paths are always included
-  for (const fp of forcedPaths.value) {
-    current.add(fp)
-  }
-  const newFields: SelectedField[] = Array.from(current).map(k => ({ fieldPath: k.split('.') }))
-  emitUpdate({ selectedFields: newFields })
+  const current = new Map(selectedPathMap.value)
+  if (selected)
+    current.set(pathKey(path), path)
+  else
+    current.delete(pathKey(path))
+  emitSelected(current)
 }
 
 function handleSelectAll() {
-  const allPaths = new Set(leafFields.value.map(f => pathKey(f.path)))
-  for (const fp of forcedPaths.value) {
-    allPaths.add(fp)
-  }
-  const newFields: SelectedField[] = Array.from(allPaths).map(k => ({ fieldPath: k.split('.') }))
-  emitUpdate({ selectedFields: newFields })
+  emitSelected(pathMap(leafFields.value.map(f => f.path)))
 }
 
 function handleSelectNone() {
-  // Keep only forced paths
-  const newFields: SelectedField[] = Array.from(forcedPaths.value).map(k => ({ fieldPath: k.split('.') }))
-  emitUpdate({ selectedFields: newFields })
+  emitSelected(new Map())
 }
 
 function handleTogglePk(path: string[], selected: boolean) {

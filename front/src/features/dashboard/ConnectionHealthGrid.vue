@@ -12,6 +12,7 @@ const tileStyle: Record<HealthStatus, { tile: string, dot: string, label: string
   warning: { tile: 'bg-warning-bg border-warning-border', dot: 'bg-warning', label: 'Warning' },
   failing: { tile: 'bg-danger-bg border-danger-border', dot: 'bg-danger', label: 'Failing' },
   disabled: { tile: 'bg-surface-raised border-border', dot: 'bg-text-disabled', label: 'Disabled' },
+  unknown: { tile: 'bg-surface-raised border-border', dot: 'bg-text-disabled', label: 'Unknown' },
 }
 
 function lastSync(conn: ConnectionHealth): string {

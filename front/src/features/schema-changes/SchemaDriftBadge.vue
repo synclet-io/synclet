@@ -1,16 +1,10 @@
 <script setup lang="ts">
-import { useSchemaChanges } from '@entities/connection'
 import { SBadge } from '@shared/ui'
-import { computed, ref } from 'vue'
 
-const props = defineProps<{
+defineProps<{
   connectionId: string
+  count: number
 }>()
-
-const enabled = ref(true)
-const { data: changes } = useSchemaChanges(computed(() => props.connectionId), { enabled })
-
-const count = computed(() => changes.value?.length ?? 0)
 </script>
 
 <template>

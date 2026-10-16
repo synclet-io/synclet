@@ -3,6 +3,7 @@ import type { UserWorkspaceInfo as ProtoUserWorkspaceInfo, WorkspaceInfo as Prot
 import { createClient } from '@connectrpc/connect'
 import { createConnectTransport } from '@connectrpc/connect-web'
 import { connectionClient, workspaceClient } from '@shared/api/services'
+import { requireField } from '@shared/lib/errorUtils'
 import { tsToDate } from '@shared/lib/formatting'
 import {
   InviteStatus as ProtoInviteStatus,
@@ -137,7 +138,7 @@ function mapInvite(proto: ProtoWorkspaceInviteInfo): WorkspaceInvite {
 
 export async function createInvite(params: { email: string, role: MemberRole }): Promise<CreatedInvite> {
   const res = await workspaceClient.createInvite({ email: params.email, role: toProtoMemberRole(params.role) })
-  return { invite: mapInvite(res.invite!), acceptUrl: res.acceptUrl }
+  return { invite: mapInvite(requireField(res.invite, 'invite')), acceptUrl: res.acceptUrl }
 }
 
 export async function acceptInvite(token: string): Promise<{ workspaceId: string, workspaceName: string }> {
@@ -165,7 +166,7 @@ export async function listInvites(): Promise<WorkspaceInvite[]> {
 
 export async function getInviteByToken(token: string): Promise<WorkspaceInvite> {
   const res = await publicWorkspaceClient.getInviteByToken({ token })
-  return mapInvite(res.invite!)
+  return mapInvite(requireField(res.invite, 'invite'))
 }
 
 export async function exportConfig(): Promise<Blob> {

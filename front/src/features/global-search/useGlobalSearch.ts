@@ -1,4 +1,4 @@
-import type { Ref } from 'vue'
+import type { MaybeRef, Ref } from 'vue'
 import { useConnections } from '@entities/connection'
 import { useDestinations } from '@entities/destination'
 import { useRepositories } from '@entities/repository'
@@ -39,11 +39,12 @@ const SETTINGS_PAGES: SearchResult[] = [
 
 const PER_GROUP_LIMIT = 8
 
-export function useGlobalSearch(query: Ref<string>) {
-  const sources = useSources()
-  const destinations = useDestinations()
-  const connections = useConnections()
-  const repositories = useRepositories()
+export function useGlobalSearch(query: Ref<string>, options?: { enabled?: MaybeRef<boolean> }) {
+  const enabled = options?.enabled ?? true
+  const sources = useSources({ enabled })
+  const destinations = useDestinations({ enabled })
+  const connections = useConnections({ enabled })
+  const repositories = useRepositories({ enabled })
 
   const isLoading = computed(() =>
     sources.isLoading.value || destinations.isLoading.value || connections.isLoading.value || repositories.isLoading.value,
@@ -103,12 +104,5 @@ export function useGlobalSearch(query: Ref<string>) {
   const flatResults = computed<SearchResult[]>(() => groups.value.flatMap(g => g.results))
   const hasResults = computed(() => flatResults.value.length > 0)
 
-  function refreshAll() {
-    sources.refetch()
-    destinations.refetch()
-    connections.refetch()
-    repositories.refetch()
-  }
-
-  return { groups, flatResults, hasResults, isLoading, refreshAll }
+  return { groups, flatResults, hasResults, isLoading }
 }

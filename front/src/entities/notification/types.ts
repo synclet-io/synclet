@@ -7,6 +7,7 @@ export interface NotificationChannel {
   name: string
   channelType: ChannelType
   config: Record<string, string>
+  configInvalid: boolean
   enabled: boolean
   createdAt: Date | undefined
   updatedAt: Date | undefined

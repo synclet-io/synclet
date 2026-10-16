@@ -1,15 +1,16 @@
+import type { MaybeRef } from 'vue'
 import { useAuth } from '@entities/auth'
 import { connectorKeys, repositoryKeys } from '@shared/lib/queryKeys'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
-import { computed } from 'vue'
+import { computed, toValue } from 'vue'
 import * as repositoryApi from './api'
 
-export function useRepositories() {
+export function useRepositories(options?: { enabled?: MaybeRef<boolean> }) {
   const { currentWorkspaceId } = useAuth()
   return useQuery({
     queryKey: computed(() => repositoryKeys.list(currentWorkspaceId.value ?? '')),
     queryFn: () => repositoryApi.listRepositories(),
-    enabled: computed(() => !!currentWorkspaceId.value),
+    enabled: computed(() => !!currentWorkspaceId.value && toValue(options?.enabled ?? true)),
   })
 }
 

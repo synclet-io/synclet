@@ -30,6 +30,14 @@ describe('job api', () => {
     expect(result).toEqual({ items: [], total: 3 })
   })
 
+  it('maps unrecognised status and type to unknown', async () => {
+    jobClient.listJobs.mockResolvedValue({ jobs: [{ id: 'j1', status: 99, jobType: 99, attempts: [] }], total: 1 })
+
+    const { items } = await listJobs('')
+
+    expect(items[0]).toMatchObject({ status: 'unknown', jobType: 'unknown' })
+  })
+
   it('follows hasMore until the whole log is loaded', async () => {
     jobClient.getJobLogs
       .mockResolvedValueOnce({ lines: ['a', 'b'], lastId: 2n, hasMore: true })

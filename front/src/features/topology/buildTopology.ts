@@ -29,6 +29,7 @@ function aggregateHealth(healths: TopologyNode['health'][]): TopologyNode['healt
     failing: 4,
     warning: 3,
     disabled: 2,
+    unknown: 2,
     healthy: 1,
     never: 0,
   }

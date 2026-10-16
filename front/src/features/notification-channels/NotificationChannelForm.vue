@@ -163,6 +163,9 @@ async function handleTest() {
       <SAlert v-if="saveError" variant="danger" dismissible @dismiss="saveError = ''">
         {{ saveError }}
       </SAlert>
+      <SAlert v-if="channel?.configInvalid" variant="warning">
+        The stored configuration for this channel could not be read. Re-enter every field before saving.
+      </SAlert>
 
       <SInput v-model="name" label="Name" placeholder="My notification channel" required />
 
