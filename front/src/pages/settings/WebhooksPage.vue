@@ -16,6 +16,7 @@ import {
   SAlert,
   SBadge,
   SButton,
+  SCheckbox,
   SConfirmDialog,
   SEmptyState,
   SInput,
@@ -311,20 +312,20 @@ function eventLabel(value: WebhookEvent): string {
           </p>
         </div>
 
-        <div>
-          <span class="block text-sm font-medium text-text-primary mb-1">Events</span>
-          <div class="space-y-2">
-            <label v-for="event in WEBHOOK_EVENTS" :key="event.value" class="flex items-center gap-2 text-sm text-text-primary">
-              <input
-                type="checkbox"
-                :checked="dialog.form.events.includes(event.value)"
-                class="rounded border-border"
-                @change="toggleEvent(event.value)"
-              >
-              {{ event.label }}
-            </label>
+        <fieldset>
+          <legend class="block text-sm font-medium text-text-primary mb-1">
+            Events
+          </legend>
+          <div class="flex flex-col items-start gap-2">
+            <SCheckbox
+              v-for="event in WEBHOOK_EVENTS"
+              :key="event.value"
+              :model-value="dialog.form.events.includes(event.value)"
+              :label="event.label"
+              @update:model-value="toggleEvent(event.value)"
+            />
           </div>
-        </div>
+        </fieldset>
 
         <div v-if="dialog.mode === 'create'">
           <label class="block text-sm font-medium text-text-primary mb-1">Secret (optional)</label>
@@ -334,10 +335,7 @@ function eventLabel(value: WebhookEvent): string {
           </p>
         </div>
 
-        <div v-else class="flex items-center gap-2">
-          <input id="enabled-toggle" v-model="dialog.form.enabled" type="checkbox" class="rounded border-border">
-          <label for="enabled-toggle" class="text-sm text-text-primary">Enabled</label>
-        </div>
+        <SCheckbox v-else v-model="dialog.form.enabled" label="Enabled" />
       </form>
 
       <template #footer>

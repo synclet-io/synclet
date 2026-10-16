@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { Tab } from '@shared/ui'
-import { SButton, SCard, SConfirmDialog, SInput, STabs } from '@shared/ui'
+import { SAlert, SButton, SCard, SCheckbox, SConfirmDialog, SInput, STabs, STextarea } from '@shared/ui'
 import { Trash2 } from 'lucide-vue-next'
-import { reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 
 interface DockerVolume {
   hostPath: string
@@ -40,7 +40,9 @@ const affinityJson = ref('')
 const validationErrors = reactive<Record<string, string>>({})
 const confirmResetOpen = ref(false)
 
-const activeTab = ref<'common' | 'docker' | 'k8s'>('common')
+type TabValue = 'common' | 'docker' | 'k8s'
+
+const activeTab = ref<TabValue>('common')
 const tabs: Tab[] = [
   { name: 'Common', value: 'common' },
   { name: 'Docker', value: 'docker' },
@@ -89,8 +91,21 @@ function parseConfig(json: string | null) {
 
 watch(() => props.runtimeConfig, val => parseConfig(val), { immediate: true })
 
-const cpuRegex = /^\d+(?:\.\d+)?m?$/
-const memoryRegex = /^\d+(?:\.\d+)?(?:Mi|Gi|Ki|Ti)?$/
+const cpuRegex = /^(?:\d+m|\d+(?:\.\d+)?|\.\d+)$/
+const memoryRegex = /^(?:\d+(?:\.\d*)?|\.\d+)(?:[KMGTPE]i|[kMGTPE]|[eE][+-]?\d+)?$/
+
+function errorTab(key: string): TabValue {
+  if (key === 'cpuLimit' || key === 'memoryLimit')
+    return 'common'
+  if (key.startsWith('vol'))
+    return 'docker'
+  return 'k8s'
+}
+
+const tabsWithErrors = computed(() => {
+  const withErrors = new Set(Object.keys(validationErrors).map(errorTab))
+  return tabs.filter(t => withErrors.has(t.value as TabValue))
+})
 
 function clearErrors() {
   for (const k of Object.keys(validationErrors))
@@ -105,9 +120,9 @@ function validate(): boolean {
   if (cpuLimit.value && !cpuRegex.test(cpuLimit.value))
     validationErrors.cpuLimit = 'Invalid CPU value. Use Kubernetes format: 250m, 0.5, 1'
   if (memoryRequest.value && !memoryRegex.test(memoryRequest.value))
-    validationErrors.memoryRequest = 'Invalid memory value. Use Kubernetes format: 128Mi, 1Gi'
+    validationErrors.memoryRequest = 'Invalid memory value. Use Kubernetes format: 128Mi, 1Gi, 512M'
   if (memoryLimit.value && !memoryRegex.test(memoryLimit.value))
-    validationErrors.memoryLimit = 'Invalid memory value. Use Kubernetes format: 128Mi, 1Gi'
+    validationErrors.memoryLimit = 'Invalid memory value. Use Kubernetes format: 128Mi, 1Gi, 512M'
 
   dockerVolumes.value.forEach((vol, i) => {
     if (vol.hostPath || vol.containerPath) {
@@ -166,8 +181,12 @@ function buildConfigJson(): string | null {
 }
 
 function handleSave() {
-  if (!validate())
+  if (!validate()) {
+    const first = tabsWithErrors.value[0]
+    if (first && !tabsWithErrors.value.some(t => t.value === activeTab.value))
+      activeTab.value = first.value as TabValue
     return
+  }
   emit('save', buildConfigJson())
 }
 
@@ -251,10 +270,7 @@ function removeVolume(index: number) {
             <div class="md:col-span-5">
               <SInput v-model="vol.containerPath" placeholder="Container path (e.g. /data)" :error="validationErrors[`vol${idx}Container`]" />
             </div>
-            <label class="md:col-span-1 flex items-center gap-1 text-xs text-text-secondary mt-2">
-              <input v-model="vol.readOnly" type="checkbox" class="rounded border-border">
-              <span>RO</span>
-            </label>
+            <SCheckbox v-model="vol.readOnly" label="RO" title="Mount read-only" class="md:col-span-1 mt-2.5" />
             <button
               type="button"
               class="md:col-span-1 mt-2 p-1.5 text-text-muted hover:text-danger transition-colors"
@@ -293,45 +309,37 @@ function removeVolume(index: number) {
           </p>
         </div>
 
-        <div>
-          <label class="text-sm text-text-primary mb-1 block">Tolerations</label>
-          <textarea
-            v-model="tolerationsJson"
-            rows="6"
-            placeholder="[{&quot;key&quot;: &quot;dedicated&quot;, &quot;operator&quot;: &quot;Equal&quot;, &quot;value&quot;: &quot;sync&quot;, &quot;effect&quot;: &quot;NoSchedule&quot;}]"
-            class="w-full px-3 py-2 border border-border rounded-lg bg-surface text-sm font-mono text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-          />
-          <p v-if="validationErrors.tolerations" class="text-xs text-danger mt-1.5">
-            {{ validationErrors.tolerations }}
-          </p>
-        </div>
+        <STextarea
+          v-model="tolerationsJson"
+          label="Tolerations"
+          :rows="6"
+          placeholder="[{&quot;key&quot;: &quot;dedicated&quot;, &quot;operator&quot;: &quot;Equal&quot;, &quot;value&quot;: &quot;sync&quot;, &quot;effect&quot;: &quot;NoSchedule&quot;}]"
+          monospace
+          :error="validationErrors.tolerations"
+        />
 
-        <div>
-          <label class="text-sm text-text-primary mb-1 block">Node Selector</label>
-          <textarea
-            v-model="nodeSelectorJson"
-            rows="4"
-            placeholder="{&quot;disktype&quot;: &quot;ssd&quot;}"
-            class="w-full px-3 py-2 border border-border rounded-lg bg-surface text-sm font-mono text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-          />
-          <p v-if="validationErrors.nodeSelector" class="text-xs text-danger mt-1.5">
-            {{ validationErrors.nodeSelector }}
-          </p>
-        </div>
+        <STextarea
+          v-model="nodeSelectorJson"
+          label="Node Selector"
+          :rows="4"
+          placeholder="{&quot;disktype&quot;: &quot;ssd&quot;}"
+          monospace
+          :error="validationErrors.nodeSelector"
+        />
 
-        <div>
-          <label class="text-sm text-text-primary mb-1 block">Pod Affinity</label>
-          <textarea
-            v-model="affinityJson"
-            rows="6"
-            placeholder="{&quot;nodeAffinity&quot;: {...}}"
-            class="w-full px-3 py-2 border border-border rounded-lg bg-surface text-sm font-mono text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-          />
-          <p v-if="validationErrors.affinity" class="text-xs text-danger mt-1.5">
-            {{ validationErrors.affinity }}
-          </p>
-        </div>
+        <STextarea
+          v-model="affinityJson"
+          label="Pod Affinity"
+          :rows="6"
+          placeholder="{&quot;nodeAffinity&quot;: {...}}"
+          monospace
+          :error="validationErrors.affinity"
+        />
       </div>
+
+      <SAlert v-if="tabsWithErrors.length > 0" variant="danger" class="mt-6">
+        Fix the highlighted fields on the {{ tabsWithErrors.map(t => t.name).join(', ') }} {{ tabsWithErrors.length === 1 ? 'tab' : 'tabs' }} before saving.
+      </SAlert>
 
       <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-border">
         <SButton variant="secondary" class="text-danger" @click="handleReset">

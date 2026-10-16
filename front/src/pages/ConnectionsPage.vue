@@ -8,7 +8,7 @@ import SchemaDriftBadge from '@features/schema-changes/SchemaDriftBadge.vue'
 import { getErrorMessage } from '@shared/lib/errorUtils'
 import { statusVariant } from '@shared/lib/format'
 import { connectionKeys } from '@shared/lib/queryKeys'
-import { PageHeader, SAlert, SBadge, SButton, SConfirmDialog, SEmptyState, SPagination, STable, useToast } from '@shared/ui'
+import { PageHeader, SAlert, SBadge, SButton, SCheckbox, SConfirmDialog, SEmptyState, SPagination, STable, useToast } from '@shared/ui'
 import { useQueryClient } from '@tanstack/vue-query'
 import { Copy, Pause, Play, Plus, Trash2 } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
@@ -25,6 +25,7 @@ const bulk = useBulkConnectionActions()
 
 const pageIds = computed(() => data.value?.items.map(c => c.id) ?? [])
 const allOnPageSelected = computed(() => selection.allSelected(pageIds.value))
+const someOnPageSelected = computed(() => !allOnPageSelected.value && pageIds.value.some(id => selection.isSelected(id)))
 
 type ConfirmAction = 'delete' | 'disableAll' | null
 const confirmAction = ref<ConfirmAction>(null)
@@ -163,24 +164,21 @@ const columns: Column[] = [
       </SEmptyState>
     </template>
     <template #header-select>
-      <input
-        type="checkbox"
-        class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-        :checked="allOnPageSelected"
+      <SCheckbox
+        :model-value="allOnPageSelected"
+        :indeterminate="someOnPageSelected"
         :disabled="bulk.running.value"
         :aria-label="allOnPageSelected ? 'Deselect all on page' : 'Select all on page'"
-        @change="selection.toggleAll(pageIds)"
-      >
+        @update:model-value="selection.toggleAll(pageIds)"
+      />
     </template>
     <template #cell-select="{ row }">
-      <input
-        type="checkbox"
-        class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-        :checked="selection.isSelected(row.id)"
+      <SCheckbox
+        :model-value="selection.isSelected(row.id)"
         :disabled="bulk.running.value"
         :aria-label="`Select ${row.name}`"
-        @change="selection.toggle(row.id)"
-      >
+        @update:model-value="selection.toggle(row.id)"
+      />
     </template>
     <template #cell-name="{ row }">
       <div class="flex items-center gap-2">

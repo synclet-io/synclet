@@ -1,5 +1,7 @@
 <script setup lang="ts">
-withDefaults(defineProps<{
+import { computed } from 'vue'
+
+const props = withDefaults(defineProps<{
   variant?: 'text' | 'circle' | 'rect'
   width?: string
   height?: string
@@ -8,22 +10,37 @@ withDefaults(defineProps<{
   variant: 'text',
   count: 1,
 })
+
+const itemClass = computed(() => [
+  'animate-pulse bg-surface-raised',
+  `s-skeleton-${props.variant}`,
+  props.variant === 'circle' ? 'rounded-full' : 'rounded-lg',
+])
+
+const itemStyle = computed(() => ({
+  width: props.width,
+  height: props.variant === 'circle' ? (props.height ?? props.width) : props.height,
+}))
 </script>
 
 <template>
-  <div class="space-y-2.5">
-    <div
-      v-for="i in count"
-      :key="i"
-      class="animate-pulse bg-surface-raised rounded-lg"
-      :class="{
-        'h-4': variant === 'text',
-        'rounded-full': variant === 'circle',
-      }"
-      :style="{
-        width: variant === 'circle' ? (width || '40px') : (width || '100%'),
-        height: variant === 'text' ? (height || '16px') : variant === 'circle' ? (width || '40px') : (height || '80px'),
-      }"
-    />
+  <div v-if="count === 1" :class="itemClass" :style="itemStyle" />
+  <div v-else class="space-y-2.5">
+    <div v-for="i in count" :key="i" :class="itemClass" :style="itemStyle" />
   </div>
 </template>
+
+<style>
+:where(.s-skeleton-text) {
+  height: 1rem;
+}
+
+:where(.s-skeleton-rect) {
+  height: 5rem;
+}
+
+:where(.s-skeleton-circle) {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+</style>

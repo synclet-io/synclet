@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useResetStreamState, useUpdateStreamState } from '@entities/connection'
 import { getErrorMessage } from '@shared/lib/errorUtils'
-import { SButton, SConfirmDialog, useToast } from '@shared/ui'
+import { SButton, SConfirmDialog, STextarea, useToast } from '@shared/ui'
 import { computed, ref, watch } from 'vue'
 
 const props = defineProps<{
@@ -85,11 +85,12 @@ async function handleReset() {
 
 <template>
   <div class="p-4 space-y-3">
-    <textarea
+    <STextarea
       v-model="editedState"
-      rows="6"
-      class="w-full font-mono text-xs bg-surface-raised border border-border rounded-lg px-3 py-2 resize-y focus:outline-none focus:ring-2 focus:ring-primary/50"
+      :rows="6"
       placeholder="No state data"
+      monospace
+      aria-label="Stream state JSON"
     />
     <div class="flex items-center gap-2">
       <SButton size="sm" :disabled="!isEdited" :loading="saving" @click="handleSave">

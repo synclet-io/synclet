@@ -4,6 +4,7 @@ import { useCreateChannel, useTestChannel, useUpdateChannel } from '@entities/no
 import { getErrorMessage } from '@shared/lib/errorUtils'
 import SAlert from '@shared/ui/SAlert.vue'
 import SButton from '@shared/ui/SButton.vue'
+import SCheckbox from '@shared/ui/SCheckbox.vue'
 import SInput from '@shared/ui/SInput.vue'
 import SModal from '@shared/ui/SModal.vue'
 import { useToast } from '@shared/ui/useToast'
@@ -200,10 +201,7 @@ async function handleTest() {
       </template>
 
       <!-- Enabled checkbox -->
-      <label class="flex items-center gap-2 cursor-pointer">
-        <input v-model="enabled" type="checkbox" class="w-4 h-4 rounded border-border text-primary focus:ring-primary/20">
-        <span class="text-sm text-heading">Enabled</span>
-      </label>
+      <SCheckbox v-model="enabled" label="Enabled" />
 
       <!-- Test error -->
       <SAlert v-if="testError" variant="danger" dismissible @dismiss="testError = ''">

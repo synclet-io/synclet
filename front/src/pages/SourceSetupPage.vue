@@ -4,7 +4,7 @@ import { useConnectorSpec, useManagedConnectors } from '@entities/connector'
 import { useConnectorTaskResult } from '@entities/connector-task'
 import { useCreateSource, useTestSourceConnection } from '@entities/source'
 import { getErrorMessage } from '@shared/lib/errorUtils'
-import { PageHeader, SAlert, SButton, SCard, SConfirmDialog, SEmptyState, SInput, SSkeleton } from '@shared/ui'
+import { PageHeader, SAlert, SButton, SCard, SConfirmDialog, SEmptyState, SInput, SSkeleton, STextarea } from '@shared/ui'
 import JsonSchemaForm from '@shared/ui/JsonSchemaForm.vue'
 import { ExternalLink, PackageOpen } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
@@ -284,18 +284,16 @@ const filteredConnectors = computed(() => {
               Failed to load the connector spec: {{ getErrorMessage(specError) }}
             </SAlert>
             <div v-else-if="showJsonEditor">
-              <textarea
-                v-model="jsonEditorText" rows="10" placeholder="{}"
-                class="w-full px-3 py-2 border border-border rounded-lg bg-surface text-sm font-mono text-text-primary"
+              <STextarea
+                v-model="jsonEditorText" :rows="10" placeholder="{}" monospace aria-label="Configuration JSON"
               />
             </div>
             <div v-else-if="connectionSpec">
               <JsonSchemaForm v-model="configValues" :schema="connectionSpec" />
             </div>
             <div v-else>
-              <textarea
-                v-model="jsonEditorText" rows="10" placeholder="{}"
-                class="w-full px-3 py-2 border border-border rounded-lg bg-surface text-sm font-mono text-text-primary"
+              <STextarea
+                v-model="jsonEditorText" :rows="10" placeholder="{}" monospace aria-label="Configuration JSON"
               />
             </div>
           </div>

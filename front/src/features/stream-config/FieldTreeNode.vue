@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { SchemaField } from './schemaParser'
-import { SBadge } from '@shared/ui'
+import { SBadge, SCheckbox } from '@shared/ui'
 import { Lock } from 'lucide-vue-next'
 import { computed } from 'vue'
 import { getLeafFields, pathKey } from './schemaParser'
@@ -140,11 +140,6 @@ function handleCursorToggle() {
     return
   emit('toggleCursor', props.field.path)
 }
-
-function setIndeterminate(el: HTMLInputElement | null) {
-  if (el)
-    el.indeterminate = isIndeterminate.value
-}
 </script>
 
 <template>
@@ -155,14 +150,14 @@ function setIndeterminate(el: HTMLInputElement | null) {
     >
       <!-- Field selection checkbox -->
       <div class="w-6 shrink-0 flex items-center">
-        <input
-          :ref="(el: any) => setIndeterminate(el)"
-          type="checkbox"
-          :checked="isChecked"
+        <SCheckbox
+          :model-value="isChecked"
+          :indeterminate="isIndeterminate"
           :disabled="isForced"
-          class="w-3.5 h-3.5 rounded border-border text-primary focus:ring-primary/20 cursor-pointer"
-          @change="handleToggle"
-        >
+          size="sm"
+          :aria-label="`Select field ${field.name}`"
+          @update:model-value="handleToggle"
+        />
       </div>
       <span class="flex-1 text-sm text-heading truncate">{{ field.name }}</span>
 
@@ -175,25 +170,25 @@ function setIndeterminate(el: HTMLInputElement | null) {
       <span class="w-10 flex justify-center">
         <template v-if="isLeaf">
           <span v-if="hasSourceDefinedPk && isSourceDefinedPk" class="inline-flex items-center gap-0.5" title="Source-defined primary key">
-            <input type="checkbox" checked disabled class="w-3.5 h-3.5 rounded border-border text-primary">
+            <SCheckbox :model-value="true" disabled size="sm" :aria-label="`${field.name} is the source-defined primary key`" />
             <Lock class="w-3 h-3 text-text-muted" />
           </span>
-          <input
+          <SCheckbox
             v-else-if="hasSourceDefinedPk"
-            type="checkbox"
-            :checked="false"
+            :model-value="false"
             disabled
-            class="w-3.5 h-3.5 rounded border-border text-text-muted opacity-40"
+            size="sm"
             title="Primary key is source-defined"
-          >
-          <input
+            :aria-label="`${field.name} primary key (source-defined)`"
+          />
+          <SCheckbox
             v-else
-            type="checkbox"
-            :checked="isPkSelected"
-            class="w-3.5 h-3.5 rounded border-border text-primary focus:ring-primary/20 cursor-pointer"
+            :model-value="isPkSelected"
+            size="sm"
             title="Toggle primary key"
-            @change="handlePkToggle"
-          >
+            :aria-label="`Use ${field.name} as primary key`"
+            @update:model-value="handlePkToggle"
+          />
         </template>
       </span>
 
@@ -201,7 +196,7 @@ function setIndeterminate(el: HTMLInputElement | null) {
       <span v-if="showCursorColumn" class="w-10 flex justify-center">
         <template v-if="isLeaf">
           <span v-if="isSourceDefinedCursorField" class="inline-flex items-center gap-0.5" title="Source-defined cursor">
-            <input type="radio" checked disabled class="w-3.5 h-3.5 border-border text-primary">
+            <input type="radio" checked disabled class="w-3.5 h-3.5 accent-primary" :aria-label="`${field.name} is the source-defined cursor`">
             <Lock class="w-3 h-3 text-text-muted" />
           </span>
           <input
@@ -209,8 +204,9 @@ function setIndeterminate(el: HTMLInputElement | null) {
             type="radio"
             :checked="isCursorSelected"
             name="cursor-field"
-            class="w-3.5 h-3.5 border-border text-primary focus:ring-primary/20 cursor-pointer"
+            class="w-3.5 h-3.5 accent-primary cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface rounded-full"
             title="Select as cursor field"
+            :aria-label="`Use ${field.name} as cursor field`"
             @change="handleCursorToggle"
           >
         </template>

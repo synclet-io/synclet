@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { JobAttempt } from '@entities/job'
 import { isActiveJobStatus, useJob, useJobLogs } from '@entities/job'
-import { formatDuration } from '@shared/lib/format'
-import { PageHeader, SAlert, SCard, SLogViewer, SSkeleton, StatusBadge } from '@shared/ui'
+import { formatDuration, statusVariant } from '@shared/lib/format'
+import { PageHeader, SAlert, SBadge, SCard, SLogViewer, SSkeleton } from '@shared/ui'
 import { CheckCircle2, ChevronDown, ChevronRight, Clock, Loader2, PlayCircle, XCircle } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
@@ -156,8 +156,8 @@ function parseLogTimestamp(line: string): number | null {
     />
 
     <div v-if="isLoading" class="space-y-4">
-      <SSkeleton class="h-32" />
-      <SSkeleton class="h-64" />
+      <SSkeleton variant="rect" class="h-32" />
+      <SSkeleton variant="rect" class="h-64" />
     </div>
 
     <SAlert v-else-if="error" variant="danger">
@@ -171,7 +171,9 @@ function parseLogTimestamp(line: string): number | null {
           <div class="text-sm text-text-muted mb-1">
             Status
           </div>
-          <StatusBadge :status="job.status" />
+          <SBadge :variant="statusVariant(job.status)" dot>
+            {{ job.status }}
+          </SBadge>
         </SCard>
         <SCard>
           <div class="text-sm text-text-muted mb-1">

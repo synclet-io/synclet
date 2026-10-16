@@ -2,7 +2,7 @@
 import { getConnectorSpec } from '@entities/connector/api'
 import { useDestination, useUpdateDestination } from '@entities/destination'
 import { getErrorMessage } from '@shared/lib/errorUtils'
-import { PageHeader, SAlert, SButton, SCard, SInput, SSkeleton, useToast } from '@shared/ui'
+import { PageHeader, SAlert, SButton, SCard, SInput, SSkeleton, STextarea, useToast } from '@shared/ui'
 import JsonSchemaForm from '@shared/ui/JsonSchemaForm.vue'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -126,7 +126,7 @@ function handleDiscard() {
 <template>
   <div v-if="destinationLoading || specLoading">
     <SSkeleton class="h-8 w-48 mb-4" />
-    <SSkeleton class="h-64" />
+    <SSkeleton variant="rect" class="h-64" />
   </div>
   <div v-else-if="destination">
     <PageHeader
@@ -159,18 +159,16 @@ function handleDiscard() {
             </button>
           </div>
           <div v-if="showJsonEditor">
-            <textarea
-              v-model="jsonEditorText" rows="10" placeholder="{}"
-              class="w-full px-3 py-2 border border-border rounded-lg bg-surface text-sm font-mono text-text-primary"
+            <STextarea
+              v-model="jsonEditorText" :rows="10" placeholder="{}" monospace aria-label="Configuration JSON"
             />
           </div>
           <div v-else-if="connectionSpec">
             <JsonSchemaForm v-model="configValues" :schema="connectionSpec" />
           </div>
           <div v-else>
-            <textarea
-              v-model="jsonEditorText" rows="10" placeholder="{}"
-              class="w-full px-3 py-2 border border-border rounded-lg bg-surface text-sm font-mono text-text-primary"
+            <STextarea
+              v-model="jsonEditorText" :rows="10" placeholder="{}" monospace aria-label="Configuration JSON"
             />
           </div>
         </div>
