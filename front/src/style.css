@@ -23,6 +23,7 @@
     --color-slate-300: #cbd5e1;
     --color-slate-400: #94a3b8;
     --color-slate-500: #64748b;
+    --color-slate-550: #5d6c82;
     --color-slate-600: #475569;
     --color-slate-700: #334155;
     --color-slate-800: #1e293b;
@@ -89,7 +90,7 @@
     --color-text-heading: var(--color-slate-900);
     --color-text-primary: var(--color-slate-700);
     --color-text-secondary: var(--color-slate-600);
-    --color-text-muted: var(--color-slate-500);
+    --color-text-muted: var(--color-slate-550);
     --color-text-disabled: var(--color-slate-400);
     --color-text-on-primary: #ffffff;
 
