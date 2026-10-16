@@ -6,7 +6,7 @@ export interface Repository {
   url: string
   hasAuth: boolean
   status: RepositoryStatus
-  lastSyncedAt: string | null
+  lastSyncedAt: Date | null
   connectorCount: number
   lastError: string | null
 }

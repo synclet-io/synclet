@@ -16,12 +16,17 @@ const { data, isLoading } = useConnections()
 const connections = computed(() => (data.value?.items ?? []).filter(c =>
   props.kind === 'source' ? c.sourceId === props.instanceId : c.destinationId === props.instanceId,
 ))
+
+const newConnectionRoute = computed(() => ({
+  name: 'connection-new',
+  query: { [props.kind === 'source' ? 'sourceId' : 'destinationId']: props.instanceId },
+}))
 </script>
 
 <template>
   <SCard title="Used by" :description="`Connections that read from or write to this ${kind}`" class="mb-6">
     <template v-if="connections.length > 0" #header>
-      <SButton variant="secondary" size="sm" :to="{ name: 'connection-new' }">
+      <SButton variant="secondary" size="sm" :to="newConnectionRoute">
         <Plus class="w-4 h-4" /> New connection
       </SButton>
     </template>
@@ -32,7 +37,7 @@ const connections = computed(() => (data.value?.items ?? []).filter(c =>
       title="No connections yet"
       :description="`Create a connection with this ${kind} to start syncing data.`"
     >
-      <SButton size="sm" :to="{ name: 'connection-new' }">
+      <SButton size="sm" :to="newConnectionRoute">
         <Plus class="w-4 h-4" /> Create a connection
       </SButton>
     </SEmptyState>

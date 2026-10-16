@@ -6,6 +6,7 @@ import { useAddConnector, useBatchUpdateConnectors, useManagedConnectors, useUpd
 import { useAddRepository, useDeleteRepository, useRepositories, useSyncRepository } from '@entities/repository'
 import { BreakingChangeDialog } from '@features/connector-update'
 import { getErrorMessage } from '@shared/lib/errorUtils'
+import { formatRelativeTime } from '@shared/lib/format'
 import { SAlert, SBadge, SButton, SConfirmDialog, SEmptyState, SInput, SModal, SPagination, SSelect, SSkeleton, STable, STabs, useToast } from '@shared/ui'
 import { refDebounced } from '@vueuse/core'
 import { ArrowUpCircle, Container, Globe, RefreshCw, Trash2 } from 'lucide-vue-next'
@@ -52,6 +53,8 @@ watch(connectorTab, () => {
   searchQuery.value = ''
 })
 
+const hasConnectorFilter = computed(() => repositoryFilter.value !== '' || debouncedSearch.value !== '')
+
 const filteredManaged = computed(() =>
   (managed.value ?? []).filter(c => c.connectorType === connectorTab.value),
 )
@@ -84,19 +87,29 @@ const breakingDialogLoading = ref(false)
 const breakingQueue = ref<ManagedConnector[]>([])
 const updateAllLoading = ref(false)
 
+const updatingId = ref<string | null>(null)
+
 const connectorsWithUpdates = computed(() =>
   (managed.value ?? []).filter(c => c.updateInfo?.hasUpdate),
 )
 
-function handleUpdateClick(connector: ManagedConnector) {
-  if (!connector.updateInfo?.hasUpdate)
+async function handleUpdateClick(connector: ManagedConnector) {
+  if (!connector.updateInfo?.hasUpdate || updatingId.value)
     return
 
   // No breaking changes -- update directly
   if (!connector.updateInfo.breakingChanges?.length) {
-    updateConnector.mutateAsync(connector.id)
-      .then(() => toast.success(`${connector.name} updated`))
-      .catch((e: unknown) => toast.error(getErrorMessage(e) || 'Failed to update connector'))
+    updatingId.value = connector.id
+    try {
+      await updateConnector.mutateAsync(connector.id)
+      toast.success(`${connector.name} updated`)
+    }
+    catch (e: unknown) {
+      toast.error(getErrorMessage(e) || 'Failed to update connector')
+    }
+    finally {
+      updatingId.value = null
+    }
     return
   }
 
@@ -228,24 +241,6 @@ function repoStatusVariant(status: string) {
     failed: 'warning',
   }
   return map[status] || 'gray'
-}
-
-function formatRelativeTime(dateStr: string | null): string {
-  if (!dateStr)
-    return 'Never'
-  const date = new Date(dateStr)
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
-  const diffMin = Math.floor(diffMs / 60000)
-  if (diffMin < 1)
-    return 'Just now'
-  if (diffMin < 60)
-    return `${diffMin} minute${diffMin > 1 ? 's' : ''} ago`
-  const diffHr = Math.floor(diffMin / 60)
-  if (diffHr < 24)
-    return `${diffHr} hour${diffHr > 1 ? 's' : ''} ago`
-  const diffDays = Math.floor(diffHr / 24)
-  return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
 }
 
 const showAddRepoModal = ref(false)
@@ -391,7 +386,7 @@ async function handleSyncRepo(repo: Repository) {
         <span class="text-sm">{{ row.connectorCount }}</span>
       </template>
       <template #cell-lastSyncedAt="{ row }">
-        <span class="text-sm text-text-muted">{{ formatRelativeTime(row.lastSyncedAt) }}</span>
+        <span class="text-sm text-text-muted">{{ row.lastSyncedAt ? formatRelativeTime(row.lastSyncedAt) : 'Never' }}</span>
       </template>
       <template #cell-actions="{ row }">
         <div class="flex items-center gap-2 justify-end">
@@ -494,7 +489,21 @@ async function handleSyncRepo(repo: Repository) {
       <SSkeleton v-for="i in 4" :key="i" variant="rect" height="48px" />
     </div>
 
-    <SEmptyState v-else-if="!pagedManaged.length" title="No connectors found" description="Try adjusting your filters or search query." />
+    <SEmptyState
+      v-else-if="!pagedManaged.length && hasConnectorFilter"
+      title="No connectors found"
+      description="Try adjusting your filters or search query."
+    />
+
+    <SEmptyState
+      v-else-if="!pagedManaged.length"
+      :title="`No ${connectorTab}s installed`"
+      :description="`Sync a repository or add a custom ${connectorTab} connector to get started.`"
+    >
+      <SButton size="sm" @click="openAddModal">
+        <Container class="w-4 h-4" /> Add Custom
+      </SButton>
+    </SEmptyState>
 
     <STable v-else :columns="columns" :data="pagedManaged">
       <template #cell-name="{ row }">
@@ -518,22 +527,13 @@ async function handleSyncRepo(repo: Repository) {
           </SBadge>
           <SButton
             size="sm" variant="secondary"
-            :loading="updateConnector.isPending.value && breakingDialogTarget?.id === row.id"
+            :loading="updatingId === row.id || (breakingDialogLoading && breakingDialogTarget?.id === row.id)"
+            :disabled="!!updatingId && updatingId !== row.id"
             @click="handleUpdateClick(row)"
           >
             Update
           </SButton>
         </div>
-      </template>
-      <template #empty>
-        <SEmptyState
-          :title="`No ${connectorTab}s installed`"
-          :description="`Add a ${connectorTab} connector to get started`"
-        >
-          <SButton size="sm" @click="openAddModal">
-            <Container class="w-4 h-4" /> Add Custom
-          </SButton>
-        </SEmptyState>
       </template>
     </STable>
 

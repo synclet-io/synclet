@@ -67,7 +67,14 @@ export function useWizardState() {
   const committedConnectionId = ref<string | null>(null)
 
   const hasAnyState = computed(() => !!state.value.sourceId || !!state.value.destinationId)
-  const hasUnsavedChanges = computed(() => hasAnyState.value && !committedConnectionId.value)
+  const preselectedSnapshot = ref<string | null>(null)
+  const hasUnsavedChanges = computed(() => {
+    if (committedConnectionId.value)
+      return false
+    if (preselectedSnapshot.value !== null)
+      return JSON.stringify(state.value) !== preselectedSnapshot.value
+    return hasAnyState.value
+  })
 
   function markCommitted(connectionId: string) {
     committedConnectionId.value = connectionId
@@ -90,5 +97,19 @@ export function useWizardState() {
       currentStep.value = step
   }
 
-  return { currentStep, totalSteps, state, canProceed, hasAnyState, hasUnsavedChanges, committedConnectionId, markCommitted, next, back, goTo }
+  /** Applies entities picked before the wizard opened and jumps to the first step still missing a choice. */
+  function preselect(picks: { source?: Source, destination?: Destination }) {
+    if (picks.source) {
+      state.value.sourceId = picks.source.id
+      state.value.source = picks.source
+    }
+    if (picks.destination) {
+      state.value.destinationId = picks.destination.id
+      state.value.destination = picks.destination
+    }
+    preselectedSnapshot.value = JSON.stringify(state.value)
+    goTo(!state.value.sourceId ? 1 : !state.value.destinationId ? 2 : 3, { force: true })
+  }
+
+  return { currentStep, totalSteps, state, canProceed, hasAnyState, hasUnsavedChanges, committedConnectionId, markCommitted, next, back, goTo, preselect }
 }

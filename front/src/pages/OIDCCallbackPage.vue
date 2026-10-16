@@ -2,6 +2,7 @@
 import { useAuth } from '@entities/auth'
 import { postAuthPath, takeOIDCRedirect } from '@entities/auth/pendingInvite'
 import { getAuthMeta } from '@entities/auth/token'
+import { SButton } from '@shared/ui'
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -30,9 +31,14 @@ onMounted(async () => {
 <template>
   <div class="min-h-screen flex items-center justify-center bg-page">
     <div class="text-center">
-      <div v-if="error" role="alert" class="text-danger mb-4">
-        {{ error }}
-      </div>
+      <template v-if="error">
+        <div role="alert" class="text-danger mb-4">
+          {{ error }}
+        </div>
+        <SButton :to="{ name: 'login' }" variant="secondary">
+          Back to sign in
+        </SButton>
+      </template>
       <div v-else class="text-text-secondary">
         Completing sign in...
       </div>

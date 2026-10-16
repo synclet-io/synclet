@@ -16,7 +16,7 @@ import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 
 const route = useRoute()
 const router = useRouter()
-const { currentStep, state, canProceed, hasUnsavedChanges, committedConnectionId, markCommitted, next, back, goTo } = useWizardState()
+const { currentStep, state, canProceed, hasUnsavedChanges, committedConnectionId, markCommitted, next, back, goTo, preselect } = useWizardState()
 const createConnectionMutation = useCreateConnection()
 const configureStreamsMutation = useConfigureStreams()
 const submitting = ref(false)
@@ -26,10 +26,30 @@ const hydrating = ref(false)
 const skipLeaveGuard = ref(false)
 const resolveLeave = ref<((leave: boolean) => void) | null>(null)
 const cloneFromId = ref<string>(typeof route.query.cloneFrom === 'string' ? route.query.cloneFrom : '')
+const preselectSourceId = typeof route.query.sourceId === 'string' ? route.query.sourceId : ''
+const preselectDestinationId = typeof route.query.destinationId === 'string' ? route.query.destinationId : ''
+
+async function applyPreselection() {
+  if (!preselectSourceId && !preselectDestinationId)
+    return
+  hydrating.value = true
+  try {
+    const [source, destination] = await Promise.all([
+      preselectSourceId ? getSource(preselectSourceId).catch(() => undefined) : undefined,
+      preselectDestinationId ? getDestination(preselectDestinationId).catch(() => undefined) : undefined,
+    ])
+    preselect({ source, destination })
+  }
+  finally {
+    hydrating.value = false
+  }
+}
 
 onMounted(async () => {
-  if (!cloneFromId.value)
+  if (!cloneFromId.value) {
+    await applyPreselection()
     return
+  }
   hydrating.value = true
   try {
     const [src, configuredCat] = await Promise.all([
@@ -230,7 +250,7 @@ function handleSkipStreams() {
             <SButton v-if="currentStep > 1" variant="secondary" @click="back">
               Back
             </SButton>
-            <SButton variant="ghost" @click="cancelWizard">
+            <SButton variant="secondary" @click="cancelWizard">
               Cancel
             </SButton>
           </div>

@@ -13,6 +13,7 @@ import {
   useWorkspaceMembers,
 } from '@entities/workspace'
 import { getErrorMessage } from '@shared/lib/errorUtils'
+import { formatRelativeTime } from '@shared/lib/format'
 import { PageHeader, SAlert, SBadge, SButton, SConfirmDialog, SEmptyState, SInput, SSelect, STable, useToast } from '@shared/ui'
 import { Check, Copy, RefreshCw, Trash2, UserPlus, X } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
@@ -205,23 +206,6 @@ function isExpired(invite: WorkspaceInvite): boolean {
   return false
 }
 
-function relativeTime(date: Date | undefined): string {
-  if (!date)
-    return ''
-  const now = new Date()
-  const diff = now.getTime() - date.getTime()
-  const minutes = Math.floor(diff / 60000)
-  if (minutes < 1)
-    return 'just now'
-  if (minutes < 60)
-    return `${minutes}m ago`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24)
-    return `${hours}h ago`
-  const days = Math.floor(hours / 24)
-  return `${days}d ago`
-}
-
 function roleVariant(role: string) {
   const map: Record<string, 'info' | 'success' | 'gray'> = { admin: 'info', editor: 'success', viewer: 'gray' }
   return map[role] || 'gray'
@@ -333,7 +317,7 @@ const columns: Column[] = [
           <span class="text-sm text-text-secondary">{{ row.member.joinedAt?.toLocaleDateString() ?? '-' }}</span>
         </template>
         <template v-else>
-          <span class="text-sm text-text-secondary">Invited {{ relativeTime(row.invite.createdAt) }}</span>
+          <span class="text-sm text-text-secondary">Invited {{ row.invite.createdAt ? formatRelativeTime(row.invite.createdAt) : '' }}</span>
         </template>
       </template>
 

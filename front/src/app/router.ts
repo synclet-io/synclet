@@ -163,7 +163,7 @@ export const router = createRouter({
             {
               path: 'connectors',
               name: 'settings-connectors',
-              component: () => import('@pages/ConnectorBrowserPage.vue'),
+              component: () => import('@pages/ConnectorsSettingsPage.vue'),
             },
             {
               path: 'notifications',
