@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { changePassword, updateProfile, useAuth } from '@entities/auth'
 import { getErrorMessage } from '@shared/lib/errorUtils'
-import { SAlert, SButton, SCard, SInput, useToast } from '@shared/ui'
+import { PageHeader, SAlert, SButton, SCard, SInput, useToast } from '@shared/ui'
 import { ref } from 'vue'
 
 const auth = useAuth()
@@ -57,7 +57,8 @@ async function handleChangePassword() {
 </script>
 
 <template>
-  <div class="space-y-8">
+  <div class="space-y-6">
+    <PageHeader title="Account" :level="2" />
     <SCard title="Profile">
       <SAlert v-if="profileError" variant="danger" class="mb-4" dismissible @dismiss="profileError = ''">
         {{ profileError }}

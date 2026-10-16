@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import type { TimeRange } from '@entities/stats'
+import type { Tab } from '@shared/ui'
+import { STabs } from '@shared/ui'
 
 defineProps<{
   modelValue: TimeRange
@@ -9,21 +11,16 @@ const emit = defineEmits<{
   'update:modelValue': [value: TimeRange]
 }>()
 
-const options: TimeRange[] = ['24h', '7d', '30d']
+const tabs: Tab[] = (['24h', '7d', '30d'] as const).map(range => ({ name: range, value: range }))
 </script>
 
 <template>
-  <div class="inline-flex gap-1 bg-surface-raised rounded-lg p-1">
-    <button
-      v-for="opt in options"
-      :key="opt"
-      class="rounded-md px-3 py-1 text-sm font-medium transition-colors"
-      :class="modelValue === opt
-        ? 'bg-primary-solid text-on-primary'
-        : 'text-text-secondary hover:text-text-primary'"
-      @click="emit('update:modelValue', opt)"
-    >
-      {{ opt }}
-    </button>
-  </div>
+  <STabs
+    :model-value="modelValue"
+    :tabs="tabs"
+    variant="pills"
+    aria-label="Time range"
+    class="!mb-0"
+    @update:model-value="emit('update:modelValue', $event as TimeRange)"
+  />
 </template>

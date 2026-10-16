@@ -4,7 +4,7 @@ import { useSystemInfo } from '@entities/system'
 import { useCreateWorkspace } from '@entities/workspace'
 import { listWorkspaces } from '@entities/workspace/api'
 import { getErrorMessage } from '@shared/lib/errorUtils'
-import { SAlert, SButton, SCard, SInput } from '@shared/ui'
+import { SAlert, SButton, SCard, SInput, SyncletLogo } from '@shared/ui'
 import { ref, watchEffect } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -43,11 +43,15 @@ async function handleSubmit() {
 <template>
   <div class="min-h-screen flex items-center justify-center bg-page">
     <div class="max-w-md w-full">
-      <div class="text-center mb-8">
-        <h1 class="text-3xl font-bold text-primary">
-          Synclet
+      <div class="flex items-center gap-2.5 mb-10">
+        <SyncletLogo size="w-8 h-8" />
+        <span class="text-lg font-semibold text-heading tracking-tight">Synclet</span>
+      </div>
+      <div class="mb-8">
+        <h1 class="text-xl font-semibold text-heading">
+          Create your workspace
         </h1>
-        <p class="mt-2 text-sm text-text-secondary">
+        <p class="mt-1 text-sm text-text-secondary">
           Create your first workspace to get started
         </p>
       </div>

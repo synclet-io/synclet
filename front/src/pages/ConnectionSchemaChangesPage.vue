@@ -65,7 +65,7 @@ const columns: Column[] = [
 </script>
 
 <template>
-  <div class="space-y-4 mt-4">
+  <div class="space-y-4">
     <div v-if="isDiscovering" class="flex items-center gap-2 text-sm text-text-secondary" role="status">
       <SBadge variant="info">
         Discovering…

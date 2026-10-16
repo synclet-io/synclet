@@ -73,7 +73,7 @@ async function saveSettings() {
   <div class="space-y-4">
     <!-- Connection Name -->
     <SCard title="Connection Name">
-      <div class="p-4">
+      <div>
         <SInput
           v-model="editForm.name"
           label="Name"
@@ -84,14 +84,14 @@ async function saveSettings() {
 
     <!-- Schedule -->
     <SCard title="Schedule">
-      <div class="p-4">
+      <div>
         <SCronEditor v-model="editForm.schedule" />
       </div>
     </SCard>
 
     <!-- Schema Change Policy -->
     <SCard title="Schema Change Policy">
-      <div class="p-4">
+      <div>
         <SSelect
           v-model="editForm.schemaChangePolicy"
           :options="schemaChangePolicyOptions"
@@ -102,7 +102,7 @@ async function saveSettings() {
 
     <!-- Retry Policy -->
     <SCard title="Retry Policy">
-      <div class="p-4">
+      <div>
         <SInput
           v-model="editForm.maxAttempts"
           type="number"
@@ -115,7 +115,7 @@ async function saveSettings() {
 
     <!-- Namespace -->
     <SCard title="Namespace">
-      <div class="space-y-4 p-4">
+      <div class="space-y-4">
         <div class="grid grid-cols-2 gap-4">
           <SSelect
             v-model="editForm.namespaceDefinition"

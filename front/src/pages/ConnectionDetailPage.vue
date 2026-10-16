@@ -41,7 +41,7 @@ const jobColumns: Column[] = [
 <template>
   <template v-if="connection">
     <SCard class="mb-6">
-      <div class="flex items-center justify-between p-4">
+      <div class="flex items-center justify-between">
         <RouterLink
           :to="{ name: 'source-detail', params: { id: connection.sourceId } }"
           class="flex items-center gap-2 text-sm font-medium text-primary hover:underline"
@@ -88,7 +88,7 @@ const jobColumns: Column[] = [
     <!-- Replication Stats section -->
     <div class="mb-6">
       <div class="flex items-center justify-between mb-4">
-        <h3 class="text-[15px] font-semibold text-heading">
+        <h3 class="text-base font-semibold text-heading">
           Replication Stats
         </h3>
         <TimeRangeSelector v-model="timeRange" />

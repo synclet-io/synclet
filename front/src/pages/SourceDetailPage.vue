@@ -175,7 +175,7 @@ async function handleDelete() {
     </PageHeader>
 
     <SCard class="mb-6">
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm p-6">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
         <div>
           <span class="text-text-muted">Connector</span>
           <p class="text-text-primary font-medium">

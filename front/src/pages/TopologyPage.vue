@@ -193,7 +193,7 @@ const isEmpty = computed(() => data.value.sources.length === 0 && data.value.des
           :key="i"
           :d="edge.d"
           fill="none"
-          :class="edge.failing ? 'stroke-red-400' : 'stroke-slate-300 dark:stroke-slate-600'"
+          :class="edge.failing ? 'stroke-danger' : 'stroke-border-strong'"
           stroke-width="1.5"
         />
       </g>
@@ -235,7 +235,7 @@ const isEmpty = computed(() => data.value.sources.length === 0 && data.value.des
         <text
           :x="placed.x + 12"
           :y="placed.y + 22"
-          class="text-[12px] font-medium fill-current text-heading pointer-events-none"
+          class="text-xs font-medium fill-current text-heading pointer-events-none"
         >
           {{ placed.node.name.length > 24 ? `${placed.node.name.slice(0, 24)}…` : placed.node.name }}
         </text>

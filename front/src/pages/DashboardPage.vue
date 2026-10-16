@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { TimeRange } from '@entities/stats'
 import { useSyncTimeline, useWorkspaceStats } from '@entities/stats'
+import StatTrend from '@features/connection-stats/StatTrend.vue'
 import ConnectionHealthGrid from '@features/dashboard/ConnectionHealthGrid.vue'
 import DurationTrendsChart from '@features/dashboard/DurationTrendsChart.vue'
 import FailureBreakdownChart from '@features/dashboard/FailureBreakdownChart.vue'
@@ -9,7 +10,7 @@ import ThroughputChart from '@features/dashboard/ThroughputChart.vue'
 import TimeRangeSelector from '@features/dashboard/TimeRangeSelector.vue'
 import TopConnectionsTable from '@features/dashboard/TopConnectionsTable.vue'
 import QuickStartChecklist from '@features/onboarding-checklist/QuickStartChecklist.vue'
-import { formatNumber, formatPercent, formatTrend } from '@shared/lib/format'
+import { formatNumber, formatPercent } from '@shared/lib/format'
 import { PageHeader, SAlert, SCard, SEmptyState, SSkeleton, SStatCard } from '@shared/ui'
 import { Activity, ArrowRightLeft, CheckCircle, Database, XCircle } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
@@ -18,14 +19,6 @@ const timeRange = ref<TimeRange>('24h')
 const { data: stats, isLoading, isError: statsError } = useWorkspaceStats(timeRange)
 const { data: timeline, isLoading: timelineLoading, isError: timelineError } = useSyncTimeline(timeRange)
 const rangeSuffix = computed(() => `(${timeRange.value})`)
-
-function trendColorClass(color: 'green' | 'red' | 'gray') {
-  if (color === 'green')
-    return 'text-success'
-  if (color === 'red')
-    return 'text-danger'
-  return 'text-text-muted'
-}
 </script>
 
 <template>
@@ -66,27 +59,15 @@ function trendColorClass(color: 'green' | 'red' | 'gray') {
       <!-- 5 Stat Cards Row -->
       <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
         <SStatCard :label="`Total Syncs ${rangeSuffix}`" :value="stats.totalSyncs" :icon="Activity" color="blue">
-          <template #default>
-            <p class="text-xs mt-1" :class="trendColorClass(formatTrend(stats.totalSyncsDelta).color)">
-              {{ formatTrend(stats.totalSyncsDelta).text }}
-            </p>
-          </template>
+          <StatTrend :delta="stats.totalSyncsDelta" />
         </SStatCard>
 
         <SStatCard :label="`Success Rate ${rangeSuffix}`" :value="formatPercent(stats.successRate)" :icon="CheckCircle" color="green">
-          <template #default>
-            <p class="text-xs mt-1" :class="trendColorClass(formatTrend(stats.successRateDelta).color)">
-              {{ formatTrend(stats.successRateDelta).text }}
-            </p>
-          </template>
+          <StatTrend :delta="stats.successRateDelta" />
         </SStatCard>
 
         <SStatCard :label="`Records Synced ${rangeSuffix}`" :value="formatNumber(stats.recordsSynced)" :icon="Database" color="purple">
-          <template #default>
-            <p class="text-xs mt-1" :class="trendColorClass(formatTrend(stats.recordsSyncedDelta).color)">
-              {{ formatTrend(stats.recordsSyncedDelta).text }}
-            </p>
-          </template>
+          <StatTrend :delta="stats.recordsSyncedDelta" />
         </SStatCard>
 
         <SStatCard label="Active Connections" :value="stats.activeConnections" :icon="ArrowRightLeft" color="blue" />
@@ -97,11 +78,7 @@ function trendColorClass(color: 'green' | 'red' | 'gray') {
           :icon="XCircle"
           color="amber"
         >
-          <template #default>
-            <p class="text-xs mt-1" :class="trendColorClass(formatTrend(stats.failedSyncsDelta).color)">
-              {{ formatTrend(stats.failedSyncsDelta).text }}
-            </p>
-          </template>
+          <StatTrend :delta="stats.failedSyncsDelta" lower-is-better />
         </SStatCard>
       </div>
 

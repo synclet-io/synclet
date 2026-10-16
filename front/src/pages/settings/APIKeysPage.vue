@@ -91,10 +91,10 @@ const columns: Column[] = [
       </p>
       <div class="flex items-center gap-2">
         <code class="flex-1 px-3 py-2 bg-surface-raised rounded border border-border text-sm font-mono break-all">{{ createdRawKey }}</code>
-        <button class="p-2 text-text-muted hover:text-text-primary transition-colors" title="Copy" @click="copyKey">
-          <Check v-if="copied" class="w-5 h-5 text-success" />
-          <Copy v-else class="w-5 h-5" />
-        </button>
+        <SButton variant="ghost" size="icon" title="Copy" :aria-label="copied ? 'Copied' : 'Copy API key'" @click="copyKey">
+          <Check v-if="copied" class="w-4 h-4 text-success" />
+          <Copy v-else class="w-4 h-4" />
+        </SButton>
       </div>
     </SAlert>
 
@@ -121,12 +121,15 @@ const columns: Column[] = [
         <span class="text-text-secondary">{{ row.expiresAt ? row.expiresAt.toLocaleDateString() : 'Never' }}</span>
       </template>
       <template #cell-actions="{ row }">
-        <button
-          class="p-1 text-text-muted hover:text-danger transition-colors"
-          title="Revoke key" @click="confirmRevoke = { open: true, id: row.id, name: row.name }"
+        <SButton
+          variant="ghost"
+          size="icon"
+          title="Revoke key"
+          :aria-label="`Revoke ${row.name}`"
+          @click="confirmRevoke = { open: true, id: row.id, name: row.name }"
         >
           <Trash2 class="w-4 h-4" />
-        </button>
+        </SButton>
       </template>
     </STable>
 

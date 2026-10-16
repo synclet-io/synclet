@@ -15,7 +15,7 @@ import { computed, ref } from 'vue'
 
 const currentPage = ref(1)
 const PAGE_SIZE = 20
-const { data, isLoading: loading, error } = useConnections({ page: currentPage, pageSize: PAGE_SIZE })
+const { data, isLoading: loading, error } = useConnections({ page: currentPage, pageSize: PAGE_SIZE, includePendingSchemaChanges: true })
 const qc = useQueryClient()
 const { currentWorkspaceId } = useAuth()
 const toast = useToast()
@@ -185,7 +185,7 @@ const columns: Column[] = [
         <RouterLink :to="`/connections/${row.id}`" class="text-sm font-medium text-primary hover:underline hover:text-primary-hover">
           {{ row.name }}
         </RouterLink>
-        <SchemaDriftBadge :connection-id="row.id" />
+        <SchemaDriftBadge :connection-id="row.id" :count="row.pendingSchemaChanges" />
       </div>
     </template>
     <template #cell-status="{ row }">
@@ -201,16 +201,18 @@ const columns: Column[] = [
     </template>
     <template #cell-actions="{ row }">
       <div class="flex items-center justify-end gap-1">
-        <RouterLink
+        <SButton
           :to="`/connections/new?cloneFrom=${row.id}`"
-          class="p-1.5 text-text-muted hover:text-primary transition-colors inline-flex"
+          variant="ghost"
+          size="icon"
           title="Duplicate"
+          :aria-label="`Duplicate ${row.name}`"
         >
           <Copy class="w-4 h-4" />
-        </RouterLink>
-        <button class="p-1.5 text-text-muted hover:text-danger transition-colors" title="Delete" @click="requestDeleteSingle(row.id, row.name)">
+        </SButton>
+        <SButton variant="ghost" size="icon" title="Delete" :aria-label="`Delete ${row.name}`" @click="requestDeleteSingle(row.id, row.name)">
           <Trash2 class="w-4 h-4" />
-        </button>
+        </SButton>
       </div>
     </template>
   </STable>

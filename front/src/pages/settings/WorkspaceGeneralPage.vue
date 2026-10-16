@@ -176,7 +176,7 @@ async function handleImportConfirm() {
 </script>
 
 <template>
-  <div class="space-y-8">
+  <div class="space-y-6">
     <PageHeader title="General" :level="2" />
     <div v-if="loading" class="space-y-6">
       <SSkeleton variant="rect" height="160px" />

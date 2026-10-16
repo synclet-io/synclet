@@ -31,9 +31,9 @@ const emit = defineEmits<{
       <SButton variant="danger" size="sm" :disabled="running" @click="emit('delete')">
         <Trash2 class="w-4 h-4" /> Delete
       </SButton>
-      <button class="p-1.5 text-text-muted hover:text-text-primary transition-colors" title="Clear selection" :disabled="running" @click="emit('clear')">
+      <SButton variant="ghost" size="icon" title="Clear selection" aria-label="Clear selection" :disabled="running" @click="emit('clear')">
         <X class="w-4 h-4" />
-      </button>
+      </SButton>
     </div>
   </div>
 </template>

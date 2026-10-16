@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { StreamRow } from './StreamFieldsTab.vue'
 import type { StreamValidationError } from './useStreamValidation'
+import { STabs } from '@shared/ui'
 import { ref } from 'vue'
 import StreamFieldsTab from './StreamFieldsTab.vue'
 import StreamStateTab from './StreamStateTab.vue'
@@ -20,34 +21,17 @@ const emit = defineEmits<{
   'update:stream': [stream: StreamRow]
 }>()
 
-const activeTab = ref<'fields' | 'state'>('fields')
+const tabs = [
+  { name: 'Fields', value: 'fields' },
+  { name: 'State', value: 'state' },
+]
+const activeTab = ref('fields')
 </script>
 
 <template>
   <div class="bg-surface-raised border-t border-border">
-    <!-- Tab bar -->
-    <div class="flex border-b border-border">
-      <button
-        class="px-4 py-2 text-sm font-medium transition-colors"
-        :class="activeTab === 'fields'
-          ? 'text-primary border-b-2 border-primary'
-          : 'text-text-secondary hover:text-heading'"
-        @click="activeTab = 'fields'"
-      >
-        Fields
-      </button>
-      <button
-        class="px-4 py-2 text-sm font-medium transition-colors"
-        :class="activeTab === 'state'
-          ? 'text-primary border-b-2 border-primary'
-          : 'text-text-secondary hover:text-heading'"
-        @click="activeTab = 'state'"
-      >
-        State
-      </button>
-    </div>
+    <STabs v-model="activeTab" :tabs="tabs" class="!mb-0" />
 
-    <!-- Tab content -->
     <StreamFieldsTab
       v-if="activeTab === 'fields'"
       :stream="stream"

@@ -52,11 +52,11 @@ export function formatRelativeTime(date: Date): string {
 }
 
 /** Map a status string to a badge variant. */
-export function statusVariant(status: string): 'success' | 'danger' | 'warning' | 'gray' {
-  const map: Record<string, 'success' | 'danger' | 'warning' | 'gray'> = {
+export function statusVariant(status: string): 'success' | 'danger' | 'warning' | 'info' | 'gray' {
+  const map: Record<string, 'success' | 'danger' | 'warning' | 'info' | 'gray'> = {
     active: 'success',
     completed: 'success',
-    running: 'success',
+    running: 'info',
     failed: 'danger',
     error: 'danger',
     scheduled: 'warning',
@@ -66,11 +66,11 @@ export function statusVariant(status: string): 'success' | 'danger' | 'warning' 
   return map[status.toLowerCase()] || 'gray'
 }
 
-/** Trend format: "^ 15% vs prev period" or "v 12% vs prev period" or "-- No change". */
-export function formatTrend(delta: number): { text: string, color: 'green' | 'red' | 'gray' } {
+export type TrendDirection = 'up' | 'down' | 'flat'
+
+/** Trend of a period-over-period delta. Text is "15.0% vs prev period" or "No change"; direction drives the arrow and colour. */
+export function formatTrend(delta: number): { text: string, direction: TrendDirection } {
   if (delta === 0)
-    return { text: '-- No change', color: 'gray' }
-  if (delta > 0)
-    return { text: `^ ${Math.abs(delta).toFixed(1)}% vs prev period`, color: 'green' }
-  return { text: `v ${Math.abs(delta).toFixed(1)}% vs prev period`, color: 'red' }
+    return { text: 'No change', direction: 'flat' }
+  return { text: `${Math.abs(delta).toFixed(1)}% vs prev period`, direction: delta > 0 ? 'up' : 'down' }
 }

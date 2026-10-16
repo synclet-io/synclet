@@ -2,8 +2,8 @@
 import type { ChannelType, NotificationCondition } from '@entities/notification'
 import { useCreateRule, useDeleteRule, useNotificationChannels, useNotificationRules, useUpdateRule } from '@entities/notification'
 import { getErrorMessage } from '@shared/lib/errorUtils'
-import { SBadge, SSkeleton, useToast } from '@shared/ui'
-import { ChevronDown, Hash, Mail, Send } from 'lucide-vue-next'
+import { SBadge, SButton, SCheckbox, SEmptyState, SSkeleton, useToast } from '@shared/ui'
+import { Bell, ChevronDown, Hash, Mail, Plus, Send } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
@@ -108,17 +108,17 @@ async function updateConditionValue(channelId: string, condition: NotificationCo
     <SSkeleton v-for="i in 3" :key="i" variant="rect" height="48px" />
   </div>
 
-  <div v-else-if="!notifChannels || notifChannels.length === 0" class="text-center py-12">
-    <p class="text-sm text-text-muted mb-2">
-      No notification channels configured.
-    </p>
-    <router-link
-      :to="{ name: 'settings-notifications' }"
-      class="text-sm text-primary hover:underline"
-    >
-      Go to Settings &gt; Notifications to add channels.
-    </router-link>
-  </div>
+  <SEmptyState
+    v-else-if="!notifChannels || notifChannels.length === 0"
+    :icon="Bell"
+    title="No notification channels"
+    description="Add a channel in workspace settings, then choose which events alert you for this connection."
+  >
+    <SButton :to="{ name: 'settings-notifications' }">
+      <Plus class="w-4 h-4" />
+      Add channel
+    </SButton>
+  </SEmptyState>
 
   <div v-else class="space-y-2">
     <p class="text-sm text-text-secondary mb-4">
@@ -132,16 +132,17 @@ async function updateConditionValue(channelId: string, condition: NotificationCo
     >
       <!-- Collapsed header — click to expand -->
       <button
-        class="w-full flex items-center justify-between px-4 py-3 hover:bg-surface-raised/50 transition-colors"
+        class="w-full flex items-center justify-between px-4 py-3 hover:bg-surface-raised/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/50"
+        :aria-expanded="expandedChannels.has(channel.id)"
         @click="toggleExpand(channel.id)"
       >
         <div class="flex items-center gap-3">
           <component :is="channelTypeIcons[channel.channelType]" class="w-4 h-4 text-text-secondary" />
           <span class="text-sm font-medium text-heading">{{ channel.name }}</span>
-          <SBadge variant="gray" class="text-[10px]">
+          <SBadge variant="gray">
             {{ channel.channelType }}
           </SBadge>
-          <SBadge v-if="getChannelRules(channel.id).length > 0" variant="info" class="text-[10px]">
+          <SBadge v-if="getChannelRules(channel.id).length > 0" variant="info">
             {{ getChannelRules(channel.id).length }} active
           </SBadge>
         </div>
@@ -163,18 +164,14 @@ async function updateConditionValue(channelId: string, condition: NotificationCo
           :key="opt.value"
           class="flex items-center justify-between px-4 py-3 border-b border-border last:border-b-0"
         >
-          <label class="flex items-center gap-2.5 cursor-pointer">
-            <input
-              type="checkbox"
-              :checked="hasCondition(channel.id, opt.value)"
-              class="w-3.5 h-3.5 rounded border-border text-primary focus:ring-primary/20"
-              @change="toggleCondition(channel.id, opt.value)"
-            >
-            <div>
-              <span class="text-sm font-medium text-text-primary">{{ opt.label }}</span>
-              <p class="text-xs text-text-muted">{{ opt.description }}</p>
-            </div>
-          </label>
+          <SCheckbox
+            :model-value="hasCondition(channel.id, opt.value)"
+            class="gap-2.5"
+            @update:model-value="toggleCondition(channel.id, opt.value)"
+          >
+            <span class="block font-medium text-text-primary">{{ opt.label }}</span>
+            <span class="block text-xs text-text-muted">{{ opt.description }}</span>
+          </SCheckbox>
           <div v-if="opt.hasValue && hasCondition(channel.id, opt.value)" class="flex items-center gap-2">
             <span class="text-xs text-text-muted">after</span>
             <input

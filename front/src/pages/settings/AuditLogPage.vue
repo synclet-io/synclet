@@ -160,7 +160,7 @@ const resourceOptions: Array<{ value: '' | AuditResourceType, label: string }> =
   { value: 'user', label: 'Users' },
 ]
 
-function actionVariant(a: AuditAction): 'success' | 'warning' | 'danger' | 'info' | 'gray' {
+function actionVariant(a: AuditAction | 'unknown'): 'success' | 'warning' | 'danger' | 'info' | 'gray' {
   switch (a) {
     case 'create': return 'success'
     case 'update': return 'info'
@@ -172,6 +172,7 @@ function actionVariant(a: AuditAction): 'success' | 'warning' | 'danger' | 'info
       return 'warning'
     case 'login':
     case 'logout':
+    case 'unknown':
       return 'gray'
   }
 }
@@ -186,7 +187,7 @@ function formatValue(v: unknown): string {
 </script>
 
 <template>
-  <PageHeader title="Audit log" description="Every configuration change in this workspace. Admin-only.">
+  <PageHeader title="Audit log" description="Every configuration change in this workspace. Admin-only." :level="2">
     <template #actions>
       <div class="flex flex-col items-end gap-1">
         <form class="flex items-center gap-2" @submit.prevent="saveRetention">
@@ -219,13 +220,13 @@ function formatValue(v: unknown): string {
   <div v-if="actorId || resourceId" class="flex flex-wrap gap-2 mb-3">
     <SBadge v-if="actorId" variant="info">
       Actor: {{ actorLabel || actorId }}
-      <button class="ml-1" title="Remove actor filter" @click="setQuery({ actor: undefined, actorLabel: undefined })">
+      <button class="ml-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50" title="Remove actor filter" aria-label="Remove actor filter" @click="setQuery({ actor: undefined, actorLabel: undefined })">
         <X class="w-3 h-3" />
       </button>
     </SBadge>
     <SBadge v-if="resourceId" variant="info">
       Resource: {{ resourceLabel || resourceId }}
-      <button class="ml-1" title="Remove resource filter" @click="setQuery({ resourceId: undefined, resourceLabel: undefined })">
+      <button class="ml-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50" title="Remove resource filter" aria-label="Remove resource filter" @click="setQuery({ resourceId: undefined, resourceLabel: undefined })">
         <X class="w-3 h-3" />
       </button>
     </SBadge>
@@ -268,7 +269,11 @@ function formatValue(v: unknown): string {
   <SCard v-else :padding="false">
     <ul class="divide-y divide-border">
       <li v-for="event in events" :key="event.id" class="px-4 py-3">
-        <button class="w-full flex items-start gap-3 text-left" @click="toggle(event.id)">
+        <button
+          class="w-full flex items-start gap-3 text-left rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+          :aria-expanded="expanded.has(event.id)"
+          @click="toggle(event.id)"
+        >
           <component :is="expanded.has(event.id) ? ChevronDown : ChevronRight" class="w-4 h-4 mt-0.5 text-text-muted shrink-0" />
           <div class="flex-1 min-w-0">
             <div class="flex flex-wrap items-center gap-2 mb-1">
@@ -298,7 +303,7 @@ function formatValue(v: unknown): string {
             Diff truncated to 8 KB.
           </div>
           <table v-if="event.changes.length > 0" class="w-full text-xs">
-            <thead class="text-text-muted uppercase text-[10px] tracking-wider">
+            <thead class="text-text-muted uppercase text-xs tracking-wider">
               <tr>
                 <th class="text-left py-1 pr-3">
                   Field

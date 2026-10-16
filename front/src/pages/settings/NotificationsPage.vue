@@ -74,21 +74,19 @@ async function confirmDelete() {
 
 <template>
   <div class="space-y-6">
-    <PageHeader title="Notifications" :level="2" />
+    <PageHeader title="Notifications" :level="2">
+      <template v-if="isAdmin" #actions>
+        <SButton @click="openCreate">
+          <Plus class="w-4 h-4" />
+          Add channel
+        </SButton>
+      </template>
+    </PageHeader>
     <SAlert v-if="!isAdmin" variant="info">
       You need admin permissions to manage notification channels.
     </SAlert>
     <SCard title="Notification Channels">
-      <template v-if="isAdmin" #header>
-        <SButton variant="primary" size="sm" @click="openCreate">
-          <Plus class="w-4 h-4" />
-          Add Channel
-        </SButton>
-      </template>
-
-      <div v-if="isLoading" class="p-4">
-        <SSkeleton variant="rect" height="200px" />
-      </div>
+      <SSkeleton v-if="isLoading" variant="rect" height="200px" />
 
       <template v-else-if="!channels || channels.length === 0">
         <SEmptyState
@@ -96,9 +94,9 @@ async function confirmDelete() {
           title="No notification channels"
           description="Add a channel to receive alerts about sync failures."
         >
-          <SButton v-if="isAdmin" variant="primary" size="sm" @click="openCreate">
+          <SButton v-if="isAdmin" @click="openCreate">
             <Plus class="w-4 h-4" />
-            Add Channel
+            Add channel
           </SButton>
         </SEmptyState>
       </template>
@@ -121,22 +119,12 @@ async function confirmDelete() {
           </template>
           <template #cell-actions="{ row }">
             <div class="flex items-center justify-end gap-1">
-              <button
-                class="p-1.5 rounded-lg text-text-muted hover:text-heading hover:bg-surface-hover transition-colors"
-                title="Edit channel"
-                aria-label="Edit channel"
-                @click="openEdit(row)"
-              >
+              <SButton variant="ghost" size="icon" title="Edit channel" :aria-label="`Edit ${row.name}`" @click="openEdit(row)">
                 <Pencil class="w-4 h-4" />
-              </button>
-              <button
-                class="p-1.5 rounded-lg text-text-muted hover:text-danger hover:bg-danger-bg transition-colors"
-                title="Delete channel"
-                aria-label="Delete channel"
-                @click="openDelete(row)"
-              >
+              </SButton>
+              <SButton variant="ghost" size="icon" title="Delete channel" :aria-label="`Delete ${row.name}`" @click="openDelete(row)">
                 <Trash2 class="w-4 h-4" />
-              </button>
+              </SButton>
             </div>
           </template>
         </STable>

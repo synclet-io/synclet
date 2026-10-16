@@ -8,7 +8,7 @@ import { listJobs } from '@entities/job/api'
 import { getErrorMessage } from '@shared/lib/errorUtils'
 import { formatDuration, statusVariant } from '@shared/lib/format'
 import { jobKeys } from '@shared/lib/queryKeys'
-import { PageHeader, SAlert, SBadge, SConfirmDialog, SPagination, SSelect, STable, useToast } from '@shared/ui'
+import { PageHeader, SAlert, SBadge, SButton, SConfirmDialog, SPagination, SSelect, STable, useToast } from '@shared/ui'
 import { useQuery } from '@tanstack/vue-query'
 import { XCircle } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
@@ -242,16 +242,16 @@ const columns = computed<Column[]>(() => [
         <span class="text-sm text-text-secondary">{{ row.attempt }}/{{ row.maxAttempts }}</span>
       </template>
       <template #cell-actions="{ row }">
-        <button
+        <SButton
           v-if="isActiveJobStatus(row.status)"
-          type="button"
-          class="p-1.5 text-text-muted hover:text-danger transition-colors"
+          variant="ghost"
+          size="icon"
           title="Cancel job"
           aria-label="Cancel job"
           @click="requestCancel(row)"
         >
           <XCircle class="w-4 h-4" />
-        </button>
+        </SButton>
       </template>
     </STable>
   </div>
