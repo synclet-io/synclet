@@ -1,4 +1,4 @@
-import type { InviteStatus, MemberRole, UserWorkspace, Workspace, WorkspaceInvite, WorkspaceMember } from './types'
+import type { CreatedInvite, InviteStatus, MemberRole, UserWorkspace, Workspace, WorkspaceInvite, WorkspaceMember } from './types'
 import type { UserWorkspaceInfo as ProtoUserWorkspaceInfo, WorkspaceInfo as ProtoWorkspaceInfo, WorkspaceInviteInfo as ProtoWorkspaceInviteInfo, WorkspaceMemberInfo as ProtoWorkspaceMemberInfo } from '@/gen/synclet/publicapi/workspace/v1/workspace_pb'
 import { createClient } from '@connectrpc/connect'
 import { createConnectTransport } from '@connectrpc/connect-web'
@@ -48,6 +48,8 @@ function mapMember(proto: ProtoWorkspaceMemberInfo): WorkspaceMember {
     id: proto.id,
     workspaceId: proto.workspaceId,
     userId: proto.userId,
+    email: proto.email,
+    name: proto.name,
     role: mapMemberRole(proto.role),
     joinedAt: tsToDate(proto.joinedAt),
   }
@@ -133,9 +135,9 @@ function mapInvite(proto: ProtoWorkspaceInviteInfo): WorkspaceInvite {
   }
 }
 
-export async function createInvite(params: { email: string, role: MemberRole }): Promise<WorkspaceInvite> {
+export async function createInvite(params: { email: string, role: MemberRole }): Promise<CreatedInvite> {
   const res = await workspaceClient.createInvite({ email: params.email, role: toProtoMemberRole(params.role) })
-  return mapInvite(res.invite!)
+  return { invite: mapInvite(res.invite!), acceptUrl: res.acceptUrl }
 }
 
 export async function acceptInvite(token: string): Promise<{ workspaceId: string, workspaceName: string }> {
@@ -151,8 +153,9 @@ export async function revokeInvite(inviteId: string): Promise<void> {
   await workspaceClient.revokeInvite({ inviteId })
 }
 
-export async function resendInvite(inviteId: string): Promise<void> {
-  await workspaceClient.resendInvite({ inviteId })
+export async function resendInvite(inviteId: string): Promise<string> {
+  const res = await workspaceClient.resendInvite({ inviteId })
+  return res.acceptUrl
 }
 
 export async function listInvites(): Promise<WorkspaceInvite[]> {

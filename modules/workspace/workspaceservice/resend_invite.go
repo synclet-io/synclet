@@ -3,7 +3,6 @@ package workspaceservice
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/go-pnp/go-pnp/logging"
@@ -43,21 +42,22 @@ func NewResendInvite(
 }
 
 // Execute resends the invite email and resets the expiration. Same token is reused (D-06).
-func (uc *ResendInvite) Execute(ctx context.Context, inviteID, workspaceID uuid.UUID) error {
+// Returns the link the invitee opens to accept the invite.
+func (uc *ResendInvite) Execute(ctx context.Context, inviteID, workspaceID uuid.UUID) (string, error) {
 	invite, err := uc.storage.WorkspaceInvites().First(ctx, &WorkspaceInviteFilter{
 		ID:          filter.Equals(inviteID),
 		WorkspaceID: filter.Equals(workspaceID),
 	})
 	if err != nil {
-		return fmt.Errorf("finding invite: %w", err)
+		return "", fmt.Errorf("finding invite: %w", err)
 	}
 
 	if invite == nil {
-		return ErrWorkspaceInviteNotFound
+		return "", ErrWorkspaceInviteNotFound
 	}
 
 	if !invite.Status.IsPending() {
-		return &ValidationError{Message: fmt.Sprintf("invite is %s, cannot resend", invite.Status.String())}
+		return "", &ValidationError{Message: fmt.Sprintf("invite is %s, cannot resend", invite.Status.String())}
 	}
 
 	// Reset TTL.
@@ -67,7 +67,7 @@ func (uc *ResendInvite) Execute(ctx context.Context, inviteID, workspaceID uuid.
 
 	invite, err = uc.storage.WorkspaceInvites().Update(ctx, invite)
 	if err != nil {
-		return fmt.Errorf("updating invite TTL: %w", err)
+		return "", fmt.Errorf("updating invite TTL: %w", err)
 	}
 
 	uc.audit.Record(ctx, AuditEvent{
@@ -84,23 +84,23 @@ func (uc *ResendInvite) Execute(ctx context.Context, inviteID, workspaceID uuid.
 		ID: filter.Equals(invite.WorkspaceID),
 	})
 	if err != nil {
-		return fmt.Errorf("loading workspace for resend email: %w", err)
+		return "", fmt.Errorf("loading workspace for resend email: %w", err)
 	}
 
 	if workspace == nil {
-		return fmt.Errorf("workspace %s not found for resend email", invite.WorkspaceID)
+		return "", fmt.Errorf("workspace %s not found for resend email", invite.WorkspaceID)
 	}
 
 	inviter, err := uc.userLookup.GetUserByID(ctx, invite.InviterUserID)
 	if err != nil {
-		return fmt.Errorf("loading inviter for resend email: %w", err)
+		return "", fmt.Errorf("loading inviter for resend email: %w", err)
 	}
 
 	if inviter == nil {
-		return fmt.Errorf("inviter %s not found for resend email", invite.InviterUserID)
+		return "", fmt.Errorf("inviter %s not found for resend email", invite.InviterUserID)
 	}
 
-	acceptURL := fmt.Sprintf("%s/invite/%s", strings.TrimRight(uc.frontendURL, "/"), invite.Token)
+	acceptURL := inviteAcceptURL(uc.frontendURL, invite.Token)
 
 	go func() { //nolint:gosec // intentional background context for async email
 		sendCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -119,5 +119,5 @@ func (uc *ResendInvite) Execute(ctx context.Context, inviteID, workspaceID uuid.
 		}
 	}()
 
-	return nil
+	return acceptURL, nil
 }

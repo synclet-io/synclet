@@ -34,7 +34,9 @@ func TestResendInvite_RefreshesExpiration(t *testing.T) {
 	users := newFakeUserLookup()
 	users.seed(&UserInfo{ID: inviterID, Email: "admin@example.com", Name: "Admin"})
 
-	require.NoError(t, newResendInvite(store, users, &fakeEmailSender{}).Execute(ctx, inviteID, wsID))
+	acceptURL, err := newResendInvite(store, users, &fakeEmailSender{}).Execute(ctx, inviteID, wsID)
+	require.NoError(t, err)
+	assert.Equal(t, "https://app.example.com/invite/tok", acceptURL)
 
 	got, err := store.WorkspaceInvites().First(ctx, &WorkspaceInviteFilter{ID: equalsUUID(inviteID)})
 	require.NoError(t, err)
@@ -54,7 +56,7 @@ func TestResendInvite_NotPendingRejected(t *testing.T) {
 
 	users := newFakeUserLookup()
 
-	err := newResendInvite(store, users, &fakeEmailSender{}).Execute(ctx, inviteID, wsID)
+	_, err := newResendInvite(store, users, &fakeEmailSender{}).Execute(ctx, inviteID, wsID)
 	require.Error(t, err)
 }
 
@@ -62,6 +64,6 @@ func TestResendInvite_InviteNotFound(t *testing.T) {
 	ctx := context.Background()
 	users := newFakeUserLookup()
 
-	err := newResendInvite(newFakeStorage(), users, &fakeEmailSender{}).Execute(ctx, uuid.New(), uuid.New())
+	_, err := newResendInvite(newFakeStorage(), users, &fakeEmailSender{}).Execute(ctx, uuid.New(), uuid.New())
 	require.Error(t, err)
 }

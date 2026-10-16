@@ -303,6 +303,8 @@ message GetSystemInfoResponse {
   reserved 1;
   bool registration_enabled = 2;
   WorkspacesMode workspaces_mode = 3;
+  // Whether the server can send email (invites, email notifications).
+  bool email_enabled = 4;
 }
 
 // ==================== Destination Messages ====================

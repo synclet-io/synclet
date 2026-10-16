@@ -78,6 +78,8 @@ message WorkspaceMemberInfo {
   string user_id = 3;
   MemberRole role = 4;
   google.protobuf.Timestamp joined_at = 5;
+  string email = 6;
+  string name = 7;
 }
 
 message WorkspaceInviteInfo {
@@ -173,6 +175,8 @@ message CreateInviteRequest {
 
 message CreateInviteResponse {
   WorkspaceInviteInfo invite = 1;
+  // Link the invitee opens to accept the invite.
+  string accept_url = 2;
 }
 
 message AcceptInviteRequest {
@@ -200,7 +204,10 @@ message ResendInviteRequest {
   string invite_id = 1;
 }
 
-message ResendInviteResponse {}
+message ResendInviteResponse {
+  // Link the invitee opens to accept the invite.
+  string accept_url = 1;
+}
 
 message ListInvitesRequest {}
 

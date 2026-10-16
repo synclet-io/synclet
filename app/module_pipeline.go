@@ -152,10 +152,11 @@ func pipelineMetricsCollectorAdapter(c *pipelinemetrics.MetricsCollector) promet
 	return c
 }
 
-func newPipelineSourceHandlerConfig(authCfg *authConfig, wsCfg *workspaceConfig) pipelineconnect.SourceHandlerConfig {
+func newPipelineSourceHandlerConfig(authCfg *authConfig, wsCfg *workspaceConfig, notifyCfg *notifyConfig) pipelineconnect.SourceHandlerConfig {
 	return pipelineconnect.SourceHandlerConfig{
 		RegistrationEnabled: authCfg.RegistrationEnabled,
 		SingleWorkspaceMode: WorkspaceModeSingle == wsCfg.Mode,
+		EmailEnabled:        notifyCfg.SMTP.Host != "",
 	}
 }
 

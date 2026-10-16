@@ -22,12 +22,6 @@ import (
 	"github.com/synclet-io/synclet/pkg/connectutil"
 )
 
-// SourceHandlerConfig holds configuration values exposed via GetSystemInfo.
-type SourceHandlerConfig struct {
-	RegistrationEnabled bool
-	SingleWorkspaceMode bool
-}
-
 // SourceHandler implements the SourceService ConnectRPC handler.
 type SourceHandler struct {
 	pipelinev1connect.UnimplementedSourceServiceHandler
@@ -162,10 +156,6 @@ func (h *SourceHandler) UpdateSource(ctx context.Context, req *connect.Request[p
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}
 
-		raw := json.RawMessage(config)
-		params.Config = &raw
-
-		// Blocking connection check before persist.
 		existingSource, err := h.getSource.Execute(ctx, pipelinesources.GetSourceParams{
 			ID:          id,
 			WorkspaceID: workspaceID,
@@ -174,6 +164,15 @@ func (h *SourceHandler) UpdateSource(ctx context.Context, req *connect.Request[p
 			return nil, mapError(err)
 		}
 
+		mergedConfig, err := pipelinesecrets.MergeMaskedSecrets(existingSource.Config, string(config))
+		if err != nil {
+			return nil, mapError(err)
+		}
+
+		raw := json.RawMessage(mergedConfig)
+		params.Config = &raw
+
+		// Blocking connection check before persist.
 		if err := runConnectionCheck(ctx, h.createCheckTask, h.waitForTaskResult,
 			h.connectionCheckTimeout, workspaceID, existingSource.ManagedConnectorID, raw); err != nil {
 			return nil, err
@@ -375,18 +374,6 @@ func (h *SourceHandler) GetSourceCatalog(ctx context.Context, req *connect.Reque
 		Catalog:      pbCatalog,
 		Version:      int32(result.Version),
 		DiscoveredAt: timestamppb.New(result.DiscoveredAt),
-	}), nil
-}
-
-func (h *SourceHandler) GetSystemInfo(ctx context.Context, req *connect.Request[pipelinev1.GetSystemInfoRequest]) (*connect.Response[pipelinev1.GetSystemInfoResponse], error) {
-	workspacesMode := pipelinev1.WorkspacesMode_WORKSPACES_MODE_MULTI
-	if h.config.SingleWorkspaceMode {
-		workspacesMode = pipelinev1.WorkspacesMode_WORKSPACES_MODE_SINGLE
-	}
-
-	return connect.NewResponse(&pipelinev1.GetSystemInfoResponse{
-		RegistrationEnabled: h.config.RegistrationEnabled,
-		WorkspacesMode:      workspacesMode,
 	}), nil
 }
 

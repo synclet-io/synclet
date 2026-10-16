@@ -17,6 +17,8 @@ export interface WorkspaceMember {
   id: string
   workspaceId: string
   userId: string
+  email: string
+  name: string
   role: MemberRole
   joinedAt: Date | undefined
 }
@@ -34,4 +36,9 @@ export interface WorkspaceInvite {
   status: InviteStatus
   expiresAt: Date | undefined
   createdAt: Date | undefined
+}
+
+export interface CreatedInvite {
+  invite: WorkspaceInvite
+  acceptUrl: string
 }

@@ -8,22 +8,31 @@ import (
 	"github.com/saturn4er/boilerplate-go/lib/filter"
 )
 
-// ListMembers returns all members of a workspace.
+// ListMembers returns all members of a workspace together with their user identities.
 // Verifies the caller is a member of the workspace (D-11 dynamic ownership check).
 type ListMembers struct {
 	storage       Storage
 	getMembership *GetMembership
+	userLookup    UserLookup
 }
 
 // NewListMembers creates a new ListMembers use case.
-func NewListMembers(storage Storage, getMembership *GetMembership) *ListMembers {
-	return &ListMembers{storage: storage, getMembership: getMembership}
+func NewListMembers(storage Storage, getMembership *GetMembership, userLookup UserLookup) *ListMembers {
+	return &ListMembers{storage: storage, getMembership: getMembership, userLookup: userLookup}
+}
+
+// MemberWithIdentity is a workspace member with the email and name of its user.
+// Email and Name are empty when the user no longer exists.
+type MemberWithIdentity struct {
+	*WorkspaceMember
+	Email string
+	Name  string
 }
 
 // Execute returns all members for the given workspace after verifying membership.
 // When userID is non-nil, verifies the caller is a member of the workspace (D-11).
 // Internal/system callers may pass nil to skip the membership check.
-func (uc *ListMembers) Execute(ctx context.Context, workspaceID uuid.UUID, userID *uuid.UUID) ([]*WorkspaceMember, error) {
+func (uc *ListMembers) Execute(ctx context.Context, workspaceID uuid.UUID, userID *uuid.UUID) ([]*MemberWithIdentity, error) {
 	// D-11: Verify caller is a member of the requested workspace
 	if userID != nil {
 		_, err := uc.getMembership.Execute(ctx, workspaceID, *userID)
@@ -32,7 +41,26 @@ func (uc *ListMembers) Execute(ctx context.Context, workspaceID uuid.UUID, userI
 		}
 	}
 
-	return uc.storage.WorkspaceMembers().Find(ctx, &WorkspaceMemberFilter{
+	members, err := uc.storage.WorkspaceMembers().Find(ctx, &WorkspaceMemberFilter{
 		WorkspaceID: filter.Equals(workspaceID),
 	})
+	if err != nil {
+		return nil, fmt.Errorf("listing members: %w", err)
+	}
+
+	result := make([]*MemberWithIdentity, len(members))
+	for i, member := range members {
+		user, err := uc.userLookup.GetUserByID(ctx, member.UserID)
+		if err != nil {
+			return nil, fmt.Errorf("looking up member user %s: %w", member.UserID, err)
+		}
+
+		result[i] = &MemberWithIdentity{WorkspaceMember: member}
+		if user != nil {
+			result[i].Email = user.Email
+			result[i].Name = user.Name
+		}
+	}
+
+	return result, nil
 }

@@ -287,7 +287,7 @@ func (h *Handler) CreateInvite(ctx context.Context, req *connect.Request[workspa
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid role: %v", req.Msg.GetRole()))
 	}
 
-	invite, err := h.createInvite.Execute(ctx, workspaceservice.CreateInviteParams{
+	result, err := h.createInvite.Execute(ctx, workspaceservice.CreateInviteParams{
 		WorkspaceID:   workspaceID,
 		InviterUserID: userID,
 		Email:         req.Msg.GetEmail(),
@@ -298,7 +298,8 @@ func (h *Handler) CreateInvite(ctx context.Context, req *connect.Request[workspa
 	}
 
 	return connect.NewResponse(&workspacev1.CreateInviteResponse{
-		Invite: inviteToProto(invite, "", ""),
+		Invite:    inviteToProto(result.Invite, "", ""),
+		AcceptUrl: result.AcceptURL,
 	}), nil
 }
 
@@ -366,11 +367,12 @@ func (h *Handler) ResendInvite(ctx context.Context, req *connect.Request[workspa
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	if err := h.resendInvite.Execute(ctx, inviteID, workspaceID); err != nil {
+	acceptURL, err := h.resendInvite.Execute(ctx, inviteID, workspaceID)
+	if err != nil {
 		return nil, mapError(err)
 	}
 
-	return connect.NewResponse(&workspacev1.ResendInviteResponse{}), nil
+	return connect.NewResponse(&workspacev1.ResendInviteResponse{AcceptUrl: acceptURL}), nil
 }
 
 // ListInvites lists all invites for the current workspace.
@@ -431,13 +433,15 @@ func workspaceToProto(workspace *workspaceservice.Workspace) *workspacev1.Worksp
 	}
 }
 
-func memberToProto(member *workspaceservice.WorkspaceMember) *workspacev1.WorkspaceMemberInfo {
+func memberToProto(member *workspaceservice.MemberWithIdentity) *workspacev1.WorkspaceMemberInfo {
 	return &workspacev1.WorkspaceMemberInfo{
 		Id:          member.ID.String(),
 		WorkspaceId: member.WorkspaceID.String(),
 		UserId:      member.UserID.String(),
 		Role:        memberRoleToProto(member.Role),
 		JoinedAt:    timestamppb.New(member.JoinedAt),
+		Email:       member.Email,
+		Name:        member.Name,
 	}
 }
 

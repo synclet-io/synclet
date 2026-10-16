@@ -216,6 +216,8 @@ type WorkspaceMemberInfo struct {
 	UserId        string                 `protobuf:"bytes,3,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	Role          MemberRole             `protobuf:"varint,4,opt,name=role,proto3,enum=synclet.publicapi.workspace.v1.MemberRole" json:"role,omitempty"`
 	JoinedAt      *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=joined_at,json=joinedAt,proto3" json:"joined_at,omitempty"`
+	Email         string                 `protobuf:"bytes,6,opt,name=email,proto3" json:"email,omitempty"`
+	Name          string                 `protobuf:"bytes,7,opt,name=name,proto3" json:"name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -283,6 +285,20 @@ func (x *WorkspaceMemberInfo) GetJoinedAt() *timestamppb.Timestamp {
 		return x.JoinedAt
 	}
 	return nil
+}
+
+func (x *WorkspaceMemberInfo) GetEmail() string {
+	if x != nil {
+		return x.Email
+	}
+	return ""
+}
+
+func (x *WorkspaceMemberInfo) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
 }
 
 type WorkspaceInviteInfo struct {
@@ -1235,8 +1251,10 @@ func (x *CreateInviteRequest) GetRole() MemberRole {
 }
 
 type CreateInviteResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Invite        *WorkspaceInviteInfo   `protobuf:"bytes,1,opt,name=invite,proto3" json:"invite,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Invite *WorkspaceInviteInfo   `protobuf:"bytes,1,opt,name=invite,proto3" json:"invite,omitempty"`
+	// Link the invitee opens to accept the invite.
+	AcceptUrl     string `protobuf:"bytes,2,opt,name=accept_url,json=acceptUrl,proto3" json:"accept_url,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1276,6 +1294,13 @@ func (x *CreateInviteResponse) GetInvite() *WorkspaceInviteInfo {
 		return x.Invite
 	}
 	return nil
+}
+
+func (x *CreateInviteResponse) GetAcceptUrl() string {
+	if x != nil {
+		return x.AcceptUrl
+	}
+	return ""
 }
 
 type AcceptInviteRequest struct {
@@ -1579,7 +1604,9 @@ func (x *ResendInviteRequest) GetInviteId() string {
 }
 
 type ResendInviteResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Link the invitee opens to accept the invite.
+	AcceptUrl     string `protobuf:"bytes,1,opt,name=accept_url,json=acceptUrl,proto3" json:"accept_url,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1612,6 +1639,13 @@ func (x *ResendInviteResponse) ProtoReflect() protoreflect.Message {
 // Deprecated: Use ResendInviteResponse.ProtoReflect.Descriptor instead.
 func (*ResendInviteResponse) Descriptor() ([]byte, []int) {
 	return file_synclet_publicapi_workspace_v1_workspace_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *ResendInviteResponse) GetAcceptUrl() string {
+	if x != nil {
+		return x.AcceptUrl
+	}
+	return ""
 }
 
 type ListInvitesRequest struct {
@@ -1794,13 +1828,15 @@ const file_synclet_publicapi_workspace_v1_workspace_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAtJ\x04\b\x06\x10\a\"\xda\x01\n" +
+	"updated_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAtJ\x04\b\x06\x10\a\"\x84\x02\n" +
 	"\x13WorkspaceMemberInfo\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
 	"\fworkspace_id\x18\x02 \x01(\tR\vworkspaceId\x12\x17\n" +
 	"\auser_id\x18\x03 \x01(\tR\x06userId\x12>\n" +
 	"\x04role\x18\x04 \x01(\x0e2*.synclet.publicapi.workspace.v1.MemberRoleR\x04role\x127\n" +
-	"\tjoined_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\bjoinedAt\"\xcc\x03\n" +
+	"\tjoined_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\bjoinedAt\x12\x14\n" +
+	"\x05email\x18\x06 \x01(\tR\x05email\x12\x12\n" +
+	"\x04name\x18\a \x01(\tR\x04name\"\xcc\x03\n" +
 	"\x13WorkspaceInviteInfo\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
 	"\fworkspace_id\x18\x02 \x01(\tR\vworkspaceId\x12%\n" +
@@ -1857,9 +1893,11 @@ const file_synclet_publicapi_workspace_v1_workspace_proto_rawDesc = "" +
 	"\x13CreateInviteRequest\x12!\n" +
 	"\fworkspace_id\x18\x01 \x01(\tR\vworkspaceId\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12>\n" +
-	"\x04role\x18\x03 \x01(\x0e2*.synclet.publicapi.workspace.v1.MemberRoleR\x04role\"c\n" +
+	"\x04role\x18\x03 \x01(\x0e2*.synclet.publicapi.workspace.v1.MemberRoleR\x04role\"\x82\x01\n" +
 	"\x14CreateInviteResponse\x12K\n" +
-	"\x06invite\x18\x01 \x01(\v23.synclet.publicapi.workspace.v1.WorkspaceInviteInfoR\x06invite\"+\n" +
+	"\x06invite\x18\x01 \x01(\v23.synclet.publicapi.workspace.v1.WorkspaceInviteInfoR\x06invite\x12\x1d\n" +
+	"\n" +
+	"accept_url\x18\x02 \x01(\tR\tacceptUrl\"+\n" +
 	"\x13AcceptInviteRequest\x12\x14\n" +
 	"\x05token\x18\x01 \x01(\tR\x05token\"`\n" +
 	"\x14AcceptInviteResponse\x12!\n" +
@@ -1872,8 +1910,10 @@ const file_synclet_publicapi_workspace_v1_workspace_proto_rawDesc = "" +
 	"\tinvite_id\x18\x01 \x01(\tR\binviteId\"\x16\n" +
 	"\x14RevokeInviteResponse\"2\n" +
 	"\x13ResendInviteRequest\x12\x1b\n" +
-	"\tinvite_id\x18\x01 \x01(\tR\binviteId\"\x16\n" +
-	"\x14ResendInviteResponse\"\x14\n" +
+	"\tinvite_id\x18\x01 \x01(\tR\binviteId\"5\n" +
+	"\x14ResendInviteResponse\x12\x1d\n" +
+	"\n" +
+	"accept_url\x18\x01 \x01(\tR\tacceptUrl\"\x14\n" +
 	"\x12ListInvitesRequest\"d\n" +
 	"\x13ListInvitesResponse\x12M\n" +
 	"\ainvites\x18\x01 \x03(\v23.synclet.publicapi.workspace.v1.WorkspaceInviteInfoR\ainvites\"/\n" +

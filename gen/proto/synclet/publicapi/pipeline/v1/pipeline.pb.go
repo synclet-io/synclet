@@ -1533,8 +1533,10 @@ type GetSystemInfoResponse struct {
 	state               protoimpl.MessageState `protogen:"open.v1"`
 	RegistrationEnabled bool                   `protobuf:"varint,2,opt,name=registration_enabled,json=registrationEnabled,proto3" json:"registration_enabled,omitempty"`
 	WorkspacesMode      WorkspacesMode         `protobuf:"varint,3,opt,name=workspaces_mode,json=workspacesMode,proto3,enum=synclet.publicapi.pipeline.v1.WorkspacesMode" json:"workspaces_mode,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// Whether the server can send email (invites, email notifications).
+	EmailEnabled  bool `protobuf:"varint,4,opt,name=email_enabled,json=emailEnabled,proto3" json:"email_enabled,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetSystemInfoResponse) Reset() {
@@ -1579,6 +1581,13 @@ func (x *GetSystemInfoResponse) GetWorkspacesMode() WorkspacesMode {
 		return x.WorkspacesMode
 	}
 	return WorkspacesMode_WORKSPACES_MODE_UNSPECIFIED
+}
+
+func (x *GetSystemInfoResponse) GetEmailEnabled() bool {
+	if x != nil {
+		return x.EmailEnabled
+	}
+	return false
 }
 
 type Destination struct {
@@ -5949,10 +5958,11 @@ const file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDesc = "" +
 	"\acatalog\x18\x01 \x01(\v2#.synclet.protocol.v1.AirbyteCatalogR\acatalog\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\x05R\aversion\x12?\n" +
 	"\rdiscovered_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\fdiscoveredAt\"\x16\n" +
-	"\x14GetSystemInfoRequest\"\xa8\x01\n" +
+	"\x14GetSystemInfoRequest\"\xcd\x01\n" +
 	"\x15GetSystemInfoResponse\x121\n" +
 	"\x14registration_enabled\x18\x02 \x01(\bR\x13registrationEnabled\x12V\n" +
-	"\x0fworkspaces_mode\x18\x03 \x01(\x0e2-.synclet.publicapi.pipeline.v1.WorkspacesModeR\x0eworkspacesModeJ\x04\b\x01\x10\x02\"\xf2\x02\n" +
+	"\x0fworkspaces_mode\x18\x03 \x01(\x0e2-.synclet.publicapi.pipeline.v1.WorkspacesModeR\x0eworkspacesMode\x12#\n" +
+	"\remail_enabled\x18\x04 \x01(\bR\femailEnabledJ\x04\b\x01\x10\x02\"\xf2\x02\n" +
 	"\vDestination\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
 	"\fworkspace_id\x18\x02 \x01(\tR\vworkspaceId\x12\x12\n" +

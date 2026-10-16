@@ -29,20 +29,23 @@ func TestCreateInvite_NewInviteForUnknownUser(t *testing.T) {
 
 	mailer := &fakeEmailSender{}
 
-	invite, err := newCreateInvite(store, users, mailer).Execute(ctx, CreateInviteParams{
+	result, err := newCreateInvite(store, users, mailer).Execute(ctx, CreateInviteParams{
 		WorkspaceID:   wsID,
 		InviterUserID: inviter,
 		Email:         "  Newcomer@Example.com  ",
 		Role:          MemberRoleEditor,
 	})
 	require.NoError(t, err)
-	require.NotNil(t, invite)
+	require.NotNil(t, result)
+
+	invite := result.Invite
 
 	assert.Equal(t, "newcomer@example.com", invite.Email, "email is normalised")
 	assert.Equal(t, MemberRoleEditor, invite.Role)
 	assert.Equal(t, InviteStatusPending, invite.Status)
 	assert.NotEmpty(t, invite.Token, "token must be generated")
 	assert.WithinDuration(t, time.Now().Add(24*time.Hour), invite.ExpiresAt, 5*time.Second)
+	assert.Equal(t, "https://app.example.com/invite/"+invite.Token, result.AcceptURL)
 }
 
 func TestCreateInvite_ReplacesExistingPendingInvite(t *testing.T) {
@@ -65,15 +68,16 @@ func TestCreateInvite_ReplacesExistingPendingInvite(t *testing.T) {
 	users := newFakeUserLookup()
 	users.seed(&UserInfo{ID: inviter, Email: "admin@example.com", Name: "Admin"})
 
-	invite, err := newCreateInvite(store, users, &fakeEmailSender{}).Execute(ctx, CreateInviteParams{
+	result, err := newCreateInvite(store, users, &fakeEmailSender{}).Execute(ctx, CreateInviteParams{
 		WorkspaceID:   wsID,
 		InviterUserID: inviter,
 		Email:         "person@example.com",
 		Role:          MemberRoleAdmin,
 	})
 	require.NoError(t, err)
-	assert.Equal(t, MemberRoleAdmin, invite.Role, "role updated")
-	assert.Equal(t, "existing-token", invite.Token, "token preserved across replacement")
+	assert.Equal(t, MemberRoleAdmin, result.Invite.Role, "role updated")
+	assert.Equal(t, "existing-token", result.Invite.Token, "token preserved across replacement")
+	assert.Equal(t, "https://app.example.com/invite/existing-token", result.AcceptURL)
 
 	all, err := store.WorkspaceInvites().Find(ctx, &WorkspaceInviteFilter{})
 	require.NoError(t, err)

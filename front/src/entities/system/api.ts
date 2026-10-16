@@ -7,5 +7,6 @@ export async function getSystemInfo(): Promise<SystemInfo> {
   return {
     registrationEnabled: res.registrationEnabled,
     workspacesMode: res.workspacesMode === WorkspacesMode.MULTI ? 'multi' : 'single',
+    emailEnabled: res.emailEnabled,
   }
 }

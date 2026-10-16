@@ -53,9 +53,15 @@ type CreateInviteParams struct {
 	Role          MemberRole
 }
 
+// CreateInviteResult is the created invite and the link the invitee opens to accept it.
+type CreateInviteResult struct {
+	Invite    *WorkspaceInvite
+	AcceptURL string
+}
+
 // Execute creates a workspace invite. If a pending invite already exists for the same
 // email and workspace, it is replaced (new role, reset TTL). Sends email asynchronously.
-func (uc *CreateInvite) Execute(ctx context.Context, params CreateInviteParams) (*WorkspaceInvite, error) {
+func (uc *CreateInvite) Execute(ctx context.Context, params CreateInviteParams) (*CreateInviteResult, error) {
 	email := strings.ToLower(strings.TrimSpace(params.Email))
 
 	// Check if user is already a member of this workspace.
@@ -135,8 +141,10 @@ func (uc *CreateInvite) Execute(ctx context.Context, params CreateInviteParams) 
 		}
 	}
 
+	acceptURL := inviteAcceptURL(uc.frontendURL, invite.Token)
+
 	// Send email asynchronously to avoid blocking the request.
-	uc.sendInviteEmailAsync(ctx, invite, params.InviterUserID)
+	uc.sendInviteEmailAsync(ctx, invite, params.InviterUserID, acceptURL)
 
 	uc.audit.Record(ctx, AuditEvent{
 		WorkspaceID:   params.WorkspaceID,
@@ -150,11 +158,15 @@ func (uc *CreateInvite) Execute(ctx context.Context, params CreateInviteParams) 
 		},
 	})
 
-	return invite, nil
+	return &CreateInviteResult{Invite: invite, AcceptURL: acceptURL}, nil
+}
+
+func inviteAcceptURL(frontendURL, token string) string {
+	return fmt.Sprintf("%s/invite/%s", strings.TrimRight(frontendURL, "/"), token)
 }
 
 // sendInviteEmailAsync sends the invite email in a goroutine.
-func (uc *CreateInvite) sendInviteEmailAsync(ctx context.Context, invite *WorkspaceInvite, inviterUserID uuid.UUID) {
+func (uc *CreateInvite) sendInviteEmailAsync(ctx context.Context, invite *WorkspaceInvite, inviterUserID uuid.UUID, acceptURL string) {
 	// Gather workspace and inviter info for the email.
 	workspace, err := uc.storage.Workspaces().First(ctx, &WorkspaceFilter{
 		ID: filter.Equals(invite.WorkspaceID),
@@ -171,8 +183,6 @@ func (uc *CreateInvite) sendInviteEmailAsync(ctx context.Context, invite *Worksp
 
 		return
 	}
-
-	acceptURL := fmt.Sprintf("%s/invite/%s", strings.TrimRight(uc.frontendURL, "/"), invite.Token)
 
 	go func() { //nolint:gosec // intentional background context for async email
 		sendCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)

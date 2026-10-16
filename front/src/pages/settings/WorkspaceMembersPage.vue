@@ -2,6 +2,7 @@
 import type { MemberRole, WorkspaceInvite, WorkspaceMember } from '@entities/workspace'
 import type { Column } from '@shared/ui'
 import { useAuth } from '@entities/auth'
+import { useSystemInfo } from '@entities/system'
 import {
   useCreateInvite,
   useInvites,
@@ -13,11 +14,14 @@ import {
 } from '@entities/workspace'
 import { getErrorMessage } from '@shared/lib/errorUtils'
 import { SAlert, SBadge, SButton, SConfirmDialog, SEmptyState, SInput, SSelect, STable, useToast } from '@shared/ui'
-import { RefreshCw, Trash2, UserPlus, X } from 'lucide-vue-next'
+import { Check, Copy, RefreshCw, Trash2, UserPlus, X } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
 
 const auth = useAuth()
 const toast = useToast()
+const { data: systemInfo } = useSystemInfo()
+
+const emailEnabled = computed(() => systemInfo.value?.emailEnabled ?? false)
 
 const workspaceId = computed(() => auth.currentWorkspaceId.value ?? '')
 const currentRole = computed(() => {
@@ -36,6 +40,29 @@ const loading = computed(() => membersLoading.value || invitesLoading.value)
 const inviteEmail = ref('')
 const inviteRole = ref<MemberRole>('viewer')
 const error = ref('')
+
+// Accept link of the most recently created or resent invite
+const inviteLink = ref<{ email: string, url: string } | null>(null)
+const linkCopied = ref(false)
+
+async function copyInviteLink() {
+  if (!inviteLink.value)
+    return
+  try {
+    await navigator.clipboard.writeText(inviteLink.value.url)
+    linkCopied.value = true
+    setTimeout(() => {
+      linkCopied.value = false
+    }, 2000)
+  }
+  catch {
+    toast.error('Could not copy the link. Select it and copy it manually.')
+  }
+}
+
+function memberLabel(member: WorkspaceMember): string {
+  return member.name || member.email || member.userId
+}
 
 // Mutations
 const createInvite = useCreateInvite()
@@ -106,7 +133,7 @@ const isEmpty = computed(() => {
 })
 
 // Confirm dialogs
-const confirmRemove = ref<{ open: boolean, userId: string }>({ open: false, userId: '' })
+const confirmRemove = ref<{ open: boolean, userId: string, label: string }>({ open: false, userId: '', label: '' })
 const confirmRevoke = ref<{ open: boolean, inviteId: string, email: string }>({ open: false, inviteId: '', email: '' })
 
 async function handleInvite() {
@@ -114,8 +141,11 @@ async function handleInvite() {
     return
   error.value = ''
   try {
-    await createInvite.mutateAsync({ email: inviteEmail.value, role: inviteRole.value })
-    toast.success(`Invitation sent to ${inviteEmail.value}`)
+    const created = await createInvite.mutateAsync({ email: inviteEmail.value, role: inviteRole.value })
+    inviteLink.value = { email: created.invite.email, url: created.acceptUrl }
+    toast.success(emailEnabled.value
+      ? `Invitation sent to ${created.invite.email}`
+      : `Invitation created for ${created.invite.email}. Share the link with them.`)
     inviteEmail.value = ''
     inviteRole.value = 'viewer'
   }
@@ -132,7 +162,7 @@ async function handleInvite() {
 
 async function handleRemove() {
   const userId = confirmRemove.value.userId
-  confirmRemove.value.open = false
+  confirmRemove.value = { open: false, userId: '', label: '' }
   try {
     await removeMember.mutateAsync({ workspaceId: workspaceId.value, userId })
     toast.success('Member removed')
@@ -156,8 +186,11 @@ async function handleRevoke() {
 
 async function handleResend(invite: WorkspaceInvite) {
   try {
-    await resendInvite.mutateAsync(invite.id)
-    toast.success(`Invitation resent to ${invite.email}`)
+    const acceptUrl = await resendInvite.mutateAsync(invite.id)
+    inviteLink.value = { email: invite.email, url: acceptUrl }
+    toast.success(emailEnabled.value
+      ? `Invitation resent to ${invite.email}`
+      : `Invitation renewed for ${invite.email}. Share the link with them.`)
   }
   catch (e: unknown) {
     error.value = getErrorMessage(e) || 'Failed to resend invitation'
@@ -219,9 +252,27 @@ const columns: Column[] = [
       </div>
       <SSelect v-model="inviteRole" :options="roleOptions" />
       <SButton type="submit" :loading="createInvite.isPending.value">
-        Send Invite
+        {{ emailEnabled ? 'Send Invite' : 'Create Invite' }}
       </SButton>
     </form>
+    <p v-if="isAdmin && systemInfo && !emailEnabled" class="text-sm text-text-secondary -mt-3">
+      Email delivery is not configured on this server, so invitations are not emailed. Share the invite link with the person you invite.
+    </p>
+
+    <SAlert v-if="inviteLink" :variant="emailEnabled ? 'success' : 'info'" dismissible @dismiss="inviteLink = null">
+      <p class="font-medium mb-2">
+        {{ emailEnabled
+          ? `Invitation emailed to ${inviteLink.email}. You can also share this link:`
+          : `Share this link with ${inviteLink.email} to let them join:` }}
+      </p>
+      <div class="flex items-center gap-2">
+        <code class="flex-1 px-3 py-2 bg-surface-raised rounded border border-border text-sm font-mono break-all">{{ inviteLink.url }}</code>
+        <button class="p-2 text-text-muted hover:text-text-primary transition-colors" title="Copy invite link" aria-label="Copy invite link" @click="copyInviteLink">
+          <Check v-if="linkCopied" class="w-5 h-5 text-success" />
+          <Copy v-else class="w-5 h-5" />
+        </button>
+      </div>
+    </SAlert>
 
     <!-- Empty state -->
     <template v-if="!loading && isEmpty">
@@ -236,7 +287,10 @@ const columns: Column[] = [
     <STable v-else :columns="columns" :data="tableRows" :loading="loading">
       <template #cell-user="{ row }">
         <template v-if="row.type === 'member'">
-          <span class="text-sm text-text-primary">{{ row.member.userId }}</span>
+          <div class="flex flex-col">
+            <span class="text-sm text-text-primary">{{ memberLabel(row.member) }}</span>
+            <span v-if="row.member.name && row.member.email" class="text-xs text-text-secondary">{{ row.member.email }}</span>
+          </div>
         </template>
         <template v-else>
           <div class="flex items-center gap-2">
@@ -293,7 +347,7 @@ const columns: Column[] = [
               v-if="isAdmin && row.member.userId !== auth.user.value?.id"
               class="p-1 text-text-muted hover:text-danger transition-colors"
               title="Remove member"
-              @click="confirmRemove = { open: true, userId: row.member.userId }"
+              @click="confirmRemove = { open: true, userId: row.member.userId, label: memberLabel(row.member) }"
             >
               <Trash2 class="w-4 h-4" />
             </button>
@@ -328,10 +382,10 @@ const columns: Column[] = [
     <SConfirmDialog
       :open="confirmRemove.open"
       title="Remove member"
-      message="Are you sure you want to remove this member?"
+      :message="`Remove ${confirmRemove.label} from this workspace? They will lose access immediately.`"
       confirm-text="Remove"
       @confirm="handleRemove"
-      @cancel="confirmRemove.open = false"
+      @cancel="confirmRemove = { open: false, userId: '', label: '' }"
     />
 
     <!-- Revoke invite confirmation -->
