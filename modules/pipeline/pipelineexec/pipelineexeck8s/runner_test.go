@@ -586,3 +586,61 @@ func TestLaunchConnectorTask_SpecNoSecret(t *testing.T) {
 	coordArgs := job.Spec.Template.Spec.Containers[0].Command
 	assert.NotContains(t, coordArgs, "--secrets-dir")
 }
+
+func TestLaunchSync_APITokenInSecret(t *testing.T) {
+	client := fake.NewSimpleClientset()
+	runner := newTestSyncRunner(client)
+	runner.config.APIToken = "internal-token"
+
+	_, err := runner.LaunchSync(context.Background(), SyncOptions{
+		JobID:        "job-token-1",
+		ConnectionID: "conn-1",
+		SourceImage:  "source:latest",
+		SourceConfig: []byte(`{}`),
+		DestImage:    "dest:latest",
+		DestConfig:   []byte(`{}`),
+	})
+	require.NoError(t, err)
+
+	secret, err := client.CoreV1().Secrets("test-ns").Get(context.Background(), sanitizeK8sName("synclet-sync-job-token-1"), metav1.GetOptions{})
+	require.NoError(t, err)
+	assert.Equal(t, []byte("internal-token"), secret.Data[APITokenSecretKey])
+}
+
+func TestLaunchConnectorTask_APIToken(t *testing.T) {
+	client := fake.NewSimpleClientset()
+	runner := newTestSyncRunner(client)
+	runner.config.APIToken = "internal-token"
+
+	jobName, err := runner.LaunchConnectorTask(context.Background(), ConnectorTaskOptions{
+		TaskID:   "task-spec-token",
+		TaskType: "Spec",
+		Image:    "connector:latest",
+	})
+	require.NoError(t, err)
+
+	secrets, err := client.CoreV1().Secrets("test-ns").List(context.Background(), metav1.ListOptions{})
+	require.NoError(t, err)
+	require.Len(t, secrets.Items, 1)
+	assert.Equal(t, []byte("internal-token"), secrets.Items[0].Data[APITokenSecretKey])
+	assert.NotContains(t, secrets.Items[0].Data, "task-config")
+
+	job, err := client.BatchV1().Jobs("test-ns").Get(context.Background(), jobName, metav1.GetOptions{})
+	require.NoError(t, err)
+
+	containers := job.Spec.Template.Spec.Containers
+	require.Len(t, containers, 2)
+
+	coordinator, connector := containers[0], containers[1]
+	assert.Contains(t, strings.Join(coordinator.Command, " "), "--secrets-dir /secrets")
+	assert.Contains(t, coordinator.VolumeMounts, corev1.VolumeMount{
+		Name:      "task-configs",
+		MountPath: "/secrets/" + APITokenSecretKey,
+		SubPath:   APITokenSecretKey,
+		ReadOnly:  true,
+	})
+
+	for _, m := range connector.VolumeMounts {
+		assert.NotEqual(t, "task-configs", m.Name, "connector must not see the API token or a missing task config")
+	}
+}

@@ -2,7 +2,10 @@ package cmd
 
 import (
 	"errors"
+	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 
 	"github.com/spf13/cobra"
 
@@ -43,6 +46,9 @@ func newOrchestrateCommand() *cobra.Command {
 		Short:  "Run the in-pod coordinator process (internal use only)",
 		Hidden: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx, stop := signal.NotifyContext(cmd.Context(), syscall.SIGTERM, os.Interrupt)
+			defer stop()
+
 			// Task mode: simplified coordinator for connector operations (check/spec/discover).
 			if taskMode {
 				if taskID == "" {
@@ -57,11 +63,12 @@ func newOrchestrateCommand() *cobra.Command {
 					return errors.New("--server-addr is required in task mode")
 				}
 
-				return coordinator.RunTask(cmd.Context(), coordinator.TaskConfig{
+				return coordinator.RunTask(ctx, coordinator.TaskConfig{
 					TaskID:     taskID,
 					TaskType:   taskType,
 					ServerAddr: serverAddr,
 					DataDir:    dataDir,
+					SecretsDir: secretsDir,
 				})
 			}
 
@@ -107,7 +114,7 @@ func newOrchestrateCommand() *cobra.Command {
 				StreamPrefix:          streamPrefix,
 			}
 
-			return coordinator.Run(cmd.Context(), cfg)
+			return coordinator.Run(ctx, cfg)
 		},
 	}
 

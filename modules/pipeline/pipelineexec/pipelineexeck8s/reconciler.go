@@ -23,8 +23,9 @@ type ResourceChecker interface {
 
 // ResourceCleaner iterates K8s resources and reconciles them against the API.
 // It handles:
-// 1. Pod failure detection (CrashLoopBackOff, ImagePullBackOff, PodFailed) → fail job + delete K8s resources
-// 2. Orphan cleanup for sync jobs, task jobs, and secrets → delete K8s resources
+// 1. Sync jobs whose DB job is no longer active (including cancelled) → delete K8s Job, no grace
+// 2. Pod failure detection (CrashLoopBackOff, ImagePullBackOff, PodFailed) → fail job + delete K8s resources
+// 3. Orphan cleanup for task jobs and secrets → delete K8s resources
 type ResourceCleaner struct {
 	client    kubernetes.Interface
 	namespace string
@@ -111,31 +112,14 @@ func (r *ResourceCleaner) reconcileSyncJobs(ctx context.Context, applyGrace bool
 			continue
 		}
 
-		if applyGrace && time.Since(job.CreationTimestamp.Time) < orphanGracePeriod {
-			continue
-		}
-
 		log := r.logger.WithFields(map[string]any{
 			"k8s_job":     job.Name,
 			"sync_job_id": syncJobID,
 		})
 
-		// Check pod status for terminal failures.
-		if failed, reason := r.checkPodFailure(ctx, job.Name); failed {
-			log.WithField("reason", reason).Warn(ctx, "pod failure detected, failing job")
-
-			if err := r.checker.FailJob(ctx, syncJobID, reason); err != nil {
-				log.WithError(err).Error(ctx, "failed to mark job as failed")
-			}
-
-			r.deleteK8sJob(ctx, job.Name)
-
-			cleaned++
-
-			continue
-		}
-
-		// No pod failure — check if job is still active in DB.
+		// A sync job is claimed (and active) before its K8s Job is created, so an
+		// inactive DB job is terminal (completed, failed or cancelled) and its pod
+		// is removed regardless of age.
 		active, err := r.checker.IsJobActive(ctx, syncJobID)
 		if err != nil {
 			log.WithError(err).Warn(ctx, "failed to check job status")
@@ -144,7 +128,25 @@ func (r *ResourceCleaner) reconcileSyncJobs(ctx context.Context, applyGrace bool
 		}
 
 		if !active {
-			log.Info(ctx, "removing orphaned sync job")
+			log.Info(ctx, "removing sync job whose DB job is no longer active")
+			r.deleteK8sJob(ctx, job.Name)
+
+			cleaned++
+
+			continue
+		}
+
+		if applyGrace && time.Since(job.CreationTimestamp.Time) < orphanGracePeriod {
+			continue
+		}
+
+		if failed, reason := r.checkPodFailure(ctx, job.Name); failed {
+			log.WithField("reason", reason).Warn(ctx, "pod failure detected, failing job")
+
+			if err := r.checker.FailJob(ctx, syncJobID, reason); err != nil {
+				log.WithError(err).Error(ctx, "failed to mark job as failed")
+			}
+
 			r.deleteK8sJob(ctx, job.Name)
 
 			cleaned++

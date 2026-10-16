@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"time"
 
 	executorv1 "github.com/synclet-io/synclet/gen/proto/synclet/internalapi/executor/v1"
@@ -15,6 +16,8 @@ import (
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
 	"github.com/synclet-io/synclet/pkg/protocol"
 )
+
+var heartbeatInterval = 10 * time.Second
 
 // Config holds the configuration for the coordinator process.
 // All sensitive config (source/dest configs, catalogs, state) is read from the
@@ -94,15 +97,42 @@ func Run(ctx context.Context, cfg Config) error {
 	slog.Info("coordinator: connectors signaled, starting data pipeline")
 
 	// 4. Create Reporter for gRPC heartbeat/state/log delivery.
-	reporter := NewReporter(cfg.ServerAddr, cfg.JobID, cfg.ConnectionID)
+	clientOpts, err := clientOptions(cfg.SecretsDir)
+	if err != nil {
+		return err
+	}
+
+	reporter := NewReporter(cfg.ServerAddr, cfg.JobID, cfg.ConnectionID, clientOpts...)
 
 	reporter.Start(ctx)
 	defer reporter.Stop()
 
+	runCtx, cancelRun := context.WithCancel(ctx)
+	defer cancelRun()
+
+	var cancelled atomic.Bool
+
+	go heartbeatUntilCancelled(runCtx, reporter, func() {
+		cancelled.Store(true)
+		cancelRun()
+	})
+
 	// 5-6. Run the data pipeline with K8sHandler.
-	stats, err := runPipeline(ctx, cfg, reporter)
+	stats, err := runPipeline(runCtx, cfg, reporter)
 	if stats == nil {
 		stats = &pipelineexec.Stats{}
+	}
+
+	if cancelled.Load() {
+		slog.Info("coordinator: job cancelled by server, skipping completion report", "job_id", cfg.JobID, "error", err)
+
+		return nil
+	}
+
+	if err != nil && ctx.Err() != nil {
+		slog.Warn("coordinator: stopped before the pipeline finished, skipping completion report", "job_id", cfg.JobID, "error", err)
+
+		return nil
 	}
 
 	// Read exit codes from connector containers.
@@ -164,26 +194,6 @@ func runPipeline(ctx context.Context, cfg Config, reporter *Reporter) (*pipeline
 
 	defer func() { _ = destStdout.Close() }()
 
-	// Start heartbeat goroutine. During routing, intermediate stats are not
-	// available (pipelineexec.Stats uses plain int64, not atomic), so heartbeats
-	// send zeros. Final stats are sent in the completion report.
-	heartbeatCtx, cancelHeartbeat := context.WithCancel(ctx)
-	defer cancelHeartbeat()
-
-	go func() {
-		ticker := time.NewTicker(10 * time.Second)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-heartbeatCtx.Done():
-				return
-			case <-ticker.C:
-				reporter.SendHeartbeat(heartbeatCtx, 0, 0)
-			}
-		}
-	}()
-
 	// Create K8s handler for side effects (state, config updates).
 	handler := pipelineexeck8s.NewK8sHandler(pipelineexeck8s.K8sHandlerParams{
 		Logger:        slog.Default(),
@@ -226,6 +236,28 @@ func runPipeline(ctx context.Context, cfg Config, reporter *Reporter) (*pipeline
 	return pipelineexec.Run(ctx, sourceStdout, destStdin, destStdout, handler, pipelineexec.RunConfig{
 		Rewriter: rewriter,
 	}, nil)
+}
+
+// heartbeatUntilCancelled sends heartbeats until ctx is done and calls onCancel
+// once the server reports the job as cancelled. Intermediate stats are not
+// available during routing (pipelineexec.Stats uses plain int64, not atomic),
+// so heartbeats send zeros; final stats go in the completion report.
+func heartbeatUntilCancelled(ctx context.Context, reporter *Reporter, onCancel func()) {
+	ticker := time.NewTicker(heartbeatInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if reporter.SendHeartbeat(ctx, 0, 0) {
+				onCancel()
+
+				return
+			}
+		}
+	}
 }
 
 // waitForExitCode polls for an exit code file up to the given timeout.

@@ -273,7 +273,8 @@ func TestReconciler_OrphanSyncJobCleanup(t *testing.T) {
 	}, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	// Create a recent K8s job (within grace period — should NOT be cleaned up).
+	// Create a recent K8s job whose DB job is still active (within grace period).
+	checker.activeJobs["recent-job-id"] = true
 	_, err = client.BatchV1().Jobs("default").Create(ctx, &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              "recent-k8s-job",
@@ -281,6 +282,16 @@ func TestReconciler_OrphanSyncJobCleanup(t *testing.T) {
 			CreationTimestamp: metav1.NewTime(time.Now()),
 			Labels:            map[string]string{"synclet.io/sync-job": "recent-job-id"},
 		},
+	}, metav1.CreateOptions{})
+	require.NoError(t, err)
+
+	_, err = client.CoreV1().Pods("default").Create(ctx, &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "recent-k8s-job-pod",
+			Namespace: "default",
+			Labels:    map[string]string{"synclet.io/job": "recent-k8s-job"},
+		},
+		Status: corev1.PodStatus{Phase: corev1.PodFailed},
 	}, metav1.CreateOptions{})
 	require.NoError(t, err)
 
@@ -295,9 +306,44 @@ func TestReconciler_OrphanSyncJobCleanup(t *testing.T) {
 	_, err = client.BatchV1().Jobs("default").Get(ctx, "active-k8s-job", metav1.GetOptions{})
 	require.NoError(t, err, "active K8s job should NOT have been deleted")
 
-	// Recent job should still exist (grace period).
+	// Recent active job should still exist: pod failure checks wait for the grace period.
 	_, err = client.BatchV1().Jobs("default").Get(ctx, "recent-k8s-job", metav1.GetOptions{})
-	assert.NoError(t, err, "recent K8s job should NOT have been deleted")
+	require.NoError(t, err, "recent K8s job should NOT have been deleted")
+	assert.Empty(t, checker.failJobCalls, "recent job should not be failed within grace period")
+}
+
+func TestReconciler_DeletesInactiveSyncJobWithinGrace(t *testing.T) {
+	ctx := context.Background()
+	client := fake.NewSimpleClientset()
+	checker := &mockResourceChecker{
+		activeJobs: map[string]bool{},
+	}
+
+	_, err := client.BatchV1().Jobs("default").Create(ctx, &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:              "cancelled-k8s-job",
+			Namespace:         "default",
+			CreationTimestamp: metav1.NewTime(time.Now()),
+			Labels:            map[string]string{"synclet.io/sync-job": "cancelled-job"},
+		},
+	}, metav1.CreateOptions{})
+	require.NoError(t, err)
+
+	_, err = client.CoreV1().Pods("default").Create(ctx, &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "cancelled-k8s-job-pod",
+			Namespace: "default",
+			Labels:    map[string]string{"synclet.io/job": "cancelled-k8s-job"},
+		},
+		Status: corev1.PodStatus{Phase: corev1.PodFailed},
+	}, metav1.CreateOptions{})
+	require.NoError(t, err)
+
+	newTestReconciler(client, checker).Reconcile(ctx, true)
+
+	_, err = client.BatchV1().Jobs("default").Get(ctx, "cancelled-k8s-job", metav1.GetOptions{})
+	require.Error(t, err, "K8s job of an inactive DB job should be deleted without grace")
+	assert.Empty(t, checker.failJobCalls, "inactive job must not be failed")
 }
 
 func TestReconciler_CleansOrphanedSyncSecrets(t *testing.T) {

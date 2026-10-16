@@ -25,6 +25,7 @@ type Config struct {
 	DefaultCPU      string
 	SyncletImage    string // Docker image containing the synclet binary (for orchestrator)
 	ServerAddr      string // Synclet server address reachable from pods
+	APIToken        string // Internal API token the in-pod coordinator sends to the server
 }
 
 // SyncOptions contains all parameters needed to launch a sync pod.
@@ -67,6 +68,10 @@ type SyncOptions struct {
 	Affinity           *corev1.Affinity
 	ServiceAccountName string
 }
+
+// APITokenSecretKey is the key in per-job Secrets that holds the internal API
+// token; the coordinator reads it from <secrets-dir>/<APITokenSecretKey>.
+const APITokenSecretKey = "api-token"
 
 // SyncRunner launches and manages K8s sync pods with the 3-container architecture.
 type SyncRunner struct {
@@ -158,6 +163,10 @@ func (r *SyncRunner) LaunchSync(ctx context.Context, opts SyncOptions) (string, 
 
 	if opts.State != nil {
 		secretData["source-state"] = opts.State
+	}
+
+	if r.config.APIToken != "" {
+		secretData[APITokenSecretKey] = []byte(r.config.APIToken)
 	}
 
 	secret := &corev1.Secret{
@@ -414,9 +423,18 @@ func (r *SyncRunner) LaunchConnectorTask(ctx context.Context, opts ConnectorTask
 	jobName := sanitizeK8sName(fmt.Sprintf("synclet-task-%s-%d", strings.ToLower(opts.TaskType), timestamp))
 	dataDir := "/shared"
 
-	// Create a K8s Secret for task config if provided.
-	var secretName string
+	// Create a K8s Secret for the task config and the internal API token.
+	secretData := map[string][]byte{}
 	if opts.Config != nil {
+		secretData["task-config"] = opts.Config
+	}
+
+	if r.config.APIToken != "" {
+		secretData[APITokenSecretKey] = []byte(r.config.APIToken)
+	}
+
+	var secretName string
+	if len(secretData) > 0 {
 		secretName = sanitizeK8sName(fmt.Sprintf("synclet-task-%s-%d-secret", strings.ToLower(opts.TaskType), timestamp))
 
 		secret := &corev1.Secret{
@@ -429,18 +447,15 @@ func (r *SyncRunner) LaunchConnectorTask(ctx context.Context, opts ConnectorTask
 				},
 			},
 			Type: corev1.SecretTypeOpaque,
-			Data: map[string][]byte{
-				"task-config": opts.Config,
-			},
+			Data: secretData,
 		}
 		if _, err := r.client.CoreV1().Secrets(r.namespace).Create(ctx, secret, metav1.CreateOptions{}); err != nil {
 			return "", fmt.Errorf("creating task config secret: %w", err)
 		}
 	}
 
-	// Build coordinator args for task mode.
-	// Note: --secrets-dir is not passed in task mode. The connector container
-	// receives config.json directly via subPath mount from the Secret.
+	// Build coordinator args for task mode. The connector container receives
+	// config.json directly via subPath mount from the Secret.
 	orchestratorArgs := []string{
 		"synclet", "_orchestrate",
 		"--task-mode",
@@ -448,6 +463,10 @@ func (r *SyncRunner) LaunchConnectorTask(ctx context.Context, opts ConnectorTask
 		"--task-type", opts.TaskType,
 		"--server-addr", r.config.ServerAddr,
 		"--data-dir", dataDir,
+	}
+
+	if r.config.APIToken != "" {
+		orchestratorArgs = append(orchestratorArgs, "--secrets-dir", "/secrets")
 	}
 
 	// Shared volume (256Mi, smaller than sync pods).
@@ -461,9 +480,9 @@ func (r *SyncRunner) LaunchConnectorTask(ctx context.Context, opts ConnectorTask
 	}
 	sharedMount := corev1.VolumeMount{Name: "shared", MountPath: dataDir}
 
-	// Secret volume for task config (only when config is provided).
 	var taskSecretVolumes []corev1.Volume
 	var connectorConfigMounts []corev1.VolumeMount
+	coordinatorMounts := []corev1.VolumeMount{sharedMount}
 
 	if secretName != "" {
 		taskSecretVolumes = append(taskSecretVolumes, corev1.Volume{
@@ -475,6 +494,18 @@ func (r *SyncRunner) LaunchConnectorTask(ctx context.Context, opts ConnectorTask
 				},
 			},
 		})
+	}
+
+	if r.config.APIToken != "" {
+		coordinatorMounts = append(coordinatorMounts, corev1.VolumeMount{
+			Name:      "task-configs",
+			MountPath: "/secrets/" + APITokenSecretKey,
+			SubPath:   APITokenSecretKey,
+			ReadOnly:  true,
+		})
+	}
+
+	if opts.Config != nil {
 		// SubPath mount: connector gets config.json directly from Secret.
 		connectorConfigMounts = append(connectorConfigMounts, corev1.VolumeMount{
 			Name:      "task-configs",
@@ -484,13 +515,13 @@ func (r *SyncRunner) LaunchConnectorTask(ctx context.Context, opts ConnectorTask
 		})
 	}
 
-	// Coordinator container (task mode). No secrets mount needed — the connector
-	// container receives config.json directly via subPath.
+	// Coordinator container (task mode). It only sees the API token; the
+	// connector container receives config.json directly via subPath.
 	coordinatorContainer := corev1.Container{
 		Name:         "coordinator",
 		Image:        r.config.SyncletImage,
 		Command:      orchestratorArgs,
-		VolumeMounts: []corev1.VolumeMount{sharedMount},
+		VolumeMounts: coordinatorMounts,
 		Resources: corev1.ResourceRequirements{
 			Requests: corev1.ResourceList{
 				corev1.ResourceCPU:    resource.MustParse("50m"),

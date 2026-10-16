@@ -61,7 +61,25 @@ func k8sExecutorModule(options *RunAppOptions) fx.Option {
 	)
 }
 
-func newK8sSyncRunner(cfg *k8sExecutorConfig) (*pipelineexeck8s.SyncRunner, error) {
+type newK8sSyncRunnerParams struct {
+	fx.In
+
+	Config         *k8sExecutorConfig
+	PipelineConfig *pipelineConfig
+	BackendConfig  *executorBackendConfig `optional:"true"`
+}
+
+// newK8sSyncRunner gives pods the token this process authenticates with: the
+// executor's EXECUTOR_API_TOKEN in distributed mode, the server's own
+// PIPELINE_EXECUTOR_API_TOKEN in standalone mode.
+func newK8sSyncRunner(params newK8sSyncRunnerParams) (*pipelineexeck8s.SyncRunner, error) {
+	cfg := params.Config
+
+	apiToken := params.PipelineConfig.ExecutorAPIToken
+	if params.BackendConfig != nil && params.BackendConfig.Token != "" {
+		apiToken = params.BackendConfig.Token
+	}
+
 	return pipelineexeck8s.NewSyncRunner(pipelineexeck8s.Config{
 		Namespace:       cfg.Namespace,
 		Kubeconfig:      cfg.Kubeconfig,
@@ -70,6 +88,7 @@ func newK8sSyncRunner(cfg *k8sExecutorConfig) (*pipelineexeck8s.SyncRunner, erro
 		DefaultCPU:      cfg.DefaultCPU,
 		SyncletImage:    cfg.SyncletImage,
 		ServerAddr:      cfg.ServerAddr,
+		APIToken:        apiToken,
 	})
 }
 

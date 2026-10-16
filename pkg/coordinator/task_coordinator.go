@@ -25,6 +25,7 @@ type TaskConfig struct {
 	TaskType   string // "Check", "Spec", "Discover"
 	ServerAddr string
 	DataDir    string
+	SecretsDir string
 }
 
 // RunTask executes the task coordinator lifecycle inside a K8s pod:
@@ -208,9 +209,15 @@ func extractTaskResult(taskType string, messages []*protocol.AirbyteMessage) ([]
 
 // reportTaskResult sends the task result to the server via gRPC.
 func reportTaskResult(cfg TaskConfig, success bool, errMsg string, result []byte) error {
+	clientOpts, err := clientOptions(cfg.SecretsDir)
+	if err != nil {
+		return err
+	}
+
 	client := executorv1connect.NewExecutorServiceClient(
 		&http.Client{Timeout: 30 * time.Second},
 		cfg.ServerAddr,
+		clientOpts...,
 	)
 
 	req := connect.NewRequest(&executorv1.ReportConnectorTaskResultRequest{

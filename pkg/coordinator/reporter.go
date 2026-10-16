@@ -33,10 +33,11 @@ type Reporter struct {
 }
 
 // NewReporter creates a reporter that sends notifications to the given server address.
-func NewReporter(serverAddr, jobID, connectionID string) *Reporter {
+func NewReporter(serverAddr, jobID, connectionID string, opts ...connect.ClientOption) *Reporter {
 	client := executorv1connect.NewExecutorServiceClient(
 		&http.Client{Timeout: 30 * time.Second},
 		serverAddr,
+		opts...,
 	)
 
 	return &Reporter{
@@ -104,17 +105,23 @@ func (r *Reporter) Stop() {
 	}
 }
 
-// SendHeartbeat sends a heartbeat to the server. Fire-and-forget: drops on failure.
-func (r *Reporter) SendHeartbeat(ctx context.Context, recordsRead, bytesSynced int64) {
+// SendHeartbeat sends a heartbeat to the server and reports whether the job
+// was cancelled. A failed heartbeat is logged and reported as not cancelled.
+func (r *Reporter) SendHeartbeat(ctx context.Context, recordsRead, bytesSynced int64) (cancelled bool) {
 	req := connect.NewRequest(&executorv1.HeartbeatRequest{
 		JobId:       r.jobID,
 		RecordsRead: recordsRead,
 		BytesSynced: bytesSynced,
 	})
 
-	if _, err := r.client.Heartbeat(ctx, req); err != nil {
+	resp, err := r.client.Heartbeat(ctx, req)
+	if err != nil {
 		slog.Error("reporter: heartbeat failed", "error", err)
+
+		return false
 	}
+
+	return resp.Msg.GetCancelled()
 }
 
 // QueueState queues a state checkpoint for reliable delivery.

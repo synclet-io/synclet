@@ -16,7 +16,7 @@ func newJobsCommand() *cobra.Command {
 				panic(err)
 			}
 
-			app.RunJobs(app.WithDotEnvFiles(dotEnvs...))
+			app.RunJobs(app.WithDotEnvFiles(dotEnvs...), app.WithRunConsumers())
 		},
 	}
 }
