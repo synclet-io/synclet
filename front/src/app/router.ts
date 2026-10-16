@@ -252,7 +252,7 @@ router.beforeEach(async (to) => {
 
   // Load workspaces if not yet loaded.
   if (auth.workspaces.value.length === 0) {
-    await auth.reloadWorkspaces()
+    await auth.fetchCurrentUser()
   }
 
   // Block admin-only routes for non-admins.

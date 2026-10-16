@@ -14,6 +14,7 @@ import (
 
 	authv1 "github.com/synclet-io/synclet/gen/proto/synclet/publicapi/auth/v1"
 	"github.com/synclet-io/synclet/gen/proto/synclet/publicapi/auth/v1/authv1connect"
+	workspacev1 "github.com/synclet-io/synclet/gen/proto/synclet/publicapi/workspace/v1"
 	"github.com/synclet-io/synclet/modules/auth/authservice"
 	"github.com/synclet-io/synclet/pkg/connectutil"
 )
@@ -78,18 +79,19 @@ func mapError(err error) error {
 // Handler implements the AuthService ConnectRPC handler.
 type Handler struct {
 	authv1connect.UnimplementedAuthServiceHandler
-	registerAndLogin  *authservice.RegisterAndLogin
-	loginWithUserInfo *authservice.LoginWithUserInfo
-	refreshToken      *authservice.RefreshTokenUC
-	logout            *authservice.Logout
-	getUserByID       *authservice.GetUserByID
-	updateProfile     *authservice.UpdateProfile
-	changePassword    *authservice.ChangePassword
-	createAPIKey      *authservice.CreateAPIKey
-	revokeAPIKey      *authservice.RevokeAPIKey
-	listAPIKeys       *authservice.ListAPIKeys
-	getOIDCProviders  *authservice.GetOIDCProviders
-	cookieConfig      connectutil.CookieConfig
+	registerAndLogin   *authservice.RegisterAndLogin
+	loginWithUserInfo  *authservice.LoginWithUserInfo
+	refreshToken       *authservice.RefreshTokenUC
+	logout             *authservice.Logout
+	getUserByID        *authservice.GetUserByID
+	listUserWorkspaces *authservice.ListUserWorkspaces
+	updateProfile      *authservice.UpdateProfile
+	changePassword     *authservice.ChangePassword
+	createAPIKey       *authservice.CreateAPIKey
+	revokeAPIKey       *authservice.RevokeAPIKey
+	listAPIKeys        *authservice.ListAPIKeys
+	getOIDCProviders   *authservice.GetOIDCProviders
+	cookieConfig       connectutil.CookieConfig
 }
 
 // NewHandler creates a new auth handler.
@@ -99,6 +101,7 @@ func NewHandler(
 	refreshToken *authservice.RefreshTokenUC,
 	logout *authservice.Logout,
 	getUserByID *authservice.GetUserByID,
+	listUserWorkspaces *authservice.ListUserWorkspaces,
 	updateProfile *authservice.UpdateProfile,
 	changePassword *authservice.ChangePassword,
 	createAPIKey *authservice.CreateAPIKey,
@@ -108,18 +111,19 @@ func NewHandler(
 	cookieConfig connectutil.CookieConfig,
 ) *Handler {
 	return &Handler{
-		registerAndLogin:  registerAndLogin,
-		loginWithUserInfo: loginWithUserInfo,
-		refreshToken:      refreshToken,
-		logout:            logout,
-		getUserByID:       getUserByID,
-		updateProfile:     updateProfile,
-		changePassword:    changePassword,
-		createAPIKey:      createAPIKey,
-		revokeAPIKey:      revokeAPIKey,
-		listAPIKeys:       listAPIKeys,
-		getOIDCProviders:  getOIDCProviders,
-		cookieConfig:      cookieConfig,
+		registerAndLogin:   registerAndLogin,
+		loginWithUserInfo:  loginWithUserInfo,
+		refreshToken:       refreshToken,
+		logout:             logout,
+		getUserByID:        getUserByID,
+		listUserWorkspaces: listUserWorkspaces,
+		updateProfile:      updateProfile,
+		changePassword:     changePassword,
+		createAPIKey:       createAPIKey,
+		revokeAPIKey:       revokeAPIKey,
+		listAPIKeys:        listAPIKeys,
+		getOIDCProviders:   getOIDCProviders,
+		cookieConfig:       cookieConfig,
 	}
 }
 
@@ -221,9 +225,37 @@ func (h *Handler) GetCurrentUser(ctx context.Context, _ *connect.Request[authv1.
 		return nil, mapError(err)
 	}
 
+	memberships, err := h.listUserWorkspaces.Execute(ctx, userID)
+	if err != nil {
+		return nil, mapError(err)
+	}
+
+	workspaces := make([]*authv1.WorkspaceMembership, len(memberships))
+	for i, m := range memberships {
+		workspaces[i] = &authv1.WorkspaceMembership{
+			WorkspaceId:   m.WorkspaceID.String(),
+			WorkspaceName: m.WorkspaceName,
+			Role:          workspaceRoleToProto(m.Role),
+		}
+	}
+
 	return connect.NewResponse(&authv1.GetCurrentUserResponse{
-		User: userToProto(user),
+		User:       userToProto(user),
+		Workspaces: workspaces,
 	}), nil
+}
+
+func workspaceRoleToProto(r authservice.WorkspaceRole) workspacev1.MemberRole {
+	switch r {
+	case authservice.WorkspaceRoleAdmin:
+		return workspacev1.MemberRole_MEMBER_ROLE_ADMIN
+	case authservice.WorkspaceRoleEditor:
+		return workspacev1.MemberRole_MEMBER_ROLE_EDITOR
+	case authservice.WorkspaceRoleViewer:
+		return workspacev1.MemberRole_MEMBER_ROLE_VIEWER
+	default:
+		return workspacev1.MemberRole_MEMBER_ROLE_UNSPECIFIED
+	}
 }
 
 func (h *Handler) UpdateProfile(ctx context.Context, req *connect.Request[authv1.UpdateProfileRequest]) (*connect.Response[authv1.UpdateProfileResponse], error) {

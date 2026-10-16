@@ -42,14 +42,10 @@ async function refreshAccessToken(): Promise<boolean> {
   }
 }
 
-async function loadUser() {
+async function fetchCurrentUser() {
   const result = await authApi.getCurrentUser()
   user.value = result.user ?? null
-}
-
-async function fetchCurrentUser() {
-  await loadUser()
-  await reloadWorkspaces()
+  setWorkspaces(result.workspaces)
 }
 
 async function reloadWorkspaces() {
@@ -96,7 +92,7 @@ async function init() {
     return
 
   try {
-    await loadUser()
+    await fetchCurrentUser()
   }
   catch {
     // Token invalid or expired — try refresh
@@ -104,7 +100,7 @@ async function init() {
       const refreshed = await refreshAccessToken()
       if (refreshed) {
         try {
-          await loadUser()
+          await fetchCurrentUser()
         }
         catch {
           clearState()

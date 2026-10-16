@@ -74,6 +74,7 @@ func authDependenciesModule() fx.Option {
 		fx.Annotate(authstorage.NewStorages, fx.As(new(authservice.Storage))),
 		fx.Annotate(authadapt.NewWorkspaceAutoAssigner, fx.As(new(authservice.WorkspaceAutoAssigner))),
 		fx.Annotate(authadapt.NewAuditRecorder, fx.As(new(authservice.AuditRecorder))),
+		fx.Annotate(authadapt.NewWorkspaceMembershipLister, fx.As(new(authservice.WorkspaceMembershipLister))),
 		newOIDCProviders,
 	)
 }
@@ -85,6 +86,7 @@ func authUseCasesModule() fx.Option {
 		authservice.NewRefreshTokenUC,
 		authservice.NewLogout,
 		authservice.NewGetUserByID,
+		authservice.NewListUserWorkspaces,
 		authservice.NewGetUserByEmail,
 		authservice.NewUpdateProfile,
 		authservice.NewChangePassword,
