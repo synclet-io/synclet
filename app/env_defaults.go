@@ -13,7 +13,7 @@ import (
 	"strings"
 )
 
-// envDefaults are applied for any var still unset after dotenv files have been loaded.
+// envDefaults are applied for any var still unset or empty after dotenv files have been loaded.
 var envDefaults = map[string]string{
 	"WATERMILL_TRANSPORT":                      "sql",
 	"WATERMILL_SQL_DRIVER":                     "postgres",
@@ -40,7 +40,7 @@ func applyEnvDefaults(logger *slog.Logger) {
 
 func applyPlainEnvDefaults() {
 	for key, value := range envDefaults {
-		if _, ok := os.LookupEnv(key); ok {
+		if os.Getenv(key) != "" {
 			continue
 		}
 
@@ -54,8 +54,8 @@ func applyPlainEnvDefaults() {
 // differs per replica and restart, and a key persisted inside a container is
 // lost with it, leaving stored connector secrets unrecoverable.
 func ensureSecrets(logger *slog.Logger) error {
-	_, hasJWTSecret := os.LookupEnv("AUTH_JWT_SECRET")
-	_, hasEncryptionKey := os.LookupEnv("SECRET_ENCRYPTION_KEY")
+	hasJWTSecret := os.Getenv("AUTH_JWT_SECRET") != ""
+	hasEncryptionKey := os.Getenv("SECRET_ENCRYPTION_KEY") != ""
 
 	if hasJWTSecret && hasEncryptionKey {
 		return nil

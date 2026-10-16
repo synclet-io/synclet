@@ -104,3 +104,52 @@ func TestApplyPlainEnvDefaultsSetsHTTPTimeouts(t *testing.T) {
 	assert.Equal(t, "10s", os.Getenv("INTERNAL_HTTP_SERVER_READ_HEADER_TIMEOUT"))
 	assert.Equal(t, "120s", os.Getenv("INTERNAL_HTTP_SERVER_IDLE_TIMEOUT"))
 }
+
+func TestApplyPlainEnvDefaultsFillsEmptyValues(t *testing.T) {
+	for key := range envDefaults {
+		t.Setenv(key, "")
+	}
+
+	applyPlainEnvDefaults()
+
+	for key, value := range envDefaults {
+		assert.Equal(t, value, os.Getenv(key), key)
+	}
+}
+
+func TestApplyPlainEnvDefaultsKeepsNonEmptyValues(t *testing.T) {
+	for key := range envDefaults {
+		t.Setenv(key, "custom-"+key)
+	}
+
+	applyPlainEnvDefaults()
+
+	for key := range envDefaults {
+		assert.Equal(t, "custom-"+key, os.Getenv(key), key)
+	}
+}
+
+func TestEnsureSecretsTreatsEmptyAsMissing(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	t.Run("production with empty secrets fails naming both variables", func(t *testing.T) {
+		t.Setenv("AUTH_JWT_SECRET", "")
+		t.Setenv("SECRET_ENCRYPTION_KEY", "")
+		t.Setenv("ENVIRONMENT", "production")
+
+		err := ensureSecrets(logger)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "set AUTH_JWT_SECRET and SECRET_ENCRYPTION_KEY")
+	})
+
+	t.Run("production with empty encryption key fails naming it", func(t *testing.T) {
+		t.Setenv("AUTH_JWT_SECRET", "jwt")
+		t.Setenv("SECRET_ENCRYPTION_KEY", "")
+		t.Setenv("ENVIRONMENT", "production")
+
+		err := ensureSecrets(logger)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "set SECRET_ENCRYPTION_KEY:")
+		assert.NotContains(t, err.Error(), "AUTH_JWT_SECRET")
+	})
+}
