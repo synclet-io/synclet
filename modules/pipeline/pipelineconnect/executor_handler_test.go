@@ -1,20 +1,42 @@
 package pipelineconnect
 
 import (
+	"context"
 	"errors"
 	"testing"
 
+	"connectrpc.com/connect"
+	"github.com/go-pnp/go-pnp/pkg/optionutil"
 	"github.com/google/uuid"
+	"github.com/saturn4er/boilerplate-go/lib/dbutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	executorv1 "github.com/synclet-io/synclet/gen/proto/synclet/internalapi/executor/v1"
 	"github.com/synclet-io/synclet/gen/proto/synclet/internalapi/executor/v1/executorv1connect"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinejobs"
 )
 
 // Verify ExecutorHandler satisfies the generated interface at compile time.
 var _ executorv1connect.ExecutorServiceHandler = (*ExecutorHandler)(nil)
+
+type isJobActiveStorage struct {
+	pipelineservice.Storage
+	job *pipelineservice.Job
+	err error
+}
+
+func (s *isJobActiveStorage) Jobs() pipelineservice.JobsStorage { return &isJobActiveJobs{s: s} }
+
+type isJobActiveJobs struct {
+	pipelineservice.JobsStorage
+	s *isJobActiveStorage
+}
+
+func (j *isJobActiveJobs) First(_ context.Context, _ *pipelineservice.JobFilter, _ ...optionutil.Option[dbutil.SelectOptions]) (*pipelineservice.Job, error) {
+	return j.s.job, j.s.err
+}
 
 // TestExecutorHandler_IsJobActive tests all job status combinations for the IsJobActive RPC.
 func TestExecutorHandler_IsJobActive(t *testing.T) {
@@ -30,23 +52,27 @@ func TestExecutorHandler_IsJobActive(t *testing.T) {
 		{name: "Failed is not active", status: pipelineservice.JobStatusFailed, expected: false},
 		{name: "Cancelled is not active", status: pipelineservice.JobStatusCancelled, expected: false},
 		{name: "Scheduled is not active", status: pipelineservice.JobStatusScheduled, expected: false},
-		{name: "Not found returns not active", jobErr: errors.New("not found"), expected: false},
+		{name: "Not found returns not active", jobErr: pipelineservice.ErrJobNotFound, expected: false},
 	}
 
 	for _, testCase := range tests {
 		t.Run(testCase.name, func(t *testing.T) {
-			// Simulate the IsJobActive logic inline since we can't easily inject mocks
-			// into the concrete handler (it uses *pipelinejobs.GetJob, not an interface).
-			var active bool
-			if testCase.jobErr != nil {
-				active = false
-			} else {
-				active = testCase.status == pipelineservice.JobStatusRunning || testCase.status == pipelineservice.JobStatusStarting
-			}
+			storage := &isJobActiveStorage{job: &pipelineservice.Job{Status: testCase.status}, err: testCase.jobErr}
+			h := &ExecutorHandler{getJob: pipelinejobs.NewGetJob(storage)}
 
-			assert.Equal(t, testCase.expected, active)
+			resp, err := h.IsJobActive(t.Context(), connect.NewRequest(&executorv1.IsJobActiveRequest{JobId: uuid.NewString()}))
+			require.NoError(t, err)
+			assert.Equal(t, testCase.expected, resp.Msg.GetActive())
 		})
 	}
+}
+
+func TestExecutorHandler_IsJobActive_LookupErrorIsReturned(t *testing.T) {
+	storage := &isJobActiveStorage{err: errors.New("connection refused")}
+	h := &ExecutorHandler{getJob: pipelinejobs.NewGetJob(storage)}
+
+	_, err := h.IsJobActive(t.Context(), connect.NewRequest(&executorv1.IsJobActiveRequest{JobId: uuid.NewString()}))
+	require.Error(t, err)
 }
 
 // TestExecutorHandler_Heartbeat_Cancelled tests that Heartbeat returns cancelled=true

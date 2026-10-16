@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
+
 	pipelinesvc "github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
 )
 
@@ -53,4 +55,47 @@ func (s *JobsStorage) CountActiveJobs(ctx context.Context) (int, error) {
 	}
 
 	return count, nil
+}
+
+// UpdateIfStatus writes the full job row only while its stored status is one
+// of fromStatuses. Returns false when the job is missing or in another status.
+func (s *JobsStorage) UpdateIfStatus(ctx context.Context, job *pipelinesvc.Job, fromStatuses ...pipelinesvc.JobStatus) (bool, error) {
+	row, err := convertJobToDB(job)
+	if err != nil {
+		return false, err
+	}
+
+	statuses := make([]string, 0, len(fromStatuses))
+	for _, st := range fromStatuses {
+		dbStatus, err := convertJobStatusToDB(st)
+		if err != nil {
+			return false, err
+		}
+
+		statuses = append(statuses, dbStatus)
+	}
+
+	result := s.DB.WithContext(ctx).
+		Model(row).
+		Where("status IN ?", statuses).
+		Select("*").
+		Updates(row)
+	if result.Error != nil {
+		return false, wrapJobQueryError(fmt.Errorf("conditionally updating job: %w", result.Error))
+	}
+
+	return result.RowsAffected > 0, nil
+}
+
+// TouchHeartbeat sets heartbeat_at on a starting or running job. Returns false
+// when the job is missing or no longer active.
+func (s *JobsStorage) TouchHeartbeat(ctx context.Context, id uuid.UUID, at time.Time) (bool, error) {
+	result := s.DB.WithContext(ctx).
+		Exec(`UPDATE pipeline.jobs SET heartbeat_at = ? WHERE id = ? AND status IN (?, ?)`,
+			at, id, jobStatusStarting, jobStatusRunning)
+	if result.Error != nil {
+		return false, fmt.Errorf("updating job heartbeat: %w", result.Error)
+	}
+
+	return result.RowsAffected > 0, nil
 }

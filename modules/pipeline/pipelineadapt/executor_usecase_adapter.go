@@ -194,7 +194,12 @@ func (a *UseCaseExecutorBackend) IsJobActive(ctx context.Context, jobID string) 
 
 	job, err := a.getJob.Execute(ctx, pipelinejobs.GetJobParams{ID: parsed})
 	if err != nil {
-		return false, nil //nolint:nilerr // not-found is expected, return false for safe orphan cleanup
+		var notFound pipelineservice.NotFoundError
+		if errors.As(err, &notFound) {
+			return false, nil
+		}
+
+		return false, fmt.Errorf("getting job: %w", err)
 	}
 
 	return job.Status == pipelineservice.JobStatusRunning || job.Status == pipelineservice.JobStatusStarting, nil

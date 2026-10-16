@@ -54,8 +54,14 @@ func (uc *CancelJob) Execute(ctx context.Context, params CancelJobParams) error 
 	job.FailureReason = &reason
 
 	return uc.storage.ExecuteInTransaction(ctx, func(ctx context.Context, tx pipelineservice.Storage) error {
-		if _, err := tx.Jobs().Update(ctx, job); err != nil {
+		updated, err := tx.Jobs().UpdateIfStatus(ctx, job,
+			pipelineservice.JobStatusScheduled, pipelineservice.JobStatusStarting, pipelineservice.JobStatusRunning)
+		if err != nil {
 			return fmt.Errorf("updating job: %w", err)
+		}
+
+		if !updated {
+			return &pipelineservice.ValidationError{Message: "job has already finished"}
 		}
 
 		conn, err := tx.Connections().First(ctx, &pipelineservice.ConnectionFilter{

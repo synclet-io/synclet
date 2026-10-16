@@ -3,6 +3,7 @@ package pipelineconnect
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"connectrpc.com/connect"
@@ -263,8 +264,9 @@ func (h *ExecutorHandler) UpdateJobStatus(ctx context.Context, req *connect.Requ
 }
 
 // IsJobActive checks whether a job is still running or starting per D-04.
-// Returns active=true only for Running or Starting statuses.
-// Returns active=false for all other statuses and on any error (including not found).
+// Returns active=true only for Running or Starting statuses and active=false
+// for other statuses, unknown ids and invalid ids. Lookup failures are returned
+// as errors so orphan cleanup skips the container instead of killing it.
 func (h *ExecutorHandler) IsJobActive(ctx context.Context, req *connect.Request[executorv1.IsJobActiveRequest]) (*connect.Response[executorv1.IsJobActiveResponse], error) {
 	jobID, err := uuid.Parse(req.Msg.GetJobId())
 	if err != nil {
@@ -273,7 +275,14 @@ func (h *ExecutorHandler) IsJobActive(ctx context.Context, req *connect.Request[
 
 	job, err := h.getJob.Execute(ctx, pipelinejobs.GetJobParams{ID: jobID})
 	if err != nil {
-		return connect.NewResponse(&executorv1.IsJobActiveResponse{Active: false}), nil //nolint:nilerr // not-found is expected, return not active
+		var notFound pipelineservice.NotFoundError
+		if errors.As(err, &notFound) {
+			return connect.NewResponse(&executorv1.IsJobActiveResponse{Active: false}), nil
+		}
+
+		h.logger.WithError(err).Error(ctx, "executor: is job active lookup failed", "job_id", req.Msg.GetJobId())
+
+		return nil, mapError(err)
 	}
 
 	active := job.Status == pipelineservice.JobStatusRunning || job.Status == pipelineservice.JobStatusStarting
@@ -329,11 +338,19 @@ func (h *ExecutorHandler) ReportConnectorTaskResult(ctx context.Context, req *co
 }
 
 // IsTaskActive checks whether a connector task is still in pending or running status.
-// Returns active=false on any error (including not found) for safe orphan cleanup.
+// Unknown and invalid task ids are reported as inactive; lookup failures are
+// returned as errors so orphan cleanup skips the container.
 func (h *ExecutorHandler) IsTaskActive(ctx context.Context, req *connect.Request[executorv1.IsTaskActiveRequest]) (*connect.Response[executorv1.IsTaskActiveResponse], error) {
-	active, err := h.isTaskActive.ExecuteByString(ctx, req.Msg.GetTaskId())
+	taskID, err := uuid.Parse(req.Msg.GetTaskId())
 	if err != nil {
-		return connect.NewResponse(&executorv1.IsTaskActiveResponse{Active: false}), nil //nolint:nilerr // not-found is expected, return not active
+		return connect.NewResponse(&executorv1.IsTaskActiveResponse{Active: false}), nil //nolint:nilerr // invalid UUID means not active
+	}
+
+	active, err := h.isTaskActive.Execute(ctx, pipelinejobs.IsTaskActiveParams{ID: taskID})
+	if err != nil {
+		h.logger.WithError(err).Error(ctx, "executor: is task active lookup failed", "task_id", req.Msg.GetTaskId())
+
+		return nil, mapError(err)
 	}
 
 	return connect.NewResponse(&executorv1.IsTaskActiveResponse{Active: active}), nil

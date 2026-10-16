@@ -1,10 +1,14 @@
 package pipelineadapt
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
+	"connectrpc.com/connect"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -59,4 +63,49 @@ func TestRPCExecutorBackend_ProtoJobTypeToDomain(t *testing.T) {
 			assert.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+func TestRPCExecutorBackend_SendWithRetry(t *testing.T) {
+	backend := &RPCExecutorBackend{retryBaseDelay: time.Millisecond, retryMaxDelay: time.Millisecond}
+
+	t.Run("stops on non-retryable code", func(t *testing.T) {
+		calls := 0
+		err := backend.sendWithRetry(t.Context(), "UpdateJobStatus", func(context.Context) error {
+			calls++
+
+			return connect.NewError(connect.CodeNotFound, errors.New("job not found"))
+		})
+
+		require.Error(t, err)
+		assert.Equal(t, connect.CodeNotFound, connect.CodeOf(err))
+		assert.Equal(t, 1, calls)
+	})
+
+	t.Run("caps transient retries", func(t *testing.T) {
+		calls := 0
+		err := backend.sendWithRetry(t.Context(), "Heartbeat", func(context.Context) error {
+			calls++
+
+			return connect.NewError(connect.CodeUnavailable, errors.New("server down"))
+		})
+
+		require.Error(t, err)
+		assert.Equal(t, connect.CodeUnavailable, connect.CodeOf(err))
+		assert.Equal(t, rpcMaxAttempts, calls)
+	})
+
+	t.Run("succeeds after transient failure", func(t *testing.T) {
+		calls := 0
+		err := backend.sendWithRetry(t.Context(), "ClaimJob", func(context.Context) error {
+			calls++
+			if calls < 3 {
+				return connect.NewError(connect.CodeUnavailable, errors.New("server down"))
+			}
+
+			return nil
+		})
+
+		require.NoError(t, err)
+		assert.Equal(t, 3, calls)
+	})
 }

@@ -45,8 +45,14 @@ func (i *tokenInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFun
 // RPCExecutorBackend implements pipelineexec.ExecutorBackend by calling
 // ExecutorService RPCs over HTTP. Used in distributed mode (per D-15).
 type RPCExecutorBackend struct {
-	client executorv1connect.ExecutorServiceClient
+	client         executorv1connect.ExecutorServiceClient
+	retryBaseDelay time.Duration
+	retryMaxDelay  time.Duration
 }
+
+// rpcMaxAttempts caps sendWithRetry; with the default delays a call failing
+// with a transient error gives up after about two and a half minutes.
+const rpcMaxAttempts = 10
 
 // NewRPCExecutorBackend creates a new RPCExecutorBackend with the given API URL and token.
 func NewRPCExecutorBackend(apiURL, token string) *RPCExecutorBackend {
@@ -59,7 +65,11 @@ func NewRPCExecutorBackend(apiURL, token string) *RPCExecutorBackend {
 
 	client := executorv1connect.NewExecutorServiceClient(httpClient, apiURL, opts...)
 
-	return &RPCExecutorBackend{client: client}
+	return &RPCExecutorBackend{
+		client:         client,
+		retryBaseDelay: time.Second,
+		retryMaxDelay:  30 * time.Second,
+	}
 }
 
 // ClaimJob calls the ClaimJob RPC and maps the proto response to the domain type.
@@ -342,17 +352,27 @@ func (a *RPCExecutorBackend) FailJob(ctx context.Context, jobID, reason string) 
 
 // sendWithRetry retries a function with exponential backoff per D-12.
 // Used for critical operations: ClaimJob, UpdateJobStatus, Heartbeat, ReportCompletion.
+// Errors with a non-retryable code are returned at once; transient ones are
+// retried up to rpcMaxAttempts times.
 func (a *RPCExecutorBackend) sendWithRetry(ctx context.Context, name string, fn func(context.Context) error) error {
-	backoff := time.Second
-	maxBackoff := 30 * time.Second
+	backoff := a.retryBaseDelay
+	maxBackoff := a.retryMaxDelay
 
-	for {
+	for attempt := 1; ; attempt++ {
 		err := fn(ctx)
 		if err == nil {
 			return nil
 		}
 
-		slog.Error("rpc backend: call failed, retrying", "rpc", name, "error", err, "backoff", backoff)
+		if !isRetryableRPCError(err) {
+			return fmt.Errorf("%s: %w", name, err)
+		}
+
+		if attempt >= rpcMaxAttempts {
+			return fmt.Errorf("%s: giving up after %d attempts: %w", name, attempt, err)
+		}
+
+		slog.Error("rpc backend: call failed, retrying", "rpc", name, "error", err, "attempt", attempt, "backoff", backoff)
 
 		select {
 		case <-ctx.Done():
@@ -364,6 +384,22 @@ func (a *RPCExecutorBackend) sendWithRetry(ctx context.Context, name string, fn 
 		if backoff > maxBackoff {
 			backoff = maxBackoff
 		}
+	}
+}
+
+func isRetryableRPCError(err error) bool {
+	switch connect.CodeOf(err) {
+	case connect.CodeInvalidArgument,
+		connect.CodeNotFound,
+		connect.CodeAlreadyExists,
+		connect.CodePermissionDenied,
+		connect.CodeFailedPrecondition,
+		connect.CodeOutOfRange,
+		connect.CodeUnimplemented,
+		connect.CodeUnauthenticated:
+		return false
+	default:
+		return true
 	}
 }
 

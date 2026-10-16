@@ -8,6 +8,8 @@ import (
 	txoutbox "github.com/saturn4er/boilerplate-go/lib/txoutbox"
 
 	// user code 'imports'
+	"time"
+
 	"github.com/google/uuid"
 	// end user code 'imports'
 )
@@ -62,6 +64,8 @@ type JobsStorage interface {
 	// user code 'Job metods'
 	ClaimNextScheduledJob(ctx context.Context, workerID string) (*Job, error)
 	CountActiveJobs(ctx context.Context) (int, error)
+	UpdateIfStatus(ctx context.Context, job *Job, fromStatuses ...JobStatus) (bool, error)
+	TouchHeartbeat(ctx context.Context, id uuid.UUID, at time.Time) (bool, error)
 	// end user code 'Job metods'
 }
 

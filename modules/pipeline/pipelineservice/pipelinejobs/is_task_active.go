@@ -2,6 +2,7 @@ package pipelinejobs
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -26,13 +27,19 @@ func NewIsTaskActive(storage pipelineservice.Storage) *IsTaskActive {
 }
 
 // Execute returns true if the task exists and has pending or running status.
-// Returns false with no error if the task is not found.
+// Returns false with no error if the task is not found; any other lookup
+// error is returned so callers never treat a live task as inactive.
 func (uc *IsTaskActive) Execute(ctx context.Context, params IsTaskActiveParams) (bool, error) {
 	task, err := uc.storage.ConnectorTasks().First(ctx, &pipelineservice.ConnectorTaskFilter{
 		ID: filter.Equals(params.ID),
 	})
 	if err != nil {
-		return false, nil //nolint:nilerr // not-found is expected, return not active
+		var notFound pipelineservice.NotFoundError
+		if errors.As(err, &notFound) {
+			return false, nil
+		}
+
+		return false, fmt.Errorf("getting connector task: %w", err)
 	}
 
 	return task.Status == pipelineservice.ConnectorTaskStatusPending ||

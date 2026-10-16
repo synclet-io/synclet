@@ -3,6 +3,7 @@ package pipelinejobs
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/go-pnp/go-pnp/logging"
@@ -40,6 +41,7 @@ type ClaimJobBundleResult struct {
 // This keeps all storage access in the service layer so the handler never touches storage.
 type ClaimJobBundle struct {
 	claimJob              *ClaimJob
+	updateJobStatus       *UpdateJobStatus
 	getConfiguredCatalog  *pipelinecatalog.GetConfiguredCatalog
 	populateGenerationIDs *pipelinecatalog.PopulateGenerationIDs
 	getSyncState          *pipelinestate.GetSyncState
@@ -51,6 +53,7 @@ type ClaimJobBundle struct {
 // NewClaimJobBundle creates a new ClaimJobBundle use case.
 func NewClaimJobBundle(
 	claimJob *ClaimJob,
+	updateJobStatus *UpdateJobStatus,
 	getConfiguredCatalog *pipelinecatalog.GetConfiguredCatalog,
 	populateGenerationIDs *pipelinecatalog.PopulateGenerationIDs,
 	getSyncState *pipelinestate.GetSyncState,
@@ -60,6 +63,7 @@ func NewClaimJobBundle(
 ) *ClaimJobBundle {
 	return &ClaimJobBundle{
 		claimJob:              claimJob,
+		updateJobStatus:       updateJobStatus,
 		getConfiguredCatalog:  getConfiguredCatalog,
 		populateGenerationIDs: populateGenerationIDs,
 		getSyncState:          getSyncState,
@@ -70,8 +74,9 @@ func NewClaimJobBundle(
 }
 
 // Execute claims a job and loads the full bundle. Returns nil, nil when no jobs available.
+// A claimed job whose bundle cannot be assembled is failed right away with the
+// cause; missing entities fail it without retry.
 func (uc *ClaimJobBundle) Execute(ctx context.Context, params ClaimJobParams) (*ClaimJobBundleResult, error) {
-	// 1. Claim job via existing ClaimJob use case.
 	job, err := uc.claimJob.Execute(ctx, params)
 	if err != nil {
 		return nil, fmt.Errorf("claiming job: %w", err)
@@ -81,6 +86,24 @@ func (uc *ClaimJobBundle) Execute(ctx context.Context, params ClaimJobParams) (*
 		return nil, nil
 	}
 
+	result, err := uc.loadBundle(ctx, job)
+	if err != nil {
+		var notFound pipelineservice.NotFoundError
+		if failErr := uc.updateJobStatus.Execute(ctx, UpdateJobStatusParams{
+			ID:        job.ID,
+			SyncErr:   fmt.Errorf("preparing job: %w", err),
+			SkipRetry: errors.As(err, &notFound),
+		}); failErr != nil {
+			uc.logger.WithError(failErr).WithField("job_id", job.ID).Error(ctx, "failed to mark unprepared job as failed")
+		}
+
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func (uc *ClaimJobBundle) loadBundle(ctx context.Context, job *pipelineservice.Job) (*ClaimJobBundleResult, error) {
 	// 2. Load connection.
 	conn, err := uc.storage.Connections().First(ctx, &pipelineservice.ConnectionFilter{
 		ID: filter.Equals(job.ConnectionID),

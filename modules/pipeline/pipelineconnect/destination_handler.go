@@ -133,10 +133,6 @@ func (h *DestinationHandler) UpdateDestination(ctx context.Context, req *connect
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}
 
-		raw := json.RawMessage(config)
-		params.Config = &raw
-
-		// Blocking connection check before persist.
 		existingDest, err := h.getDestination.Execute(ctx, pipelinedestinations.GetDestinationParams{
 			ID:          id,
 			WorkspaceID: workspaceID,
@@ -145,6 +141,15 @@ func (h *DestinationHandler) UpdateDestination(ctx context.Context, req *connect
 			return nil, mapError(err)
 		}
 
+		mergedConfig, err := pipelinesecrets.MergeMaskedSecrets(existingDest.Config, string(config))
+		if err != nil {
+			return nil, mapError(err)
+		}
+
+		raw := json.RawMessage(mergedConfig)
+		params.Config = &raw
+
+		// Blocking connection check before persist.
 		if err := runConnectionCheck(ctx, h.createCheckTask, h.waitForTaskResult,
 			h.connectionCheckTimeout, workspaceID, existingDest.ManagedConnectorID, raw); err != nil {
 			return nil, err

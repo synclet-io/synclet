@@ -19,6 +19,8 @@ type UpdateJobStatusParams struct {
 	ID        uuid.UUID
 	SyncErr   error
 	SyncStats *pipelineservice.SyncStats
+	// SkipRetry fails the job for good instead of scheduling another attempt.
+	SkipRetry bool
 }
 
 // UpdateJobStatus completes a job by setting its status based on whether
@@ -35,12 +37,18 @@ func NewUpdateJobStatus(storage pipelineservice.Storage) *UpdateJobStatus {
 // Execute updates the job status after execution. It handles success, failure,
 // and retry logic including linear backoff based on connection retry config.
 // Publishes a JobUpdated event to the outbox in the same transaction.
+// Only starting or running jobs are updated; a report for a job that already
+// reached another status (cancelled, completed, failed or rescheduled) is a no-op.
 func (uc *UpdateJobStatus) Execute(ctx context.Context, params UpdateJobStatusParams) error {
 	prevJob, err := uc.storage.Jobs().First(ctx, &pipelineservice.JobFilter{
 		ID: filter.Equals(params.ID),
 	})
 	if err != nil {
 		return fmt.Errorf("getting job: %w", err)
+	}
+
+	if !isJobInFlight(prevJob.Status) {
+		return nil
 	}
 
 	// Snapshot the previous state for the event before mutating.
@@ -78,7 +86,7 @@ func (uc *UpdateJobStatus) Execute(ctx context.Context, params UpdateJobStatusPa
 		attempt.Error = &errStr
 
 		// Classify exit code if available for retry decisions.
-		skipRetry := false
+		skipRetry := params.SkipRetry
 
 		var exitErr *pipelineservice.ExitCodeError
 		if errors.As(params.SyncErr, &exitErr) {
@@ -108,8 +116,13 @@ func (uc *UpdateJobStatus) Execute(ctx context.Context, params UpdateJobStatusPa
 	}
 
 	return uc.storage.ExecuteInTransaction(ctx, func(ctx context.Context, tx pipelineservice.Storage) error {
-		if _, err := tx.Jobs().Update(ctx, job); err != nil {
+		updated, err := tx.Jobs().UpdateIfStatus(ctx, job, pipelineservice.JobStatusStarting, pipelineservice.JobStatusRunning)
+		if err != nil {
 			return fmt.Errorf("updating job: %w", err)
+		}
+
+		if !updated {
+			return nil
 		}
 
 		if _, err := tx.JobAttempts().Create(ctx, attempt); err != nil {
@@ -164,19 +177,10 @@ func NewUpdateHeartbeat(storage pipelineservice.Storage) *UpdateHeartbeat {
 	return &UpdateHeartbeat{storage: storage}
 }
 
-// Execute updates the heartbeat timestamp on the given job.
+// Execute updates the heartbeat timestamp on the given job. Heartbeats for a
+// job that is no longer starting or running are ignored so they never revive it.
 func (uc *UpdateHeartbeat) Execute(ctx context.Context, params UpdateHeartbeatParams) error {
-	job, err := uc.storage.Jobs().First(ctx, &pipelineservice.JobFilter{
-		ID: filter.Equals(params.ID),
-	})
-	if err != nil {
-		return fmt.Errorf("getting job: %w", err)
-	}
-
-	now := time.Now()
-	job.HeartbeatAt = &now
-
-	if _, err := uc.storage.Jobs().Update(ctx, job); err != nil {
+	if _, err := uc.storage.Jobs().TouchHeartbeat(ctx, params.ID, time.Now()); err != nil {
 		return fmt.Errorf("updating heartbeat: %w", err)
 	}
 
@@ -286,7 +290,7 @@ func NewSetK8sJobName(storage pipelineservice.Storage) *SetK8sJobName {
 	return &SetK8sJobName{storage: storage}
 }
 
-// Execute sets the K8s job name on the given job.
+// Execute sets the K8s job name on the given job while it is still active.
 func (uc *SetK8sJobName) Execute(ctx context.Context, params SetK8sJobNameParams) error {
 	job, err := uc.storage.Jobs().First(ctx, &pipelineservice.JobFilter{
 		ID: filter.Equals(params.ID),
@@ -297,11 +301,16 @@ func (uc *SetK8sJobName) Execute(ctx context.Context, params SetK8sJobNameParams
 
 	job.K8sJobName = &params.K8sJobName
 
-	if _, err := uc.storage.Jobs().Update(ctx, job); err != nil {
+	if _, err := uc.storage.Jobs().UpdateIfStatus(ctx, job,
+		pipelineservice.JobStatusScheduled, pipelineservice.JobStatusStarting, pipelineservice.JobStatusRunning); err != nil {
 		return fmt.Errorf("updating job k8s name: %w", err)
 	}
 
 	return nil
+}
+
+func isJobInFlight(status pipelineservice.JobStatus) bool {
+	return status == pipelineservice.JobStatusStarting || status == pipelineservice.JobStatusRunning
 }
 
 func derefTime(t *time.Time) time.Time {

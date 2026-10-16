@@ -52,35 +52,41 @@ func (uc *UpdateChannel) Execute(ctx context.Context, params UpdateChannelParams
 		channel.Name = *params.Name
 	}
 
-	if params.Config != nil {
-		if err := validateChannelConfig(channel.ChannelType, params.Config); err != nil {
-			return nil, fmt.Errorf("invalid config: %w", err)
-		}
+	var staleRefs []string
 
-		// Load existing config to find old secret refs for cleanup.
+	if params.Config != nil {
 		var existingConfig map[string]string
 		if err := json.Unmarshal([]byte(channel.Config), &existingConfig); err != nil {
 			existingConfig = map[string]string{}
 		}
 
-		// Encrypt sensitive config fields.
-		for field, value := range params.Config {
-			if IsSensitiveField(channel.ChannelType, field) && value != "" && !secretutil.IsSecretRef(value) {
-				// Delete old secret ref if it exists.
-				if oldRef, ok := existingConfig[field]; ok && secretutil.IsSecretRef(oldRef) {
-					_ = uc.secrets.DeleteSecret(ctx, oldRef) // non-fatal
-				}
+		config, err := resolveMaskedChannelSecrets(channel.ChannelType, existingConfig, params.Config)
+		if err != nil {
+			return nil, err
+		}
 
+		if err := validateChannelConfig(channel.ChannelType, config); err != nil {
+			return nil, fmt.Errorf("invalid config: %w", err)
+		}
+
+		for field, value := range config {
+			if IsSensitiveField(channel.ChannelType, field) && value != "" && !secretutil.IsSecretRef(value) {
 				ref, err := uc.secrets.StoreSecret(ctx, "channel", channel.ID, value)
 				if err != nil {
 					return nil, fmt.Errorf("encrypting channel config field %s: %w", field, err)
 				}
 
-				params.Config[field] = ref
+				config[field] = ref
 			}
 		}
 
-		configJSON, err := json.Marshal(params.Config)
+		for field, oldValue := range existingConfig {
+			if secretutil.IsSecretRef(oldValue) && config[field] != oldValue {
+				staleRefs = append(staleRefs, oldValue)
+			}
+		}
+
+		configJSON, err := json.Marshal(config)
 		if err != nil {
 			return nil, fmt.Errorf("marshaling config: %w", err)
 		}
@@ -99,6 +105,10 @@ func (uc *UpdateChannel) Execute(ctx context.Context, params UpdateChannelParams
 		return nil, fmt.Errorf("updating notification channel: %w", err)
 	}
 
+	for _, ref := range staleRefs {
+		_ = uc.secrets.DeleteSecret(ctx, ref) // non-fatal
+	}
+
 	uc.audit.Record(ctx, AuditEvent{
 		WorkspaceID:   params.WorkspaceID,
 		Action:        "update",
@@ -113,4 +123,26 @@ func (uc *UpdateChannel) Execute(ctx context.Context, params UpdateChannelParams
 	})
 
 	return updated, nil
+}
+
+// resolveMaskedChannelSecrets returns a copy of incoming in which every masked
+// sensitive field takes its stored secret ref. A sensitive field may carry a
+// secret ref only when it equals the stored one.
+func resolveMaskedChannelSecrets(channelType ChannelType, existing, incoming map[string]string) (map[string]string, error) {
+	config := make(map[string]string, len(incoming))
+
+	for field, value := range incoming {
+		if IsSensitiveField(channelType, field) {
+			switch {
+			case value == secretutil.SecretMask:
+				value = existing[field]
+			case secretutil.IsSecretRef(value) && value != existing[field]:
+				return nil, &ValidationError{Message: "unknown secret reference in " + field}
+			}
+		}
+
+		config[field] = value
+	}
+
+	return config, nil
 }

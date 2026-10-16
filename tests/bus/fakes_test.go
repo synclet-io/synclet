@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -77,6 +78,20 @@ func (s *jobStorage) Update(_ context.Context, job *pipelineservice.Job) (*pipel
 	s.job = &cp
 
 	return job, nil
+}
+
+func (s *jobStorage) UpdateIfStatus(_ context.Context, job *pipelineservice.Job, fromStatuses ...pipelineservice.JobStatus) (bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if !slices.Contains(fromStatuses, s.job.Status) {
+		return false, nil
+	}
+
+	cp := job.Copy()
+	s.job = &cp
+
+	return true, nil
 }
 
 type attemptStorage struct {
