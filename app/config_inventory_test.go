@@ -95,6 +95,60 @@ func TestConfigInventory(t *testing.T) {
 	}
 }
 
+// TestEnvDistHasNoEmptyDefaultedValues fails when .env.dist sets a variable to
+// an empty value although the binary has a non-empty default for it: the empty
+// value would override the default.
+func TestEnvDistHasNoEmptyDefaultedValues(t *testing.T) {
+	configs, err := configInventory()
+	if err != nil {
+		t.Fatalf("config inventory: %v", err)
+	}
+
+	defaults := map[string]string{}
+	for key, value := range envDefaults {
+		defaults[key] = value
+	}
+
+	for _, config := range configs {
+		for _, field := range config.Fields {
+			if field.HasDefaultValue && field.DefaultValue != "" {
+				defaults[field.Key] = field.DefaultValue
+			}
+		}
+	}
+
+	content, err := os.ReadFile("../.env.dist")
+	if err != nil {
+		t.Fatalf("read .env.dist: %v", err)
+	}
+
+	for _, key := range emptyEnvDistKeysWithDefaults(string(content), defaults) {
+		t.Errorf(".env.dist sets %s to an empty value, but its default is %q", key, defaults[key])
+	}
+}
+
+func TestEmptyEnvDistKeysWithDefaults(t *testing.T) {
+	defaults := map[string]string{"A": "x", "B": "y", "C": "z"}
+	text := "A=\nB=set\n# C=\nD=\nE= \n"
+
+	got := emptyEnvDistKeysWithDefaults(text, defaults)
+	if len(got) != 1 || got[0] != "A" {
+		t.Fatalf("got %v, want [A]", got)
+	}
+}
+
+func emptyEnvDistKeysWithDefaults(text string, defaults map[string]string) []string {
+	var keys []string
+
+	for _, match := range regexp.MustCompile(`(?m)^([A-Z][A-Z0-9_]*)=[ \t]*$`).FindAllStringSubmatch(text, -1) {
+		if defaults[match[1]] != "" {
+			keys = append(keys, match[1])
+		}
+	}
+
+	return keys
+}
+
 func hasKnownPrefix(known map[string]bool, prefix string) bool {
 	for key := range known {
 		if strings.HasPrefix(key, prefix) {
