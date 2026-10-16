@@ -70,7 +70,7 @@ func (uc *ConfigureStreams) Execute(ctx context.Context, params ConfigureStreams
 
 		available, ok := availableStreams[key]
 		if !ok {
-			return fmt.Errorf("stream %q not found in discovered catalog", key)
+			return streamValidationError("stream %q not found in discovered catalog", key)
 		}
 
 		// Enrich configured stream with schema and metadata from the discovered catalog.
@@ -82,13 +82,13 @@ func (uc *ConfigureStreams) Execute(ctx context.Context, params ConfigureStreams
 		params.Streams[i].Stream.SourceDefinedPrimaryKey = available.SourceDefinedPrimaryKey
 
 		if !syncModeSupported(available.SupportedSyncModes, configured.SyncMode) {
-			return fmt.Errorf("sync mode %q not supported for stream %q", configured.SyncMode, key)
+			return streamValidationError("sync mode %q not supported for stream %q", configured.SyncMode, key)
 		}
 
 		// Reject incompatible sync mode combinations.
 		if configured.SyncMode == protocol.SyncModeFullRefresh &&
 			configured.DestinationSyncMode == protocol.DestinationSyncModeAppendDedup {
-			return fmt.Errorf("sync mode full_refresh is incompatible with destination sync mode append_dedup for stream %q", key)
+			return streamValidationError("sync mode full_refresh is incompatible with destination sync mode append_dedup for stream %q", key)
 		}
 
 		// Use source-defined primary key when available.
@@ -105,20 +105,20 @@ func (uc *ConfigureStreams) Execute(ctx context.Context, params ConfigureStreams
 		if configured.SyncMode == protocol.SyncModeIncremental &&
 			!available.SourceDefinedCursor &&
 			len(configured.CursorField) == 0 {
-			return fmt.Errorf("cursor field required for incremental sync on stream %q (source does not define cursor)", key)
+			return streamValidationError("cursor field required for incremental sync on stream %q (source does not define cursor)", key)
 		}
 
 		// Validate primary key for append_dedup when source doesn't define one.
 		if configured.DestinationSyncMode == protocol.DestinationSyncModeAppendDedup &&
 			len(available.SourceDefinedPrimaryKey) == 0 &&
 			len(configured.PrimaryKey) == 0 {
-			return fmt.Errorf("primary key required for append_dedup on stream %q (source does not define primary key)", key)
+			return streamValidationError("primary key required for append_dedup on stream %q (source does not define primary key)", key)
 		}
 
 		// Validate and enhance selected fields.
 		if len(configured.SelectedFields) > 0 {
 			if err := ValidateSelectedFields(configured.SelectedFields, available.JSONSchema); err != nil {
-				return fmt.Errorf("invalid selected fields for stream %q: %w", key, err)
+				return streamValidationError("invalid selected fields for stream %q: %v", key, err)
 			}
 
 			params.Streams[i].SelectedFields = ForceIncludeFields(
@@ -231,4 +231,8 @@ func syncModeSupported(supported []protocol.SyncMode, mode protocol.SyncMode) bo
 	}
 
 	return false
+}
+
+func streamValidationError(format string, args ...any) error {
+	return &pipelineservice.ValidationError{Field: "streams", Message: fmt.Sprintf(format, args...)}
 }

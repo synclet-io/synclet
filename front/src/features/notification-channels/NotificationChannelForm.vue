@@ -125,7 +125,11 @@ async function handleTest() {
   if (!isEdit.value || !props.channel)
     return
   try {
-    await testMutation.mutateAsync(props.channel.id)
+    const result = await testMutation.mutateAsync(props.channel.id)
+    if (!result.delivered) {
+      testError.value = `Test notification was not delivered: ${result.deliveryError || 'unknown error'}`
+      return
+    }
     toast.success('Test notification sent successfully')
   }
   catch (err: unknown) {

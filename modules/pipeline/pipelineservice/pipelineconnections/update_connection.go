@@ -52,14 +52,12 @@ func (uc *UpdateConnection) Execute(ctx context.Context, params UpdateConnection
 	}
 
 	if params.Schedule != nil {
-		if *params.Schedule != nil && **params.Schedule != "" {
-			if _, err := pipelineservice.CronParser.Parse(**params.Schedule); err != nil {
-				return nil, fmt.Errorf("invalid cron expression %q: %w", **params.Schedule, err)
-			}
+		schedule := emptyToNil(*params.Schedule)
+		if err := validateSchedule(schedule); err != nil {
+			return nil, err
 		}
 
-		conn.Schedule = *params.Schedule
-		// Recompute next_scheduled_at when schedule changes
+		conn.Schedule = schedule
 		pipelineservice.RecomputeNextScheduledAt(conn, time.Now())
 	}
 
@@ -76,11 +74,11 @@ func (uc *UpdateConnection) Execute(ctx context.Context, params UpdateConnection
 	}
 
 	if params.CustomNamespaceFormat != nil {
-		conn.CustomNamespaceFormat = *params.CustomNamespaceFormat
+		conn.CustomNamespaceFormat = emptyToNil(*params.CustomNamespaceFormat)
 	}
 
 	if params.StreamPrefix != nil {
-		conn.StreamPrefix = *params.StreamPrefix
+		conn.StreamPrefix = emptyToNil(*params.StreamPrefix)
 	}
 
 	conn.UpdatedAt = time.Now()

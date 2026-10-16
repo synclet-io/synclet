@@ -105,8 +105,14 @@ export async function deleteChannel(id: string): Promise<void> {
   await notificationClient.deleteNotificationChannel({ id })
 }
 
-export async function testChannel(id: string): Promise<void> {
-  await notificationClient.testNotificationChannel({ id })
+export interface TestChannelResult {
+  delivered: boolean
+  deliveryError: string
+}
+
+export async function testChannel(id: string): Promise<TestChannelResult> {
+  const resp = await notificationClient.testNotificationChannel({ id })
+  return { delivered: resp.delivered, deliveryError: resp.deliveryError }
 }
 
 // Rule operations

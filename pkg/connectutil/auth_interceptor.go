@@ -3,11 +3,17 @@ package connectutil
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 
 	"connectrpc.com/connect"
 )
+
+// ErrInvalidCredential marks a token or API key that is unknown, expired or
+// malformed. TokenValidator implementations wrap it so the interceptor can tell
+// a rejected credential from an infrastructure failure.
+var ErrInvalidCredential = errors.New("invalid credential")
 
 // TokenValidator validates JWT or API key tokens.
 type TokenValidator interface {
@@ -95,7 +101,7 @@ func (i *AuthInterceptor) authenticate(ctx context.Context, headers http.Header,
 	if strings.HasPrefix(token, "synclet_sk_") {
 		userID, workspaceID, err := i.validator.ValidateAPIKey(ctx, token)
 		if err != nil {
-			return nil, connect.NewError(connect.CodeUnauthenticated, err)
+			return nil, credentialError(ctx, err)
 		}
 
 		uid, err := parseUUID(userID)
@@ -142,4 +148,16 @@ func (i *AuthInterceptor) authenticateJWT(ctx context.Context, token, workspaceH
 	}
 
 	return ctx, nil
+}
+
+// credentialError maps a rejected credential to Unauthenticated and logs any
+// other failure as Internal, so an outage is not reported as a bad API key.
+func credentialError(ctx context.Context, err error) error {
+	if errors.Is(err, ErrInvalidCredential) {
+		return connect.NewError(connect.CodeUnauthenticated, err)
+	}
+
+	slog.Default().ErrorContext(ctx, "validating credential", "error", err)
+
+	return connect.NewError(connect.CodeInternal, errors.New("internal error"))
 }

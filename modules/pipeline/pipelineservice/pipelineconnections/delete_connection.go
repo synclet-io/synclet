@@ -27,35 +27,33 @@ func NewDeleteConnection(storage pipelineservice.Storage, audit pipelineservice.
 	return &DeleteConnection{storage: storage, audit: audit}
 }
 
-// Execute deletes the connection matching the given ID and workspace.
+// Execute deletes the connection matching the given ID and workspace. It
+// returns a not-found error when no such connection exists.
 func (uc *DeleteConnection) Execute(ctx context.Context, params DeleteConnectionParams) error {
-	// Load the connection first so the audit record can capture its name and
-	// pre-delete shape. Workspace-scoped lookup also doubles as the access
-	// check.
-	existing, lookupErr := uc.storage.Connections().First(ctx, &pipelineservice.ConnectionFilter{
-		ID:          filter.Equals(params.ID),
-		WorkspaceID: filter.Equals(params.WorkspaceID),
-	})
-
-	err := uc.storage.Connections().Delete(ctx, &pipelineservice.ConnectionFilter{
+	existing, err := uc.storage.Connections().First(ctx, &pipelineservice.ConnectionFilter{
 		ID:          filter.Equals(params.ID),
 		WorkspaceID: filter.Equals(params.WorkspaceID),
 	})
 	if err != nil {
+		return fmt.Errorf("getting connection: %w", err)
+	}
+
+	if err := uc.storage.Connections().Delete(ctx, &pipelineservice.ConnectionFilter{
+		ID:          filter.Equals(existing.ID),
+		WorkspaceID: filter.Equals(params.WorkspaceID),
+	}); err != nil {
 		return fmt.Errorf("deleting connection: %w", err)
 	}
 
-	if lookupErr == nil && existing != nil {
-		uc.audit.Record(ctx, pipelineservice.AuditEvent{
-			WorkspaceID:   params.WorkspaceID,
-			Action:        "delete",
-			ResourceType:  "connection",
-			ResourceID:    existing.ID,
-			ResourceLabel: existing.Name,
-			Before:        connectionToAuditPayload(existing),
-			After:         nil,
-		})
-	}
+	uc.audit.Record(ctx, pipelineservice.AuditEvent{
+		WorkspaceID:   params.WorkspaceID,
+		Action:        "delete",
+		ResourceType:  "connection",
+		ResourceID:    existing.ID,
+		ResourceLabel: existing.Name,
+		Before:        connectionToAuditPayload(existing),
+		After:         nil,
+	})
 
 	return nil
 }

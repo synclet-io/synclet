@@ -2,8 +2,11 @@ package authadapt
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/synclet-io/synclet/modules/auth/authservice"
+	"github.com/synclet-io/synclet/pkg/connectutil"
 )
 
 // TokenValidator adapts auth use cases to connectutil.TokenValidator.
@@ -31,6 +34,10 @@ func (a *TokenValidator) ValidateAccessToken(tokenString string) (userID, email 
 
 func (a *TokenValidator) ValidateAPIKey(ctx context.Context, rawKey string) (userID, workspaceID string, err error) {
 	apiKey, err := a.validateAPIKey.Execute(ctx, rawKey)
+	if errors.Is(err, authservice.ErrInvalidAPIKey) || errors.Is(err, authservice.ErrAPIKeyExpired) {
+		return "", "", fmt.Errorf("%w: %w", connectutil.ErrInvalidCredential, err)
+	}
+
 	if err != nil {
 		return "", "", err
 	}

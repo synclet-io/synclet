@@ -23,8 +23,42 @@ func TestRemoveMember_Removes(t *testing.T) {
 	assert.Empty(t, rows)
 }
 
-func TestRemoveMember_IdempotentWhenMissing(t *testing.T) {
+func TestRemoveMember_MissingIsNotFound(t *testing.T) {
 	ctx := context.Background()
-	err := NewRemoveMember(newFakeStorage(), NoopAuditRecorder{}).Execute(ctx, uuid.New(), uuid.New())
-	assert.NoError(t, err)
+	recorder := &capturingAuditRecorder{}
+	err := NewRemoveMember(newFakeStorage(), recorder).Execute(ctx, uuid.New(), uuid.New())
+	require.ErrorIs(t, err, ErrWorkspaceMemberNotFound)
+	assert.Empty(t, recorder.events)
+}
+
+func TestRemoveMember_RefusesLastAdmin(t *testing.T) {
+	ctx := context.Background()
+	wsID := uuid.New()
+	adminID := uuid.New()
+	store := newFakeStorage()
+	store.seedMember(&WorkspaceMember{ID: uuid.New(), WorkspaceID: wsID, UserID: adminID, Role: MemberRoleAdmin})
+	store.seedMember(&WorkspaceMember{ID: uuid.New(), WorkspaceID: wsID, UserID: uuid.New(), Role: MemberRoleEditor})
+	store.seedMember(&WorkspaceMember{ID: uuid.New(), WorkspaceID: uuid.New(), UserID: uuid.New(), Role: MemberRoleAdmin})
+
+	err := NewRemoveMember(store, NoopAuditRecorder{}).Execute(ctx, wsID, adminID)
+	require.ErrorIs(t, err, ErrLastAdminCannotBeRemoved)
+
+	rows, err := store.WorkspaceMembers().Find(ctx, &WorkspaceMemberFilter{})
+	require.NoError(t, err)
+	assert.Len(t, rows, 3)
+}
+
+func TestRemoveMember_RemovesAdminWhenAnotherRemains(t *testing.T) {
+	ctx := context.Background()
+	wsID := uuid.New()
+	adminID := uuid.New()
+	store := newFakeStorage()
+	store.seedMember(&WorkspaceMember{ID: uuid.New(), WorkspaceID: wsID, UserID: adminID, Role: MemberRoleAdmin})
+	store.seedMember(&WorkspaceMember{ID: uuid.New(), WorkspaceID: wsID, UserID: uuid.New(), Role: MemberRoleAdmin})
+
+	require.NoError(t, NewRemoveMember(store, NoopAuditRecorder{}).Execute(ctx, wsID, adminID))
+
+	rows, err := store.WorkspaceMembers().Find(ctx, &WorkspaceMemberFilter{})
+	require.NoError(t, err)
+	assert.Len(t, rows, 1)
 }

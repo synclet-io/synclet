@@ -101,9 +101,9 @@ func (h *Handler) CreateWorkspace(ctx context.Context, req *connect.Request[work
 func (h *Handler) UpdateWorkspace(ctx context.Context, req *connect.Request[workspacev1.UpdateWorkspaceRequest]) (*connect.Response[workspacev1.UpdateWorkspaceResponse], error) {
 	// Use workspace ID from auth context to prevent IDOR -- the role interceptor
 	// validates admin role against this same context workspace, so we must target it.
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	params := workspaceservice.UpdateWorkspaceParams{
@@ -133,9 +133,9 @@ func (h *Handler) UpdateWorkspace(ctx context.Context, req *connect.Request[work
 func (h *Handler) DeleteWorkspace(ctx context.Context, req *connect.Request[workspacev1.DeleteWorkspaceRequest]) (*connect.Response[workspacev1.DeleteWorkspaceResponse], error) {
 	// Use workspace ID from auth context to prevent IDOR -- the role interceptor
 	// validates admin role against this same context workspace, so we must target it.
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	if err := h.deleteWorkspace.Execute(ctx, workspaceID); err != nil {
@@ -193,9 +193,9 @@ func (h *Handler) ListWorkspaces(ctx context.Context, req *connect.Request[works
 func (h *Handler) RemoveMember(ctx context.Context, req *connect.Request[workspacev1.RemoveMemberRequest]) (*connect.Response[workspacev1.RemoveMemberResponse], error) {
 	// Use workspace ID from auth context to prevent IDOR -- the role interceptor
 	// validates admin role against this same context workspace, so we must target it.
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	userID, err := uuid.Parse(req.Msg.GetUserId())
@@ -213,9 +213,9 @@ func (h *Handler) RemoveMember(ctx context.Context, req *connect.Request[workspa
 func (h *Handler) UpdateMemberRole(ctx context.Context, req *connect.Request[workspacev1.UpdateMemberRoleRequest]) (*connect.Response[workspacev1.UpdateMemberRoleResponse], error) {
 	// Use workspace ID from auth context to prevent IDOR -- the role interceptor
 	// validates admin role against this same context workspace, so we must target it.
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	userID, err := uuid.Parse(req.Msg.GetUserId())
@@ -245,9 +245,9 @@ func (h *Handler) UpdateMemberRole(ctx context.Context, req *connect.Request[wor
 
 func (h *Handler) ListMembers(ctx context.Context, req *connect.Request[workspacev1.ListMembersRequest]) (*connect.Response[workspacev1.ListMembersResponse], error) {
 	// Use workspace ID from auth context to prevent IDOR.
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		return nil, err
 	}
 
 	userID, err := connectutil.UserIDFromContext(ctx)
@@ -277,9 +277,9 @@ func (h *Handler) CreateInvite(ctx context.Context, req *connect.Request[workspa
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("workspace ID required"))
+		return nil, err
 	}
 
 	role := protoToMemberRole(req.Msg.GetRole())
@@ -338,9 +338,9 @@ func (h *Handler) DeclineInvite(ctx context.Context, req *connect.Request[worksp
 
 // RevokeInvite revokes a pending invite. Requires admin auth.
 func (h *Handler) RevokeInvite(ctx context.Context, req *connect.Request[workspacev1.RevokeInviteRequest]) (*connect.Response[workspacev1.RevokeInviteResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("workspace ID required"))
+		return nil, err
 	}
 
 	inviteID, err := uuid.Parse(req.Msg.GetInviteId())
@@ -357,9 +357,9 @@ func (h *Handler) RevokeInvite(ctx context.Context, req *connect.Request[workspa
 
 // ResendInvite resends an invite email and resets TTL. Requires admin auth.
 func (h *Handler) ResendInvite(ctx context.Context, req *connect.Request[workspacev1.ResendInviteRequest]) (*connect.Response[workspacev1.ResendInviteResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("workspace ID required"))
+		return nil, err
 	}
 
 	inviteID, err := uuid.Parse(req.Msg.GetInviteId())
@@ -377,9 +377,9 @@ func (h *Handler) ResendInvite(ctx context.Context, req *connect.Request[workspa
 
 // ListInvites lists all invites for the current workspace.
 func (h *Handler) ListInvites(ctx context.Context, req *connect.Request[workspacev1.ListInvitesRequest]) (*connect.Response[workspacev1.ListInvitesResponse], error) {
-	workspaceID, err := connectutil.WorkspaceIDFromContext(ctx)
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("workspace ID required"))
+		return nil, err
 	}
 
 	invites, err := h.listInvites.Execute(ctx, workspaceID)
@@ -513,6 +513,10 @@ func mapError(err error) error {
 
 	if validationErr, ok := lo.ErrorsAs[*workspaceservice.ValidationError](err); ok {
 		return connect.NewError(connect.CodeInvalidArgument, validationErr)
+	}
+
+	if errors.Is(err, workspaceservice.ErrLastAdminCannotBeRemoved) {
+		return connect.NewError(connect.CodeFailedPrecondition, workspaceservice.ErrLastAdminCannotBeRemoved)
 	}
 
 	return err

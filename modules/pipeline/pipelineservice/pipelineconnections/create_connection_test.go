@@ -71,6 +71,49 @@ func TestCreateConnection_DoesNotCarryStateFromAnotherConnection(t *testing.T) {
 	}
 }
 
+func TestCreateConnection_InvalidCronIsValidationError(t *testing.T) {
+	workspaceID := uuid.New()
+	sourceID := uuid.New()
+	destID := uuid.New()
+	store := newCreateConnStore(workspaceID, sourceID, destID)
+	schedule := "every hour"
+
+	uc := pipelineconnections.NewCreateConnection(store, pipelineservice.Config{DefaultMaxAttempts: 3}, pipelineservice.NoopAuditRecorder{})
+	_, err := uc.Execute(context.Background(), pipelineconnections.CreateConnectionParams{
+		WorkspaceID:   workspaceID,
+		Name:          "hourly",
+		SourceID:      sourceID,
+		DestinationID: destID,
+		Schedule:      &schedule,
+	})
+
+	var validationErr *pipelineservice.ValidationError
+	require.ErrorAs(t, err, &validationErr)
+	assert.Equal(t, "schedule", validationErr.Field)
+	assert.Empty(t, store.connections.records)
+}
+
+func TestCreateConnection_HonoursRequestedStatus(t *testing.T) {
+	workspaceID := uuid.New()
+	sourceID := uuid.New()
+	destID := uuid.New()
+	store := newCreateConnStore(workspaceID, sourceID, destID)
+	schedule := "0 * * * *"
+
+	uc := pipelineconnections.NewCreateConnection(store, pipelineservice.Config{DefaultMaxAttempts: 3}, pipelineservice.NoopAuditRecorder{})
+	created, err := uc.Execute(context.Background(), pipelineconnections.CreateConnectionParams{
+		WorkspaceID:   workspaceID,
+		Name:          "paused",
+		SourceID:      sourceID,
+		DestinationID: destID,
+		Schedule:      &schedule,
+		Status:        pipelineservice.ConnectionStatusInactive,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, pipelineservice.ConnectionStatusInactive, created.Status)
+	assert.Nil(t, created.NextScheduledAt)
+}
+
 // ---- minimal in-memory storage scaffolding for the CreateConnection use case ----
 
 type createConnStore struct {

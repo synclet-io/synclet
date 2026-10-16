@@ -26,45 +26,44 @@ func NewDeleteChannel(storage Storage, secrets SecretsProvider, audit AuditRecor
 	return &DeleteChannel{storage: storage, secrets: secrets, audit: audit}
 }
 
-// Execute deletes the notification channel and its rules.
+// Execute deletes the notification channel and its rules. It returns a
+// not-found error when no such channel exists.
 func (uc *DeleteChannel) Execute(ctx context.Context, params DeleteChannelParams) error {
-	// Load before deleting so we can capture name + type in the audit record.
-	existing, lookupErr := uc.storage.NotificationChannels().First(ctx, &NotificationChannelFilter{
+	existing, err := uc.storage.NotificationChannels().First(ctx, &NotificationChannelFilter{
 		ID:          filter.Equals(params.ID),
 		WorkspaceID: filter.Equals(params.WorkspaceID),
 	})
+	if err != nil {
+		return fmt.Errorf("getting notification channel: %w", err)
+	}
 
-	// Clean up all encrypted secrets for this channel.
-	_ = uc.secrets.DeleteByOwner(ctx, "channel", params.ID) // non-fatal
-
-	// Delete associated notification rules first.
 	if err := uc.storage.NotificationRules().Delete(ctx, &NotificationRuleFilter{
-		ChannelID:   filter.Equals(params.ID),
+		ChannelID:   filter.Equals(existing.ID),
 		WorkspaceID: filter.Equals(params.WorkspaceID),
 	}); err != nil {
 		return fmt.Errorf("deleting associated notification rules: %w", err)
 	}
 
 	if err := uc.storage.NotificationChannels().Delete(ctx, &NotificationChannelFilter{
-		ID:          filter.Equals(params.ID),
+		ID:          filter.Equals(existing.ID),
 		WorkspaceID: filter.Equals(params.WorkspaceID),
 	}); err != nil {
-		return err
+		return fmt.Errorf("deleting notification channel: %w", err)
 	}
 
-	if lookupErr == nil && existing != nil {
-		uc.audit.Record(ctx, AuditEvent{
-			WorkspaceID:   params.WorkspaceID,
-			Action:        "delete",
-			ResourceType:  "notification_channel",
-			ResourceID:    existing.ID,
-			ResourceLabel: existing.Name,
-			Before: map[string]any{
-				"name":         existing.Name,
-				"channel_type": existing.ChannelType.String(),
-			},
-		})
-	}
+	_ = uc.secrets.DeleteByOwner(ctx, "channel", existing.ID) // non-fatal
+
+	uc.audit.Record(ctx, AuditEvent{
+		WorkspaceID:   params.WorkspaceID,
+		Action:        "delete",
+		ResourceType:  "notification_channel",
+		ResourceID:    existing.ID,
+		ResourceLabel: existing.Name,
+		Before: map[string]any{
+			"name":         existing.Name,
+			"channel_type": existing.ChannelType.String(),
+		},
+	})
 
 	return nil
 }

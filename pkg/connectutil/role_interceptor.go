@@ -2,6 +2,8 @@ package connectutil
 
 import (
 	"context"
+	"errors"
+	"log/slog"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
@@ -12,7 +14,22 @@ import (
 	optionsv1 "github.com/synclet-io/synclet/gen/proto/synclet/options/v1"
 )
 
+// ErrNotMember marks a user who is not a member of the workspace.
+var ErrNotMember = errors.New("not a workspace member")
+
+// RequireWorkspaceID returns the caller's workspace ID, or a PermissionDenied
+// error when the request carries no workspace.
+func RequireWorkspaceID(ctx context.Context) (uuid.UUID, error) {
+	workspaceID, err := WorkspaceIDFromContext(ctx)
+	if err != nil {
+		return uuid.Nil, connect.NewError(connect.CodePermissionDenied, errors.New("workspace is required"))
+	}
+
+	return workspaceID, nil
+}
+
 // MembershipChecker verifies workspace membership for authorization.
+// GetMemberRole wraps ErrNotMember when the user is not a member.
 type MembershipChecker interface {
 	IsMember(ctx context.Context, workspaceID, userID uuid.UUID) (bool, error)
 	GetMemberRole(ctx context.Context, workspaceID, userID uuid.UUID) (string, error)
@@ -108,8 +125,14 @@ func (i *RoleInterceptor) checkRole(ctx context.Context, procedure string) error
 	}
 
 	roleStr, err := i.checker.GetMemberRole(ctx, wsID, userID)
-	if err != nil {
+	if errors.Is(err, ErrNotMember) {
 		return connect.NewError(connect.CodePermissionDenied, nil)
+	}
+
+	if err != nil {
+		slog.Default().ErrorContext(ctx, "checking workspace role", "procedure", procedure, "error", err)
+
+		return connect.NewError(connect.CodeInternal, errors.New("internal error"))
 	}
 
 	if !meetsMinimumRole(roleStr, requiredRole) {

@@ -2,7 +2,10 @@ package notifyservice
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -31,19 +34,26 @@ func NewTestChannel(storage Storage, deliverers map[ChannelType]ChannelDeliverer
 	}
 }
 
-// Execute sends a test message to the specified channel.
-func (uc *TestChannel) Execute(ctx context.Context, params TestChannelParams) error {
+// TestChannelResult reports whether the channel accepted the test message.
+type TestChannelResult struct {
+	Delivered     bool
+	DeliveryError string
+}
+
+// Execute sends a test message to the specified channel. A delivery failure
+// is reported in the result, not as an error.
+func (uc *TestChannel) Execute(ctx context.Context, params TestChannelParams) (TestChannelResult, error) {
 	channel, err := uc.storage.NotificationChannels().First(ctx, &NotificationChannelFilter{
 		ID:          filter.Equals(params.ID),
 		WorkspaceID: filter.Equals(params.WorkspaceID),
 	})
 	if err != nil {
-		return fmt.Errorf("getting notification channel: %w", err)
+		return TestChannelResult{}, fmt.Errorf("getting notification channel: %w", err)
 	}
 
 	deliverer, ok := uc.deliverers[channel.ChannelType]
 	if !ok {
-		return fmt.Errorf("no deliverer for channel type %s", channel.ChannelType)
+		return TestChannelResult{}, fmt.Errorf("no deliverer for channel type %s", channel.ChannelType)
 	}
 
 	testEvent := WebhookEvent{
@@ -51,11 +61,14 @@ func (uc *TestChannel) Execute(ctx context.Context, params TestChannelParams) er
 		Timestamp: time.Now(),
 	}
 
-	deliverErr := deliverer.Deliver(ctx, channel, testEvent)
+	result := TestChannelResult{Delivered: true}
+	if deliverErr := deliverer.Deliver(ctx, channel, testEvent); deliverErr != nil {
+		result = TestChannelResult{DeliveryError: deliveryErrorMessage(deliverErr)}
+	}
 
-	after := map[string]any{"delivered": deliverErr == nil}
-	if deliverErr != nil {
-		after["delivery_error"] = deliverErr.Error()
+	after := map[string]any{"delivered": result.Delivered}
+	if !result.Delivered {
+		after["delivery_error"] = result.DeliveryError
 	}
 
 	uc.audit.Record(ctx, AuditEvent{
@@ -67,9 +80,18 @@ func (uc *TestChannel) Execute(ctx context.Context, params TestChannelParams) er
 		After:         after,
 	})
 
-	if deliverErr != nil {
-		return fmt.Errorf("test delivery failed: %w", deliverErr)
+	return result, nil
+}
+
+// deliveryErrorMessage hides request URLs, which carry the Slack webhook path
+// or the Telegram bot token.
+func deliveryErrorMessage(err error) string {
+	msg := err.Error()
+
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) && urlErr.URL != "" {
+		msg = strings.ReplaceAll(msg, urlErr.URL, "[redacted]")
 	}
 
-	return nil
+	return msg
 }

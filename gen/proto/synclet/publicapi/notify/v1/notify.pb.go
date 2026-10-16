@@ -780,7 +780,12 @@ func (x *TestNotificationChannelRequest) GetId() string {
 }
 
 type TestNotificationChannelResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// True when the channel accepted the test message.
+	Delivered bool `protobuf:"varint,1,opt,name=delivered,proto3" json:"delivered,omitempty"`
+	// Empty when delivered. Otherwise the reason the channel rejected or could
+	// not be reached, suitable for showing to the operator.
+	DeliveryError string `protobuf:"bytes,2,opt,name=delivery_error,json=deliveryError,proto3" json:"delivery_error,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -813,6 +818,20 @@ func (x *TestNotificationChannelResponse) ProtoReflect() protoreflect.Message {
 // Deprecated: Use TestNotificationChannelResponse.ProtoReflect.Descriptor instead.
 func (*TestNotificationChannelResponse) Descriptor() ([]byte, []int) {
 	return file_synclet_publicapi_notify_v1_notify_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *TestNotificationChannelResponse) GetDelivered() bool {
+	if x != nil {
+		return x.Delivered
+	}
+	return false
+}
+
+func (x *TestNotificationChannelResponse) GetDeliveryError() string {
+	if x != nil {
+		return x.DeliveryError
+	}
+	return ""
 }
 
 type CreateNotificationRuleRequest struct {
@@ -1289,8 +1308,10 @@ const file_synclet_publicapi_notify_v1_notify_proto_rawDesc = "" +
 	"\bchannels\x18\x01 \x03(\v20.synclet.publicapi.notify.v1.NotificationChannelR\bchannels\x12\x14\n" +
 	"\x05total\x18\x02 \x01(\x05R\x05total\"0\n" +
 	"\x1eTestNotificationChannelRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"!\n" +
-	"\x1fTestNotificationChannelResponse\"\x8f\x02\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"f\n" +
+	"\x1fTestNotificationChannelResponse\x12\x1c\n" +
+	"\tdelivered\x18\x01 \x01(\bR\tdelivered\x12%\n" +
+	"\x0edelivery_error\x18\x02 \x01(\tR\rdeliveryError\"\x8f\x02\n" +
 	"\x1dCreateNotificationRuleRequest\x12\x1d\n" +
 	"\n" +
 	"channel_id\x18\x01 \x01(\tR\tchannelId\x12(\n" +

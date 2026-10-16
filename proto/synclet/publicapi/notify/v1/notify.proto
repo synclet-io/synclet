@@ -118,7 +118,13 @@ message TestNotificationChannelRequest {
   string id = 1;
 }
 
-message TestNotificationChannelResponse {}
+message TestNotificationChannelResponse {
+  // True when the channel accepted the test message.
+  bool delivered = 1;
+  // Empty when delivered. Otherwise the reason the channel rejected or could
+  // not be reached, suitable for showing to the operator.
+  string delivery_error = 2;
+}
 
 // Rule CRUD
 

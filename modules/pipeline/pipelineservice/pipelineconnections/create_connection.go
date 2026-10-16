@@ -23,6 +23,8 @@ type CreateConnectionParams struct {
 	NamespaceDefinition   pipelineservice.NamespaceDefinition
 	CustomNamespaceFormat *string
 	StreamPrefix          *string
+	// Status defaults to active when not a valid connection status.
+	Status pipelineservice.ConnectionStatus
 }
 
 // CreateConnection creates a new connection between a source and a destination.
@@ -60,10 +62,9 @@ func (uc *CreateConnection) Execute(ctx context.Context, params CreateConnection
 		return nil, fmt.Errorf("validating destination: %w", err)
 	}
 
-	if params.Schedule != nil && *params.Schedule != "" {
-		if _, err := pipelineservice.CronParser.Parse(*params.Schedule); err != nil {
-			return nil, fmt.Errorf("invalid cron expression %q: %w", *params.Schedule, err)
-		}
+	schedule := emptyToNil(params.Schedule)
+	if err := validateSchedule(schedule); err != nil {
+		return nil, err
 	}
 
 	now := time.Now()
@@ -78,6 +79,11 @@ func (uc *CreateConnection) Execute(ctx context.Context, params CreateConnection
 		maxAttempts = uc.cfg.DefaultMaxAttempts
 	}
 
+	status := params.Status
+	if !status.IsValid() {
+		status = pipelineservice.ConnectionStatusActive
+	}
+
 	nsDef := params.NamespaceDefinition
 	if !nsDef.IsValid() {
 		nsDef = pipelineservice.NamespaceDefinitionSource
@@ -87,15 +93,15 @@ func (uc *CreateConnection) Execute(ctx context.Context, params CreateConnection
 		ID:                    uuid.New(),
 		WorkspaceID:           params.WorkspaceID,
 		Name:                  params.Name,
-		Status:                pipelineservice.ConnectionStatusActive,
+		Status:                status,
 		SourceID:              params.SourceID,
 		DestinationID:         params.DestinationID,
-		Schedule:              params.Schedule,
+		Schedule:              schedule,
 		SchemaChangePolicy:    policy,
 		MaxAttempts:           maxAttempts,
 		NamespaceDefinition:   nsDef,
-		CustomNamespaceFormat: params.CustomNamespaceFormat,
-		StreamPrefix:          params.StreamPrefix,
+		CustomNamespaceFormat: emptyToNil(params.CustomNamespaceFormat),
+		StreamPrefix:          emptyToNil(params.StreamPrefix),
 		CreatedAt:             now,
 		UpdatedAt:             now,
 	}
@@ -149,4 +155,29 @@ func connectionToAuditPayload(conn *pipelineservice.Connection) map[string]any {
 	}
 
 	return payload
+}
+
+// validateSchedule rejects a schedule that is not a five-field cron expression.
+func validateSchedule(schedule *string) error {
+	if schedule == nil {
+		return nil
+	}
+
+	if _, err := pipelineservice.CronParser.Parse(*schedule); err != nil {
+		return &pipelineservice.ValidationError{
+			Field:   "schedule",
+			Message: fmt.Sprintf("invalid cron expression %q: %v", *schedule, err),
+		}
+	}
+
+	return nil
+}
+
+// emptyToNil treats an empty optional string as unset.
+func emptyToNil(value *string) *string {
+	if value == nil || *value == "" {
+		return nil
+	}
+
+	return value
 }

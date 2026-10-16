@@ -262,14 +262,18 @@ func (h *NotificationHandler) TestNotificationChannel(ctx context.Context, req *
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	if err := h.testChannel.Execute(ctx, notifyservice.TestChannelParams{
+	result, err := h.testChannel.Execute(ctx, notifyservice.TestChannelParams{
 		ID:          id,
 		WorkspaceID: workspaceID,
-	}); err != nil {
+	})
+	if err != nil {
 		return nil, notificationMapError(err)
 	}
 
-	return connect.NewResponse(&notifyv1.TestNotificationChannelResponse{}), nil
+	return connect.NewResponse(&notifyv1.TestNotificationChannelResponse{
+		Delivered:     result.Delivered,
+		DeliveryError: result.DeliveryError,
+	}), nil
 }
 
 func (h *NotificationHandler) CreateNotificationRule(ctx context.Context, req *connect.Request[notifyv1.CreateNotificationRuleRequest]) (*connect.Response[notifyv1.CreateNotificationRuleResponse], error) {

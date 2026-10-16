@@ -4,6 +4,9 @@ type baseErr string
 
 func (e baseErr) Error() string { return string(e) }
 
+// ErrConnectionNotFound reports a connection that is not in the caller's workspace.
+const ErrConnectionNotFound = NotFoundError("Connection")
+
 const (
 	ErrNameRequired           baseErr = "name is required"
 	ErrInvalidChannelType     baseErr = "invalid channel_type: must be one of slack, email, telegram"

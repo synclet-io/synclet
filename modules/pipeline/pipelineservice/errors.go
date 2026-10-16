@@ -14,6 +14,7 @@ const (
 	ErrConnectorNotLinked     baseErr = "connector is not linked to a repository"
 	ErrMissingCheckTaskParams baseErr = "either source_id/destination_id or managed_connector_id+config must be provided"
 	ErrEmptyFieldPath         baseErr = "empty field path in selected fields"
+	ErrNoCachedSpec           baseErr = "connector has no cached spec yet; wait for the repository sync to finish"
 )
 
 // ValidationError indicates invalid input.

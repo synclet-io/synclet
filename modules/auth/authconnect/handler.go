@@ -33,7 +33,11 @@ func mapError(err error) error {
 	}
 
 	if errors.Is(err, authservice.ErrInvalidCredentials) {
-		return connect.NewError(connect.CodeUnauthenticated, err)
+		return connect.NewError(connect.CodeUnauthenticated, authservice.ErrInvalidCredentials)
+	}
+
+	if errors.Is(err, authservice.ErrTooManyLoginAttempts) {
+		return connect.NewError(connect.CodeResourceExhausted, authservice.ErrTooManyLoginAttempts)
 	}
 
 	if errors.Is(err, authservice.ErrInvalidCurrentPassword) {
@@ -160,7 +164,7 @@ func (h *Handler) Login(ctx context.Context, req *connect.Request[authv1.LoginRe
 		Password: req.Msg.GetPassword(),
 	})
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid credentials"))
+		return nil, mapError(err)
 	}
 
 	resp := connect.NewResponse(&authv1.LoginResponse{
@@ -181,7 +185,7 @@ func (h *Handler) RefreshToken(ctx context.Context, req *connect.Request[authv1.
 
 	tokens, err := h.refreshToken.Execute(ctx, refreshTokenValue)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid refresh token"))
+		return nil, mapError(err)
 	}
 
 	resp := connect.NewResponse(&authv1.RefreshTokenResponse{
@@ -214,7 +218,7 @@ func (h *Handler) GetCurrentUser(ctx context.Context, _ *connect.Request[authv1.
 
 	user, err := h.getUserByID.Execute(ctx, userID)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("user not found"))
+		return nil, mapError(err)
 	}
 
 	return connect.NewResponse(&authv1.GetCurrentUserResponse{
@@ -258,7 +262,12 @@ func (h *Handler) ChangePassword(ctx context.Context, req *connect.Request[authv
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("current_password and new_password are required"))
 	}
 
-	if err := h.changePassword.Execute(ctx, userID, req.Msg.GetCurrentPassword(), req.Msg.GetNewPassword()); err != nil {
+	if err := h.changePassword.Execute(ctx, authservice.ChangePasswordParams{
+		UserID:           userID,
+		CurrentPassword:  req.Msg.GetCurrentPassword(),
+		NewPassword:      req.Msg.GetNewPassword(),
+		KeepRefreshToken: connectutil.ReadCookieFromHeaders(req.Header(), "synclet_rt"),
+	}); err != nil {
 		return nil, mapError(err)
 	}
 
@@ -271,9 +280,9 @@ func (h *Handler) CreateAPIKey(ctx context.Context, req *connect.Request[authv1.
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 
-	wsID, err := connectutil.WorkspaceIDFromContext(ctx)
+	wsID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodePermissionDenied, err)
+		return nil, err
 	}
 
 	if req.Msg.GetName() == "" {
@@ -327,9 +336,9 @@ func (h *Handler) RevokeAPIKey(ctx context.Context, req *connect.Request[authv1.
 }
 
 func (h *Handler) ListAPIKeys(ctx context.Context, _ *connect.Request[authv1.ListAPIKeysRequest]) (*connect.Response[authv1.ListAPIKeysResponse], error) {
-	wsID, err := connectutil.WorkspaceIDFromContext(ctx)
+	wsID, err := connectutil.RequireWorkspaceID(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodePermissionDenied, err)
+		return nil, err
 	}
 
 	keys, err := h.listAPIKeys.Execute(ctx, wsID)

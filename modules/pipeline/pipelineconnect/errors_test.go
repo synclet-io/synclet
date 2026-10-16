@@ -19,3 +19,16 @@ func TestMapErrorInUse(t *testing.T) {
 	assert.Equal(t, connect.CodeFailedPrecondition, connect.CodeOf(err))
 	assert.Contains(t, err.Error(), "source pg is used by connections: orders")
 }
+
+func TestMapErrorValidation(t *testing.T) {
+	err := mapError(fmt.Errorf("creating: %w", &pipelineservice.ValidationError{Field: "schedule", Message: "bad cron"}))
+
+	assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+	assert.Contains(t, err.Error(), "bad cron")
+}
+
+func TestMapErrorNoCachedSpec(t *testing.T) {
+	err := mapError(fmt.Errorf("spec: %w", pipelineservice.ErrNoCachedSpec))
+
+	assert.Equal(t, connect.CodeFailedPrecondition, connect.CodeOf(err))
+}

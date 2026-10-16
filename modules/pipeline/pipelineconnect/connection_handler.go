@@ -25,6 +25,10 @@ import (
 	"github.com/synclet-io/synclet/pkg/protocol"
 )
 
+// errRetryDelayUnsupported rejects retry_delay_minutes: failed attempts are
+// retried immediately, so a delay would be silently ignored.
+var errRetryDelayUnsupported = errors.New("retry_delay_minutes is not supported")
+
 // ConnectionHandler implements the ConnectionService ConnectRPC handler.
 type ConnectionHandler struct {
 	pipelinev1connect.UnimplementedConnectionServiceHandler
@@ -131,6 +135,10 @@ func (h *ConnectionHandler) CreateConnection(ctx context.Context, req *connect.R
 		}
 	}
 
+	if req.Msg.GetRetryDelayMinutes() != 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errRetryDelayUnsupported)
+	}
+
 	var schedule *string
 
 	if req.Msg.Schedule != nil {
@@ -178,6 +186,10 @@ func (h *ConnectionHandler) UpdateConnection(ctx context.Context, req *connect.R
 	id, err := uuid.Parse(req.Msg.GetId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	if req.Msg.RetryDelayMinutes != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errRetryDelayUnsupported)
 	}
 
 	params := pipelineconnections.UpdateConnectionParams{
@@ -703,7 +715,7 @@ func (h *ConnectionHandler) ImportWorkspaceConfig(ctx context.Context, req *conn
 		ConfigYAML:  req.Msg.GetConfigYaml(),
 	})
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		return nil, mapError(err)
 	}
 
 	return connect.NewResponse(&pipelinev1.ImportWorkspaceConfigResponse{

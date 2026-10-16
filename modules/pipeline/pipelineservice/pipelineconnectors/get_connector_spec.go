@@ -43,7 +43,7 @@ func (uc *GetConnectorSpec) Execute(ctx context.Context, params GetConnectorSpec
 	}
 
 	if connector.Spec == "" || connector.Spec == "{}" {
-		return nil, fmt.Errorf("connector %s has no cached spec", params.ID)
+		return nil, pipelineservice.ErrNoCachedSpec
 	}
 
 	result := &GetConnectorSpecResult{Spec: connector.Spec}

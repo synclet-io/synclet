@@ -3,6 +3,7 @@ package connectutil
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -143,4 +144,25 @@ func TestAuthInterceptor_authenticate(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, userID, gotUserID)
 	})
+}
+
+func TestAuthInterceptor_apiKeyErrors(t *testing.T) {
+	tests := []struct {
+		name     string
+		err      error
+		wantCode connect.Code
+	}{
+		{name: "rejected key is unauthenticated", err: fmt.Errorf("%w: invalid API key", ErrInvalidCredential), wantCode: connect.CodeUnauthenticated},
+		{name: "lookup failure is internal", err: errors.New("connection refused"), wantCode: connect.CodeInternal},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			interceptor := NewAuthInterceptor(&mockTokenValidator{apiKeyErr: tt.err})
+
+			_, err := interceptor.authenticate(context.Background(), makeHeaders("Bearer synclet_sk_testkey"), "")
+			assert.Equal(t, tt.wantCode, connect.CodeOf(err))
+			assert.NotContains(t, err.Error(), "connection refused")
+		})
+	}
 }

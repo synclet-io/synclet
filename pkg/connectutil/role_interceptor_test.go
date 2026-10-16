@@ -3,6 +3,7 @@ package connectutil
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -215,8 +216,8 @@ func TestRoleInterceptor_checkRole(t *testing.T) {
 		assert.Equal(t, connect.CodePermissionDenied, connectErr.Code())
 	})
 
-	t.Run("GetMemberRole error returns permission denied", func(t *testing.T) {
-		checker := &mockMembershipChecker{roleErr: errors.New("db error")}
+	t.Run("non-member returns permission denied", func(t *testing.T) {
+		checker := &mockMembershipChecker{roleErr: fmt.Errorf("%w: membership not found", ErrNotMember)}
 		interceptor := newRoleInterceptorWithMap(
 			map[string]optionsv1.RequiredRole{procedure: optionsv1.RequiredRole_REQUIRED_ROLE_VIEWER},
 			checker,
@@ -231,6 +232,34 @@ func TestRoleInterceptor_checkRole(t *testing.T) {
 		require.ErrorAs(t, err, &connectErr)
 		assert.Equal(t, connect.CodePermissionDenied, connectErr.Code())
 	})
+
+	t.Run("GetMemberRole failure returns internal without details", func(t *testing.T) {
+		checker := &mockMembershipChecker{roleErr: errors.New("db error")}
+		interceptor := newRoleInterceptorWithMap(
+			map[string]optionsv1.RequiredRole{procedure: optionsv1.RequiredRole_REQUIRED_ROLE_VIEWER},
+			checker,
+		)
+
+		ctx := ContextWithWorkspaceID(context.Background(), uuid.New())
+		ctx = ContextWithUserID(ctx, uuid.New())
+
+		err := interceptor.checkRole(ctx, procedure)
+		require.Error(t, err)
+		var connectErr *connect.Error
+		require.ErrorAs(t, err, &connectErr)
+		assert.Equal(t, connect.CodeInternal, connectErr.Code())
+		assert.NotContains(t, err.Error(), "db error")
+	})
+}
+
+func TestRequireWorkspaceID(t *testing.T) {
+	_, err := RequireWorkspaceID(context.Background())
+	assert.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err))
+
+	wsID := uuid.New()
+	got, err := RequireWorkspaceID(ContextWithWorkspaceID(context.Background(), wsID))
+	require.NoError(t, err)
+	assert.Equal(t, wsID, got)
 }
 
 func TestMeetsMinimumRole(t *testing.T) {

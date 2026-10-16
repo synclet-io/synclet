@@ -179,12 +179,14 @@ func TestDeleteConnection(t *testing.T) {
 		conn := &pipelineservice.Connection{ID: uuid.New(), WorkspaceID: otherWs}
 		seedConnection(t, store, conn)
 
-		uc := pipelineconnections.NewDeleteConnection(store, pipelineservice.NoopAuditRecorder{})
+		audit := &recordingAudit{}
+		uc := pipelineconnections.NewDeleteConnection(store, audit)
 		err := uc.Execute(context.Background(), pipelineconnections.DeleteConnectionParams{
 			ID:          conn.ID,
 			WorkspaceID: ws,
 		})
-		require.NoError(t, err)
+		require.ErrorIs(t, err, pipelineservice.ErrConnectionNotFound)
+		assert.Empty(t, audit.events)
 
 		_, exists := store.connections.records[conn.ID]
 		assert.True(t, exists, "delete must be workspace-scoped")
@@ -234,8 +236,43 @@ func TestUpdateConnection(t *testing.T) {
 			WorkspaceID: ws,
 			Schedule:    &invalidPtr,
 		})
-		require.Error(t, err)
+		var validationErr *pipelineservice.ValidationError
+		require.ErrorAs(t, err, &validationErr)
+		assert.Equal(t, "schedule", validationErr.Field)
 		assert.Contains(t, err.Error(), "invalid cron expression")
+	})
+
+	t.Run("empty optional strings clear the stored value", func(t *testing.T) {
+		ws := uuid.New()
+		store := newCreateConnStore(ws, uuid.New(), uuid.New())
+		schedule := "0 * * * *"
+		format := "${SOURCE_NAMESPACE}_raw"
+		prefix := "raw_"
+		conn := &pipelineservice.Connection{
+			ID:                    uuid.New(),
+			WorkspaceID:           ws,
+			Status:                pipelineservice.ConnectionStatusActive,
+			Schedule:              &schedule,
+			CustomNamespaceFormat: &format,
+			StreamPrefix:          &prefix,
+		}
+		seedConnection(t, store, conn)
+
+		empty := ""
+		emptyPtr := &empty
+		uc := pipelineconnections.NewUpdateConnection(store, pipelineservice.NoopAuditRecorder{})
+		updated, err := uc.Execute(context.Background(), pipelineconnections.UpdateConnectionParams{
+			ID:                    conn.ID,
+			WorkspaceID:           ws,
+			Schedule:              &emptyPtr,
+			CustomNamespaceFormat: &emptyPtr,
+			StreamPrefix:          &emptyPtr,
+		})
+		require.NoError(t, err)
+		assert.Nil(t, updated.Schedule)
+		assert.Nil(t, updated.NextScheduledAt)
+		assert.Nil(t, updated.CustomNamespaceFormat)
+		assert.Nil(t, updated.StreamPrefix)
 	})
 
 	t.Run("returns error when connection is in a different workspace", func(t *testing.T) {
@@ -304,4 +341,12 @@ func TestEnableDisableConnection(t *testing.T) {
 		})
 		require.Error(t, err)
 	})
+}
+
+type recordingAudit struct {
+	events []pipelineservice.AuditEvent
+}
+
+func (r *recordingAudit) Record(_ context.Context, event pipelineservice.AuditEvent) {
+	r.events = append(r.events, event)
 }

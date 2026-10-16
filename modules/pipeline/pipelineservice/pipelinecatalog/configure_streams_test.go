@@ -230,7 +230,11 @@ func TestConfigureStreams_ValidationErrors(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			f := newConfigureFixture(t)
 
-			require.ErrorContains(t, f.execute(tt.stream), tt.wantErr)
+			err := f.execute(tt.stream)
+			require.ErrorContains(t, err, tt.wantErr)
+
+			var validationErr *pipelineservice.ValidationError
+			require.ErrorAs(t, err, &validationErr)
 			assert.Empty(t, f.store.configured.records)
 			assert.Empty(t, f.audit.events)
 		})

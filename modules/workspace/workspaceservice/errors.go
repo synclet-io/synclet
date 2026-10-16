@@ -8,6 +8,9 @@ const (
 	// ErrLastAdminCannotBeDemoted is returned when an admin attempts to demote
 	// the only remaining admin of a workspace.
 	ErrLastAdminCannotBeDemoted baseErr = "last admin cannot be demoted"
+	// ErrLastAdminCannotBeRemoved is returned when removing the only
+	// remaining admin of a workspace.
+	ErrLastAdminCannotBeRemoved baseErr = "last admin cannot be removed"
 	// ErrInvalidMemberRole is returned when the requested role is not a valid
 	// MemberRole value.
 	ErrInvalidMemberRole baseErr = "invalid member role"

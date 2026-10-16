@@ -37,7 +37,7 @@ func NewLoginWithUserInfo(login *Login, validateAccessToken *ValidateAccessToken
 func (uc *LoginWithUserInfo) Execute(ctx context.Context, params LoginWithUserInfoParams) (*LoginWithUserInfoResult, error) {
 	tokens, err := uc.login.Execute(ctx, params.Email, params.Password)
 	if err != nil {
-		return nil, ErrInvalidCredentials
+		return nil, fmt.Errorf("logging in: %w", err)
 	}
 
 	claims, err := uc.validateAccessToken.Execute(tokens.AccessToken)
