@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ChevronDown } from 'lucide-vue-next'
 import { computed, useAttrs, useId } from 'vue'
 import HelpTooltip from './HelpTooltip.vue'
 
@@ -37,28 +38,35 @@ const errorId = computed(() => props.error ? `${selectId.value}-error` : undefin
       <label :for="selectId" class="text-sm font-medium text-heading">{{ label }}</label>
       <HelpTooltip v-if="tooltip" :text="tooltip" />
     </div>
-    <select
-      v-bind="controlAttrs"
-      :id="selectId"
-      :value="modelValue"
-      :required="required"
-      :disabled="disabled"
-      :aria-invalid="error ? true : undefined"
-      :aria-describedby="errorId"
-      class="block w-full border rounded-lg bg-surface text-heading transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:opacity-50"
-      :class="[
-        error ? 'border-danger' : 'border-border',
-        size === 'sm' ? 'h-7 px-2 text-xs' : 'h-10 px-3.5 text-sm',
-      ]"
-      @change="$emit('update:modelValue', ($event.target as HTMLSelectElement).value)"
-    >
-      <option v-if="placeholder" value="" disabled>
-        {{ placeholder }}
-      </option>
-      <option v-for="opt in options" :key="opt.value" :value="opt.value">
-        {{ opt.label }}
-      </option>
-    </select>
+    <div class="relative">
+      <select
+        v-bind="controlAttrs"
+        :id="selectId"
+        :value="modelValue"
+        :required="required"
+        :disabled="disabled"
+        :aria-invalid="error ? true : undefined"
+        :aria-describedby="errorId"
+        class="block w-full appearance-none border rounded-lg bg-surface text-heading transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:opacity-50"
+        :class="[
+          error ? 'border-danger' : 'border-border',
+          size === 'sm' ? 'h-7 pl-2 pr-7 text-xs' : 'h-10 pl-3.5 pr-10 text-sm',
+        ]"
+        @change="$emit('update:modelValue', ($event.target as HTMLSelectElement).value)"
+      >
+        <option v-if="placeholder" value="" disabled>
+          {{ placeholder }}
+        </option>
+        <option v-for="opt in options" :key="opt.value" :value="opt.value">
+          {{ opt.label }}
+        </option>
+      </select>
+      <ChevronDown
+        class="pointer-events-none absolute top-1/2 -translate-y-1/2 text-text-muted"
+        :class="size === 'sm' ? 'right-2 w-3.5 h-3.5' : 'right-3 w-4 h-4'"
+        aria-hidden="true"
+      />
+    </div>
     <p v-if="error" :id="errorId" class="mt-1.5 text-xs text-danger">
       {{ error }}
     </p>
