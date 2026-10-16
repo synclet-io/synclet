@@ -17,6 +17,7 @@ const error = ref('')
 const loading = ref(false)
 const oidcProviders = ref<OIDCProvider[]>([])
 const { data: systemInfo } = useSystemInfo()
+const forgotPasswordLink = computed(() => ({ name: 'forgot-password', query: email.value ? { email: email.value } : {} }))
 const registerLink = computed(() => ({ path: '/register', query: route.query.redirect ? { redirect: route.query.redirect } : {} }))
 
 onMounted(async () => {
@@ -93,7 +94,14 @@ function startOIDCLogin(slug: string) {
             {{ error }}
           </SAlert>
           <SInput v-model="email" label="Email" type="email" placeholder="you@example.com" required />
-          <SInput v-model="password" label="Password" type="password" placeholder="Enter your password" required />
+          <div>
+            <SInput v-model="password" label="Password" type="password" placeholder="Enter your password" required />
+            <div v-if="systemInfo?.emailEnabled" class="mt-1.5 text-right">
+              <RouterLink :to="forgotPasswordLink" class="text-sm text-primary hover:text-primary-hover font-medium">
+                Forgot password?
+              </RouterLink>
+            </div>
+          </div>
           <SButton type="submit" :loading="loading" class="w-full">
             Sign in
           </SButton>

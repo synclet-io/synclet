@@ -141,6 +141,73 @@ func (r *RefreshToken) Equals(to *RefreshToken) bool {
 	return true
 }
 
+type PasswordResetTokenField byte
+
+const (
+	PasswordResetTokenFieldID PasswordResetTokenField = iota + 1
+	PasswordResetTokenFieldUserID
+	PasswordResetTokenFieldTokenHash
+	PasswordResetTokenFieldExpiresAt
+	PasswordResetTokenFieldCreatedAt
+)
+
+type PasswordResetTokenFilter struct {
+	ID        filter.Filter[uuid.UUID]
+	UserID    filter.Filter[uuid.UUID]
+	TokenHash filter.Filter[string]
+	ExpiresAt filter.Filter[time.Time]
+	Or        []*PasswordResetTokenFilter
+	And       []*PasswordResetTokenFilter
+}
+type PasswordResetTokenOrder order.Order[PasswordResetTokenField]
+
+type PasswordResetToken struct {
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	TokenHash string
+	ExpiresAt time.Time
+	CreatedAt time.Time
+}
+
+// user code 'PasswordResetToken methods'
+// end user code 'PasswordResetToken methods'
+
+func (p *PasswordResetToken) Copy() PasswordResetToken {
+	var result PasswordResetToken
+	result.ID = p.ID
+	result.UserID = p.UserID
+	result.TokenHash = p.TokenHash
+	result.ExpiresAt = p.ExpiresAt
+	result.CreatedAt = p.CreatedAt
+
+	return result
+}
+func (p *PasswordResetToken) Equals(to *PasswordResetToken) bool {
+	if (p == nil) != (to == nil) {
+		return false
+	}
+	if p == nil && to == nil {
+		return true
+	}
+	if p.ID != to.ID {
+		return false
+	}
+	if p.UserID != to.UserID {
+		return false
+	}
+	if p.TokenHash != to.TokenHash {
+		return false
+	}
+	if p.ExpiresAt != to.ExpiresAt {
+		return false
+	}
+	if p.CreatedAt != to.CreatedAt {
+		return false
+	}
+
+	return true
+}
+
 type APIKeyField byte
 
 const (

@@ -22,6 +22,13 @@ type Config struct {
 	OIDCCallbackBaseURL string
 	OIDCStateTTL        time.Duration
 	MinPasswordLength   int
+	// EmailEnabled reports whether outgoing email (SMTP) is configured.
+	EmailEnabled bool
+	// FrontendURL is the public base URL of the web UI, used in emailed links.
+	FrontendURL string
+	// PasswordResetCooldown is the minimum time between two password reset
+	// emails for the same user.
+	PasswordResetCooldown time.Duration
 }
 
 // TokenPair represents an access + refresh token pair.

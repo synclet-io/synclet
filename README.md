@@ -100,6 +100,88 @@ docker run -p 8080:8080 --env-file .env -v /var/run/docker.sock:/var/run/docker.
 helm install synclet deploy/helm/synclet/ -f values.yaml
 ```
 
+#### Exposing the server: Ingress or Gateway API (Helm)
+
+By default the chart creates an `Ingress` (`server.ingress.*`, class `nginx`). On clusters that use the Kubernetes Gateway API (Envoy Gateway, GKE Gateway, Istio, Cilium and others) it can create an `HTTPRoute` (`gateway.networking.k8s.io/v1`) attached to a `Gateway` you already run. Both route only to the public server Service; the internal executor API (`<fullname>-internal`) is never exposed.
+
+| Value | Description | Default |
+|-------|-------------|---------|
+| `server.gateway.enabled` | Render the `HTTPRoute` | `false` |
+| `server.gateway.parentRefs` | Gateways the route attaches to: `name` (required), `namespace`, `sectionName` (listener), `port` | `[]` |
+| `server.gateway.hostnames` | Hostnames the route matches; empty matches every hostname of the listener | `[]` |
+| `server.gateway.paths` | Path matches (`type`, `value`) | `PathPrefix /` |
+| `server.gateway.tls` | The Gateway listener terminates TLS; makes the derived public URL `https` | `false` |
+| `server.gateway.labels`, `server.gateway.annotations` | Extra metadata on the route | `{}` |
+| `server.publicUrl` | URL users reach Synclet at; default for `frontend.url` (invite links) and `oidc.callbackBaseURL` | empty |
+
+When `server.publicUrl` is empty it is derived from `server.ingress.hostname` if only the Ingress is enabled, or from the first `server.gateway.hostnames` entry if only the route is. With both enabled the render fails until `server.publicUrl` is set. `frontend.url` and `oidc.callbackBaseURL` still override it for their own setting.
+
+A minimal `Gateway`, terminating TLS with a certificate Secret in its own namespace:
+
+```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: shared-gateway
+  namespace: gateway-system
+spec:
+  gatewayClassName: eg               # your implementation's GatewayClass
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: synclet.example.com
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: synclet-example-com-tls
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              kubernetes.io/metadata.name: synclet   # the release namespace
+```
+
+```yaml
+server:
+  ingress:
+    enabled: false
+  gateway:
+    enabled: true
+    parentRefs:
+      - name: shared-gateway
+        namespace: gateway-system
+        sectionName: https
+    hostnames:
+      - synclet.example.com
+    tls: true
+```
+
+- **Cross-namespace attachment.** A listener accepts routes only from its own namespace unless `allowedRoutes.namespaces` says otherwise (`Same` by default, or `All`, or `Selector` as above). If the route stays `Accepted=False` with `NotAllowedByListeners`, that is the cause. Check with `kubectl get httproute <fullname> -o yaml`.
+- **ReferenceGrant.** The route and its backend, the public Service, are in the release namespace, so attaching the route needs none. You need a `ReferenceGrant` in the Secret's namespace only when a listener's `certificateRefs` points at a Secret in a namespace other than the Gateway's (for example a certificate kept next to Synclet).
+- **TLS.** TLS ends at the Gateway (`mode: Terminate`). The chart puts no certificate on the route, and cert-manager annotations go on the `Gateway`, not on the chart. Set `server.gateway.tls: true` (or `server.publicUrl` with `https://`) so invite links and OIDC callbacks use `https`. Keep `auth.secureCookies: true`.
+- **Client IPs.** Login and register rate limits trust `X-Forwarded-For` only from `rateLimit.trustedProxies`. Behind a Gateway, set it to the pod CIDR of the data-plane proxies (for Envoy Gateway, the `envoy-*` pods in the controller namespace), not to the ingress controller's.
+
+Migrating from Ingress to a Gateway without downtime:
+
+1. Enable the route alongside the Ingress and set `server.publicUrl` to the URL users will end up on. Both objects route to the same Service, either with the old hostname on the Ingress and a new one on the route, or with the same hostname on both:
+   ```yaml
+   server:
+     publicUrl: https://synclet.example.com
+     ingress:
+       enabled: true
+       hostname: synclet.example.com
+     gateway:
+       enabled: true
+       parentRefs: [{name: shared-gateway, namespace: gateway-system, sectionName: https}]
+       hostnames: [synclet.example.com]
+       tls: true
+   ```
+2. Check the route through the Gateway's address before any DNS change, e.g. `curl --resolve synclet.example.com:443:<gateway-ip> https://synclet.example.com/`. Make sure the Gateway serves a valid certificate for the hostname.
+3. Switch DNS to the Gateway's address and wait for the old TTL to run out.
+4. Disable the Ingress (`server.ingress.enabled: false`). `server.publicUrl` can stay or be removed, since the route's first hostname now gives the same URL.
+
 ## Configuration Reference
 
 ### Environment Variables
@@ -119,10 +201,11 @@ helm install synclet deploy/helm/synclet/ -f values.yaml
 | `PUBLIC_HTTP_SERVER_CORS_ALLOWED_ORIGINS` | Comma-separated hostnames whose browser origins may call the API | empty |
 | `AUTH_REGISTRATION_ENABLED` | Allow email/password sign-up | `true` |
 | `AUTH_SECURE_COOKIES` | Mark auth cookies HTTPS-only | `false` |
+| `AUTH_PASSWORD_RESET_COOLDOWN` | Minimum time between two password reset emails for one user | `2m` |
 | `AUTH_OIDC_PROVIDERS` | Comma-separated OIDC provider slugs, each configured by `AUTH_OIDC_<SLUG>_*` | empty |
 | `AUTH_OIDC_CALLBACK_BASE_URL` | Base URL for OIDC callbacks | empty |
 | `WORKSPACE_MODE` | `single` shared workspace or `multi` | `single` |
-| `WORKSPACE_FRONTEND_URL` | Base URL used in invite links | `http://localhost:5173` |
+| `WORKSPACE_FRONTEND_URL` | Base URL used in invite and password reset links | `http://localhost:5173` |
 | `NOTIFY_SMTP_HOST` | SMTP server; empty disables email | empty |
 | `NOTIFY_SMTP_PORT` | SMTP port | `587` |
 | `NOTIFY_SMTP_USER` | SMTP username | empty |
@@ -142,6 +225,20 @@ helm install synclet deploy/helm/synclet/ -f values.yaml
 | `EXECUTOR_API_URL` | Internal server URL used by distributed executors | empty |
 | `EXECUTOR_API_TOKEN` | Token distributed executors present to the internal server | empty |
 | `WATERMILL_TRANSPORT` | Event bus transport | `sql` |
+
+### Authentication
+
+Users sign in with email and password, or with an OIDC provider when `AUTH_OIDC_PROVIDERS` is set.
+
+**Password reset.** With SMTP configured (`NOTIFY_SMTP_HOST`), the login page shows a "Forgot password?" link. The user enters their email and receives a reset link that expires in 1 hour and works once; requesting another link invalidates the previous one. Requests for the same account within `AUTH_PASSWORD_RESET_COOLDOWN` (2 minutes by default) send nothing. Resetting the password signs the user out of every session. An account that only signed in through OIDC can set a password the same way.
+
+**Without SMTP** the "Forgot password?" link is hidden. The operator who runs the Synclet deployment issues the link instead and hands it to the user:
+
+```bash
+synclet users reset-link --email jane@example.com
+```
+
+The command connects to the database (like `migrate`, no running server needed), prints the reset URL to stdout and exits non-zero when no user has that email. The link has the same 1-hour, single-use limits; the cooldown does not apply to this command.
 
 ### Job Log Storage
 
@@ -295,6 +392,7 @@ Every command accepts `--dotenv <file>` (repeatable) to load environment files f
 | `synclet migrate status [--module <name>]` | Show applied and pending migrations |
 | `synclet migrate create <module> <name>` | Create an empty migration file |
 | `synclet generate dotenv` | Append every missing configuration variable to `.env` |
+| `synclet users reset-link --email <email>` | Print a single-use password reset link for a user |
 
 `migrate down` also needs `--yes` when `ENVIRONMENT` is anything other than `development`. `synclet --help` and `synclet <command> --help` list every flag.
 

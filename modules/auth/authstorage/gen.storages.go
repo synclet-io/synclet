@@ -31,6 +31,9 @@ func (s Storages) Users() authsvc.UsersStorage {
 func (s Storages) RefreshTokens() authsvc.RefreshTokensStorage {
 	return NewRefreshTokensStorage(s.db, s.logger)
 }
+func (s Storages) PasswordResetTokens() authsvc.PasswordResetTokensStorage {
+	return NewPasswordResetTokensStorage(s.db, s.logger)
+}
 func (s Storages) APIKeys() authsvc.APIKeysStorage {
 	return NewAPIKeysStorage(s.db, s.logger)
 }
@@ -111,6 +114,27 @@ func NewRefreshTokensStorage(db *gorm.DB, logger *logging.Logger) authsvc.Refres
 			authsvc.RefreshTokenFieldCreatedAt: {Name: "created_at"},
 		},
 		LockScope: "auth.RefreshTokens",
+	}
+}
+
+func NewPasswordResetTokensStorage(db *gorm.DB, logger *logging.Logger) authsvc.PasswordResetTokensStorage {
+	return dbutil.GormEntityStorage[authsvc.PasswordResetToken, dbPasswordResetToken, authsvc.PasswordResetTokenFilter]{
+		Logger:            logger,
+		DB:                db,
+		DBErrorsWrapper:   wrapPasswordResetTokenQueryError,
+		ConvertToInternal: convertPasswordResetTokenToDB,
+		ConvertToExternal: convertPasswordResetTokenFromDB,
+		BuildFilterExpression: func(filter *authsvc.PasswordResetTokenFilter) (clause.Expression, error) {
+			return buildPasswordResetTokenFilterExpr(filter)
+		},
+		FieldMapping: map[any]clause.Column{
+			authsvc.PasswordResetTokenFieldID:        {Name: "id"},
+			authsvc.PasswordResetTokenFieldUserID:    {Name: "user_id"},
+			authsvc.PasswordResetTokenFieldTokenHash: {Name: "token_hash"},
+			authsvc.PasswordResetTokenFieldExpiresAt: {Name: "expires_at"},
+			authsvc.PasswordResetTokenFieldCreatedAt: {Name: "created_at"},
+		},
+		LockScope: "auth.PasswordResetTokens",
 	}
 }
 

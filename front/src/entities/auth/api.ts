@@ -70,6 +70,14 @@ export async function changePassword(currentPassword: string, newPassword: strin
   await authClient.changePassword({ currentPassword, newPassword })
 }
 
+export async function requestPasswordReset(email: string): Promise<void> {
+  await authClient.requestPasswordReset({ email })
+}
+
+export async function resetPassword(token: string, newPassword: string): Promise<void> {
+  await authClient.resetPassword({ token, newPassword })
+}
+
 // API Key types and operations
 export interface APIKey {
   id: string

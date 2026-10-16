@@ -28,6 +28,8 @@ var publicProcedures = map[string]bool{
 	"/synclet.publicapi.auth.v1.AuthService/RefreshToken":               true,
 	"/synclet.publicapi.auth.v1.AuthService/Logout":                     true,
 	"/synclet.publicapi.auth.v1.AuthService/GetOIDCProviders":           true,
+	"/synclet.publicapi.auth.v1.AuthService/RequestPasswordReset":       true,
+	"/synclet.publicapi.auth.v1.AuthService/ResetPassword":              true,
 	"/synclet.publicapi.workspace.v1.WorkspaceService/GetInviteByToken": true,
 	"/synclet.publicapi.workspace.v1.WorkspaceService/DeclineInvite":    true,
 	"/synclet.publicapi.pipeline.v1.SourceService/GetSystemInfo":        true,

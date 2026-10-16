@@ -1,6 +1,8 @@
 package authstorage
 
 import (
+	time "time"
+
 	uuid "github.com/google/uuid"
 	dbutil "github.com/saturn4er/boilerplate-go/lib/dbutil"
 	clause "gorm.io/gorm/clause"
@@ -112,6 +114,63 @@ func buildRefreshTokenFilterExpr(filter *authservice.RefreshTokenFilter, options
 			exprs := make([]clause.Expression, 0, len(filter.And))
 			for _, andFilter := range filter.And {
 				expr, err := buildRefreshTokenFilterExpr(andFilter)
+				if err != nil {
+					return nil, err
+				}
+				exprs = append(exprs, expr)
+			}
+			return clause.And(exprs...), nil
+		}),
+	)
+}
+func buildPasswordResetTokenFilterExpr(filter *authservice.PasswordResetTokenFilter, options ...func(*filterOptions)) (clause.Expression, error) {
+	if filter == nil {
+		return nil, nil
+	}
+
+	opts := &filterOptions{}
+	for _, opt := range options {
+		opt(opts)
+	}
+
+	return dbutil.BuildFilterExpression(
+		dbutil.ColumnFilter[uuid.UUID]{
+			Column: opts.columnPrefix + "id",
+			Filter: filter.ID,
+		},
+		dbutil.ColumnFilter[uuid.UUID]{
+			Column: opts.columnPrefix + "user_id",
+			Filter: filter.UserID,
+		},
+		dbutil.ColumnFilter[string]{
+			Column: opts.columnPrefix + "token_hash",
+			Filter: filter.TokenHash,
+		},
+		dbutil.ColumnFilter[time.Time]{
+			Column: opts.columnPrefix + "expires_at",
+			Filter: filter.ExpiresAt,
+		},
+		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
+			if filter.Or == nil {
+				return nil, nil
+			}
+			exprs := make([]clause.Expression, 0, len(filter.Or))
+			for _, orFilter := range filter.Or {
+				expr, err := buildPasswordResetTokenFilterExpr(orFilter)
+				if err != nil {
+					return nil, err
+				}
+				exprs = append(exprs, expr)
+			}
+			return clause.Or(exprs...), nil
+		}),
+		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
+			if filter.And == nil {
+				return nil, nil
+			}
+			exprs := make([]clause.Expression, 0, len(filter.And))
+			for _, andFilter := range filter.And {
+				expr, err := buildPasswordResetTokenFilterExpr(andFilter)
 				if err != nil {
 					return nil, err
 				}

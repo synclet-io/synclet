@@ -8,7 +8,8 @@ import (
 	"github.com/saturn4er/boilerplate-go/lib/filter"
 )
 
-// CleanupExpiredTokens removes expired refresh tokens and OIDC states.
+// CleanupExpiredTokens removes expired refresh tokens, password reset tokens
+// and OIDC states.
 type CleanupExpiredTokens struct {
 	storage    Storage
 	stateStore *StateStore
@@ -19,7 +20,7 @@ func NewCleanupExpiredTokens(storage Storage, stateStore *StateStore) *CleanupEx
 	return &CleanupExpiredTokens{storage: storage, stateStore: stateStore}
 }
 
-// Execute deletes expired refresh tokens and expired OIDC states.
+// Execute deletes expired refresh tokens, password reset tokens and OIDC states.
 func (uc *CleanupExpiredTokens) Execute(ctx context.Context) error {
 	now := time.Now()
 
@@ -37,6 +38,12 @@ func (uc *CleanupExpiredTokens) Execute(ctx context.Context) error {
 				return fmt.Errorf("deleting expired refresh token: %w", err)
 			}
 		}
+	}
+
+	if err := uc.storage.PasswordResetTokens().Delete(ctx, &PasswordResetTokenFilter{
+		ExpiresAt: filter.Less(now),
+	}); err != nil {
+		return fmt.Errorf("deleting expired password reset tokens: %w", err)
 	}
 
 	// Clean up expired OIDC states.

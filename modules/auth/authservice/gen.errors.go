@@ -27,6 +27,10 @@ const (
 	ErrRefreshTokenAlreadyExists = AlreadyExistsError("RefreshToken")
 )
 const (
+	ErrPasswordResetTokenNotFound      = NotFoundError("PasswordResetToken")
+	ErrPasswordResetTokenAlreadyExists = AlreadyExistsError("PasswordResetToken")
+)
+const (
 	ErrAPIKeyNotFound      = NotFoundError("APIKey")
 	ErrAPIKeyAlreadyExists = AlreadyExistsError("APIKey")
 )

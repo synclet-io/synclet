@@ -84,6 +84,42 @@ func convertRefreshTokenFromJsonModel(src *jsonRefreshToken) (*authservice.Refre
 	return result, nil
 }
 
+type jsonPasswordResetToken struct {
+	ID        uuid.UUID `json:"id"`
+	UserID    uuid.UUID `json:"user_id"`
+	TokenHash string    `json:"token_hash"`
+	ExpiresAt time.Time `json:"expires_at"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+func (p *jsonPasswordResetToken) Scan(value any) error {
+	return json.Unmarshal(value.([]byte), p)
+}
+
+func (p jsonPasswordResetToken) Value() (driver.Value, error) {
+	return json.Marshal(p)
+}
+
+func convertPasswordResetTokenToJsonModel(src *authservice.PasswordResetToken) (*jsonPasswordResetToken, error) {
+	result := &jsonPasswordResetToken{}
+	result.ID = src.ID
+	result.UserID = src.UserID
+	result.TokenHash = src.TokenHash
+	result.ExpiresAt = (src.ExpiresAt).UTC()
+	result.CreatedAt = (src.CreatedAt).UTC()
+	return result, nil
+}
+
+func convertPasswordResetTokenFromJsonModel(src *jsonPasswordResetToken) (*authservice.PasswordResetToken, error) {
+	result := &authservice.PasswordResetToken{}
+	result.ID = src.ID
+	result.UserID = src.UserID
+	result.TokenHash = src.TokenHash
+	result.ExpiresAt = src.ExpiresAt
+	result.CreatedAt = src.CreatedAt
+	return result, nil
+}
+
 type jsonAPIKey struct {
 	ID          uuid.UUID  `json:"id"`
 	WorkspaceID uuid.UUID  `json:"workspace_id"`

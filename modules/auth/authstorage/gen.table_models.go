@@ -72,6 +72,37 @@ func (a dbRefreshToken) TableName() string {
 	return "auth.refresh_tokens"
 }
 
+type dbPasswordResetToken struct {
+	ID        uuid.UUID `gorm:"column:id"`
+	UserID    uuid.UUID `gorm:"column:user_id"`
+	TokenHash string    `gorm:"column:token_hash;type:text"`
+	ExpiresAt time.Time `gorm:"column:expires_at"`
+	CreatedAt time.Time `gorm:"column:created_at"`
+}
+
+func convertPasswordResetTokenToDB(src *authservice.PasswordResetToken) (*dbPasswordResetToken, error) {
+	result := &dbPasswordResetToken{}
+	result.ID = src.ID
+	result.UserID = src.UserID
+	result.TokenHash = src.TokenHash
+	result.ExpiresAt = (src.ExpiresAt).UTC()
+	result.CreatedAt = (src.CreatedAt).UTC()
+	return result, nil
+}
+
+func convertPasswordResetTokenFromDB(src *dbPasswordResetToken) (*authservice.PasswordResetToken, error) {
+	result := &authservice.PasswordResetToken{}
+	result.ID = src.ID
+	result.UserID = src.UserID
+	result.TokenHash = src.TokenHash
+	result.ExpiresAt = src.ExpiresAt
+	result.CreatedAt = src.CreatedAt
+	return result, nil
+}
+func (a dbPasswordResetToken) TableName() string {
+	return "auth.password_reset_tokens"
+}
+
 type dbAPIKey struct {
 	ID          uuid.UUID  `gorm:"column:id"`
 	WorkspaceID uuid.UUID  `gorm:"column:workspace_id"`

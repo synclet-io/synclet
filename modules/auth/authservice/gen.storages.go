@@ -12,6 +12,7 @@ import (
 type Storage interface {
 	Users() UsersStorage
 	RefreshTokens() RefreshTokensStorage
+	PasswordResetTokens() PasswordResetTokensStorage
 	APIKeys() APIKeysStorage
 	OIDCIdentities() OIDCIdentitiesStorage
 	OIDCStates() OIDCStatesStorage
@@ -21,6 +22,7 @@ type Storage interface {
 }
 type UsersStorage dbutil.EntityStorage[User, UserFilter]
 type RefreshTokensStorage dbutil.EntityStorage[RefreshToken, RefreshTokenFilter]
+type PasswordResetTokensStorage dbutil.EntityStorage[PasswordResetToken, PasswordResetTokenFilter]
 type APIKeysStorage dbutil.EntityStorage[APIKey, APIKeyFilter]
 type OIDCIdentitiesStorage dbutil.EntityStorage[OIDCIdentity, OIDCIdentityFilter]
 type OIDCStatesStorage dbutil.EntityStorage[OIDCState, OIDCStateFilter]

@@ -50,6 +50,25 @@ func wrapRefreshTokenQueryError(err error) error {
 
 	return err
 }
+func wrapPasswordResetTokenQueryError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return errors.WithStack(errors1.Join(authsvc.ErrPasswordResetTokenNotFound, err))
+	}
+
+	var pgErr *pgconn.PgError
+
+	if errors.As(err, &pgErr) {
+		if pgErr.Code == "23505" {
+			return errors.WithStack(errors1.Join(authsvc.ErrPasswordResetTokenAlreadyExists, err))
+		}
+	}
+
+	return err
+}
 func wrapAPIKeyQueryError(err error) error {
 	if err == nil {
 		return nil

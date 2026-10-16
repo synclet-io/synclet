@@ -28,13 +28,15 @@ var skippedHandlers = map[string]bool{
 var audited = map[string][]string{
 	"auditconnect.Handler.UpdateAuditRetention": {"modules/audit/auditservice/update_audit_retention.go"},
 
-	"authconnect.Handler.ChangePassword": {"modules/auth/authservice/change_password.go"},
-	"authconnect.Handler.CreateAPIKey":   {"modules/auth/authservice/create_api_key.go"},
-	"authconnect.Handler.Login":          {"modules/auth/authservice/login.go"},
-	"authconnect.Handler.Logout":         {"modules/auth/authservice/logout.go"},
-	"authconnect.Handler.Register":       {"modules/auth/authservice/register_and_login.go"},
-	"authconnect.Handler.RevokeAPIKey":   {"modules/auth/authservice/revoke_api_key.go"},
-	"authconnect.Handler.UpdateProfile":  {"modules/auth/authservice/update_profile.go"},
+	"authconnect.Handler.ChangePassword":       {"modules/auth/authservice/change_password.go"},
+	"authconnect.Handler.CreateAPIKey":         {"modules/auth/authservice/create_api_key.go"},
+	"authconnect.Handler.Login":                {"modules/auth/authservice/login.go"},
+	"authconnect.Handler.Logout":               {"modules/auth/authservice/logout.go"},
+	"authconnect.Handler.Register":             {"modules/auth/authservice/register_and_login.go"},
+	"authconnect.Handler.RequestPasswordReset": {"modules/auth/authservice/request_password_reset.go"},
+	"authconnect.Handler.ResetPassword":        {"modules/auth/authservice/reset_password.go"},
+	"authconnect.Handler.RevokeAPIKey":         {"modules/auth/authservice/revoke_api_key.go"},
+	"authconnect.Handler.UpdateProfile":        {"modules/auth/authservice/update_profile.go"},
 
 	"notifyconnect.Handler.CreateWebhook":                         {"modules/notify/notifyservice/create_webhook.go"},
 	"notifyconnect.Handler.DeleteWebhook":                         {"modules/notify/notifyservice/delete_webhook.go"},

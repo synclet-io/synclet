@@ -20,6 +20,18 @@ export const router = createRouter({
       meta: { public: true },
     },
     {
+      path: '/forgot-password',
+      name: 'forgot-password',
+      component: () => import('@pages/ForgotPasswordPage.vue'),
+      meta: { public: true },
+    },
+    {
+      path: '/reset-password',
+      name: 'reset-password',
+      component: () => import('@pages/ResetPasswordPage.vue'),
+      meta: { public: true },
+    },
+    {
       path: '/auth/oidc/callback',
       name: 'oidc-callback',
       component: () => import('@pages/OIDCCallbackPage.vue'),

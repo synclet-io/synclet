@@ -45,6 +45,8 @@ type authConfig struct {
 	TokenCleanupInterval time.Duration `env:"TOKEN_CLEANUP_INTERVAL" envDefault:"1h"`
 	OIDCStateTTL         time.Duration `env:"OIDC_STATE_TTL" envDefault:"10m"`
 	MinPasswordLength    int           `env:"MIN_PASSWORD_LENGTH" envDefault:"8"`
+	// PasswordResetCooldown is the minimum time between two password reset emails for one user.
+	PasswordResetCooldown time.Duration `env:"PASSWORD_RESET_COOLDOWN" envDefault:"2m"`
 }
 
 func authModule(options *RunAppOptions) fx.Option {
@@ -75,6 +77,7 @@ func authDependenciesModule() fx.Option {
 		fx.Annotate(authadapt.NewWorkspaceAutoAssigner, fx.As(new(authservice.WorkspaceAutoAssigner))),
 		fx.Annotate(authadapt.NewAuditRecorder, fx.As(new(authservice.AuditRecorder))),
 		fx.Annotate(authadapt.NewWorkspaceMembershipLister, fx.As(new(authservice.WorkspaceMembershipLister))),
+		fx.Annotate(authadapt.NewPasswordResetEmailSender, fx.As(new(authservice.PasswordResetEmailSender))),
 		newOIDCProviders,
 	)
 }
@@ -90,6 +93,9 @@ func authUseCasesModule() fx.Option {
 		authservice.NewGetUserByEmail,
 		authservice.NewUpdateProfile,
 		authservice.NewChangePassword,
+		authservice.NewIssuePasswordResetLink,
+		authservice.NewRequestPasswordReset,
+		authservice.NewResetPassword,
 		authservice.NewCreateAPIKey,
 		authservice.NewRevokeAPIKey,
 		authservice.NewListAPIKeys,
@@ -123,16 +129,19 @@ func authHTTPServerModule() fx.Option {
 	)
 }
 
-func newAuthServiceConfig(cfg *authConfig, wsCfg *workspaceConfig) authservice.Config {
+func newAuthServiceConfig(cfg *authConfig, wsCfg *workspaceConfig, notifyCfg *notifyConfig) authservice.Config {
 	return authservice.Config{
-		JWTSecret:           string(cfg.JWTSecret),
-		AccessTokenTTL:      cfg.AccessTokenTTL,
-		RefreshTokenTTL:     cfg.RefreshTokenTTL,
-		SingleWorkspaceMode: WorkspaceModeSingle == wsCfg.Mode,
-		RegistrationEnabled: cfg.RegistrationEnabled,
-		OIDCCallbackBaseURL: cfg.OIDCCallbackBaseURL,
-		OIDCStateTTL:        cfg.OIDCStateTTL,
-		MinPasswordLength:   cfg.MinPasswordLength,
+		JWTSecret:             string(cfg.JWTSecret),
+		AccessTokenTTL:        cfg.AccessTokenTTL,
+		RefreshTokenTTL:       cfg.RefreshTokenTTL,
+		SingleWorkspaceMode:   WorkspaceModeSingle == wsCfg.Mode,
+		RegistrationEnabled:   cfg.RegistrationEnabled,
+		OIDCCallbackBaseURL:   cfg.OIDCCallbackBaseURL,
+		OIDCStateTTL:          cfg.OIDCStateTTL,
+		MinPasswordLength:     cfg.MinPasswordLength,
+		EmailEnabled:          notifyCfg.SMTP.Host != "",
+		FrontendURL:           wsCfg.FrontendURL,
+		PasswordResetCooldown: cfg.PasswordResetCooldown,
 	}
 }
 

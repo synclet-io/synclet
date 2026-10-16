@@ -15,7 +15,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file synclet/publicapi/auth/v1/auth.proto.
  */
 export const file_synclet_publicapi_auth_v1_auth: GenFile = /*@__PURE__*/
-  fileDesc("CiRzeW5jbGV0L3B1YmxpY2FwaS9hdXRoL3YxL2F1dGgucHJvdG8SGXN5bmNsZXQucHVibGljYXBpLmF1dGgudjEiYwoIVXNlckluZm8SCgoCaWQYASABKAkSDQoFZW1haWwYAiABKAkSDAoEbmFtZRgDIAEoCRIuCgpjcmVhdGVkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJ9ChNXb3Jrc3BhY2VNZW1iZXJzaGlwEhQKDHdvcmtzcGFjZV9pZBgBIAEoCRIWCg53b3Jrc3BhY2VfbmFtZRgCIAEoCRI4CgRyb2xlGAMgASgOMiouc3luY2xldC5wdWJsaWNhcGkud29ya3NwYWNlLnYxLk1lbWJlclJvbGUiQAoPUmVnaXN0ZXJSZXF1ZXN0Eg0KBWVtYWlsGAEgASgJEhAKCHBhc3N3b3JkGAIgASgJEgwKBG5hbWUYAyABKAkiswEKEFJlZ2lzdGVyUmVzcG9uc2USLgoKZXhwaXJlc19hdBgBIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASMQoEdXNlchgCIAEoCzIjLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuVXNlckluZm8SPAoYcmVmcmVzaF90b2tlbl9leHBpcmVzX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCIvCgxMb2dpblJlcXVlc3QSDQoFZW1haWwYASABKAkSEAoIcGFzc3dvcmQYAiABKAkisAEKDUxvZ2luUmVzcG9uc2USLgoKZXhwaXJlc19hdBgBIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASMQoEdXNlchgCIAEoCzIjLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuVXNlckluZm8SPAoYcmVmcmVzaF90b2tlbl9leHBpcmVzX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCIVChNSZWZyZXNoVG9rZW5SZXF1ZXN0IoQBChRSZWZyZXNoVG9rZW5SZXNwb25zZRIuCgpleHBpcmVzX2F0GAEgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBI8ChhyZWZyZXNoX3Rva2VuX2V4cGlyZXNfYXQYAiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIg8KDUxvZ291dFJlcXVlc3QiEAoOTG9nb3V0UmVzcG9uc2UiFwoVR2V0Q3VycmVudFVzZXJSZXF1ZXN0Io8BChZHZXRDdXJyZW50VXNlclJlc3BvbnNlEjEKBHVzZXIYASABKAsyIy5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLlVzZXJJbmZvEkIKCndvcmtzcGFjZXMYAiADKAsyLi5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLldvcmtzcGFjZU1lbWJlcnNoaXAiJAoUVXBkYXRlUHJvZmlsZVJlcXVlc3QSDAoEbmFtZRgBIAEoCSJKChVVcGRhdGVQcm9maWxlUmVzcG9uc2USMQoEdXNlchgBIAEoCzIjLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuVXNlckluZm8iRwoVQ2hhbmdlUGFzc3dvcmRSZXF1ZXN0EhgKEGN1cnJlbnRfcGFzc3dvcmQYASABKAkSFAoMbmV3X3Bhc3N3b3JkGAIgASgJIhgKFkNoYW5nZVBhc3N3b3JkUmVzcG9uc2UizgEKCkFQSUtleUluZm8SCgoCaWQYASABKAkSFAoMd29ya3NwYWNlX2lkGAIgASgJEgwKBG5hbWUYAyABKAkSLgoKY3JlYXRlZF9hdBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLgoKZXhwaXJlc19hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASMAoMbGFzdF91c2VkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJpChNDcmVhdGVBUElLZXlSZXF1ZXN0EhQKDHdvcmtzcGFjZV9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEi4KCmV4cGlyZXNfYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIl8KFENyZWF0ZUFQSUtleVJlc3BvbnNlEg8KB3Jhd19rZXkYASABKAkSNgoHYXBpX2tleRgCIAEoCzIlLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuQVBJS2V5SW5mbyIhChNSZXZva2VBUElLZXlSZXF1ZXN0EgoKAmlkGAEgASgJIhYKFFJldm9rZUFQSUtleVJlc3BvbnNlIioKEkxpc3RBUElLZXlzUmVxdWVzdBIUCgx3b3Jrc3BhY2VfaWQYASABKAkiTgoTTGlzdEFQSUtleXNSZXNwb25zZRI3CghhcGlfa2V5cxgBIAMoCzIlLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuQVBJS2V5SW5mbyI2ChBPSURDUHJvdmlkZXJJbmZvEgwKBHNsdWcYASABKAkSFAoMZGlzcGxheV9uYW1lGAIgASgJIhkKF0dldE9JRENQcm92aWRlcnNSZXF1ZXN0IloKGEdldE9JRENQcm92aWRlcnNSZXNwb25zZRI+Cglwcm92aWRlcnMYASADKAsyKy5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLk9JRENQcm92aWRlckluZm8y3wkKC0F1dGhTZXJ2aWNlEmMKCFJlZ2lzdGVyEiouc3luY2xldC5wdWJsaWNhcGkuYXV0aC52MS5SZWdpc3RlclJlcXVlc3QaKy5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLlJlZ2lzdGVyUmVzcG9uc2USWgoFTG9naW4SJy5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLkxvZ2luUmVxdWVzdBooLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuTG9naW5SZXNwb25zZRJvCgxSZWZyZXNoVG9rZW4SLi5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLlJlZnJlc2hUb2tlblJlcXVlc3QaLy5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLlJlZnJlc2hUb2tlblJlc3BvbnNlEl0KBkxvZ291dBIoLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuTG9nb3V0UmVxdWVzdBopLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuTG9nb3V0UmVzcG9uc2USdQoOR2V0Q3VycmVudFVzZXISMC5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLkdldEN1cnJlbnRVc2VyUmVxdWVzdBoxLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuR2V0Q3VycmVudFVzZXJSZXNwb25zZRJyCg1VcGRhdGVQcm9maWxlEi8uc3luY2xldC5wdWJsaWNhcGkuYXV0aC52MS5VcGRhdGVQcm9maWxlUmVxdWVzdBowLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuVXBkYXRlUHJvZmlsZVJlc3BvbnNlEnUKDkNoYW5nZVBhc3N3b3JkEjAuc3luY2xldC5wdWJsaWNhcGkuYXV0aC52MS5DaGFuZ2VQYXNzd29yZFJlcXVlc3QaMS5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLkNoYW5nZVBhc3N3b3JkUmVzcG9uc2USdQoMQ3JlYXRlQVBJS2V5Ei4uc3luY2xldC5wdWJsaWNhcGkuYXV0aC52MS5DcmVhdGVBUElLZXlSZXF1ZXN0Gi8uc3luY2xldC5wdWJsaWNhcGkuYXV0aC52MS5DcmVhdGVBUElLZXlSZXNwb25zZSIEiLUYARJ1CgxSZXZva2VBUElLZXkSLi5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLlJldm9rZUFQSUtleVJlcXVlc3QaLy5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLlJldm9rZUFQSUtleVJlc3BvbnNlIgSItRgBEnIKC0xpc3RBUElLZXlzEi0uc3luY2xldC5wdWJsaWNhcGkuYXV0aC52MS5MaXN0QVBJS2V5c1JlcXVlc3QaLi5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLkxpc3RBUElLZXlzUmVzcG9uc2UiBIi1GAESewoQR2V0T0lEQ1Byb3ZpZGVycxIyLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuR2V0T0lEQ1Byb3ZpZGVyc1JlcXVlc3QaMy5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLkdldE9JRENQcm92aWRlcnNSZXNwb25zZUL7AQodY29tLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjFCCUF1dGhQcm90b1ABWkhnaXRodWIuY29tL3N5bmNsZXQtaW8vc3luY2xldC9nZW4vcHJvdG8vc3luY2xldC9wdWJsaWNhcGkvYXV0aC92MTthdXRodjGiAgNTUEGqAhlTeW5jbGV0LlB1YmxpY2FwaS5BdXRoLlYxygIZU3luY2xldFxQdWJsaWNhcGlcQXV0aFxWMeICJVN5bmNsZXRcUHVibGljYXBpXEF1dGhcVjFcR1BCTWV0YWRhdGHqAhxTeW5jbGV0OjpQdWJsaWNhcGk6OkF1dGg6OlYxYgZwcm90bzM", [file_google_protobuf_timestamp, file_synclet_options_v1_options, file_synclet_publicapi_workspace_v1_workspace]);
+  fileDesc("CiRzeW5jbGV0L3B1YmxpY2FwaS9hdXRoL3YxL2F1dGgucHJvdG8SGXN5bmNsZXQucHVibGljYXBpLmF1dGgudjEiYwoIVXNlckluZm8SCgoCaWQYASABKAkSDQoFZW1haWwYAiABKAkSDAoEbmFtZRgDIAEoCRIuCgpjcmVhdGVkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJ9ChNXb3Jrc3BhY2VNZW1iZXJzaGlwEhQKDHdvcmtzcGFjZV9pZBgBIAEoCRIWCg53b3Jrc3BhY2VfbmFtZRgCIAEoCRI4CgRyb2xlGAMgASgOMiouc3luY2xldC5wdWJsaWNhcGkud29ya3NwYWNlLnYxLk1lbWJlclJvbGUiQAoPUmVnaXN0ZXJSZXF1ZXN0Eg0KBWVtYWlsGAEgASgJEhAKCHBhc3N3b3JkGAIgASgJEgwKBG5hbWUYAyABKAkiswEKEFJlZ2lzdGVyUmVzcG9uc2USLgoKZXhwaXJlc19hdBgBIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASMQoEdXNlchgCIAEoCzIjLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuVXNlckluZm8SPAoYcmVmcmVzaF90b2tlbl9leHBpcmVzX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCIvCgxMb2dpblJlcXVlc3QSDQoFZW1haWwYASABKAkSEAoIcGFzc3dvcmQYAiABKAkisAEKDUxvZ2luUmVzcG9uc2USLgoKZXhwaXJlc19hdBgBIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASMQoEdXNlchgCIAEoCzIjLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuVXNlckluZm8SPAoYcmVmcmVzaF90b2tlbl9leHBpcmVzX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCIVChNSZWZyZXNoVG9rZW5SZXF1ZXN0IoQBChRSZWZyZXNoVG9rZW5SZXNwb25zZRIuCgpleHBpcmVzX2F0GAEgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBI8ChhyZWZyZXNoX3Rva2VuX2V4cGlyZXNfYXQYAiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIg8KDUxvZ291dFJlcXVlc3QiEAoOTG9nb3V0UmVzcG9uc2UiFwoVR2V0Q3VycmVudFVzZXJSZXF1ZXN0Io8BChZHZXRDdXJyZW50VXNlclJlc3BvbnNlEjEKBHVzZXIYASABKAsyIy5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLlVzZXJJbmZvEkIKCndvcmtzcGFjZXMYAiADKAsyLi5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLldvcmtzcGFjZU1lbWJlcnNoaXAiJAoUVXBkYXRlUHJvZmlsZVJlcXVlc3QSDAoEbmFtZRgBIAEoCSJKChVVcGRhdGVQcm9maWxlUmVzcG9uc2USMQoEdXNlchgBIAEoCzIjLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuVXNlckluZm8iRwoVQ2hhbmdlUGFzc3dvcmRSZXF1ZXN0EhgKEGN1cnJlbnRfcGFzc3dvcmQYASABKAkSFAoMbmV3X3Bhc3N3b3JkGAIgASgJIhgKFkNoYW5nZVBhc3N3b3JkUmVzcG9uc2UiLAobUmVxdWVzdFBhc3N3b3JkUmVzZXRSZXF1ZXN0Eg0KBWVtYWlsGAEgASgJIh4KHFJlcXVlc3RQYXNzd29yZFJlc2V0UmVzcG9uc2UiOwoUUmVzZXRQYXNzd29yZFJlcXVlc3QSDQoFdG9rZW4YASABKAkSFAoMbmV3X3Bhc3N3b3JkGAIgASgJIhcKFVJlc2V0UGFzc3dvcmRSZXNwb25zZSLOAQoKQVBJS2V5SW5mbxIKCgJpZBgBIAEoCRIUCgx3b3Jrc3BhY2VfaWQYAiABKAkSDAoEbmFtZRgDIAEoCRIuCgpjcmVhdGVkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgpleHBpcmVzX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIwCgxsYXN0X3VzZWRfYXQYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wImkKE0NyZWF0ZUFQSUtleVJlcXVlc3QSFAoMd29ya3NwYWNlX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSLgoKZXhwaXJlc19hdBgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiXwoUQ3JlYXRlQVBJS2V5UmVzcG9uc2USDwoHcmF3X2tleRgBIAEoCRI2CgdhcGlfa2V5GAIgASgLMiUuc3luY2xldC5wdWJsaWNhcGkuYXV0aC52MS5BUElLZXlJbmZvIiEKE1Jldm9rZUFQSUtleVJlcXVlc3QSCgoCaWQYASABKAkiFgoUUmV2b2tlQVBJS2V5UmVzcG9uc2UiKgoSTGlzdEFQSUtleXNSZXF1ZXN0EhQKDHdvcmtzcGFjZV9pZBgBIAEoCSJOChNMaXN0QVBJS2V5c1Jlc3BvbnNlEjcKCGFwaV9rZXlzGAEgAygLMiUuc3luY2xldC5wdWJsaWNhcGkuYXV0aC52MS5BUElLZXlJbmZvIjYKEE9JRENQcm92aWRlckluZm8SDAoEc2x1ZxgBIAEoCRIUCgxkaXNwbGF5X25hbWUYAiABKAkiGQoXR2V0T0lEQ1Byb3ZpZGVyc1JlcXVlc3QiWgoYR2V0T0lEQ1Byb3ZpZGVyc1Jlc3BvbnNlEj4KCXByb3ZpZGVycxgBIAMoCzIrLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuT0lEQ1Byb3ZpZGVySW5mbzLdCwoLQXV0aFNlcnZpY2USYwoIUmVnaXN0ZXISKi5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLlJlZ2lzdGVyUmVxdWVzdBorLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuUmVnaXN0ZXJSZXNwb25zZRJaCgVMb2dpbhInLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuTG9naW5SZXF1ZXN0Giguc3luY2xldC5wdWJsaWNhcGkuYXV0aC52MS5Mb2dpblJlc3BvbnNlEm8KDFJlZnJlc2hUb2tlbhIuLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuUmVmcmVzaFRva2VuUmVxdWVzdBovLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuUmVmcmVzaFRva2VuUmVzcG9uc2USXQoGTG9nb3V0Eiguc3luY2xldC5wdWJsaWNhcGkuYXV0aC52MS5Mb2dvdXRSZXF1ZXN0Gikuc3luY2xldC5wdWJsaWNhcGkuYXV0aC52MS5Mb2dvdXRSZXNwb25zZRJ1Cg5HZXRDdXJyZW50VXNlchIwLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuR2V0Q3VycmVudFVzZXJSZXF1ZXN0GjEuc3luY2xldC5wdWJsaWNhcGkuYXV0aC52MS5HZXRDdXJyZW50VXNlclJlc3BvbnNlEnIKDVVwZGF0ZVByb2ZpbGUSLy5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLlVwZGF0ZVByb2ZpbGVSZXF1ZXN0GjAuc3luY2xldC5wdWJsaWNhcGkuYXV0aC52MS5VcGRhdGVQcm9maWxlUmVzcG9uc2USdQoOQ2hhbmdlUGFzc3dvcmQSMC5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLkNoYW5nZVBhc3N3b3JkUmVxdWVzdBoxLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuQ2hhbmdlUGFzc3dvcmRSZXNwb25zZRKHAQoUUmVxdWVzdFBhc3N3b3JkUmVzZXQSNi5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLlJlcXVlc3RQYXNzd29yZFJlc2V0UmVxdWVzdBo3LnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuUmVxdWVzdFBhc3N3b3JkUmVzZXRSZXNwb25zZRJyCg1SZXNldFBhc3N3b3JkEi8uc3luY2xldC5wdWJsaWNhcGkuYXV0aC52MS5SZXNldFBhc3N3b3JkUmVxdWVzdBowLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuUmVzZXRQYXNzd29yZFJlc3BvbnNlEnUKDENyZWF0ZUFQSUtleRIuLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuQ3JlYXRlQVBJS2V5UmVxdWVzdBovLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuQ3JlYXRlQVBJS2V5UmVzcG9uc2UiBIi1GAESdQoMUmV2b2tlQVBJS2V5Ei4uc3luY2xldC5wdWJsaWNhcGkuYXV0aC52MS5SZXZva2VBUElLZXlSZXF1ZXN0Gi8uc3luY2xldC5wdWJsaWNhcGkuYXV0aC52MS5SZXZva2VBUElLZXlSZXNwb25zZSIEiLUYARJyCgtMaXN0QVBJS2V5cxItLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuTGlzdEFQSUtleXNSZXF1ZXN0Gi4uc3luY2xldC5wdWJsaWNhcGkuYXV0aC52MS5MaXN0QVBJS2V5c1Jlc3BvbnNlIgSItRgBEnsKEEdldE9JRENQcm92aWRlcnMSMi5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLkdldE9JRENQcm92aWRlcnNSZXF1ZXN0GjMuc3luY2xldC5wdWJsaWNhcGkuYXV0aC52MS5HZXRPSURDUHJvdmlkZXJzUmVzcG9uc2VC+wEKHWNvbS5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxQglBdXRoUHJvdG9QAVpIZ2l0aHViLmNvbS9zeW5jbGV0LWlvL3N5bmNsZXQvZ2VuL3Byb3RvL3N5bmNsZXQvcHVibGljYXBpL2F1dGgvdjE7YXV0aHYxogIDU1BBqgIZU3luY2xldC5QdWJsaWNhcGkuQXV0aC5WMcoCGVN5bmNsZXRcUHVibGljYXBpXEF1dGhcVjHiAiVTeW5jbGV0XFB1YmxpY2FwaVxBdXRoXFYxXEdQQk1ldGFkYXRh6gIcU3luY2xldDo6UHVibGljYXBpOjpBdXRoOjpWMWIGcHJvdG8z", [file_google_protobuf_timestamp, file_synclet_options_v1_options, file_synclet_publicapi_workspace_v1_workspace]);
 
 /**
  * @generated from message synclet.publicapi.auth.v1.UserInfo
@@ -345,6 +345,71 @@ export const ChangePasswordResponseSchema: GenMessage<ChangePasswordResponse> = 
   messageDesc(file_synclet_publicapi_auth_v1_auth, 15);
 
 /**
+ * @generated from message synclet.publicapi.auth.v1.RequestPasswordResetRequest
+ */
+export type RequestPasswordResetRequest = Message<"synclet.publicapi.auth.v1.RequestPasswordResetRequest"> & {
+  /**
+   * @generated from field: string email = 1;
+   */
+  email: string;
+};
+
+/**
+ * Describes the message synclet.publicapi.auth.v1.RequestPasswordResetRequest.
+ * Use `create(RequestPasswordResetRequestSchema)` to create a new message.
+ */
+export const RequestPasswordResetRequestSchema: GenMessage<RequestPasswordResetRequest> = /*@__PURE__*/
+  messageDesc(file_synclet_publicapi_auth_v1_auth, 16);
+
+/**
+ * @generated from message synclet.publicapi.auth.v1.RequestPasswordResetResponse
+ */
+export type RequestPasswordResetResponse = Message<"synclet.publicapi.auth.v1.RequestPasswordResetResponse"> & {
+};
+
+/**
+ * Describes the message synclet.publicapi.auth.v1.RequestPasswordResetResponse.
+ * Use `create(RequestPasswordResetResponseSchema)` to create a new message.
+ */
+export const RequestPasswordResetResponseSchema: GenMessage<RequestPasswordResetResponse> = /*@__PURE__*/
+  messageDesc(file_synclet_publicapi_auth_v1_auth, 17);
+
+/**
+ * @generated from message synclet.publicapi.auth.v1.ResetPasswordRequest
+ */
+export type ResetPasswordRequest = Message<"synclet.publicapi.auth.v1.ResetPasswordRequest"> & {
+  /**
+   * @generated from field: string token = 1;
+   */
+  token: string;
+
+  /**
+   * @generated from field: string new_password = 2;
+   */
+  newPassword: string;
+};
+
+/**
+ * Describes the message synclet.publicapi.auth.v1.ResetPasswordRequest.
+ * Use `create(ResetPasswordRequestSchema)` to create a new message.
+ */
+export const ResetPasswordRequestSchema: GenMessage<ResetPasswordRequest> = /*@__PURE__*/
+  messageDesc(file_synclet_publicapi_auth_v1_auth, 18);
+
+/**
+ * @generated from message synclet.publicapi.auth.v1.ResetPasswordResponse
+ */
+export type ResetPasswordResponse = Message<"synclet.publicapi.auth.v1.ResetPasswordResponse"> & {
+};
+
+/**
+ * Describes the message synclet.publicapi.auth.v1.ResetPasswordResponse.
+ * Use `create(ResetPasswordResponseSchema)` to create a new message.
+ */
+export const ResetPasswordResponseSchema: GenMessage<ResetPasswordResponse> = /*@__PURE__*/
+  messageDesc(file_synclet_publicapi_auth_v1_auth, 19);
+
+/**
  * @generated from message synclet.publicapi.auth.v1.APIKeyInfo
  */
 export type APIKeyInfo = Message<"synclet.publicapi.auth.v1.APIKeyInfo"> & {
@@ -384,7 +449,7 @@ export type APIKeyInfo = Message<"synclet.publicapi.auth.v1.APIKeyInfo"> & {
  * Use `create(APIKeyInfoSchema)` to create a new message.
  */
 export const APIKeyInfoSchema: GenMessage<APIKeyInfo> = /*@__PURE__*/
-  messageDesc(file_synclet_publicapi_auth_v1_auth, 16);
+  messageDesc(file_synclet_publicapi_auth_v1_auth, 20);
 
 /**
  * @generated from message synclet.publicapi.auth.v1.CreateAPIKeyRequest
@@ -411,7 +476,7 @@ export type CreateAPIKeyRequest = Message<"synclet.publicapi.auth.v1.CreateAPIKe
  * Use `create(CreateAPIKeyRequestSchema)` to create a new message.
  */
 export const CreateAPIKeyRequestSchema: GenMessage<CreateAPIKeyRequest> = /*@__PURE__*/
-  messageDesc(file_synclet_publicapi_auth_v1_auth, 17);
+  messageDesc(file_synclet_publicapi_auth_v1_auth, 21);
 
 /**
  * @generated from message synclet.publicapi.auth.v1.CreateAPIKeyResponse
@@ -433,7 +498,7 @@ export type CreateAPIKeyResponse = Message<"synclet.publicapi.auth.v1.CreateAPIK
  * Use `create(CreateAPIKeyResponseSchema)` to create a new message.
  */
 export const CreateAPIKeyResponseSchema: GenMessage<CreateAPIKeyResponse> = /*@__PURE__*/
-  messageDesc(file_synclet_publicapi_auth_v1_auth, 18);
+  messageDesc(file_synclet_publicapi_auth_v1_auth, 22);
 
 /**
  * @generated from message synclet.publicapi.auth.v1.RevokeAPIKeyRequest
@@ -450,7 +515,7 @@ export type RevokeAPIKeyRequest = Message<"synclet.publicapi.auth.v1.RevokeAPIKe
  * Use `create(RevokeAPIKeyRequestSchema)` to create a new message.
  */
 export const RevokeAPIKeyRequestSchema: GenMessage<RevokeAPIKeyRequest> = /*@__PURE__*/
-  messageDesc(file_synclet_publicapi_auth_v1_auth, 19);
+  messageDesc(file_synclet_publicapi_auth_v1_auth, 23);
 
 /**
  * @generated from message synclet.publicapi.auth.v1.RevokeAPIKeyResponse
@@ -463,7 +528,7 @@ export type RevokeAPIKeyResponse = Message<"synclet.publicapi.auth.v1.RevokeAPIK
  * Use `create(RevokeAPIKeyResponseSchema)` to create a new message.
  */
 export const RevokeAPIKeyResponseSchema: GenMessage<RevokeAPIKeyResponse> = /*@__PURE__*/
-  messageDesc(file_synclet_publicapi_auth_v1_auth, 20);
+  messageDesc(file_synclet_publicapi_auth_v1_auth, 24);
 
 /**
  * @generated from message synclet.publicapi.auth.v1.ListAPIKeysRequest
@@ -480,7 +545,7 @@ export type ListAPIKeysRequest = Message<"synclet.publicapi.auth.v1.ListAPIKeysR
  * Use `create(ListAPIKeysRequestSchema)` to create a new message.
  */
 export const ListAPIKeysRequestSchema: GenMessage<ListAPIKeysRequest> = /*@__PURE__*/
-  messageDesc(file_synclet_publicapi_auth_v1_auth, 21);
+  messageDesc(file_synclet_publicapi_auth_v1_auth, 25);
 
 /**
  * @generated from message synclet.publicapi.auth.v1.ListAPIKeysResponse
@@ -497,7 +562,7 @@ export type ListAPIKeysResponse = Message<"synclet.publicapi.auth.v1.ListAPIKeys
  * Use `create(ListAPIKeysResponseSchema)` to create a new message.
  */
 export const ListAPIKeysResponseSchema: GenMessage<ListAPIKeysResponse> = /*@__PURE__*/
-  messageDesc(file_synclet_publicapi_auth_v1_auth, 22);
+  messageDesc(file_synclet_publicapi_auth_v1_auth, 26);
 
 /**
  * @generated from message synclet.publicapi.auth.v1.OIDCProviderInfo
@@ -519,7 +584,7 @@ export type OIDCProviderInfo = Message<"synclet.publicapi.auth.v1.OIDCProviderIn
  * Use `create(OIDCProviderInfoSchema)` to create a new message.
  */
 export const OIDCProviderInfoSchema: GenMessage<OIDCProviderInfo> = /*@__PURE__*/
-  messageDesc(file_synclet_publicapi_auth_v1_auth, 23);
+  messageDesc(file_synclet_publicapi_auth_v1_auth, 27);
 
 /**
  * @generated from message synclet.publicapi.auth.v1.GetOIDCProvidersRequest
@@ -532,7 +597,7 @@ export type GetOIDCProvidersRequest = Message<"synclet.publicapi.auth.v1.GetOIDC
  * Use `create(GetOIDCProvidersRequestSchema)` to create a new message.
  */
 export const GetOIDCProvidersRequestSchema: GenMessage<GetOIDCProvidersRequest> = /*@__PURE__*/
-  messageDesc(file_synclet_publicapi_auth_v1_auth, 24);
+  messageDesc(file_synclet_publicapi_auth_v1_auth, 28);
 
 /**
  * @generated from message synclet.publicapi.auth.v1.GetOIDCProvidersResponse
@@ -549,7 +614,7 @@ export type GetOIDCProvidersResponse = Message<"synclet.publicapi.auth.v1.GetOID
  * Use `create(GetOIDCProvidersResponseSchema)` to create a new message.
  */
 export const GetOIDCProvidersResponseSchema: GenMessage<GetOIDCProvidersResponse> = /*@__PURE__*/
-  messageDesc(file_synclet_publicapi_auth_v1_auth, 25);
+  messageDesc(file_synclet_publicapi_auth_v1_auth, 29);
 
 /**
  * @generated from service synclet.publicapi.auth.v1.AuthService
@@ -610,6 +675,22 @@ export const AuthService: GenService<{
     methodKind: "unary";
     input: typeof ChangePasswordRequestSchema;
     output: typeof ChangePasswordResponseSchema;
+  },
+  /**
+   * @generated from rpc synclet.publicapi.auth.v1.AuthService.RequestPasswordReset
+   */
+  requestPasswordReset: {
+    methodKind: "unary";
+    input: typeof RequestPasswordResetRequestSchema;
+    output: typeof RequestPasswordResetResponseSchema;
+  },
+  /**
+   * @generated from rpc synclet.publicapi.auth.v1.AuthService.ResetPassword
+   */
+  resetPassword: {
+    methodKind: "unary";
+    input: typeof ResetPasswordRequestSchema;
+    output: typeof ResetPasswordResponseSchema;
   },
   /**
    * @generated from rpc synclet.publicapi.auth.v1.AuthService.CreateAPIKey

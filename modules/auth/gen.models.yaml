@@ -18,6 +18,15 @@ types:
         - { name: ExpiresAt, type: timestamp }
         - { name: CreatedAt, type: timestamp }
 
+    - name: PasswordResetToken
+      table_name: auth.password_reset_tokens
+      fields:
+        - { name: ID, type: uuid, filterable: true }
+        - { name: UserID, type: uuid, filterable: true }
+        - { name: TokenHash, type: string, filterable: true }
+        - { name: ExpiresAt, type: timestamp, filterable: true }
+        - { name: CreatedAt, type: timestamp }
+
     - name: APIKey
       table_name: auth.api_keys
       fields:

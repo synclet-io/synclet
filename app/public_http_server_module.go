@@ -101,9 +101,11 @@ func newConnectRPCRateLimitInterceptor(lc fx.Lifecycle, cfg *rateLimitConfig) (o
 
 	rateLimiter := connectutil.NewRateLimitInterceptor(
 		map[string]connectutil.RateLimitConfig{
-			"/synclet.publicapi.auth.v1.AuthService/Login":        {Rate: rate.Every(6 * time.Second), Burst: 10}, // ~10/min
-			"/synclet.publicapi.auth.v1.AuthService/Register":     {Rate: rate.Every(20 * time.Second), Burst: 3}, // ~3/min
-			"/synclet.publicapi.auth.v1.AuthService/RefreshToken": {Rate: rate.Every(3 * time.Second), Burst: 20}, // ~20/min
+			"/synclet.publicapi.auth.v1.AuthService/Login":                {Rate: rate.Every(6 * time.Second), Burst: 10}, // ~10/min
+			"/synclet.publicapi.auth.v1.AuthService/Register":             {Rate: rate.Every(20 * time.Second), Burst: 3}, // ~3/min
+			"/synclet.publicapi.auth.v1.AuthService/RefreshToken":         {Rate: rate.Every(3 * time.Second), Burst: 20}, // ~20/min
+			"/synclet.publicapi.auth.v1.AuthService/RequestPasswordReset": {Rate: rate.Every(6 * time.Second), Burst: 10}, // ~10/min
+			"/synclet.publicapi.auth.v1.AuthService/ResetPassword":        {Rate: rate.Every(6 * time.Second), Burst: 10}, // ~10/min
 		},
 		connectutil.WithTrustedProxies(trustedProxies),
 	)

@@ -41,6 +41,10 @@ func mapError(err error) error {
 		return connect.NewError(connect.CodeResourceExhausted, authservice.ErrTooManyLoginAttempts)
 	}
 
+	if errors.Is(err, authservice.ErrInvalidResetToken) {
+		return connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
 	if errors.Is(err, authservice.ErrInvalidCurrentPassword) {
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -79,19 +83,21 @@ func mapError(err error) error {
 // Handler implements the AuthService ConnectRPC handler.
 type Handler struct {
 	authv1connect.UnimplementedAuthServiceHandler
-	registerAndLogin   *authservice.RegisterAndLogin
-	loginWithUserInfo  *authservice.LoginWithUserInfo
-	refreshToken       *authservice.RefreshTokenUC
-	logout             *authservice.Logout
-	getUserByID        *authservice.GetUserByID
-	listUserWorkspaces *authservice.ListUserWorkspaces
-	updateProfile      *authservice.UpdateProfile
-	changePassword     *authservice.ChangePassword
-	createAPIKey       *authservice.CreateAPIKey
-	revokeAPIKey       *authservice.RevokeAPIKey
-	listAPIKeys        *authservice.ListAPIKeys
-	getOIDCProviders   *authservice.GetOIDCProviders
-	cookieConfig       connectutil.CookieConfig
+	registerAndLogin     *authservice.RegisterAndLogin
+	loginWithUserInfo    *authservice.LoginWithUserInfo
+	refreshToken         *authservice.RefreshTokenUC
+	logout               *authservice.Logout
+	getUserByID          *authservice.GetUserByID
+	listUserWorkspaces   *authservice.ListUserWorkspaces
+	updateProfile        *authservice.UpdateProfile
+	changePassword       *authservice.ChangePassword
+	requestPasswordReset *authservice.RequestPasswordReset
+	resetPassword        *authservice.ResetPassword
+	createAPIKey         *authservice.CreateAPIKey
+	revokeAPIKey         *authservice.RevokeAPIKey
+	listAPIKeys          *authservice.ListAPIKeys
+	getOIDCProviders     *authservice.GetOIDCProviders
+	cookieConfig         connectutil.CookieConfig
 }
 
 // NewHandler creates a new auth handler.
@@ -104,6 +110,8 @@ func NewHandler(
 	listUserWorkspaces *authservice.ListUserWorkspaces,
 	updateProfile *authservice.UpdateProfile,
 	changePassword *authservice.ChangePassword,
+	requestPasswordReset *authservice.RequestPasswordReset,
+	resetPassword *authservice.ResetPassword,
 	createAPIKey *authservice.CreateAPIKey,
 	revokeAPIKey *authservice.RevokeAPIKey,
 	listAPIKeys *authservice.ListAPIKeys,
@@ -111,19 +119,21 @@ func NewHandler(
 	cookieConfig connectutil.CookieConfig,
 ) *Handler {
 	return &Handler{
-		registerAndLogin:   registerAndLogin,
-		loginWithUserInfo:  loginWithUserInfo,
-		refreshToken:       refreshToken,
-		logout:             logout,
-		getUserByID:        getUserByID,
-		listUserWorkspaces: listUserWorkspaces,
-		updateProfile:      updateProfile,
-		changePassword:     changePassword,
-		createAPIKey:       createAPIKey,
-		revokeAPIKey:       revokeAPIKey,
-		listAPIKeys:        listAPIKeys,
-		getOIDCProviders:   getOIDCProviders,
-		cookieConfig:       cookieConfig,
+		registerAndLogin:     registerAndLogin,
+		loginWithUserInfo:    loginWithUserInfo,
+		refreshToken:         refreshToken,
+		logout:               logout,
+		getUserByID:          getUserByID,
+		listUserWorkspaces:   listUserWorkspaces,
+		updateProfile:        updateProfile,
+		changePassword:       changePassword,
+		requestPasswordReset: requestPasswordReset,
+		resetPassword:        resetPassword,
+		createAPIKey:         createAPIKey,
+		revokeAPIKey:         revokeAPIKey,
+		listAPIKeys:          listAPIKeys,
+		getOIDCProviders:     getOIDCProviders,
+		cookieConfig:         cookieConfig,
 	}
 }
 
@@ -304,6 +314,30 @@ func (h *Handler) ChangePassword(ctx context.Context, req *connect.Request[authv
 	}
 
 	return connect.NewResponse(&authv1.ChangePasswordResponse{}), nil
+}
+
+func (h *Handler) RequestPasswordReset(ctx context.Context, req *connect.Request[authv1.RequestPasswordResetRequest]) (*connect.Response[authv1.RequestPasswordResetResponse], error) {
+	if strings.TrimSpace(req.Msg.GetEmail()) == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("email is required"))
+	}
+
+	if err := h.requestPasswordReset.Execute(ctx, req.Msg.GetEmail()); err != nil {
+		return nil, mapError(err)
+	}
+
+	return connect.NewResponse(&authv1.RequestPasswordResetResponse{}), nil
+}
+
+func (h *Handler) ResetPassword(ctx context.Context, req *connect.Request[authv1.ResetPasswordRequest]) (*connect.Response[authv1.ResetPasswordResponse], error) {
+	if req.Msg.GetToken() == "" || req.Msg.GetNewPassword() == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token and new_password are required"))
+	}
+
+	if err := h.resetPassword.Execute(ctx, req.Msg.GetToken(), req.Msg.GetNewPassword()); err != nil {
+		return nil, mapError(err)
+	}
+
+	return connect.NewResponse(&authv1.ResetPasswordResponse{}), nil
 }
 
 func (h *Handler) CreateAPIKey(ctx context.Context, req *connect.Request[authv1.CreateAPIKeyRequest]) (*connect.Response[authv1.CreateAPIKeyResponse], error) {

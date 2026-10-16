@@ -19,6 +19,8 @@ const (
 	ErrEmailNotVerified        baseErr = "email not verified by provider"
 	ErrInvalidEmailFormat      baseErr = "invalid email format"
 	ErrRegistrationDisabled    baseErr = "registration is disabled"
+	ErrPasswordResetCooldown   baseErr = "password reset requested too recently"
+	ErrInvalidResetToken       baseErr = "invalid or expired reset token" //nolint:gosec // error message, not a credential
 )
 
 // ValidationError represents an input validation error in the auth module.
