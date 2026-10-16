@@ -7,7 +7,7 @@ COPY front/ .
 RUN bun run build
 
 # Stage 2: Build backend
-FROM golang:1.25 AS backend
+FROM golang:1.26 AS backend
 WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download

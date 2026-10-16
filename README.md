@@ -27,7 +27,7 @@ Data synchronization platform built on the Airbyte connector protocol. Connect a
 
 Synclet is a **modular monolith** -- a single Go binary runs the API server, scheduler, and workers as goroutines. Each domain module (auth, workspace, pipeline, notify, secret, audit) is a bounded context with its own storage, service layer, and ConnectRPC handlers; `app` serves the frontend.
 
-- **Backend**: Go 1.25, ConnectRPC (protobuf), PostgreSQL, GORM, Uber FX
+- **Backend**: Go 1.26, ConnectRPC (protobuf), PostgreSQL, GORM, Uber FX
 - **Frontend**: Vue 3, TypeScript, TanStack Vue Query, Tailwind CSS
 - **Connectors**: Docker containers running Airbyte protocol connectors
 - **Orchestration**: Docker (default) or Kubernetes for distributed execution
@@ -36,7 +36,7 @@ Synclet is a **modular monolith** -- a single Go binary runs the API server, sch
 
 ### Prerequisites
 
-- Go 1.25+
+- Go 1.26+
 - PostgreSQL 16+
 - Docker
 - Bun (for frontend)

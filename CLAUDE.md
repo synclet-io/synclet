@@ -29,5 +29,5 @@ Format: `feat(module): description` (conventional commits). Commit after complet
 
 ## Environment
 
-Requires: Go 1.25, PostgreSQL 16 (via `docker compose`), Bun, Docker.
+Requires: Go 1.26, PostgreSQL 16 (via `docker compose`), Bun, Docker.
 Config: `.env` file (copy from `.env.dist`; `go run . generate dotenv` appends every other variable with its default). Key vars: `DB_DSN`, `AUTH_JWT_SECRET`, `SECRET_ENCRYPTION_KEY`.
