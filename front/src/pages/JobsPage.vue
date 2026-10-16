@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import type { Job, JobStatus } from '@entities/job'
+import type { Job } from '@entities/job'
+import type { JobStatusFilterValue } from '@entities/job/statusFilters'
 import type { Column } from '@shared/ui'
 import { useAuth } from '@entities/auth'
 import { useConnections } from '@entities/connection'
 import { isActiveJobStatus, useCancelJob } from '@entities/job'
 import { listJobs } from '@entities/job/api'
+import { JOB_STATUS_FILTERS } from '@entities/job/statusFilters'
 import { getErrorMessage } from '@shared/lib/errorUtils'
 import { formatDuration, statusVariant } from '@shared/lib/format'
 import { jobKeys } from '@shared/lib/queryKeys'
@@ -15,16 +17,6 @@ import { computed, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 const PAGE_SIZE = 25
-
-type StatusFilter = '' | 'active' | 'completed' | 'failed' | 'cancelled'
-
-const STATUS_FILTERS: Array<{ value: StatusFilter, label: string, statuses: readonly JobStatus[] }> = [
-  { value: '', label: 'All', statuses: [] },
-  { value: 'active', label: 'Active', statuses: ['scheduled', 'starting', 'running'] },
-  { value: 'completed', label: 'Completed', statuses: ['completed'] },
-  { value: 'failed', label: 'Failed', statuses: ['failed'] },
-  { value: 'cancelled', label: 'Cancelled', statuses: ['cancelled'] },
-]
 
 const route = useRoute()
 const router = useRouter()
@@ -50,10 +42,10 @@ const connectionId = computed<string>({
 
 const statusFilter = computed(() => {
   const value = queryString('status')
-  return STATUS_FILTERS.find(f => f.value === value) ?? STATUS_FILTERS[0]
+  return JOB_STATUS_FILTERS.find(f => f.value === value) ?? JOB_STATUS_FILTERS[0]
 })
 
-function setStatusFilter(value: StatusFilter) {
+function setStatusFilter(value: JobStatusFilterValue) {
   setQuery({ status: value || undefined })
 }
 
@@ -184,7 +176,7 @@ const columns = computed<Column[]>(() => [
     </div>
     <div class="inline-flex flex-wrap gap-1 bg-surface-raised rounded-lg p-1" role="group" aria-label="Status">
       <button
-        v-for="option in STATUS_FILTERS"
+        v-for="option in JOB_STATUS_FILTERS"
         :key="option.value"
         type="button"
         class="rounded-md px-3 py-1 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
