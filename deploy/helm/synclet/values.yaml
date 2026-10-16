@@ -49,11 +49,15 @@ server:
     readOnlyRootFilesystem: true
     capabilities:
       drop: ["ALL"]
-  ## Probes hit the internal port. /live answers while the process serves HTTP;
-  ## /ready also requires the database, background jobs and the event router.
+  ## Probes hit the internal port by default. /live answers while the process
+  ## serves HTTP; /ready also requires the database, background jobs and the
+  ## event router. `port` is a container port name (public, internal) or number.
+  ## Older images serve only /health on the public port: set path: /health and
+  ## port: public on all three probes.
   startupProbe:
     enabled: true
     path: /live
+    port: internal
     initialDelaySeconds: 5
     periodSeconds: 5
     failureThreshold: 30
@@ -62,11 +66,13 @@ server:
     initialDelaySeconds: 10
     periodSeconds: 15
     path: /live
+    port: internal
   readinessProbe:
     enabled: true
     initialDelaySeconds: 5
     periodSeconds: 10
     path: /ready
+    port: internal
   service:
     type: ClusterIP
     ports:

@@ -113,7 +113,7 @@ spec:
           startupProbe:
             httpGet:
               path: {{ .Values.server.startupProbe.path }}
-              port: internal
+              port: {{ .Values.server.startupProbe.port }}
             initialDelaySeconds: {{ .Values.server.startupProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.server.startupProbe.periodSeconds }}
             failureThreshold: {{ .Values.server.startupProbe.failureThreshold }}
@@ -122,7 +122,7 @@ spec:
           readinessProbe:
             httpGet:
               path: {{ .Values.server.readinessProbe.path }}
-              port: internal
+              port: {{ .Values.server.readinessProbe.port }}
             initialDelaySeconds: {{ .Values.server.readinessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.server.readinessProbe.periodSeconds }}
           {{- end }}
@@ -130,7 +130,7 @@ spec:
           livenessProbe:
             httpGet:
               path: {{ .Values.server.livenessProbe.path }}
-              port: internal
+              port: {{ .Values.server.livenessProbe.port }}
             initialDelaySeconds: {{ .Values.server.livenessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.server.livenessProbe.periodSeconds }}
           {{- end }}

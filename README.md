@@ -182,6 +182,25 @@ Migrating from Ingress to a Gateway without downtime:
 3. Switch DNS to the Gateway's address and wait for the old TTL to run out.
 4. Disable the Ingress (`server.ingress.enabled: false`). `server.publicUrl` can stay or be removed, since the route's first hostname now gives the same URL.
 
+#### Server probes (Helm)
+
+The server's startup, liveness and readiness probes call `/live`, `/live` and `/ready` on the `internal` container port. Each probe takes `path` and `port` (`server.startupProbe.*`, `server.livenessProbe.*`, `server.readinessProbe.*`); `port` is a container port name (`public`, `internal`) or a number.
+
+Older images serve only `/health` on the public port. Point the probes there instead of disabling them:
+
+```yaml
+server:
+  startupProbe:
+    path: /health
+    port: public
+  livenessProbe:
+    path: /health
+    port: public
+  readinessProbe:
+    path: /health
+    port: public
+```
+
 ## Configuration Reference
 
 ### Environment Variables
