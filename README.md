@@ -81,6 +81,15 @@ The API server runs on `http://localhost:8086` and the frontend dev server on `h
 
 Outside `ENVIRONMENT=development` the process refuses to start without `AUTH_JWT_SECRET` and `SECRET_ENCRYPTION_KEY`; generate each with `openssl rand -base64 32` and back up the encryption key, since stored connector secrets cannot be decrypted without it.
 
+**Binary.** Each [GitHub release](https://github.com/synclet-io/synclet/releases) tagged `synclet-v<version>` carries `synclet-v<version>-<os>-<arch>.tar.gz` for `linux/amd64`, `linux/arm64`, `darwin/amd64` and `darwin/arm64`, plus `SHA256SUMS` over every archive. The binary serves the frontend, so it needs only PostgreSQL and Docker:
+```bash
+shasum -a 256 -c SHA256SUMS --ignore-missing
+tar -xzf synclet-v<version>-linux-amd64.tar.gz
+cd synclet-v<version>-linux-amd64
+./synclet migrate up
+./synclet server --standalone
+```
+
 **Docker Compose** (PostgreSQL, migrations and a standalone server with the Docker executor):
 ```bash
 echo "AUTH_JWT_SECRET=$(openssl rand -base64 32)" >> .env

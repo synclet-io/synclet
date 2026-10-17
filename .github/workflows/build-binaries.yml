@@ -45,19 +45,15 @@ jobs:
           - goos: linux
             goarch: amd64
             runner: ubuntu-latest
-            archive: tar.gz
           - goos: linux
             goarch: arm64
             runner: ubuntu-latest
-            archive: tar.gz
           - goos: darwin
             goarch: amd64
             runner: macos-latest
-            archive: tar.gz
           - goos: darwin
             goarch: arm64
             runner: macos-latest
-            archive: tar.gz
     steps:
       - uses: actions/checkout@v4
 
@@ -92,15 +88,11 @@ jobs:
         shell: bash
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          BIN_NAME="synclet"
-          if [ "$GOOS" = "windows" ]; then
-            BIN_NAME="synclet.exe"
-          fi
           mkdir -p dist
           go build \
             -trimpath \
             -ldflags "-s -w -X github.com/synclet-io/synclet/cmd.version=v${VERSION}" \
-            -o "dist/${BIN_NAME}" \
+            -o dist/synclet \
             .
 
       - name: Package archive
@@ -113,21 +105,12 @@ jobs:
           STAGE="synclet-v${VERSION}-${GOOS}-${GOARCH}"
 
           mkdir -p "out/${STAGE}"
-          if [ "$GOOS" = "windows" ]; then
-            cp dist/synclet.exe "out/${STAGE}/"
-          else
-            cp dist/synclet "out/${STAGE}/"
-          fi
+          cp dist/synclet "out/${STAGE}/"
           cp README.md LICENSE CHANGELOG.md "out/${STAGE}/" 2>/dev/null || true
 
+          ARCHIVE_NAME="${STAGE}.tar.gz"
           cd out
-          if [ "${{ matrix.archive }}" = "zip" ]; then
-            ARCHIVE_NAME="${STAGE}.zip"
-            zip -r "${ARCHIVE_NAME}" "${STAGE}"
-          else
-            ARCHIVE_NAME="${STAGE}.tar.gz"
-            tar -czf "${ARCHIVE_NAME}" "${STAGE}"
-          fi
+          tar -czf "${ARCHIVE_NAME}" "${STAGE}"
 
           shasum -a 256 "${ARCHIVE_NAME}" > "${ARCHIVE_NAME}.sha256"
           echo "archive_path=out/${ARCHIVE_NAME}" >> "$GITHUB_OUTPUT"
@@ -166,6 +149,5 @@ jobs:
         with:
           files: |
             artifacts/*.tar.gz
-            artifacts/*.zip
             artifacts/SHA256SUMS
           fail_on_unmatched_files: true
