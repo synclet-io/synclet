@@ -7,17 +7,27 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinemetrics"
 )
 
 // appendLines stores lines under the job's current attempt. Once the attempt
 // holds maxLines lines, further lines are dropped and counted in one marker
 // line. maxLines <= 0 stores every line.
-func appendLines(ctx context.Context, storage pipelineservice.Storage, maxLines int, jobID uuid.UUID, lines []string) error {
+func appendLines(
+	ctx context.Context,
+	storage pipelineservice.Storage,
+	metrics *pipelinemetrics.MetricsCollector,
+	maxLines int,
+	jobID uuid.UUID,
+	lines []string,
+) error {
 	if len(lines) == 0 {
 		return nil
 	}
 
-	return storage.ExecuteInTransaction(ctx, func(ctx context.Context, tx pipelineservice.Storage) error {
+	var dropped int
+
+	err := storage.ExecuteInTransaction(ctx, func(ctx context.Context, tx pipelineservice.Storage) error {
 		segment, err := tx.JobLogSegments().LockCurrent(ctx, jobID)
 		if err != nil {
 			return fmt.Errorf("locking job log segment: %w", err)
@@ -34,7 +44,8 @@ func appendLines(ctx context.Context, storage pipelineservice.Storage, maxLines 
 
 		segment.LineCount += len(accepted)
 
-		if dropped := len(lines) - len(accepted); dropped > 0 {
+		dropped = len(lines) - len(accepted)
+		if dropped > 0 {
 			segment.DroppedCount += dropped
 
 			if err := writeTruncationMarker(ctx, tx, segment); err != nil {
@@ -48,6 +59,15 @@ func appendLines(ctx context.Context, storage pipelineservice.Storage, maxLines 
 
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+
+	if dropped > 0 {
+		metrics.ObserveLogLinesDropped(dropped)
+	}
+
+	return nil
 }
 
 func writeTruncationMarker(ctx context.Context, tx pipelineservice.Storage, segment *pipelineservice.JobLogSegment) error {

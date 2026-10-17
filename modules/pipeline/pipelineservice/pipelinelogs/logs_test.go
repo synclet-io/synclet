@@ -3,14 +3,18 @@ package pipelinelogs_test
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinelogs"
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinemetrics"
 	"github.com/synclet-io/synclet/pkg/logarchive"
 )
 
@@ -20,6 +24,8 @@ type logFixture struct {
 	jobID       uuid.UUID
 	store       *logStore
 	archive     *countingArchive
+	metrics     *pipelinemetrics.MetricsCollector
+	registry    *prometheus.Registry
 }
 
 func newLogFixture(t *testing.T) *logFixture {
@@ -28,6 +34,9 @@ func newLogFixture(t *testing.T) *logFixture {
 	f := &logFixture{workspaceID: uuid.New(), connID: uuid.New(), jobID: uuid.New()}
 	f.store = newLogStore(f.workspaceID, f.jobID, f.connID)
 	f.archive = newCountingArchive(t)
+	f.metrics = pipelinemetrics.NewMetricsCollector()
+	f.registry = prometheus.NewPedanticRegistry()
+	f.registry.MustRegister(f.metrics)
 
 	return f
 }
@@ -35,7 +44,7 @@ func newLogFixture(t *testing.T) *logFixture {
 func (f *logFixture) append(t *testing.T, maxLines int, lines ...string) {
 	t.Helper()
 
-	uc := pipelinelogs.NewBatchAppendJobLogs(f.store, pipelineservice.Config{MaxLogLinesPerAttempt: maxLines})
+	uc := pipelinelogs.NewBatchAppendJobLogs(f.store, pipelineservice.Config{MaxLogLinesPerAttempt: maxLines}, f.metrics)
 	require.NoError(t, uc.Execute(context.Background(), pipelinelogs.BatchAppendJobLogsParams{JobID: f.jobID, LogLines: lines}))
 }
 
@@ -75,7 +84,7 @@ func (f *logFixture) pages(t *testing.T, limit int) []*pipelinelogs.GetJobLogRes
 }
 
 func (f *logFixture) archiver(enabled bool) *pipelinelogs.ArchiveJobLogs {
-	return pipelinelogs.NewArchiveJobLogs(f.store, f.archive, pipelineservice.Config{LogArchiveEnabled: enabled})
+	return pipelinelogs.NewArchiveJobLogs(f.store, f.archive, pipelineservice.Config{LogArchiveEnabled: enabled, LogArchiveBackend: "filesystem"}, f.metrics)
 }
 
 func (f *logFixture) finish(status pipelineservice.JobStatus) {
@@ -86,6 +95,14 @@ func (f *logFixture) retry() {
 	f.store.jobs[f.jobID].Attempt++
 }
 
+// assertMetric compares the named metric gathered from the fixture registry
+// with the expected exposition text.
+func (f *logFixture) assertMetric(t *testing.T, name, expected string) {
+	t.Helper()
+
+	require.NoError(t, testutil.GatherAndCompare(f.registry, strings.NewReader(expected), name))
+}
+
 func (f *logFixture) key(attempt int) string {
 	return pipelineservice.LogArchiveKey(f.workspaceID, f.connID, f.jobID, attempt)
 }
@@ -93,7 +110,7 @@ func (f *logFixture) key(attempt int) string {
 func TestAppendAndGetJobLog(t *testing.T) {
 	f := newLogFixture(t)
 
-	appendUC := pipelinelogs.NewAppendJobLog(f.store, pipelineservice.Config{})
+	appendUC := pipelinelogs.NewAppendJobLog(f.store, pipelineservice.Config{}, f.metrics)
 	require.NoError(t, appendUC.Execute(context.Background(), pipelinelogs.AppendJobLogParams{JobID: f.jobID, LogLine: "line-1"}))
 	require.NoError(t, appendUC.Execute(context.Background(), pipelinelogs.AppendJobLogParams{JobID: f.jobID, LogLine: "line-2"}))
 
@@ -106,7 +123,7 @@ func TestAppendAndGetJobLog(t *testing.T) {
 func TestAppendJobLog_UnknownJob(t *testing.T) {
 	f := newLogFixture(t)
 
-	uc := pipelinelogs.NewBatchAppendJobLogs(f.store, pipelineservice.Config{})
+	uc := pipelinelogs.NewBatchAppendJobLogs(f.store, pipelineservice.Config{}, f.metrics)
 	err := uc.Execute(context.Background(), pipelinelogs.BatchAppendJobLogsParams{JobID: uuid.New(), LogLines: []string{"x"}})
 	require.ErrorIs(t, err, pipelineservice.ErrJobNotFound)
 }
@@ -423,4 +440,59 @@ func TestGetJobLog_MissingArchiveObject(t *testing.T) {
 		JobID:       f.jobID,
 	})
 	require.ErrorIs(t, err, logarchive.ErrNotFound)
+}
+
+func TestBatchAppendJobLogs_CountsDroppedLines(t *testing.T) {
+	f := newLogFixture(t)
+
+	f.append(t, 3, "1", "2", "3", "4", "5")
+	f.append(t, 3, "6", "7")
+	f.append(t, 0, "8")
+
+	f.assertMetric(t, "synclet_log_lines_dropped_total", `
+# HELP synclet_log_lines_dropped_total Total number of job log lines dropped by the per-attempt line cap.
+# TYPE synclet_log_lines_dropped_total counter
+synclet_log_lines_dropped_total 4
+`)
+}
+
+func TestArchiveJobLogs_CountsArchivedBytes(t *testing.T) {
+	f := newLogFixture(t)
+	f.append(t, 0, "a1", "a2", "a3")
+	f.retry()
+	f.append(t, 0, "b1", "b2")
+	f.finish(pipelineservice.JobStatusCompleted)
+
+	require.NoError(t, f.archiver(true).Execute(context.Background(), f.jobID))
+	require.NoError(t, f.archiver(true).Execute(context.Background(), f.jobID), "rerun archives nothing")
+
+	size := f.store.segments[segmentKey{f.jobID, 1}].SizeBytes + f.store.segments[segmentKey{f.jobID, 2}].SizeBytes
+	require.Positive(t, size)
+
+	f.assertMetric(t, "synclet_log_archive_bytes_total", fmt.Sprintf(`
+# HELP synclet_log_archive_bytes_total Total size in bytes of the job log objects written to the log archive.
+# TYPE synclet_log_archive_bytes_total counter
+synclet_log_archive_bytes_total %d
+`, size))
+}
+
+func TestArchiveJobLogs_CountsFailuresByBackend(t *testing.T) {
+	f := newLogFixture(t)
+	f.append(t, 0, "a1")
+	f.finish(pipelineservice.JobStatusFailed)
+
+	f.archive.failPut[f.key(1)] = true
+	require.ErrorIs(t, f.archiver(true).Execute(context.Background(), f.jobID), errPutFailed)
+	require.ErrorIs(t, f.archiver(true).Execute(context.Background(), f.jobID), errPutFailed)
+
+	f.assertMetric(t, "synclet_log_archive_failures_total", `
+# HELP synclet_log_archive_failures_total Total number of job attempts whose logs failed to archive, by archive backend.
+# TYPE synclet_log_archive_failures_total counter
+synclet_log_archive_failures_total{backend="filesystem"} 2
+`)
+	f.assertMetric(t, "synclet_log_archive_bytes_total", `
+# HELP synclet_log_archive_bytes_total Total size in bytes of the job log objects written to the log archive.
+# TYPE synclet_log_archive_bytes_total counter
+synclet_log_archive_bytes_total 0
+`)
 }

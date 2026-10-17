@@ -18,6 +18,7 @@ import (
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinejobs"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinelogs"
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinemetrics"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelineworkspaces"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelinestorage"
 	"github.com/synclet-io/synclet/pkg/logarchive"
@@ -60,7 +61,7 @@ type noStats struct{ pipelineservice.StatsStorage }
 func (noStats) DeleteWorkspaceRollups(context.Context, uuid.UUID) error { return nil }
 
 func (f *fixture) archiver() *pipelinelogs.ArchiveJobLogs {
-	return pipelinelogs.NewArchiveJobLogs(f.storage, f.archive, pipelineservice.Config{LogArchiveEnabled: true})
+	return pipelinelogs.NewArchiveJobLogs(f.storage, f.archive, pipelineservice.Config{LogArchiveEnabled: true}, pipelinemetrics.NewMetricsCollector())
 }
 
 // raceArchiver runs deleteJobs with an archive whose delete starts archiving
@@ -226,7 +227,7 @@ func TestJobLogArchive_JobDeletedAfterPutLeavesNoObjectWhenDeletesFail(t *testin
 		case <-time.After(archiverHeadStart):
 		}
 	}}
-	archiver := pipelinelogs.NewArchiveJobLogs(f.storage, archive, pipelineservice.Config{LogArchiveEnabled: true})
+	archiver := pipelinelogs.NewArchiveJobLogs(f.storage, archive, pipelineservice.Config{LogArchiveEnabled: true}, pipelinemetrics.NewMetricsCollector())
 
 	_ = archiver.Execute(ctx, old)
 

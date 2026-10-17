@@ -294,6 +294,8 @@ With `PIPELINE_LOG_ARCHIVE_BACKEND=none` (the default) logs stay in Postgres unt
 - `s3` works with AWS S3, MinIO, Cloudflare R2 and Google Cloud Storage (HMAC keys via its S3 interoperability endpoint). Set `PIPELINE_LOG_ARCHIVE_S3_ENDPOINT` for anything but AWS, and `PIPELINE_LOG_ARCHIVE_S3_USE_PATH_STYLE=true` for MinIO. Without static keys the default AWS credential chain is used (environment, IRSA, instance profile).
 - `gcs` uses the native Google Cloud Storage API. With `PIPELINE_LOG_ARCHIVE_GCS_CREDENTIALS_FILE` it authenticates with that service account key; without it, Application Default Credentials (GKE Workload Identity, `GOOGLE_APPLICATION_CREDENTIALS`, or `gcloud auth application-default login` locally). The server logs which credential source it uses at startup. Credentials are resolved on first use, so missing ADC shows up as archive errors, not a startup failure.
 
+Archiving health is exported on the metrics endpoint: `synclet_log_archive_failures_total{backend}` counts job attempts whose logs failed to archive, `synclet_log_archive_bytes_total` the size of the objects written, and `synclet_log_lines_dropped_total` the lines dropped by `PIPELINE_LOG_MAX_LINES_PER_ATTEMPT`.
+
 #### GCS with GKE Workload Identity (Helm)
 
 No key file is needed. The server and jobs pods run as the chart's Kubernetes service account; bind it to a Google service account that can write the bucket:

@@ -20,6 +20,8 @@ type Config struct {
 	HeartbeatTimeout            time.Duration
 	// LogArchiveEnabled moves the logs of finished jobs from Postgres to the LogArchive.
 	LogArchiveEnabled bool
+	// LogArchiveBackend names the configured LogArchive backend.
+	LogArchiveBackend string
 	// MaxLogLinesPerAttempt caps stored log lines per job attempt; 0 disables the cap.
 	MaxLogLinesPerAttempt int
 }

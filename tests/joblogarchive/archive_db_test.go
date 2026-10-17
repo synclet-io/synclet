@@ -22,6 +22,7 @@ import (
 	"github.com/synclet-io/synclet/modules/pipeline/pipelinedbstate"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinelogs"
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinemetrics"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelinestorage"
 	"github.com/synclet-io/synclet/pkg/logarchive"
 )
@@ -123,7 +124,7 @@ func (f *fixture) setJob(t *testing.T, jobID uuid.UUID, status string, attempt i
 func (f *fixture) appendLines(t *testing.T, maxLines int, jobID uuid.UUID, lines ...string) {
 	t.Helper()
 
-	uc := pipelinelogs.NewBatchAppendJobLogs(f.storage, pipelineservice.Config{MaxLogLinesPerAttempt: maxLines})
+	uc := pipelinelogs.NewBatchAppendJobLogs(f.storage, pipelineservice.Config{MaxLogLinesPerAttempt: maxLines}, pipelinemetrics.NewMetricsCollector())
 	require.NoError(t, uc.Execute(context.Background(), pipelinelogs.BatchAppendJobLogsParams{JobID: jobID, LogLines: lines}))
 }
 
@@ -177,7 +178,7 @@ func TestJobLogArchive_EndToEnd(t *testing.T) {
 
 	f.setJob(t, jobID, "completed", 2)
 
-	archiver := pipelinelogs.NewArchiveJobLogs(f.storage, f.archive, pipelineservice.Config{LogArchiveEnabled: true})
+	archiver := pipelinelogs.NewArchiveJobLogs(f.storage, f.archive, pipelineservice.Config{LogArchiveEnabled: true}, pipelinemetrics.NewMetricsCollector())
 	require.NoError(t, archiver.Execute(ctx, jobID))
 	require.NoError(t, archiver.Execute(ctx, jobID))
 
@@ -233,7 +234,7 @@ func TestJobLogArchive_RetentionStorage(t *testing.T) {
 
 	old := f.newJob(t, "completed")
 	f.appendLines(t, 0, old, "x")
-	require.NoError(t, pipelinelogs.NewArchiveJobLogs(f.storage, f.archive, pipelineservice.Config{LogArchiveEnabled: true}).Execute(ctx, old))
+	require.NoError(t, pipelinelogs.NewArchiveJobLogs(f.storage, f.archive, pipelineservice.Config{LogArchiveEnabled: true}, pipelinemetrics.NewMetricsCollector()).Execute(ctx, old))
 
 	newer := f.newJob(t, "failed")
 	require.NoError(t, f.db.Exec(`UPDATE pipeline.jobs SET created_at = NOW() - INTERVAL '1 hour' WHERE id = ?`, old).Error)

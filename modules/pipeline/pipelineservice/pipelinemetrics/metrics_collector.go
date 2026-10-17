@@ -28,6 +28,11 @@ type MetricsCollector struct {
 
 	// Connector-level metrics
 	connectorSyncDuration *prometheus.HistogramVec
+
+	// Job log metrics
+	logArchiveFailuresTotal *prometheus.CounterVec
+	logArchiveBytesTotal    prometheus.Counter
+	logLinesDroppedTotal    prometheus.Counter
 }
 
 // NewMetricsCollector creates a MetricsCollector with all pipeline metrics.
@@ -99,6 +104,21 @@ func NewMetricsCollector() *MetricsCollector {
 			},
 			[]string{"connector_type"},
 		),
+		logArchiveFailuresTotal: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: "synclet_log_archive_failures_total",
+				Help: "Total number of job attempts whose logs failed to archive, by archive backend.",
+			},
+			[]string{"backend"},
+		),
+		logArchiveBytesTotal: prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "synclet_log_archive_bytes_total",
+			Help: "Total size in bytes of the job log objects written to the log archive.",
+		}),
+		logLinesDroppedTotal: prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "synclet_log_lines_dropped_total",
+			Help: "Total number of job log lines dropped by the per-attempt line cap.",
+		}),
 	}
 }
 
@@ -114,6 +134,9 @@ func (m *MetricsCollector) Describe(ch chan<- *prometheus.Desc) {
 	m.zeroRecordSyncsTotal.Describe(ch)
 	m.pendingJobs.Describe(ch)
 	m.connectorSyncDuration.Describe(ch)
+	m.logArchiveFailuresTotal.Describe(ch)
+	m.logArchiveBytesTotal.Describe(ch)
+	m.logLinesDroppedTotal.Describe(ch)
 }
 
 // Collect sends all metric values to the channel.
@@ -128,6 +151,9 @@ func (m *MetricsCollector) Collect(ch chan<- prometheus.Metric) {
 	m.zeroRecordSyncsTotal.Collect(ch)
 	m.pendingJobs.Collect(ch)
 	m.connectorSyncDuration.Collect(ch)
+	m.logArchiveFailuresTotal.Collect(ch)
+	m.logArchiveBytesTotal.Collect(ch)
+	m.logLinesDroppedTotal.Collect(ch)
 }
 
 // ObserveSyncCompleted records a successful sync completion with all stats.
@@ -162,4 +188,26 @@ func (m *MetricsCollector) ObserveActiveSyncStopped() {
 // ObserveJobDequeued decrements the pending jobs gauge.
 func (m *MetricsCollector) ObserveJobDequeued() {
 	m.pendingJobs.Dec()
+}
+
+// InitLogArchiveFailures exports the archive failure counter of the given
+// backend at zero.
+func (m *MetricsCollector) InitLogArchiveFailures(backend string) {
+	m.logArchiveFailuresTotal.WithLabelValues(backend)
+}
+
+// ObserveLogArchiveFailed records a job attempt whose logs failed to archive
+// to the given backend.
+func (m *MetricsCollector) ObserveLogArchiveFailed(backend string) {
+	m.logArchiveFailuresTotal.WithLabelValues(backend).Inc()
+}
+
+// ObserveLogArchived records an archived log object of the given size.
+func (m *MetricsCollector) ObserveLogArchived(sizeBytes int64) {
+	m.logArchiveBytesTotal.Add(float64(sizeBytes))
+}
+
+// ObserveLogLinesDropped records log lines dropped by the per-attempt cap.
+func (m *MetricsCollector) ObserveLogLinesDropped(count int) {
+	m.logLinesDroppedTotal.Add(float64(count))
 }

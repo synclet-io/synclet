@@ -11,6 +11,7 @@ import (
 	"github.com/saturn4er/boilerplate-go/lib/filter"
 
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinemetrics"
 )
 
 const archiveReadBatch = 5000
@@ -20,12 +21,25 @@ const archiveReadBatch = 5000
 type ArchiveJobLogs struct {
 	storage pipelineservice.Storage
 	archive pipelineservice.LogArchive
+	metrics *pipelinemetrics.MetricsCollector
 	enabled bool
+	backend string
 }
 
 // NewArchiveJobLogs creates a new ArchiveJobLogs use case.
-func NewArchiveJobLogs(storage pipelineservice.Storage, archive pipelineservice.LogArchive, config pipelineservice.Config) *ArchiveJobLogs {
-	return &ArchiveJobLogs{storage: storage, archive: archive, enabled: config.LogArchiveEnabled}
+func NewArchiveJobLogs(
+	storage pipelineservice.Storage,
+	archive pipelineservice.LogArchive,
+	config pipelineservice.Config,
+	metrics *pipelinemetrics.MetricsCollector,
+) *ArchiveJobLogs {
+	return &ArchiveJobLogs{
+		storage: storage,
+		archive: archive,
+		metrics: metrics,
+		enabled: config.LogArchiveEnabled,
+		backend: config.LogArchiveBackend,
+	}
 }
 
 // Execute archives every attempt of the job that still has lines in Postgres.
@@ -71,6 +85,8 @@ func (uc *ArchiveJobLogs) Execute(ctx context.Context, jobID uuid.UUID) error {
 	for _, attempt := range attempts {
 		key := pipelineservice.LogArchiveKey(conn.WorkspaceID, conn.ID, jobID, attempt)
 		if err := uc.archiveAttempt(ctx, jobID, attempt, key); err != nil {
+			uc.metrics.ObserveLogArchiveFailed(uc.backend)
+
 			return fmt.Errorf("archiving logs of job %s attempt %d: %w", jobID, attempt, err)
 		}
 	}
@@ -104,7 +120,9 @@ func (uc *ArchiveJobLogs) archiveAttempt(ctx context.Context, jobID uuid.UUID, a
 		ArchivedAt: &now,
 	}
 
-	return uc.storage.ExecuteInTransaction(ctx, func(ctx context.Context, tx pipelineservice.Storage) error {
+	var marked bool
+
+	err = uc.storage.ExecuteInTransaction(ctx, func(ctx context.Context, tx pipelineservice.Storage) error {
 		exists, err := tx.Jobs().LockKeyShare(ctx, jobID)
 		if err != nil || !exists {
 			return err
@@ -114,13 +132,22 @@ func (uc *ArchiveJobLogs) archiveAttempt(ctx context.Context, jobID uuid.UUID, a
 			return fmt.Errorf("writing archive object: %w", err)
 		}
 
-		marked, err := tx.JobLogSegments().MarkArchived(ctx, segment)
+		marked, err = tx.JobLogSegments().MarkArchived(ctx, segment)
 		if err != nil || !marked {
 			return err
 		}
 
 		return tx.JobLogs().DeleteAttemptLogs(ctx, jobID, attempt, lastID)
 	})
+	if err != nil {
+		return err
+	}
+
+	if marked {
+		uc.metrics.ObserveLogArchived(size)
+	}
+
+	return nil
 }
 
 // lockRange returns the highest log id of the attempt while holding the

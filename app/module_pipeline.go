@@ -155,7 +155,7 @@ func pipelineConfigModule() fx.Option {
 
 func pipelineMetricsModule() fx.Option {
 	return fx.Provide(
-		pipelinemetrics.NewMetricsCollector,
+		newPipelineMetricsCollector,
 		pnpprometheus.MetricsCollectorProvider(pipelineMetricsCollectorAdapter),
 	)
 }
@@ -189,6 +189,15 @@ func pipelineDependenciesModule() fx.Option {
 			fx.Annotate(pipelinestorage.NewStatsStorage, fx.As(new(pipelineservice.StatsStorage))),
 		),
 	)
+}
+
+func newPipelineMetricsCollector(cfg *pipelineConfig) *pipelinemetrics.MetricsCollector {
+	metrics := pipelinemetrics.NewMetricsCollector()
+	if cfg.LogArchive.Backend != logArchiveBackendNone {
+		metrics.InitLogArchiveFailures(cfg.LogArchive.Backend)
+	}
+
+	return metrics
 }
 
 func pipelineMetricsCollectorAdapter(c *pipelinemetrics.MetricsCollector) prometheus.Collector {
@@ -266,6 +275,7 @@ func newPipelineServiceConfig(cfg *pipelineConfig) pipelineservice.Config {
 		RegistryFetchTimeout:        cfg.RegistryFetchTimeout,
 		HeartbeatTimeout:            cfg.HeartbeatTimeout,
 		LogArchiveEnabled:           cfg.LogArchive.Backend != logArchiveBackendNone,
+		LogArchiveBackend:           cfg.LogArchive.Backend,
 		MaxLogLinesPerAttempt:       cfg.MaxLogLinesPerAttempt,
 	}
 }
