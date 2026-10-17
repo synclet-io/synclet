@@ -75,7 +75,7 @@ func SetAuthCookies(header http.Header, tokens *AuthTokens, cfg CookieConfig) {
 // ClearAuthCookies expires all three auth cookies.
 func ClearAuthCookies(header http.Header, cfg CookieConfig) {
 	for _, name := range []string{accessTokenCookie, refreshTokenCookie, authMetaCookie} {
-		setCookie(header, &http.Cookie{
+		setCookie(header, &http.Cookie{ //nolint:gosec // G124: the metadata cookie must be JS-readable; Secure driven by cfg.
 			Name:     name,
 			Value:    "",
 			Path:     "/",

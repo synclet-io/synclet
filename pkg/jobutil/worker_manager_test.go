@@ -62,8 +62,8 @@ func TestWorkerManager_Close_WaitsForActiveJobs(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	select {
-	case <-closeDone:
-		t.Fatal("Close returned before jobs completed")
+	case err := <-closeDone:
+		t.Fatalf("Close returned before jobs completed: %v", err)
 	default:
 		// Expected: Close is still blocking.
 	}

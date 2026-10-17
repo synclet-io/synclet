@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/pressly/goose/v3"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -18,6 +17,7 @@ import (
 	"github.com/synclet-io/synclet/modules/audit/auditdbstate"
 	"github.com/synclet-io/synclet/modules/audit/auditservice"
 	"github.com/synclet-io/synclet/modules/audit/auditstorage"
+	"github.com/synclet-io/synclet/tests/testdb"
 )
 
 const (
@@ -128,10 +128,7 @@ func openDB(t *testing.T, dsn string) *gorm.DB {
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, sqlDB.Close()) })
 
-	goose.SetBaseFS(auditdbstate.MigrationsFS)
-	goose.SetTableName("audit_goose_db_version")
-	require.NoError(t, goose.SetDialect("postgres"))
-	require.NoError(t, goose.Up(sqlDB, "."))
+	testdb.Migrate(t, sqlDB, auditdbstate.MigrationsFS, "audit_goose_db_version")
 
 	return db
 }

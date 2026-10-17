@@ -11,7 +11,6 @@ import (
 
 	"github.com/go-pnp/go-pnp/logging"
 	"github.com/google/uuid"
-	"github.com/pressly/goose/v3"
 	"github.com/saturn4er/boilerplate-go/lib/filter"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -25,6 +24,7 @@ import (
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinemetrics"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelinestorage"
 	"github.com/synclet-io/synclet/pkg/logarchive"
+	"github.com/synclet-io/synclet/tests/testdb"
 )
 
 type noopLogDelegate struct{}
@@ -63,10 +63,7 @@ func setup(t *testing.T) *fixture {
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, sqlDB.Close()) })
 
-	goose.SetBaseFS(pipelinedbstate.MigrationsFS)
-	goose.SetTableName("pipeline_goose_db_version")
-	require.NoError(t, goose.SetDialect("postgres"))
-	require.NoError(t, goose.Up(sqlDB, "."))
+	testdb.Migrate(t, sqlDB, pipelinedbstate.MigrationsFS, "pipeline_goose_db_version")
 
 	archiveDir := t.TempDir()
 	archive, err := logarchive.NewFilesystem(archiveDir)

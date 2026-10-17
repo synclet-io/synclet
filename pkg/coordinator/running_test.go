@@ -109,7 +109,8 @@ func TestRunPipeline_ReportsRunningOnceConnectorsConnect(t *testing.T) {
 	require.NoError(t, destOut.Close())
 
 	select {
-	case <-done:
+	case err := <-done:
+		require.NoError(t, err)
 	case <-ctx.Done():
 		t.Fatal("runPipeline did not return")
 	}
