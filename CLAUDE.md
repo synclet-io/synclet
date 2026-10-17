@@ -35,3 +35,7 @@ Config: `.env` file (copy from `.env.dist`; `go run . generate dotenv` appends e
 ## Architecture decisions
 
 Decisions about the sync engine's architecture (job queue, executors, router, connector protocol boundary, state handling, native connectors) are made by a human: present the options with their trade-offs and wait for the choice; never settle one yourself.
+
+## Migrations
+
+A migration file may be modified only while it has not been pushed to GitHub; once pushed, every schema change (a new table, column, type or index) goes into a new migration file, never into an existing one.
