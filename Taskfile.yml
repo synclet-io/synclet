@@ -2,6 +2,11 @@ version: '3'
 
 dotenv: ['.env']
 
+vars:
+  # Keep in step with the golangci-lint-action steps in .github/workflows/ci.yml.
+  GOLANGCI_LINT_VERSION: v2.15.0
+  GOLANGCI_LINT: go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@{{.GOLANGCI_LINT_VERSION}}
+
 tasks:
   dev:
     desc: Run server with hot reload
@@ -27,17 +32,17 @@ tasks:
   lint:
     desc: Run golangci-lint
     cmds:
-      - golangci-lint run
+      - '{{.GOLANGCI_LINT}} run'
 
   lint:new-from-main:
     desc: Run golangci-lint with new-from-rev
     cmds:
-      - golangci-lint run --new-from-rev main
+      - '{{.GOLANGCI_LINT}} run --new-from-rev main'
 
   lint:fix:
     desc: Run golangci-lint with auto-fix
     cmds:
-      - golangci-lint run --fix
+      - '{{.GOLANGCI_LINT}} run --fix'
 
   boilerplate-go:
     desc: Generate boilerplate code

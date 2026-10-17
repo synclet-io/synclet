@@ -1,12 +1,15 @@
 package app
 
 import (
+	"bytes"
 	"encoding/base64"
 	"io"
 	"log/slog"
 	"os"
+	"strings"
 	"testing"
 
+	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -204,4 +207,84 @@ func TestEnsureSecretsTreatsEmptyAsMissing(t *testing.T) {
 		assert.Contains(t, err.Error(), "set SECRET_ENCRYPTION_KEY:")
 		assert.NotContains(t, err.Error(), "AUTH_JWT_SECRET")
 	})
+}
+
+func TestEnsureSecretsWarnsOnComposeDefaults(t *testing.T) {
+	composeEnv, err := godotenv.Read("../.env.compose")
+	require.NoError(t, err)
+
+	composeJWTSecret := composeEnv["AUTH_JWT_SECRET"]
+	composeEncryptionKey := composeEnv["SECRET_ENCRYPTION_KEY"]
+
+	require.NotEmpty(t, composeJWTSecret)
+	require.NotEmpty(t, composeEncryptionKey)
+
+	tests := []struct {
+		name          string
+		jwtSecret     string
+		encryptionKey string
+		warned        []string
+		notWarned     []string
+	}{
+		{
+			name:          "both compose defaults",
+			jwtSecret:     composeJWTSecret,
+			encryptionKey: composeEncryptionKey,
+			warned:        []string{"AUTH_JWT_SECRET", "SECRET_ENCRYPTION_KEY"},
+		},
+		{
+			name:          "compose JWT secret only",
+			jwtSecret:     composeJWTSecret,
+			encryptionKey: validEncryptionKey,
+			warned:        []string{"AUTH_JWT_SECRET"},
+			notWarned:     []string{"SECRET_ENCRYPTION_KEY"},
+		},
+		{
+			name:          "compose encryption key only",
+			jwtSecret:     validJWTSecret,
+			encryptionKey: composeEncryptionKey,
+			warned:        []string{"SECRET_ENCRYPTION_KEY"},
+			notWarned:     []string{"AUTH_JWT_SECRET"},
+		},
+		{
+			name:          "own secrets",
+			jwtSecret:     validJWTSecret,
+			encryptionKey: validEncryptionKey,
+			notWarned:     []string{"AUTH_JWT_SECRET", "SECRET_ENCRYPTION_KEY"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("AUTH_JWT_SECRET", tt.jwtSecret)
+			t.Setenv("SECRET_ENCRYPTION_KEY", tt.encryptionKey)
+			t.Setenv("ENVIRONMENT", "production")
+
+			var logs bytes.Buffer
+
+			require.NoError(t, ensureSecrets(slog.New(slog.NewTextHandler(&logs, nil))))
+
+			warnings := make(map[string]bool)
+
+			for line := range strings.Lines(logs.String()) {
+				if !strings.Contains(line, "level=WARN") {
+					continue
+				}
+
+				for _, name := range []string{"AUTH_JWT_SECRET", "SECRET_ENCRYPTION_KEY"} {
+					if strings.Contains(line, name) {
+						warnings[name] = true
+					}
+				}
+			}
+
+			for _, name := range tt.warned {
+				assert.True(t, warnings[name], "expected a WARN line naming %s, logs:\n%s", name, logs.String())
+			}
+
+			for _, name := range tt.notWarned {
+				assert.False(t, warnings[name], "unexpected WARN line naming %s, logs:\n%s", name, logs.String())
+			}
+		})
+	}
 }

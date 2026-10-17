@@ -58,6 +58,8 @@ func ensureSecrets(logger *slog.Logger) error {
 	hasEncryptionKey := os.Getenv("SECRET_ENCRYPTION_KEY") != ""
 
 	if hasJWTSecret && hasEncryptionKey {
+		warnComposeDefaultSecrets(logger)
+
 		return validateSecrets()
 	}
 
@@ -103,6 +105,24 @@ const (
 	minJWTSecretLen  = 32
 	encryptionKeyLen = 32
 )
+
+// composeDefaultSecrets are the values .env.compose commits for the
+// docker-compose.yml quickstart; everyone with the repository knows them.
+var composeDefaultSecrets = map[string]string{ //nolint:gochecknoglobals,gosec // public quickstart defaults, listed so they can be detected.
+	"AUTH_JWT_SECRET":       "synclet-compose-default-jwt-secret-change-me",
+	"SECRET_ENCRYPTION_KEY": "c3luY2xldC1jb21wb3NlLWRlZmF1bHQta2V5LTMyYiE=",
+}
+
+// warnComposeDefaultSecrets logs a warning for each secret that still holds
+// its committed .env.compose default.
+func warnComposeDefaultSecrets(logger *slog.Logger) {
+	for _, name := range []string{"AUTH_JWT_SECRET", "SECRET_ENCRYPTION_KEY"} {
+		if os.Getenv(name) == composeDefaultSecrets[name] {
+			logger.Warn(name+" is the public default from .env.compose; set your own in .env next to docker-compose.yml (`openssl rand -base64 32`) before exposing Synclet beyond localhost",
+				slog.String("variable", name))
+		}
+	}
+}
 
 // validateSecrets checks AUTH_JWT_SECRET and SECRET_ENCRYPTION_KEY against the
 // formats the auth and secret modules require, reporting every malformed one.

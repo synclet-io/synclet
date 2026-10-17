@@ -1,4 +1,4 @@
-x-synclet-image: &synclet-image ghcr.io/synclet-io/synclet:0.5.0 # x-release-please-version
+x-synclet-image: &synclet-image ghcr.io/synclet-io/synclet:0.5.1 # x-release-please-version
 
 x-synclet-env: &synclet-env
   DB_DSN: postgres://synclet:synclet@postgres:5432/synclet?sslmode=disable
@@ -29,7 +29,6 @@ services:
       WATERMILL_SQL_CONSUMER_GROUP: "local"
       PUBLIC_HTTP_SERVER_ADDR: 0.0.0.0:8080
       INTERNAL_HTTP_SERVER_ADDR: 0.0.0.0:8081
-      ENVIRONMENT: development
       LOG_LEVEL: info
       # Scratch dir shared with the host so the host Docker daemon can
       # bind-mount per-task config/catalog/state files into spawned connector
