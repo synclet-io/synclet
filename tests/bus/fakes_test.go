@@ -165,10 +165,6 @@ func (unlimitedRetention) ListExcessTerminalJobIDs(context.Context, uuid.UUID, i
 	return nil, nil
 }
 
-func (unlimitedRetention) DeleteJobs(context.Context, []uuid.UUID) (int64, error) {
-	return 0, nil
-}
-
 type notifyStore struct {
 	notifyservice.Storage
 	webhooks *webhookStorage

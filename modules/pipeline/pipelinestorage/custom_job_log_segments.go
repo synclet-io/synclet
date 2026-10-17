@@ -2,6 +2,7 @@ package pipelinestorage
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -65,19 +66,75 @@ func (s *JobLogSegmentsStorage) MarkArchived(ctx context.Context, segment *pipel
 	return result.RowsAffected > 0, nil
 }
 
-// ListWorkspaceArchiveKeys returns the archive keys of every archived segment
-// of the workspace's jobs.
-func (s *JobLogSegmentsStorage) ListWorkspaceArchiveKeys(ctx context.Context, workspaceID uuid.UUID) ([]string, error) {
-	var keys []string
+// LockArchiveKeys locks the given jobs and their log segments until the
+// surrounding transaction ends and returns the archive key of every segment:
+// the stored key of an archived segment and the key an archiver writes for an
+// open one, whose object may exist when marking it failed. While the locks are
+// held no segment of these jobs can be created and no object written for them,
+// so the keys stay complete until the jobs are deleted.
+func (s *JobLogSegmentsStorage) LockArchiveKeys(ctx context.Context, jobIDs []uuid.UUID) ([]string, error) {
+	if len(jobIDs) == 0 {
+		return nil, nil
+	}
+
+	if err := s.DB.WithContext(ctx).Exec(`
+		SELECT id FROM pipeline.jobs WHERE id IN ? ORDER BY id FOR UPDATE`, jobIDs,
+	).Error; err != nil {
+		return nil, fmt.Errorf("locking jobs: %w", err)
+	}
+
+	return s.lockedKeys(ctx, `j.id IN ?`, jobIDs)
+}
+
+// LockWorkspaceArchiveKeys is LockArchiveKeys for every job of the workspace.
+func (s *JobLogSegmentsStorage) LockWorkspaceArchiveKeys(ctx context.Context, workspaceID uuid.UUID) ([]string, error) {
+	if err := s.DB.WithContext(ctx).Exec(`
+		SELECT j.id FROM pipeline.jobs j
+		JOIN pipeline.connections c ON c.id = j.connection_id
+		WHERE c.workspace_id = ?
+		ORDER BY j.id
+		FOR UPDATE OF j`, workspaceID,
+	).Error; err != nil {
+		return nil, fmt.Errorf("locking workspace jobs: %w", err)
+	}
+
+	return s.lockedKeys(ctx, `c.workspace_id = ?`, workspaceID)
+}
+
+type lockedSegment struct {
+	WorkspaceID  uuid.UUID
+	ConnectionID uuid.UUID
+	JobID        uuid.UUID
+	Attempt      int
+	ArchiveKey   sql.NullString
+}
+
+// lockedKeys locks the segments of the jobs matching where and returns their
+// keys. The query does not filter on archive columns: a row being archived
+// concurrently is filtered on its old version, and only rows that match are
+// waited for and returned in their committed state.
+func (s *JobLogSegmentsStorage) lockedKeys(ctx context.Context, where string, args ...any) ([]string, error) {
+	var rows []lockedSegment
 
 	if err := s.DB.WithContext(ctx).Raw(`
-		SELECT s.archive_key
+		SELECT c.workspace_id, j.connection_id, s.job_id, s.attempt, s.archive_key
 		FROM pipeline.job_log_segments s
 		JOIN pipeline.jobs j ON j.id = s.job_id
 		JOIN pipeline.connections c ON c.id = j.connection_id
-		WHERE c.workspace_id = ? AND s.archive_key IS NOT NULL`, workspaceID,
-	).Scan(&keys).Error; err != nil {
-		return nil, fmt.Errorf("listing workspace log archive keys: %w", err)
+		WHERE `+where+`
+		ORDER BY s.job_id, s.attempt
+		FOR UPDATE OF s`, args...,
+	).Scan(&rows).Error; err != nil {
+		return nil, fmt.Errorf("locking job log segments: %w", err)
+	}
+
+	keys := make([]string, len(rows))
+
+	for i, row := range rows {
+		keys[i] = pipelinesvc.LogArchiveKey(row.WorkspaceID, row.ConnectionID, row.JobID, row.Attempt)
+		if row.ArchiveKey.Valid {
+			keys[i] = row.ArchiveKey.String
+		}
 	}
 
 	return keys, nil

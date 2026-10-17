@@ -112,3 +112,18 @@ func (s *JobsStorage) MarkRunning(ctx context.Context, id uuid.UUID) (bool, erro
 
 	return result.RowsAffected > 0, nil
 }
+
+// LockKeyShare holds a key share lock on the job until the surrounding
+// transaction ends, so the job cannot be deleted meanwhile; status and other
+// non-key updates are not blocked. Returns false when the job does not exist.
+func (s *JobsStorage) LockKeyShare(ctx context.Context, id uuid.UUID) (bool, error) {
+	var ids []uuid.UUID
+
+	if err := s.DB.WithContext(ctx).
+		Raw(`SELECT id FROM pipeline.jobs WHERE id = ? FOR KEY SHARE`, id).
+		Scan(&ids).Error; err != nil {
+		return false, wrapJobQueryError(fmt.Errorf("locking job: %w", err))
+	}
+
+	return len(ids) > 0, nil
+}

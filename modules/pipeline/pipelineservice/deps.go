@@ -92,10 +92,9 @@ type StatsStorage interface {
 	DeleteWorkspaceRollups(ctx context.Context, workspaceID uuid.UUID) error
 }
 
-// JobRetentionStorage selects and deletes jobs for job retention cleanup.
+// JobRetentionStorage selects jobs for job retention cleanup.
 type JobRetentionStorage interface {
 	ListExcessTerminalJobIDs(ctx context.Context, workspaceID uuid.UUID, keepCount, limit int) ([]uuid.UUID, error)
-	DeleteJobs(ctx context.Context, ids []uuid.UUID) (int64, error)
 }
 
 // SecretOwnerConnectorTask is the secret owner type for config secrets a check task stores under its own ID.

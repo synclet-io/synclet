@@ -12,6 +12,7 @@ import (
 	"github.com/go-pnp/go-pnp/logging"
 	"github.com/google/uuid"
 	"github.com/pressly/goose/v3"
+	"github.com/saturn4er/boilerplate-go/lib/filter"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/postgres"
@@ -41,6 +42,7 @@ type fixture struct {
 	db          *gorm.DB
 	storage     *pipelinestorage.Storages
 	archive     *logarchive.Filesystem
+	archiveDir  string
 	workspaceID uuid.UUID
 	connID      uuid.UUID
 }
@@ -65,13 +67,15 @@ func setup(t *testing.T) *fixture {
 	require.NoError(t, goose.SetDialect("postgres"))
 	require.NoError(t, goose.Up(sqlDB, "."))
 
-	archive, err := logarchive.NewFilesystem(t.TempDir())
+	archiveDir := t.TempDir()
+	archive, err := logarchive.NewFilesystem(archiveDir)
 	require.NoError(t, err)
 
 	f := &fixture{
 		db:          db,
 		storage:     pipelinestorage.NewStorages(db, &logging.Logger{Delegate: noopLogDelegate{}}, nil),
 		archive:     archive,
+		archiveDir:  archiveDir,
 		workspaceID: uuid.New(),
 		connID:      uuid.New(),
 	}
@@ -184,8 +188,15 @@ func TestJobLogArchive_EndToEnd(t *testing.T) {
 	f.appendLines(t, 3, jobID, "late")
 	assert.Equal(t, append(want, "late"), f.readAll(t, jobID, 2))
 
-	keys, err := f.storage.JobLogSegments().ListWorkspaceArchiveKeys(ctx, f.workspaceID)
-	require.NoError(t, err)
+	var keys []string
+
+	require.NoError(t, f.storage.ExecuteInTransaction(ctx, func(ctx context.Context, tx pipelineservice.Storage) error {
+		var err error
+
+		keys, err = tx.JobLogSegments().LockWorkspaceArchiveKeys(ctx, f.workspaceID)
+
+		return err
+	}))
 	assert.ElementsMatch(t, []string{
 		pipelineservice.LogArchiveKey(f.workspaceID, f.connID, jobID, 1),
 		pipelineservice.LogArchiveKey(f.workspaceID, f.connID, jobID, 2),
@@ -238,9 +249,7 @@ func TestJobLogArchive_RetentionStorage(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, []uuid.UUID{newer, old}, ids)
 
-	deleted, err := retention.DeleteJobs(ctx, []uuid.UUID{old})
-	require.NoError(t, err)
-	assert.Equal(t, int64(1), deleted)
+	require.NoError(t, f.storage.Jobs().Delete(ctx, &pipelineservice.JobFilter{ID: filter.Equals(old)}))
 
 	var segments int
 	require.NoError(t, f.db.Raw(`SELECT COUNT(*) FROM pipeline.job_log_segments WHERE job_id = ?`, old).Scan(&segments).Error)

@@ -8,7 +8,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// JobRetentionStorageImpl provides bulk deletion for job retention cleanup.
+// JobRetentionStorageImpl selects jobs for job retention cleanup.
 type JobRetentionStorageImpl struct {
 	DB *gorm.DB
 }
@@ -36,19 +36,4 @@ func (s *JobRetentionStorageImpl) ListExcessTerminalJobIDs(ctx context.Context, 
 	}
 
 	return ids, nil
-}
-
-// DeleteJobs deletes the given jobs. CASCADE removes their attempts, logs and
-// log segments.
-func (s *JobRetentionStorageImpl) DeleteJobs(ctx context.Context, ids []uuid.UUID) (int64, error) {
-	if len(ids) == 0 {
-		return 0, nil
-	}
-
-	result := s.DB.WithContext(ctx).Exec(`DELETE FROM pipeline.jobs WHERE id IN ?`, ids)
-	if result.Error != nil {
-		return 0, fmt.Errorf("deleting jobs: %w", result.Error)
-	}
-
-	return result.RowsAffected, nil
 }

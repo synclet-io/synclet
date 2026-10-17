@@ -75,9 +75,11 @@ func (uc *CleanupOldJobs) Execute(ctx context.Context) error {
 	return nil
 }
 
-// ExecuteForWorkspace runs cleanup for a specific workspace. The archived
-// logs of each batch of jobs are deleted before the jobs, so a failed object
-// delete leaves the jobs in place for the next run.
+// ExecuteForWorkspace runs cleanup for a specific workspace. Each batch of
+// jobs is locked, its archived logs are deleted and then the jobs, in one
+// transaction: a failed object delete leaves the jobs in place for the next
+// run, and an archiver racing the batch either finishes before the lock, so
+// its object is deleted here, or finds the job gone and deletes its object.
 func (uc *CleanupOldJobs) ExecuteForWorkspace(ctx context.Context, workspaceID uuid.UUID) error {
 	ws, err := uc.settings.Execute(ctx, workspaceID)
 	if err != nil {
@@ -89,7 +91,7 @@ func (uc *CleanupOldJobs) ExecuteForWorkspace(ctx context.Context, workspaceID u
 		return nil // unlimited
 	}
 
-	var deleted int64
+	var deleted int
 
 	for {
 		ids, err := uc.retentionStorage.ListExcessTerminalJobIDs(ctx, workspaceID, maxJobs, retentionBatchSize)
@@ -101,16 +103,11 @@ func (uc *CleanupOldJobs) ExecuteForWorkspace(ctx context.Context, workspaceID u
 			break
 		}
 
-		if err := uc.deleteArchivedLogs(ctx, ids); err != nil {
+		if err := uc.deleteJobs(ctx, ids); err != nil {
 			return err
 		}
 
-		n, err := uc.retentionStorage.DeleteJobs(ctx, ids)
-		if err != nil {
-			return fmt.Errorf("deleting old jobs: %w", err)
-		}
-
-		deleted += n
+		deleted += len(ids)
 
 		if len(ids) < retentionBatchSize {
 			break
@@ -124,25 +121,21 @@ func (uc *CleanupOldJobs) ExecuteForWorkspace(ctx context.Context, workspaceID u
 	return nil
 }
 
-func (uc *CleanupOldJobs) deleteArchivedLogs(ctx context.Context, jobIDs []uuid.UUID) error {
-	segments, err := uc.storage.JobLogSegments().Find(ctx, &pipelineservice.JobLogSegmentFilter{
-		JobID:  filter.In(jobIDs...),
-		Status: filter.Equals(pipelineservice.JobLogSegmentStatusArchived),
-	})
-	if err != nil {
-		return fmt.Errorf("listing archived job logs: %w", err)
-	}
-
-	keys := make([]string, 0, len(segments))
-	for _, segment := range segments {
-		if segment.ArchiveKey != nil {
-			keys = append(keys, *segment.ArchiveKey)
+func (uc *CleanupOldJobs) deleteJobs(ctx context.Context, jobIDs []uuid.UUID) error {
+	return uc.storage.ExecuteInTransaction(ctx, func(ctx context.Context, tx pipelineservice.Storage) error {
+		keys, err := tx.JobLogSegments().LockArchiveKeys(ctx, jobIDs)
+		if err != nil {
+			return fmt.Errorf("locking old jobs: %w", err)
 		}
-	}
 
-	if err := uc.archive.Delete(ctx, keys...); err != nil {
-		return fmt.Errorf("deleting archived job logs: %w", err)
-	}
+		if err := uc.archive.Delete(ctx, keys...); err != nil {
+			return fmt.Errorf("deleting archived job logs: %w", err)
+		}
 
-	return nil
+		if err := tx.Jobs().Delete(ctx, &pipelineservice.JobFilter{ID: filter.In(jobIDs...)}); err != nil {
+			return fmt.Errorf("deleting old jobs: %w", err)
+		}
+
+		return nil
+	})
 }

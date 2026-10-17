@@ -68,6 +68,7 @@ type JobsStorage interface {
 	UpdateIfStatus(ctx context.Context, job *Job, fromStatuses ...JobStatus) (bool, error)
 	TouchHeartbeat(ctx context.Context, id uuid.UUID, at time.Time) (bool, error)
 	MarkRunning(ctx context.Context, id uuid.UUID) (bool, error)
+	LockKeyShare(ctx context.Context, id uuid.UUID) (bool, error)
 	// end user code 'Job metods'
 }
 
@@ -98,7 +99,8 @@ type JobLogSegmentsStorage interface {
 	LockCurrent(ctx context.Context, jobID uuid.UUID) (*JobLogSegment, error)
 	Lock(ctx context.Context, jobID uuid.UUID, attempt int) (*JobLogSegment, error)
 	MarkArchived(ctx context.Context, segment *JobLogSegment) (bool, error)
-	ListWorkspaceArchiveKeys(ctx context.Context, workspaceID uuid.UUID) ([]string, error)
+	LockArchiveKeys(ctx context.Context, jobIDs []uuid.UUID) ([]string, error)
+	LockWorkspaceArchiveKeys(ctx context.Context, workspaceID uuid.UUID) ([]string, error)
 	// end user code 'JobLogSegment metods'
 }
 

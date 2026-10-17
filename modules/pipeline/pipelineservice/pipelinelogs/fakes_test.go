@@ -35,6 +35,7 @@ type logStore struct {
 
 	markArchivedErr error
 	beforeMark      func()
+	beforeJobLock   func()
 }
 
 func newLogStore(workspaceID, jobID, connID uuid.UUID) *logStore {
@@ -75,6 +76,16 @@ func (s *logStore) rowsFor(jobID uuid.UUID) []pipelineservice.JobLog {
 type logJobs struct {
 	pipelineservice.JobsStorage
 	store *logStore
+}
+
+func (m *logJobs) LockKeyShare(_ context.Context, id uuid.UUID) (bool, error) {
+	if m.store.beforeJobLock != nil {
+		m.store.beforeJobLock()
+	}
+
+	_, ok := m.store.jobs[id]
+
+	return ok, nil
 }
 
 func (m *logJobs) First(_ context.Context, f *pipelineservice.JobFilter, _ ...optionutil.Option[dbutil.SelectOptions]) (*pipelineservice.Job, error) {

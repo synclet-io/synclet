@@ -37,8 +37,8 @@ func NewPurgeWorkspace(
 	return &PurgeWorkspace{storage: storage, stats: stats, secrets: secrets, archive: archive}
 }
 
-// Execute deletes the workspace's archived job logs, cancels its active jobs,
-// then deletes its connections
+// Execute cancels the workspace's active jobs, then deletes its archived job
+// logs and its connections in one transaction that locks the jobs first
 // (cascading to jobs, attempts, logs, catalogs, state and stream generations),
 // sources, destinations, connector tasks, managed connectors, repositories
 // (cascading to repository connectors), workspace settings and stats
@@ -46,15 +46,6 @@ func NewPurgeWorkspace(
 // step leaves the owners in place and a rerun finishes the job. Running it again on a purged
 // workspace is a no-op.
 func (uc *PurgeWorkspace) Execute(ctx context.Context, workspaceID uuid.UUID) error {
-	keys, err := uc.storage.JobLogSegments().ListWorkspaceArchiveKeys(ctx, workspaceID)
-	if err != nil {
-		return fmt.Errorf("listing archived job logs: %w", err)
-	}
-
-	if err := uc.archive.Delete(ctx, keys...); err != nil {
-		return fmt.Errorf("deleting archived job logs: %w", err)
-	}
-
 	if err := uc.purgeConnections(ctx, workspaceID); err != nil {
 		return err
 	}
@@ -115,13 +106,24 @@ func (uc *PurgeWorkspace) purgeConnections(ctx context.Context, workspaceID uuid
 		return err
 	}
 
-	if err := uc.storage.Connections().Delete(ctx, &pipelineservice.ConnectionFilter{
-		WorkspaceID: filter.Equals(workspaceID),
-	}); err != nil {
-		return fmt.Errorf("deleting connections: %w", err)
-	}
+	return uc.storage.ExecuteInTransaction(ctx, func(ctx context.Context, tx pipelineservice.Storage) error {
+		keys, err := tx.JobLogSegments().LockWorkspaceArchiveKeys(ctx, workspaceID)
+		if err != nil {
+			return fmt.Errorf("locking jobs: %w", err)
+		}
 
-	return nil
+		if err := uc.archive.Delete(ctx, keys...); err != nil {
+			return fmt.Errorf("deleting archived job logs: %w", err)
+		}
+
+		if err := tx.Connections().Delete(ctx, &pipelineservice.ConnectionFilter{
+			WorkspaceID: filter.Equals(workspaceID),
+		}); err != nil {
+			return fmt.Errorf("deleting connections: %w", err)
+		}
+
+		return nil
+	})
 }
 
 func (uc *PurgeWorkspace) cancelActiveJobs(ctx context.Context, connectionIDs []uuid.UUID) error {

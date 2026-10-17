@@ -30,9 +30,11 @@ func NewArchiveJobLogs(storage pipelineservice.Storage, archive pipelineservice.
 
 // Execute archives every attempt of the job that still has lines in Postgres.
 // It does nothing when archiving is disabled or the job is missing or not
-// finished. Each attempt's object is written before its rows are deleted, and
-// the rows are deleted in the transaction that marks the attempt archived, so
-// a rerun after any failure repeats only unfinished attempts. Lines that
+// finished. Each attempt's object is written, the attempt marked archived and
+// its rows deleted in one transaction that holds the job against deletion, so
+// no object is written for a deleted job and a rerun after any failure
+// repeats only unfinished attempts. An attempt already archived by a
+// concurrent run keeps that run's object under the same key. Lines that
 // arrive after an attempt is archived stay in Postgres.
 func (uc *ArchiveJobLogs) Execute(ctx context.Context, jobID uuid.UUID) error {
 	if !uc.enabled {
@@ -91,10 +93,6 @@ func (uc *ArchiveJobLogs) archiveAttempt(ctx context.Context, jobID uuid.UUID, a
 
 	size := int64(buf.Len())
 
-	if err := uc.archive.Put(ctx, key, &buf); err != nil {
-		return fmt.Errorf("writing archive object: %w", err)
-	}
-
 	now := time.Now()
 	segment := &pipelineservice.JobLogSegment{
 		JobID:      jobID,
@@ -106,26 +104,23 @@ func (uc *ArchiveJobLogs) archiveAttempt(ctx context.Context, jobID uuid.UUID, a
 		ArchivedAt: &now,
 	}
 
-	var marked bool
+	return uc.storage.ExecuteInTransaction(ctx, func(ctx context.Context, tx pipelineservice.Storage) error {
+		exists, err := tx.Jobs().LockKeyShare(ctx, jobID)
+		if err != nil || !exists {
+			return err
+		}
 
-	if err := uc.storage.ExecuteInTransaction(ctx, func(ctx context.Context, tx pipelineservice.Storage) error {
-		var markErr error
+		if err := uc.archive.Put(ctx, key, &buf); err != nil {
+			return fmt.Errorf("writing archive object: %w", err)
+		}
 
-		marked, markErr = tx.JobLogSegments().MarkArchived(ctx, segment)
-		if markErr != nil || !marked {
-			return markErr
+		marked, err := tx.JobLogSegments().MarkArchived(ctx, segment)
+		if err != nil || !marked {
+			return err
 		}
 
 		return tx.JobLogs().DeleteAttemptLogs(ctx, jobID, attempt, lastID)
-	}); err != nil {
-		return err
-	}
-
-	if !marked {
-		return uc.dropOrphanObject(ctx, jobID, attempt, key)
-	}
-
-	return nil
+	})
 }
 
 // lockRange returns the highest log id of the attempt while holding the
@@ -184,24 +179,6 @@ func (uc *ArchiveJobLogs) encodeAttempt(ctx context.Context, buf *bytes.Buffer, 
 	}
 
 	return firstID, nil
-}
-
-// dropOrphanObject deletes the object just written when its segment was
-// removed with its job in the meantime.
-func (uc *ArchiveJobLogs) dropOrphanObject(ctx context.Context, jobID uuid.UUID, attempt int, key string) error {
-	_, err := uc.storage.JobLogSegments().First(ctx, &pipelineservice.JobLogSegmentFilter{
-		JobID:   filter.Equals(jobID),
-		Attempt: filter.Equals(attempt),
-	})
-	if err == nil {
-		return nil
-	}
-
-	if !errors.Is(err, pipelineservice.ErrJobLogSegmentNotFound) {
-		return fmt.Errorf("checking job log segment: %w", err)
-	}
-
-	return uc.archive.Delete(ctx, key)
 }
 
 func isTerminal(status pipelineservice.JobStatus) bool {

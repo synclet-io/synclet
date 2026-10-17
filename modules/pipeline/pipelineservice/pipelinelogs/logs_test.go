@@ -344,16 +344,40 @@ func TestArchiveJobLogs_LinesAfterArchivingStayInPostgres(t *testing.T) {
 	assert.Equal(t, []string{"late"}, pages[1].Lines)
 }
 
-func TestArchiveJobLogs_DeletesObjectOfDeletedJob(t *testing.T) {
+func TestArchiveJobLogs_WritesNoObjectForDeletedJob(t *testing.T) {
 	f := newLogFixture(t)
 	f.append(t, 0, "a")
 	f.finish(pipelineservice.JobStatusCompleted)
 
-	f.store.beforeMark = func() { delete(f.store.segments, segmentKey{f.jobID, 1}) }
+	f.store.beforeJobLock = func() {
+		delete(f.store.jobs, f.jobID)
+		delete(f.store.segments, segmentKey{f.jobID, 1})
+	}
 	require.NoError(t, f.archiver(true).Execute(context.Background(), f.jobID))
 
-	assert.Equal(t, 1, f.archive.puts)
+	assert.Zero(t, f.archive.puts)
 	assert.False(t, f.archive.exists(t, f.key(1)))
+
+	require.NoError(t, f.archiver(true).Execute(context.Background(), f.jobID), "a redelivered event of the deleted job")
+	assert.Zero(t, f.archive.puts)
+}
+
+func TestArchiveJobLogs_KeepsObjectArchivedByConcurrentRun(t *testing.T) {
+	f := newLogFixture(t)
+	f.append(t, 0, "a")
+	f.finish(pipelineservice.JobStatusCompleted)
+
+	f.store.beforeMark = func() {
+		f.store.beforeMark = nil
+		key := f.key(1)
+		_, err := f.store.JobLogSegments().MarkArchived(context.Background(), &pipelineservice.JobLogSegment{
+			JobID: f.jobID, Attempt: 1, ArchiveKey: &key,
+		})
+		require.NoError(t, err)
+	}
+	require.NoError(t, f.archiver(true).Execute(context.Background(), f.jobID))
+
+	assert.True(t, f.archive.exists(t, f.key(1)), "the object of a live job stays")
 }
 
 func TestGetJobLog_ArchivedPagesAcrossAttempts(t *testing.T) {

@@ -4,11 +4,10 @@ import (
 	"context"
 	"errors"
 	"io"
+	"slices"
 	"testing"
 
-	"github.com/go-pnp/go-pnp/pkg/optionutil"
 	"github.com/google/uuid"
-	"github.com/saturn4er/boilerplate-go/lib/dbutil"
 	"github.com/saturn4er/boilerplate-go/lib/filter"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -47,41 +46,58 @@ func (m *mockRetentionStorage) ListExcessTerminalJobIDs(ctx context.Context, wor
 	return ids, args.Error(1)
 }
 
-func (m *mockRetentionStorage) DeleteJobs(ctx context.Context, ids []uuid.UUID) (int64, error) {
-	args := m.Called(ctx, ids)
-
-	return args.Get(0).(int64), args.Error(1)
-}
-
 // Verify interface compliance.
 var _ pipelineservice.JobRetentionStorage = (*mockRetentionStorage)(nil)
 
 type retentionStore struct {
 	pipelineservice.Storage
 	segments *retentionSegments
+
+	deletedJobs   [][]uuid.UUID
+	deleteJobsErr error
 }
 
 func (s *retentionStore) JobLogSegments() pipelineservice.JobLogSegmentsStorage { return s.segments }
 
+func (s *retentionStore) Jobs() pipelineservice.JobsStorage { return &retentionJobs{store: s} }
+
+func (s *retentionStore) ExecuteInTransaction(ctx context.Context, cb func(ctx context.Context, tx pipelineservice.Storage) error) error {
+	return cb(ctx, s)
+}
+
+type retentionJobs struct {
+	pipelineservice.JobsStorage
+	store *retentionStore
+}
+
+func (j *retentionJobs) Delete(_ context.Context, f *pipelineservice.JobFilter) error {
+	if j.store.deleteJobsErr != nil {
+		return j.store.deleteJobsErr
+	}
+
+	j.store.deletedJobs = append(j.store.deletedJobs, f.ID.(*filter.InFilter[uuid.UUID]).Values)
+
+	return nil
+}
+
 type retentionSegments struct {
 	pipelineservice.JobLogSegmentsStorage
 	records []*pipelineservice.JobLogSegment
+	locked  [][]uuid.UUID
 }
 
-func (s *retentionSegments) Find(_ context.Context, f *pipelineservice.JobLogSegmentFilter, _ ...optionutil.Option[dbutil.SelectOptions]) ([]*pipelineservice.JobLogSegment, error) {
-	ids := f.JobID.(*filter.InFilter[uuid.UUID]).Values
+func (s *retentionSegments) LockArchiveKeys(_ context.Context, ids []uuid.UUID) ([]string, error) {
+	s.locked = append(s.locked, ids)
 
-	var out []*pipelineservice.JobLogSegment
+	var keys []string
 
 	for _, segment := range s.records {
-		for _, id := range ids {
-			if segment.JobID == id && segment.Status == pipelineservice.JobLogSegmentStatusArchived {
-				out = append(out, segment)
-			}
+		if slices.Contains(ids, segment.JobID) && segment.ArchiveKey != nil {
+			keys = append(keys, *segment.ArchiveKey)
 		}
 	}
 
-	return out, nil
+	return keys, nil
 }
 
 type recordingArchive struct {
@@ -127,10 +143,9 @@ func TestCleanupOldJobs_Unlimited(t *testing.T) {
 	require.NoError(t, err)
 
 	storage.AssertNotCalled(t, "ListExcessTerminalJobIDs")
-	storage.AssertNotCalled(t, "DeleteJobs")
 }
 
-func TestCleanupOldJobs_DeletesArchivedLogsThenJobs(t *testing.T) {
+func TestCleanupOldJobs_LocksJobsDeletesArchivedLogsThenJobs(t *testing.T) {
 	settings := new(mockSettingsProvider)
 	storage := new(mockRetentionStorage)
 	archive := &recordingArchive{}
@@ -152,12 +167,13 @@ func TestCleanupOldJobs_DeletesArchivedLogsThenJobs(t *testing.T) {
 
 	ids := []uuid.UUID{oldJob, otherJob}
 	storage.On("ListExcessTerminalJobIDs", mock.Anything, wsID, 50, retentionBatchSize).Return(ids, nil).Once()
-	storage.On("DeleteJobs", mock.Anything, ids).Return(int64(2), nil).Run(func(mock.Arguments) {
-		assert.ElementsMatch(t, []string{"logs/old/1", "logs/old/2"}, archive.deleted, "objects must be deleted before jobs")
-	})
 
 	require.NoError(t, useCase.ExecuteForWorkspace(context.Background(), wsID))
 	storage.AssertExpectations(t)
+
+	assert.Equal(t, [][]uuid.UUID{ids}, store.segments.locked)
+	assert.ElementsMatch(t, []string{"logs/old/1", "logs/old/2"}, archive.deleted)
+	assert.Equal(t, [][]uuid.UUID{ids}, store.deletedJobs)
 }
 
 func TestCleanupOldJobs_LoopsUntilBatchIsShort(t *testing.T) {
@@ -179,10 +195,10 @@ func TestCleanupOldJobs_LoopsUntilBatchIsShort(t *testing.T) {
 
 	storage.On("ListExcessTerminalJobIDs", mock.Anything, wsID, 5, retentionBatchSize).Return(full, nil).Once()
 	storage.On("ListExcessTerminalJobIDs", mock.Anything, wsID, 5, retentionBatchSize).Return([]uuid.UUID(nil), nil).Once()
-	storage.On("DeleteJobs", mock.Anything, full).Return(int64(len(full)), nil).Once()
 
 	require.NoError(t, useCase.ExecuteForWorkspace(context.Background(), wsID))
 	storage.AssertExpectations(t)
+	assert.Equal(t, [][]uuid.UUID{full}, store.deletedJobs)
 }
 
 func TestCleanupOldJobs_ArchiveDeleteFailureKeepsJobs(t *testing.T) {
@@ -204,7 +220,7 @@ func TestCleanupOldJobs_ArchiveDeleteFailureKeepsJobs(t *testing.T) {
 
 	err := useCase.ExecuteForWorkspace(context.Background(), wsID)
 	require.ErrorContains(t, err, "deleting archived job logs")
-	storage.AssertNotCalled(t, "DeleteJobs", mock.Anything, mock.Anything)
+	assert.Empty(t, store.deletedJobs)
 }
 
 func TestCleanupOldJobs_StorageError(t *testing.T) {
@@ -212,7 +228,7 @@ func TestCleanupOldJobs_StorageError(t *testing.T) {
 	storage := new(mockRetentionStorage)
 
 	jobID := uuid.New()
-	store := &retentionStore{segments: &retentionSegments{}}
+	store := &retentionStore{segments: &retentionSegments{}, deleteJobsErr: errors.New("db error")}
 	useCase := NewCleanupOldJobs(store, storage, settings, &recordingArchive{}, nil)
 
 	wsID := uuid.New()
@@ -220,7 +236,6 @@ func TestCleanupOldJobs_StorageError(t *testing.T) {
 		WorkspaceID: wsID, MaxJobsPerWorkspace: 10,
 	}, nil)
 	storage.On("ListExcessTerminalJobIDs", mock.Anything, wsID, 10, retentionBatchSize).Return([]uuid.UUID{jobID}, nil)
-	storage.On("DeleteJobs", mock.Anything, []uuid.UUID{jobID}).Return(int64(0), errors.New("db error"))
 
 	err := useCase.ExecuteForWorkspace(context.Background(), wsID)
 	require.ErrorContains(t, err, "deleting old jobs")

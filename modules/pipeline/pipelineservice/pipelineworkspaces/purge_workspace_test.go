@@ -49,8 +49,14 @@ type purgeSegments struct {
 	store *purgeStore
 }
 
-func (p *purgeSegments) ListWorkspaceArchiveKeys(context.Context, uuid.UUID) ([]string, error) {
+func (p *purgeSegments) LockWorkspaceArchiveKeys(context.Context, uuid.UUID) ([]string, error) {
+	p.store.log = append(p.store.log, "lock jobs")
+
 	return p.store.archiveKeys, nil
+}
+
+func (s *purgeStore) ExecuteInTransaction(ctx context.Context, cb func(ctx context.Context, tx pipelineservice.Storage) error) error {
+	return cb(ctx, s)
 }
 
 type purgeArchive struct {
@@ -275,8 +281,9 @@ func TestPurgeWorkspace(t *testing.T) {
 		require.NoError(t, uc.Execute(ctx, workspaceID))
 
 		assert.Equal(t, []string{
-			"delete archives logs/a/1.ndjson.gz,logs/a/2.ndjson.gz",
 			"cancel job",
+			"lock jobs",
+			"delete archives logs/a/1.ndjson.gz,logs/a/2.ndjson.gz",
 			"delete connections",
 			"secrets source " + src.ID.String(),
 			"delete sources",
@@ -341,7 +348,7 @@ func TestPurgeWorkspace(t *testing.T) {
 		uc := pipelineworkspaces.NewPurgeWorkspace(store, &purgeStats{store: store}, &purgeSecrets{store: store}, &purgeArchive{store: store})
 		require.ErrorIs(t, uc.Execute(ctx, workspaceID), errBoom)
 
-		assert.Empty(t, store.log)
+		assert.Equal(t, []string{"lock jobs"}, store.log)
 		assert.Len(t, store.connections, 1)
 	})
 }
