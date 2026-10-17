@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.5.1](https://github.com/synclet-io/synclet/compare/synclet-v0.5.0...synclet-v0.5.1) (2026-10-17)
+
+
+### Bug Fixes
+
+* **ci:** serialize test-package migrations and close the golangci findings ([cd4df51](https://github.com/synclet-io/synclet/commit/cd4df51b65d70d1e2b7167611fd7dc30b974c1ab))
+* **coordinator:** FIFOs openable by any user, fail fast when a connector exits early ([d301ddf](https://github.com/synclet-io/synclet/commit/d301ddf3470b2f06d06cec9860c54789e7163bd6))
+* **helm:** preallocate init container names in chart test ([c519f89](https://github.com/synclet-io/synclet/commit/c519f8917a375e2023805524e3f4ea5a1586a26b))
+* **pipeline:** catch-up migration for objects missing on old databases ([0e4afc2](https://github.com/synclet-io/synclet/commit/0e4afc22ac9e0d4529c513204d3151cd6501cc43))
+* **release:** publish the four tar.gz archives and SHA256SUMS the matrix builds ([00b6c3f](https://github.com/synclet-io/synclet/commit/00b6c3fca376b5740b5ded2427b4a56d12bcd40d))
+
 ## [0.5.0](https://github.com/synclet-io/synclet/compare/synclet-v0.4.0...synclet-v0.5.0) (2026-10-17)
 
 
