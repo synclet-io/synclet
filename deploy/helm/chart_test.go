@@ -228,8 +228,10 @@ func TestChart_ServerProbeOverrides(t *testing.T) {
 
 func TestChart_DistributedPodsWaitForDatabase(t *testing.T) {
 	inits := func(r rendered, name string) []string {
-		var names []string
-		for _, c := range r.get(t, "Deployment", name).Spec.Template.Spec.InitContainers {
+		containers := r.get(t, "Deployment", name).Spec.Template.Spec.InitContainers
+
+		names := make([]string, 0, len(containers))
+		for _, c := range containers {
 			names = append(names, c.Name)
 		}
 
