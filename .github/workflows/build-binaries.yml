@@ -106,7 +106,13 @@ jobs:
 
           mkdir -p "out/${STAGE}"
           cp dist/synclet "out/${STAGE}/"
-          cp README.md LICENSE CHANGELOG.md "out/${STAGE}/" 2>/dev/null || true
+          for f in README.md LICENSE CHANGELOG.md; do
+            if [ ! -f "$f" ]; then
+              echo "::error::$f is missing; every release archive must include it"
+              exit 1
+            fi
+          done
+          cp README.md LICENSE CHANGELOG.md "out/${STAGE}/"
 
           ARCHIVE_NAME="${STAGE}.tar.gz"
           cd out

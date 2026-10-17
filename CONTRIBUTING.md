@@ -31,7 +31,8 @@ The frontend uses Bun only; please don't commit `package-lock.json` or `yarn.loc
 | Command | What it does |
 |---|---|
 | `task build` | Builds `./bin/synclet` |
-| `task test` | Runs the Go tests |
+| `task test` | Runs the Go tests; the database tests skip themselves |
+| `task test:db` | Runs the Go tests with the database tests on the dev PostgreSQL |
 | `task lint` / `task lint:fix` | Runs golangci-lint |
 | `task proto` | Regenerates protobuf code (`buf generate`) |
 | `task boilerplate-go` | Regenerates domain models and storage from the model definitions |
@@ -39,10 +40,12 @@ The frontend uses Bun only; please don't commit `package-lock.json` or `yarn.loc
 | `task e2e` | End-to-end tests (needs Docker) |
 | `cd front && bun run test:run` | Frontend unit tests (Vitest) |
 
-Tests that need PostgreSQL read `TEST_DATABASE_DSN` and are skipped when it is unset, for example:
+Tests that need PostgreSQL read `TEST_DATABASE_DSN` and are skipped when it is unset, so `task test` alone does not run them. `task test:db` starts the dev PostgreSQL from `docker-compose.dev.yml`, creates the `synclet_test` database there if it is missing and runs the whole suite with `TEST_DATABASE_DSN` pointing at it. Set `POSTGRES_PORT` when port 5432 is taken, or set `TEST_DATABASE_DSN` yourself to use another database; arguments after `--` go to `go test`:
 
 ```bash
-TEST_DATABASE_DSN='postgres://synclet:synclet@localhost:5432/synclet_test?sslmode=disable' task test
+task test:db
+POSTGRES_PORT=5438 task test:db -- -count=1
+TEST_DATABASE_DSN='postgres://user:pass@localhost:5432/synclet_test?sslmode=disable' task test:db
 ```
 
 ## Code layout

@@ -5,8 +5,9 @@ services:
       POSTGRES_USER: synclet
       POSTGRES_PASSWORD: synclet
       POSTGRES_DB: synclet
+    # POSTGRES_PORT moves the host port when 5432 is taken.
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
 

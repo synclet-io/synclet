@@ -95,7 +95,8 @@ Outside `ENVIRONMENT=development` the process refuses to start without `AUTH_JWT
 
 **Binary.** Each [GitHub release](https://github.com/synclet-io/synclet/releases) tagged `synclet-v<version>` carries `synclet-v<version>-<os>-<arch>.tar.gz` for `linux/amd64`, `linux/arm64`, `darwin/amd64` and `darwin/arm64`, plus `SHA256SUMS` over every archive. The binary serves the frontend, so it needs only PostgreSQL and Docker:
 ```bash
-shasum -a 256 -c SHA256SUMS --ignore-missing
+sha256sum -c SHA256SUMS --ignore-missing            # Linux
+shasum -a 256 -c SHA256SUMS --ignore-missing        # macOS
 tar -xzf synclet-v<version>-linux-amd64.tar.gz
 cd synclet-v<version>-linux-amd64
 ./synclet migrate up

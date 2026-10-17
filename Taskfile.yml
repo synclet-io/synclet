@@ -24,6 +24,11 @@ tasks:
     cmds:
       - go test ./...
 
+  test:db:
+    desc: Run all tests with the database tests, on the dev PostgreSQL unless TEST_DATABASE_DSN is set
+    cmds:
+      - ./scripts/test-db.sh {{.CLI_ARGS}}
+
   test:coverage:
     desc: Enforce per-package coverage minimums from scripts/coverage-thresholds.txt
     cmds:
