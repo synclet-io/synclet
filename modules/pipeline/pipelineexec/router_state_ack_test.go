@@ -157,3 +157,34 @@ func TestRun_StoredStateNeverPassesUnacknowledgedRecords(t *testing.T) {
 		})
 	}
 }
+
+func TestRun_StateNotStoredWhenDestinationDiesBeforeEchoingIt(t *testing.T) {
+	source := `{"type":"RECORD","record":{"stream":"users","data":{"id":1},"emitted_at":0}}` + "\n" +
+		`{"type":"RECORD","record":{"stream":"users","data":{"id":2},"emitted_at":0}}` + "\n" +
+		`{"type":"STATE","state":{"type":"LEGACY","data":{"cursor":2}}}` + "\n"
+
+	destStdinReader, destStdinWriter := io.Pipe()
+	destStdoutReader, destStdoutWriter := io.Pipe()
+
+	acked := make(chan int, 1)
+
+	go func() { acked <- fakeDestination(destStdinReader, destStdoutWriter, 3) }()
+
+	handler := &stateRecorder{}
+	result := make(chan error, 1)
+
+	go func() {
+		_, err := Run(context.Background(), strings.NewReader(source), destStdinWriter, destStdoutReader, handler, RunConfig{}, nil)
+		result <- err
+	}()
+
+	select {
+	case err := <-result:
+		require.ErrorIs(t, err, errDestinationKilled)
+	case <-time.After(5 * time.Second):
+		t.Fatal("router did not return after the destination was killed")
+	}
+
+	assert.Equal(t, 0, <-acked)
+	assert.Empty(t, handler.stored())
+}

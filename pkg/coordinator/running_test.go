@@ -151,12 +151,17 @@ func TestRunPipeline_FailsWhenConnectorExitsBeforeOpeningFIFO(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
 
+			type openResult struct {
+				file *os.File
+				err  error
+			}
+
+			sourceOpened := make(chan openResult, 1)
+
 			if tt.openSource {
 				go func() {
 					sourceOut, err := openFIFO(ctx, filepath.Join(dir, SourceStdoutFIFO), os.O_WRONLY, "", "")
-					if err == nil {
-						t.Cleanup(func() { _ = sourceOut.Close() })
-					}
+					sourceOpened <- openResult{file: sourceOut, err: err}
 				}()
 			}
 
@@ -175,6 +180,12 @@ func TestRunPipeline_FailsWhenConnectorExitsBeforeOpeningFIFO(t *testing.T) {
 				assert.Contains(t, err.Error(), tt.wantErr)
 			case <-time.After(5 * time.Second):
 				t.Fatal("runPipeline kept waiting for a connector that had already exited")
+			}
+
+			if tt.openSource {
+				opened := <-sourceOpened
+				require.NoError(t, opened.err)
+				require.NoError(t, opened.file.Close())
 			}
 
 			assert.Empty(t, svc.runningJobs())

@@ -36,7 +36,8 @@ PF_PID=
 k() { kubectl --context "$CTX" "$@"; }
 h() { helm --kube-context "$CTX" "$@"; }
 log() { printf '\n==> %s\n' "$*"; }
-snapshot() { k get "$SNAP_KINDS" -o name 2>/dev/null | sort; }
+# shellcheck source-path=SCRIPTDIR source=cluster-snapshot.sh
+source "$ROOT/scripts/cluster-snapshot.sh"
 
 [[ $(kubectl config get-contexts -o name) == *"$CTX"* ]] || { echo "context $CTX not found" >&2; exit 1; }
 

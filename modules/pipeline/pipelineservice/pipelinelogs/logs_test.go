@@ -2,6 +2,7 @@ package pipelinelogs_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -110,9 +111,8 @@ func (f *logFixture) key(attempt int) string {
 func TestAppendAndGetJobLog(t *testing.T) {
 	f := newLogFixture(t)
 
-	appendUC := pipelinelogs.NewAppendJobLog(f.store, pipelineservice.Config{}, f.metrics)
-	require.NoError(t, appendUC.Execute(context.Background(), pipelinelogs.AppendJobLogParams{JobID: f.jobID, LogLine: "line-1"}))
-	require.NoError(t, appendUC.Execute(context.Background(), pipelinelogs.AppendJobLogParams{JobID: f.jobID, LogLine: "line-2"}))
+	f.append(t, 0, "line-1")
+	f.append(t, 0, "line-2")
 
 	result := f.get(t, 0, 0)
 	assert.Equal(t, []string{"line-1", "line-2"}, result.Lines)
@@ -495,4 +495,66 @@ synclet_log_archive_failures_total{backend="filesystem"} 2
 # TYPE synclet_log_archive_bytes_total counter
 synclet_log_archive_bytes_total 0
 `)
+}
+
+func (f *logFixture) assertArchiveMetrics(t *testing.T, failures int, bytes int64) {
+	t.Helper()
+
+	f.assertMetric(t, "synclet_log_archive_failures_total", fmt.Sprintf(`
+# HELP synclet_log_archive_failures_total Total number of job attempts whose logs failed to archive, by archive backend.
+# TYPE synclet_log_archive_failures_total counter
+synclet_log_archive_failures_total{backend="filesystem"} %d
+`, failures))
+	f.assertMetric(t, "synclet_log_archive_bytes_total", fmt.Sprintf(`
+# HELP synclet_log_archive_bytes_total Total size in bytes of the job log objects written to the log archive.
+# TYPE synclet_log_archive_bytes_total counter
+synclet_log_archive_bytes_total %d
+`, bytes))
+}
+
+func TestArchiveJobLogs_FailureBeforeAttemptLoopCountsNoAttempt(t *testing.T) {
+	errStorage := errors.New("storage unavailable")
+
+	for name, breakStore := range map[string]func(f *logFixture){
+		"connection lookup":           func(f *logFixture) { f.store.connectionErr = errStorage },
+		"listing unarchived attempts": func(f *logFixture) { f.store.listAttemptsErr = errStorage },
+	} {
+		t.Run(name, func(t *testing.T) {
+			f := newLogFixture(t)
+			f.metrics.InitLogArchiveFailures("filesystem")
+			f.append(t, 0, "a1")
+			f.finish(pipelineservice.JobStatusCompleted)
+			breakStore(f)
+
+			require.ErrorIs(t, f.archiver(true).Execute(context.Background(), f.jobID), errStorage)
+
+			assert.Zero(t, f.archive.puts)
+			f.assertArchiveMetrics(t, 0, 0)
+		})
+	}
+}
+
+func TestArchiveJobLogs_CancelledRunCountsFailedAttemptOnceAndCommittedBytesOnly(t *testing.T) {
+	f := newLogFixture(t)
+	f.append(t, 0, "a1", "a2")
+	f.retry()
+	f.append(t, 0, "b1")
+	f.finish(pipelineservice.JobStatusCompleted)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	locks := 0
+	f.store.beforeJobLock = func() {
+		locks++
+		if locks == 2 {
+			cancel()
+		}
+	}
+
+	require.ErrorIs(t, f.archiver(true).Execute(ctx, f.jobID), context.Canceled)
+
+	assert.True(t, f.archive.exists(t, f.key(1)))
+	assert.False(t, f.archive.exists(t, f.key(2)))
+	f.assertArchiveMetrics(t, 1, f.store.segments[segmentKey{f.jobID, 1}].SizeBytes)
 }

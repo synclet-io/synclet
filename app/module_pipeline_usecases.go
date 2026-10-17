@@ -168,7 +168,6 @@ func pipelineUseCasesModule() fx.Option {
 
 		// Log use cases
 		fx.Provide(
-			pipelinelogs.NewAppendJobLog,
 			pipelinelogs.NewGetJobLog,
 			pipelinelogs.NewBatchAppendJobLogs,
 			pipelinelogs.NewArchiveJobLogs,

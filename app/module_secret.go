@@ -1,9 +1,6 @@
 package app
 
 import (
-	"encoding/base64"
-	"errors"
-
 	"github.com/go-pnp/go-pnp/config/configutil"
 	"github.com/go-pnp/go-pnp/logging"
 	"go.uber.org/fx"
@@ -17,9 +14,23 @@ import (
 type EncryptionKey []byte
 
 func (e *EncryptionKey) UnmarshalText(text []byte) error {
-	key, err := base64.StdEncoding.DecodeString(string(text))
-	if err != nil || len(key) != 32 {
-		return errors.New("ENCRYPTION_KEY must be a valid base64-encoded 32-byte key")
+	key, err := decodeEncryptionKey("SECRET_ENCRYPTION_KEY", string(text))
+	if err != nil {
+		return err
+	}
+
+	*e = key
+
+	return nil
+}
+
+// PreviousEncryptionKey is the key being rotated out, readable but no longer used to encrypt.
+type PreviousEncryptionKey []byte
+
+func (e *PreviousEncryptionKey) UnmarshalText(text []byte) error {
+	key, err := decodeEncryptionKey("SECRET_ENCRYPTION_KEY_PREVIOUS", string(text))
+	if err != nil {
+		return err
 	}
 
 	*e = key
@@ -28,8 +39,8 @@ func (e *EncryptionKey) UnmarshalText(text []byte) error {
 }
 
 type secretConfig struct {
-	EncryptionKey         EncryptionKey `env:"ENCRYPTION_KEY,notEmpty"`
-	EncryptionKeyPrevious EncryptionKey `env:"ENCRYPTION_KEY_PREVIOUS"`
+	EncryptionKey         EncryptionKey         `env:"ENCRYPTION_KEY,notEmpty"`
+	EncryptionKeyPrevious PreviousEncryptionKey `env:"ENCRYPTION_KEY_PREVIOUS"`
 }
 
 func secretModule() fx.Option {

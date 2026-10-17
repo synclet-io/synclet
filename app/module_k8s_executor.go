@@ -32,6 +32,19 @@ type k8sExecutorConfig struct {
 	Jobs            k8sExecutorJobsConfig `envPrefix:"JOB_"`
 }
 
+// k8sExecutorConfigModule provides *k8sExecutorConfig only to a process that
+// runs the Kubernetes executor.
+func k8sExecutorConfigModule(options *RunAppOptions) fx.Option {
+	if !options.K8sExecutor {
+		return fx.Options()
+	}
+
+	return fx.Provide(
+		configutil.NewPrefixedConfigProvider[k8sExecutorConfig]("K8S_EXECUTOR_"),
+		configutil.NewPrefixedConfigInfoProvider[k8sExecutorConfig]("K8S_EXECUTOR_"),
+	)
+}
+
 func k8sExecutorModule(options *RunAppOptions) fx.Option {
 	if !options.K8sExecutor {
 		return fx.Options()
@@ -40,9 +53,8 @@ func k8sExecutorModule(options *RunAppOptions) fx.Option {
 	return fx.Module(
 		"k8s-executor",
 		logging.DecorateNamed("k8s"),
+		k8sExecutorConfigModule(options),
 		fx.Provide(
-			configutil.NewPrefixedConfigProvider[k8sExecutorConfig]("K8S_EXECUTOR_"),
-			configutil.NewPrefixedConfigInfoProvider[k8sExecutorConfig]("K8S_EXECUTOR_"),
 			newK8sSyncRunner,
 			newK8sReconciler,
 

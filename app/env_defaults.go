@@ -101,11 +101,6 @@ func ensureSecrets(logger *slog.Logger) error {
 	return validateSecrets()
 }
 
-const (
-	minJWTSecretLen  = 32
-	encryptionKeyLen = 32
-)
-
 // composeDefaultSecrets are the values .env.compose commits for the
 // docker-compose.yml quickstart; everyone with the repository knows them.
 var composeDefaultSecrets = map[string]string{ //nolint:gochecknoglobals,gosec // public quickstart defaults, listed so they can be detected.
@@ -129,17 +124,12 @@ func warnComposeDefaultSecrets(logger *slog.Logger) {
 func validateSecrets() error {
 	var errs []error
 
-	if n := len(os.Getenv("AUTH_JWT_SECRET")); n < minJWTSecretLen {
-		errs = append(errs, fmt.Errorf("AUTH_JWT_SECRET must be at least %d bytes long, got %d (generate one with `openssl rand -base64 32`)", minJWTSecretLen, n))
+	if err := validateJWTSecret("AUTH_JWT_SECRET", []byte(os.Getenv("AUTH_JWT_SECRET"))); err != nil {
+		errs = append(errs, err)
 	}
 
-	key, err := base64.StdEncoding.DecodeString(os.Getenv("SECRET_ENCRYPTION_KEY"))
-
-	switch {
-	case err != nil:
-		errs = append(errs, errors.New("SECRET_ENCRYPTION_KEY must be a standard base64-encoded 32-byte key, got a value that is not valid base64 (generate one with `openssl rand -base64 32`)"))
-	case len(key) != encryptionKeyLen:
-		errs = append(errs, fmt.Errorf("SECRET_ENCRYPTION_KEY must be a standard base64-encoded %d-byte key, got %d bytes (generate one with `openssl rand -base64 32`)", encryptionKeyLen, len(key)))
+	if _, err := decodeEncryptionKey("SECRET_ENCRYPTION_KEY", os.Getenv("SECRET_ENCRYPTION_KEY")); err != nil {
+		errs = append(errs, err)
 	}
 
 	return errors.Join(errs...)

@@ -34,6 +34,8 @@ type logStore struct {
 	nextID      int64
 
 	markArchivedErr error
+	listAttemptsErr error
+	connectionErr   error
 	beforeMark      func()
 	beforeJobLock   func()
 }
@@ -78,9 +80,13 @@ type logJobs struct {
 	store *logStore
 }
 
-func (m *logJobs) LockKeyShare(_ context.Context, id uuid.UUID) (bool, error) {
+func (m *logJobs) LockKeyShare(ctx context.Context, id uuid.UUID) (bool, error) {
 	if m.store.beforeJobLock != nil {
 		m.store.beforeJobLock()
+	}
+
+	if err := ctx.Err(); err != nil {
+		return false, err
 	}
 
 	_, ok := m.store.jobs[id]
@@ -105,6 +111,10 @@ type logConnections struct {
 }
 
 func (m *logConnections) First(_ context.Context, f *pipelineservice.ConnectionFilter, _ ...optionutil.Option[dbutil.SelectOptions]) (*pipelineservice.Connection, error) {
+	if m.store.connectionErr != nil {
+		return nil, m.store.connectionErr
+	}
+
 	for _, conn := range m.store.connections {
 		if eq, ok := f.ID.(*filter.EqualsFilter[uuid.UUID]); ok && conn.ID != eq.Value {
 			continue
@@ -209,6 +219,10 @@ func (m *logLines) DeleteAttemptLogs(_ context.Context, jobID uuid.UUID, attempt
 }
 
 func (m *logLines) ListUnarchivedAttempts(_ context.Context, jobID uuid.UUID) ([]int, error) {
+	if m.store.listAttemptsErr != nil {
+		return nil, m.store.listAttemptsErr
+	}
+
 	var attempts []int
 
 	for _, l := range m.store.rowsFor(jobID) {
