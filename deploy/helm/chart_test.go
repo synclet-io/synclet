@@ -32,6 +32,7 @@ type manifest struct {
 		Template struct {
 			Spec struct {
 				ServiceAccountName string      `yaml:"serviceAccountName"`
+				InitContainers     []container `yaml:"initContainers"`
 				Containers         []container `yaml:"containers"`
 			} `yaml:"spec"`
 		} `yaml:"template"`
@@ -223,4 +224,26 @@ func TestChart_ServerProbeOverrides(t *testing.T) {
 	assert.Equal(t, 8080, server.LivenessProbe.HTTPGet.Port)
 	assert.Equal(t, "/health", server.ReadinessProbe.HTTPGet.Path)
 	assert.Equal(t, "public", server.ReadinessProbe.HTTPGet.Port)
+}
+
+func TestChart_DistributedPodsWaitForDatabase(t *testing.T) {
+	inits := func(r rendered, name string) []string {
+		var names []string
+		for _, c := range r.get(t, "Deployment", name).Spec.Template.Spec.InitContainers {
+			names = append(names, c.Name)
+		}
+
+		return names
+	}
+
+	r := renderChart(t, "--set", "mode=distributed")
+	assert.Equal(t, []string{"wait-postgres", "migrate"}, inits(r, "t-synclet-server"))
+	assert.Equal(t, []string{"wait-postgres", "migrate"}, inits(r, "t-synclet-jobs"))
+	assert.Equal(t, []string{"wait-postgres"}, inits(r, "t-synclet-executor"))
+
+	r = renderChart(t, "--set", "mode=distributed", "--set", "postgresql.enabled=false",
+		"--set", "externalDatabase.host=db", "--set", "externalDatabase.password=x")
+	assert.Equal(t, []string{"migrate"}, inits(r, "t-synclet-server"))
+	assert.Equal(t, []string{"migrate"}, inits(r, "t-synclet-jobs"))
+	assert.Empty(t, inits(r, "t-synclet-executor"))
 }

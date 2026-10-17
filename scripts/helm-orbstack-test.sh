@@ -9,6 +9,8 @@
 #   CHART_PROBES=1      keep the chart's /live and /ready probes; by default they call
 #                       /health on the public port, which images up to 0.4.0 serve
 #   EG_VERSION          Envoy Gateway chart version (default v1.4.2)
+#   POST_INSTALL=<cmd>  run after the route and UI checks, before cleanup, with CTX and
+#                       APP_NS exported; its failure fails the run
 set -euo pipefail
 
 CTX=orbstack
@@ -165,6 +167,11 @@ echo "GET / -> $code"
 if [[ $code != 200 ]] || ! grep -q '<title>Synclet</title>' "$WORK/ui.html"; then
   echo "UI did not answer through the route" >&2
   exit 1
+fi
+
+if [[ -n ${POST_INSTALL:-} ]]; then
+  log "post-install: $POST_INSTALL"
+  CTX=$CTX APP_NS=$APP_NS $POST_INSTALL
 fi
 
 log "passed"

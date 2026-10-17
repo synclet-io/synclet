@@ -1,5 +1,4 @@
-import type { DiscoveredCatalog } from '../catalogStreams'
-import type { StreamRow } from '../StreamFieldsTab.vue'
+import type { DiscoveredCatalog, StreamRow } from '../catalogStreams'
 import { describe, expect, it } from 'vitest'
 import { mergeDiscoveredStreams, parseStreams } from '../catalogStreams'
 

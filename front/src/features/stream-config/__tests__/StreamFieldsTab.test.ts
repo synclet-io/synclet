@@ -1,4 +1,4 @@
-import type { StreamRow } from '../StreamFieldsTab.vue'
+import type { StreamRow } from '../catalogStreams'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import FieldTree from '../FieldTree.vue'

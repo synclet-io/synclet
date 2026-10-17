@@ -42,46 +42,9 @@ spec:
       {{- end }}
       initContainers:
         {{- if .Values.postgresql.enabled }}
-        - name: wait-postgres
-          image: {{ include "synclet.postgresql.image" . }}
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command: ["sh", "-c", "until pg_isready -h {{ include "synclet.fullname" . }}-postgres -p 5432 -U {{ .Values.postgresql.auth.username }}; do echo 'waiting for postgres...'; sleep 2; done"]
-          {{- if .Values.server.containerSecurityContext.enabled }}
-          securityContext:
-            allowPrivilegeEscalation: {{ .Values.server.containerSecurityContext.allowPrivilegeEscalation }}
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop:
-                {{- toYaml .Values.server.containerSecurityContext.capabilities.drop | nindent 16 }}
-          {{- end }}
+        {{- include "synclet.waitPostgresInitContainer" (dict "ctx" $ "securityContext" .Values.server.containerSecurityContext) | nindent 8 }}
         {{- end }}
-        - name: migrate
-          image: {{ include "synclet.image" . }}
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command: ["synclet", "migrate", "up"]
-          envFrom:
-            - configMapRef:
-                name: {{ include "synclet.fullname" . }}
-          env:
-            {{- include "synclet.secretEnvVars" . | nindent 12 }}
-          {{- if .Values.server.containerSecurityContext.enabled }}
-          securityContext:
-            allowPrivilegeEscalation: {{ .Values.server.containerSecurityContext.allowPrivilegeEscalation }}
-            readOnlyRootFilesystem: {{ .Values.server.containerSecurityContext.readOnlyRootFilesystem }}
-            capabilities:
-              drop:
-                {{- toYaml .Values.server.containerSecurityContext.capabilities.drop | nindent 16 }}
-          {{- end }}
-          resources:
-            requests:
-              cpu: 100m
-              memory: 128Mi
-            limits:
-              cpu: 500m
-              memory: 256Mi
-          volumeMounts:
-            - name: tmp
-              mountPath: /tmp
+        {{- include "synclet.migrateInitContainer" (dict "ctx" $ "securityContext" .Values.server.containerSecurityContext) | nindent 8 }}
       containers:
         - name: synclet
           image: {{ include "synclet.image" . }}

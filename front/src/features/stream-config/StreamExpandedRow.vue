@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { StreamRow } from './StreamFieldsTab.vue'
+import type { StreamRow } from './catalogStreams'
 import type { StreamValidationError } from './useStreamValidation'
 import { STabs } from '@shared/ui'
 import { ref } from 'vue'

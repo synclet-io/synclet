@@ -41,6 +41,10 @@ spec:
         runAsUser: {{ .Values.executor.podSecurityContext.runAsUser }}
         fsGroup: {{ .Values.executor.podSecurityContext.fsGroup }}
       {{- end }}
+      {{- if .Values.postgresql.enabled }}
+      initContainers:
+        {{- include "synclet.waitPostgresInitContainer" (dict "ctx" $ "securityContext" .Values.executor.containerSecurityContext) | nindent 8 }}
+      {{- end }}
       containers:
         - name: executor
           image: {{ include "synclet.image" . }}

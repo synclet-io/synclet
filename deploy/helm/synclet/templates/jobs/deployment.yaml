@@ -41,6 +41,11 @@ spec:
         runAsUser: {{ .Values.jobs.podSecurityContext.runAsUser }}
         fsGroup: {{ .Values.jobs.podSecurityContext.fsGroup }}
       {{- end }}
+      initContainers:
+        {{- if .Values.postgresql.enabled }}
+        {{- include "synclet.waitPostgresInitContainer" (dict "ctx" $ "securityContext" .Values.jobs.containerSecurityContext) | nindent 8 }}
+        {{- end }}
+        {{- include "synclet.migrateInitContainer" (dict "ctx" $ "securityContext" .Values.jobs.containerSecurityContext) | nindent 8 }}
       containers:
         - name: jobs
           image: {{ include "synclet.image" . }}

@@ -1,5 +1,20 @@
 import type { DestinationSyncMode, SelectedField, SyncMode } from '@entities/connection'
-import type { StreamRow } from './StreamFieldsTab.vue'
+
+export interface StreamRow {
+  name: string
+  namespace: string
+  syncMode: SyncMode
+  destinationSyncMode: DestinationSyncMode
+  enabled: boolean
+  supportedSyncModes: string[]
+  cursorField: string[]
+  primaryKey: string[][]
+  selectedFields: SelectedField[]
+  jsonSchema: Record<string, any>
+  sourceDefinedCursor: boolean
+  defaultCursorField: string[]
+  sourceDefinedPrimaryKey: string[][]
+}
 
 export interface DiscoveredCatalog {
   streams: Array<{

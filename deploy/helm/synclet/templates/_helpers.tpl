@@ -574,3 +574,57 @@ Common secret env vars shared across all deployments.
       {{- include "synclet.internalApi.secretRef" . | nindent 6 }}
 {{- end }}
 {{- end }}
+
+{{/*
+wait-postgres init container for pods that connect to the bundled PostgreSQL.
+Call with (dict "ctx" $ "securityContext" .Values.<component>.containerSecurityContext).
+*/}}
+{{- define "synclet.waitPostgresInitContainer" -}}
+- name: wait-postgres
+  image: {{ include "synclet.postgresql.image" .ctx }}
+  imagePullPolicy: {{ .ctx.Values.image.pullPolicy }}
+  command: ["sh", "-c", "until pg_isready -h {{ include "synclet.fullname" .ctx }}-postgres -p 5432 -U {{ .ctx.Values.postgresql.auth.username }}; do echo 'waiting for postgres...'; sleep 2; done"]
+  {{- if .securityContext.enabled }}
+  securityContext:
+    allowPrivilegeEscalation: {{ .securityContext.allowPrivilegeEscalation }}
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        {{- toYaml .securityContext.capabilities.drop | nindent 8 }}
+  {{- end }}
+{{- end }}
+
+{{/*
+migrate init container: applies pending migrations before the main container
+starts. Concurrent runs are safe, each module's migrations hold a Postgres
+advisory lock. Call with (dict "ctx" $ "securityContext" .Values.<component>.containerSecurityContext).
+*/}}
+{{- define "synclet.migrateInitContainer" -}}
+- name: migrate
+  image: {{ include "synclet.image" .ctx }}
+  imagePullPolicy: {{ .ctx.Values.image.pullPolicy }}
+  command: ["synclet", "migrate", "up"]
+  envFrom:
+    - configMapRef:
+        name: {{ include "synclet.fullname" .ctx }}
+  env:
+    {{- include "synclet.secretEnvVars" .ctx | nindent 4 }}
+  {{- if .securityContext.enabled }}
+  securityContext:
+    allowPrivilegeEscalation: {{ .securityContext.allowPrivilegeEscalation }}
+    readOnlyRootFilesystem: {{ .securityContext.readOnlyRootFilesystem }}
+    capabilities:
+      drop:
+        {{- toYaml .securityContext.capabilities.drop | nindent 8 }}
+  {{- end }}
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  volumeMounts:
+    - name: tmp
+      mountPath: /tmp
+{{- end }}

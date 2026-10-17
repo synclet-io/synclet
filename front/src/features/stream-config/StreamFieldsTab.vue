@@ -1,26 +1,11 @@
 <script setup lang="ts">
-import type { DestinationSyncMode, SelectedField, SyncMode } from '@entities/connection'
+import type { SelectedField } from '@entities/connection'
+import type { StreamRow } from './catalogStreams'
 import type { SchemaField } from './schemaParser'
 import type { StreamValidationError } from './useStreamValidation'
 import { computed } from 'vue'
 import FieldTree from './FieldTree.vue'
 import { getLeafFields, parseJsonSchema, pathKey } from './schemaParser'
-
-export interface StreamRow {
-  name: string
-  namespace: string
-  syncMode: SyncMode
-  destinationSyncMode: DestinationSyncMode
-  enabled: boolean
-  supportedSyncModes: string[]
-  cursorField: string[]
-  primaryKey: string[][]
-  selectedFields: SelectedField[]
-  jsonSchema: Record<string, any>
-  sourceDefinedCursor: boolean
-  defaultCursorField: string[]
-  sourceDefinedPrimaryKey: string[][]
-}
 
 const props = defineProps<{
   stream: StreamRow
