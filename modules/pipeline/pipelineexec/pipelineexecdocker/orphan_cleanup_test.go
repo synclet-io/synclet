@@ -14,11 +14,14 @@ import (
 // mockRunner implements orphanCleanerRunner for testing.
 type mockRunner struct {
 	containers []container.Summary
+	filters    [][]string
 	stopped    []string
 	removed    []string
 }
 
-func (m *mockRunner) ListByLabel(_ context.Context, _ string) ([]container.Summary, error) {
+func (m *mockRunner) ListByLabel(_ context.Context, labels ...string) ([]container.Summary, error) {
+	m.filters = append(m.filters, labels)
+
 	return m.containers, nil
 }
 
@@ -51,6 +54,7 @@ func newTestOrphanCleaner(runner *mockRunner, checker OrphanJobChecker) *OrphanC
 	return &OrphanCleaner{
 		runner:      runner,
 		checker:     checker,
+		ownerID:     "self",
 		gracePeriod: 15 * time.Minute,
 		logger:      logger.Named("test"),
 	}
@@ -62,12 +66,12 @@ func TestCleanupAll_RemovesAllOrphans(t *testing.T) {
 			{
 				ID:      "container1-abcdef",
 				Created: time.Now().Add(-1 * time.Minute).Unix(),
-				Labels:  map[string]string{"synclet.io/managed": "true", "synclet.io/job-id": "job-1"},
+				Labels:  map[string]string{"synclet.io/managed": "true", OwnerLabel: "self", "synclet.io/job-id": "job-1"},
 			},
 			{
 				ID:      "container2-ghijkl",
 				Created: time.Now().Add(-30 * time.Minute).Unix(),
-				Labels:  map[string]string{"synclet.io/managed": "true", "synclet.io/job-id": "job-2"},
+				Labels:  map[string]string{"synclet.io/managed": "true", OwnerLabel: "self", "synclet.io/job-id": "job-2"},
 			},
 		},
 	}
@@ -90,12 +94,12 @@ func TestCleanupAll_SkipsActiveJobs(t *testing.T) {
 			{
 				ID:      "container1-abcdef",
 				Created: time.Now().Add(-5 * time.Minute).Unix(),
-				Labels:  map[string]string{"synclet.io/managed": "true", "synclet.io/job-id": "job-active"},
+				Labels:  map[string]string{"synclet.io/managed": "true", OwnerLabel: "self", "synclet.io/job-id": "job-active"},
 			},
 			{
 				ID:      "container2-ghijkl",
 				Created: time.Now().Add(-5 * time.Minute).Unix(),
-				Labels:  map[string]string{"synclet.io/managed": "true", "synclet.io/job-id": "job-inactive"},
+				Labels:  map[string]string{"synclet.io/managed": "true", OwnerLabel: "self", "synclet.io/job-id": "job-inactive"},
 			},
 		},
 	}
@@ -130,7 +134,7 @@ func TestCleanup_StillRespectsGracePeriod(t *testing.T) {
 			{
 				ID:      "young-container",
 				Created: time.Now().Add(-1 * time.Minute).Unix(),
-				Labels:  map[string]string{"synclet.io/managed": "true", "synclet.io/job-id": "job-1"},
+				Labels:  map[string]string{"synclet.io/managed": "true", OwnerLabel: "self", "synclet.io/job-id": "job-1"},
 			},
 		},
 	}
@@ -143,4 +147,35 @@ func TestCleanup_StillRespectsGracePeriod(t *testing.T) {
 	// Container is younger than grace period -- should NOT be removed.
 	assert.Empty(t, runner.stopped)
 	assert.Empty(t, runner.removed)
+}
+
+func TestCleanup_OnlyOwnContainers(t *testing.T) {
+	created := time.Now().Add(-30 * time.Minute).Unix()
+	containers := []container.Summary{
+		{ID: "own-orphan-000", Created: created, Labels: map[string]string{"synclet.io/managed": "true", "synclet.io/job-id": "job-1", OwnerLabel: "self"}},
+		{ID: "other-owner-00", Created: created, Labels: map[string]string{"synclet.io/managed": "true", "synclet.io/job-id": "job-2", OwnerLabel: "other"}},
+		{ID: "no-owner-0000", Created: created, Labels: map[string]string{"synclet.io/managed": "true", "synclet.io/job-id": "job-3"}},
+		{ID: "own-active-00", Created: created, Labels: map[string]string{"synclet.io/managed": "true", "synclet.io/job-id": "job-4", OwnerLabel: "self"}},
+		{ID: "own-no-job-00", Created: created, Labels: map[string]string{"synclet.io/managed": "true", OwnerLabel: "self"}},
+	}
+
+	runs := map[string]func(*OrphanCleaner, context.Context) error{
+		"Cleanup":    (*OrphanCleaner).Cleanup,
+		"CleanupAll": (*OrphanCleaner).CleanupAll,
+	}
+
+	for name, run := range runs {
+		t.Run(name, func(t *testing.T) {
+			runner := &mockRunner{containers: containers}
+			checker := &mockJobChecker{activeJobs: map[string]bool{"job-4": true}}
+			cleaner := newTestOrphanCleaner(runner, checker)
+
+			require.NoError(t, run(cleaner, context.Background()))
+
+			assert.ElementsMatch(t, []string{"own-orphan-000", "own-no-job-00"}, runner.removed)
+			require.Len(t, runner.filters, 1)
+			assert.Contains(t, runner.filters[0], "synclet.io/managed=true")
+			assert.Contains(t, runner.filters[0], OwnerLabel+"=self")
+		})
+	}
 }

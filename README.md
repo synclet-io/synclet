@@ -277,6 +277,7 @@ server:
 | `PIPELINE_LOG_ARCHIVE_GCS_*` | `BUCKET`, `PREFIX`, `CREDENTIALS_FILE` for the `gcs` backend | empty |
 | `DOCKER_EXECUTOR_MAX_SYNC_DURATION` | Maximum sync run time on the Docker executor | `24h` |
 | `DOCKER_EXECUTOR_TEMP_DIR_ROOT` | Scratch directory shared with the host Docker daemon | empty |
+| `DOCKER_EXECUTOR_OWNER_ID` | Owner label that scopes orphan container cleanup to this executor. Executors sharing one Docker daemon need distinct values; two standalone servers on one machine must set it explicitly. A containerised executor needs a stable hostname (the compose file sets `hostname: synclet`) or an explicit value, since a container's default hostname changes on recreation. Containers without the label (from earlier versions) are left alone; remove them by hand once | hostname |
 | `K8S_EXECUTOR_NAMESPACE` | Namespace for connector pods | empty |
 | `EXECUTOR_API_URL` | Internal server URL used by distributed executors | empty |
 | `EXECUTOR_API_TOKEN` | Token distributed executors present to the internal server | empty |

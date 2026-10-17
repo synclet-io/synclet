@@ -39,6 +39,9 @@ data:
   ## Docker executor: sync limits
   DOCKER_EXECUTOR_MAX_SYNC_DURATION: {{ .Values.pipeline.maxSyncDuration | quote }}
   DOCKER_EXECUTOR_MAX_CONCURRENT_JOBS: {{ .Values.pipeline.maxConcurrentJobs | quote }}
+  {{- with .Values.pipeline.dockerOwnerId }}
+  DOCKER_EXECUTOR_OWNER_ID: {{ . | quote }}
+  {{- end }}
   PIPELINE_IDLE_TIMEOUT: {{ .Values.pipeline.idleTimeout | quote }}
   ## Pipeline: connector tasks
   PIPELINE_CONNECTOR_TASK_RETENTION: {{ .Values.pipeline.connectorTaskRetention | quote }}

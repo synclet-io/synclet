@@ -363,6 +363,9 @@ pipeline:
   maxConcurrentJobs: 10
   ## If a sync receives no records for this duration, it's cancelled as idle.
   idleTimeout: "10m"
+  ## Owner label the Docker executor stamps on its connector containers; orphan cleanup removes only its own.
+  ## Empty uses the pod hostname. Executors sharing one Docker daemon need distinct values.
+  dockerOwnerId: ""
 
   ## Connector tasks
   ## How long completed connector task results (spec/check/discover) are retained.

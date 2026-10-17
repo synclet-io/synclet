@@ -1,8 +1,17 @@
 package pipelineexecdocker
 
 import (
+	"context"
+	"encoding/json"
 	"io"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"sync"
 	"testing"
+
+	dockercontainer "github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/client"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -105,4 +114,71 @@ func TestDefaultDockerResourceLimits(t *testing.T) {
 		assert.Equal(t, int64(4*1024*1024*1024), memory)
 		assert.Equal(t, int64(2e9), nanoCPUs)
 	})
+}
+
+func TestContainerRunner_ContainerLabels(t *testing.T) {
+	r := &ContainerRunner{ownerID: "self"}
+
+	assert.Equal(t, map[string]string{OwnerLabel: "self"}, r.containerLabels(nil))
+
+	input := map[string]string{"synclet.io/managed": "true", "synclet.io/job-id": "job-1"}
+	assert.Equal(t, map[string]string{
+		"synclet.io/managed": "true",
+		"synclet.io/job-id":  "job-1",
+		OwnerLabel:           "self",
+	}, r.containerLabels(input))
+	assert.Equal(t, map[string]string{"synclet.io/managed": "true", "synclet.io/job-id": "job-1"}, input)
+}
+
+func TestContainerRunner_Run_StampsOwnerLabel(t *testing.T) {
+	var (
+		mu      sync.Mutex
+		created *dockercontainer.Config
+	)
+
+	daemon := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/containers/create"):
+			var cfg dockercontainer.Config
+			if err := json.NewDecoder(r.Body).Decode(&cfg); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+
+				return
+			}
+
+			mu.Lock()
+			created = &cfg
+			mu.Unlock()
+
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"Id":"ctr-1","Warnings":[]}`))
+		case r.Method == http.MethodDelete:
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			http.Error(w, "unsupported in test", http.StatusInternalServerError)
+		}
+	}))
+	t.Cleanup(daemon.Close)
+
+	cli, err := client.NewClientWithOpts(
+		client.WithHost("tcp://"+strings.TrimPrefix(daemon.URL, "http://")),
+		client.WithHTTPClient(daemon.Client()),
+		client.WithVersion("1.47"),
+	)
+	require.NoError(t, err)
+
+	r := &ContainerRunner{client: cli, ownerID: "self"}
+
+	_, err = r.Run(context.Background(), RunOptions{
+		Image:  "connector:1",
+		Labels: map[string]string{"synclet.io/managed": "true"},
+	})
+	require.Error(t, err)
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	require.NotNil(t, created, "Run did not create a container")
+	assert.Equal(t, "self", created.Labels[OwnerLabel])
+	assert.Equal(t, "true", created.Labels["synclet.io/managed"])
 }

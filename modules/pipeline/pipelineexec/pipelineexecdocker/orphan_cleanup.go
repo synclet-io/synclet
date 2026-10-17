@@ -17,16 +17,18 @@ type OrphanJobChecker interface {
 
 // orphanCleanerRunner is the subset of ContainerRunner methods used by OrphanCleaner.
 type orphanCleanerRunner interface {
-	ListByLabel(ctx context.Context, label string) ([]container.Summary, error)
+	ListByLabel(ctx context.Context, labels ...string) ([]container.Summary, error)
 	Stop(ctx context.Context, containerID string) error
 	Remove(ctx context.Context, containerID string) error
 }
 
 // OrphanCleaner finds and removes Docker containers that were created
-// for sync jobs but are no longer associated with an active job.
+// for sync jobs but are no longer associated with an active job. It touches
+// only containers whose OwnerLabel matches its own owner id.
 type OrphanCleaner struct {
 	runner      orphanCleanerRunner
 	checker     OrphanJobChecker
+	ownerID     string
 	gracePeriod time.Duration
 	logger      *logging.Logger
 }
@@ -36,6 +38,7 @@ func NewOrphanCleaner(runner *ContainerRunner, checker OrphanJobChecker, logger 
 	return &OrphanCleaner{
 		runner:      runner,
 		checker:     checker,
+		ownerID:     runner.OwnerID(),
 		gracePeriod: 15 * time.Minute,
 		logger:      logger.Named("orphan-cleanup"),
 	}
@@ -44,7 +47,7 @@ func NewOrphanCleaner(runner *ContainerRunner, checker OrphanJobChecker, logger 
 // Cleanup lists all Synclet-managed containers, checks if their associated
 // job is still active, and stops+removes orphaned containers.
 func (oc *OrphanCleaner) Cleanup(ctx context.Context) error {
-	containers, err := oc.runner.ListByLabel(ctx, "synclet.io/managed=true")
+	containers, err := oc.runner.ListByLabel(ctx, "synclet.io/managed=true", OwnerLabel+"="+oc.ownerID)
 	if err != nil {
 		return fmt.Errorf("listing managed containers: %w", err)
 	}
@@ -84,6 +87,10 @@ func (oc *OrphanCleaner) processContainer(ctx context.Context, ctr container.Sum
 		return false, nil
 	}
 
+	if !oc.ownsContainer(ctr) {
+		return false, nil
+	}
+
 	logger := oc.logger.WithField("container_id", lo.Substring(ctr.ID, 0, 12))
 
 	jobID := ctr.Labels["synclet.io/job-id"]
@@ -114,7 +121,7 @@ func (oc *OrphanCleaner) processContainer(ctx context.Context, ctr container.Sum
 // WITHOUT applying the grace period. Use this on startup when no containers
 // from the current process exist yet (any managed container is from a previous run).
 func (oc *OrphanCleaner) CleanupAll(ctx context.Context) error {
-	containers, err := oc.runner.ListByLabel(ctx, "synclet.io/managed=true")
+	containers, err := oc.runner.ListByLabel(ctx, "synclet.io/managed=true", OwnerLabel+"="+oc.ownerID)
 	if err != nil {
 		return fmt.Errorf("listing managed containers: %w", err)
 	}
@@ -126,6 +133,10 @@ func (oc *OrphanCleaner) CleanupAll(ctx context.Context) error {
 	cleaned := 0
 
 	for _, ctr := range containers {
+		if !oc.ownsContainer(ctr) {
+			continue
+		}
+
 		jobID := ctr.Labels["synclet.io/job-id"]
 		if jobID == "" {
 			oc.logger.WithField("container_id", ctr.ID[:12]).Warn(ctx, "startup cleanup: managed container without job-id label")
@@ -154,6 +165,10 @@ func (oc *OrphanCleaner) CleanupAll(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (oc *OrphanCleaner) ownsContainer(ctr container.Summary) bool {
+	return ctr.Labels[OwnerLabel] == oc.ownerID
 }
 
 func (oc *OrphanCleaner) stopAndRemove(ctx context.Context, containerID string) error {

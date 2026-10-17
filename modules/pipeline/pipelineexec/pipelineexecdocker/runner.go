@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"strings"
 	"sync"
@@ -83,6 +84,7 @@ var _ pkgcontainer.Runner = (*ContainerRunner)(nil)
 type ContainerRunner struct {
 	client      *client.Client
 	tempDirRoot string
+	ownerID     string
 }
 
 // NewContainerRunner creates a new ContainerRunner using the default Docker client
@@ -93,13 +95,29 @@ type ContainerRunner struct {
 // must point at a path bind-mounted to the same location on the host so the
 // host Docker daemon can resolve the bind-mount source — see
 // pipelineConfig.DockerTempDirRoot for the wiring.
-func NewContainerRunner(tempDirRoot string) (*ContainerRunner, error) {
+//
+// ownerID is stamped as the OwnerLabel on every container the runner creates.
+func NewContainerRunner(tempDirRoot, ownerID string) (*ContainerRunner, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, fmt.Errorf("creating docker client: %w", err)
 	}
 
-	return &ContainerRunner{client: cli, tempDirRoot: tempDirRoot}, nil
+	return &ContainerRunner{client: cli, tempDirRoot: tempDirRoot, ownerID: ownerID}, nil
+}
+
+// OwnerID returns the owner id stamped on the runner's containers.
+func (r *ContainerRunner) OwnerID() string {
+	return r.ownerID
+}
+
+// containerLabels returns a copy of labels with the owner label set.
+func (r *ContainerRunner) containerLabels(labels map[string]string) map[string]string {
+	out := make(map[string]string, len(labels)+1)
+	maps.Copy(out, labels)
+	out[OwnerLabel] = r.ownerID
+
+	return out
 }
 
 // ResolveDigest returns the digest-pinned reference for a locally available image.
@@ -180,7 +198,7 @@ func (r *ContainerRunner) Run(ctx context.Context, opts RunOptions) (*RunResult,
 	containerCfg := &dockercontainer.Config{
 		Image:        opts.Image,
 		Cmd:          opts.Command,
-		Labels:       opts.Labels,
+		Labels:       r.containerLabels(opts.Labels),
 		OpenStdin:    opts.Stdin != nil,
 		StdinOnce:    opts.Stdin != nil,
 		AttachStdout: true,
@@ -339,10 +357,12 @@ func (r *ContainerRunner) Run(ctx context.Context, opts RunOptions) (*RunResult,
 	return result, nil
 }
 
-// ListByLabel returns all containers matching the given label.
-func (r *ContainerRunner) ListByLabel(ctx context.Context, label string) ([]dockercontainer.Summary, error) {
+// ListByLabel returns all containers matching every given label filter.
+func (r *ContainerRunner) ListByLabel(ctx context.Context, labels ...string) ([]dockercontainer.Summary, error) {
 	filterArgs := filters.NewArgs()
-	filterArgs.Add("label", label)
+	for _, label := range labels {
+		filterArgs.Add("label", label)
+	}
 
 	return r.client.ContainerList(ctx, dockercontainer.ListOptions{
 		All:     true,

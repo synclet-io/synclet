@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"os"
 	"time"
 
 	"github.com/go-pnp/go-pnp/config/configutil"
@@ -34,6 +35,11 @@ type dockerExecutorConfig struct {
 	// a path bind-mounted to the same location on the host — otherwise the
 	// host Docker daemon cannot resolve the bind-mount source.
 	TempDirRoot string `env:"TEMP_DIR_ROOT"`
+	// OwnerID is stamped as the synclet.io/owner label on every connector
+	// container, and orphan cleanup removes only containers carrying it.
+	// Empty uses the hostname; executors sharing one Docker daemon need
+	// distinct values.
+	OwnerID string `env:"OWNER_ID"`
 }
 
 // dockerExecutorConfigModule registers the Docker executor configuration and
@@ -53,7 +59,12 @@ func dockerExecutorConfigModule() fx.Option {
 }
 
 func newContainerRunner(cfg *dockerExecutorConfig) (*pipelineexecdocker.ContainerRunner, error) {
-	return pipelineexecdocker.NewContainerRunner(cfg.TempDirRoot)
+	ownerID, err := pipelineexecdocker.ResolveOwnerID(cfg.OwnerID, os.Hostname)
+	if err != nil {
+		return nil, err
+	}
+
+	return pipelineexecdocker.NewContainerRunner(cfg.TempDirRoot, ownerID)
 }
 
 func dockerContainerRunnerAdapter(r *pipelineexecdocker.ContainerRunner) container.Runner {

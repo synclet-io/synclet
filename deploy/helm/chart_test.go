@@ -185,6 +185,14 @@ func TestChart_ConnectorServiceAccount(t *testing.T) {
 	assert.Equal(t, "t-synclet-connector", docs.get(t, "ConfigMap", "t-synclet").Data["PIPELINE_RUNTIME_SERVICE_ACCOUNT_NAME"])
 }
 
+func TestChart_DockerOwnerID(t *testing.T) {
+	_, set := renderChart(t).get(t, "ConfigMap", "t-synclet").Data["DOCKER_EXECUTOR_OWNER_ID"]
+	assert.False(t, set)
+
+	cm := renderChart(t, "--set", "pipeline.dockerOwnerId=blue").get(t, "ConfigMap", "t-synclet")
+	assert.Equal(t, "blue", cm.Data["DOCKER_EXECUTOR_OWNER_ID"])
+}
+
 func (m manifest) container(t *testing.T, name string) container {
 	t.Helper()
 
