@@ -437,6 +437,7 @@ types:
 
     - name: StreamGeneration
       table_name: pipeline.stream_generations
+      has_custom_db_methods: true
       fields:
         - { name: ConnectionID, type: uuid, primary_key: true, filterable: true }
         - { name: StreamNamespace, type: string, primary_key: true, filterable: true }

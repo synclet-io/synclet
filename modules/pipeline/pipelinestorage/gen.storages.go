@@ -534,24 +534,34 @@ func NewConnectorTasksStorage(db *gorm.DB, logger *logging.Logger) pipelinesvc.C
 	}
 }
 
+type StreamGenerationsStorage struct {
+	dbutil.GormEntityStorage[pipelinesvc.StreamGeneration, dbStreamGeneration, pipelinesvc.StreamGenerationFilter]
+}
+
+// user code 'StreamGeneration custom methods'
+// end user code 'StreamGeneration custom methods'
 func NewStreamGenerationsStorage(db *gorm.DB, logger *logging.Logger) pipelinesvc.StreamGenerationsStorage {
-	return dbutil.GormEntityStorage[pipelinesvc.StreamGeneration, dbStreamGeneration, pipelinesvc.StreamGenerationFilter]{
-		Logger:            logger,
-		DB:                db,
-		DBErrorsWrapper:   wrapStreamGenerationQueryError,
-		ConvertToInternal: convertStreamGenerationToDB,
-		ConvertToExternal: convertStreamGenerationFromDB,
-		BuildFilterExpression: func(filter *pipelinesvc.StreamGenerationFilter) (clause.Expression, error) {
-			return buildStreamGenerationFilterExpr(filter)
+	return &StreamGenerationsStorage{
+		GormEntityStorage: dbutil.GormEntityStorage[pipelinesvc.StreamGeneration, dbStreamGeneration, pipelinesvc.StreamGenerationFilter]{
+			Logger:            logger,
+			DB:                db,
+			DBErrorsWrapper:   wrapStreamGenerationQueryError,
+			ConvertToInternal: convertStreamGenerationToDB,
+			ConvertToExternal: convertStreamGenerationFromDB,
+			BuildFilterExpression: func(filter *pipelinesvc.StreamGenerationFilter) (clause.Expression, error) {
+				return buildStreamGenerationFilterExpr(filter)
+			},
+			FieldMapping: map[any]clause.Column{
+				pipelinesvc.StreamGenerationFieldConnectionID:    {Name: "connection_id"},
+				pipelinesvc.StreamGenerationFieldStreamNamespace: {Name: "stream_namespace"},
+				pipelinesvc.StreamGenerationFieldStreamName:      {Name: "stream_name"},
+				pipelinesvc.StreamGenerationFieldGenerationID:    {Name: "generation_id"},
+				pipelinesvc.StreamGenerationFieldUpdatedAt:       {Name: "updated_at"},
+			},
+			LockScope: "pipeline.StreamGenerations",
 		},
-		FieldMapping: map[any]clause.Column{
-			pipelinesvc.StreamGenerationFieldConnectionID:    {Name: "connection_id"},
-			pipelinesvc.StreamGenerationFieldStreamNamespace: {Name: "stream_namespace"},
-			pipelinesvc.StreamGenerationFieldStreamName:      {Name: "stream_name"},
-			pipelinesvc.StreamGenerationFieldGenerationID:    {Name: "generation_id"},
-			pipelinesvc.StreamGenerationFieldUpdatedAt:       {Name: "updated_at"},
-		},
-		LockScope: "pipeline.StreamGenerations",
+		// user code 'StreamGeneration custom metods'
+		// end user code 'StreamGeneration custom metods'
 	}
 }
 func NewPipelineEventsOutbox(db *gorm.DB, processors []txoutbox.MessageProcessor) pipelinesvc.PipelineEventsOutbox {

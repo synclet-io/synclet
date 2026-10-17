@@ -115,5 +115,13 @@ type ConnectorTasksStorage interface {
 
 // user code 'ConnectorTask definitions'
 // end user code 'ConnectorTask definitions'
-type StreamGenerationsStorage dbutil.EntityStorage[StreamGeneration, StreamGenerationFilter]
+type StreamGenerationsStorage interface {
+	dbutil.EntityStorage[StreamGeneration, StreamGenerationFilter]
+	// user code 'StreamGeneration metods'
+	Upsert(ctx context.Context, generation *StreamGeneration) error
+	// end user code 'StreamGeneration metods'
+}
+
+// user code 'StreamGeneration definitions'
+// end user code 'StreamGeneration definitions'
 type PipelineEventsOutbox txoutbox.Outbox[PipelineEvent]

@@ -44,7 +44,7 @@ func (uc *PopulateGenerationIDs) Execute(ctx context.Context, params PopulateGen
 	toSave := ResolveStreamGenerations(params.Catalog, existing, params.ConnectionID, params.SyncID)
 
 	for _, sg := range toSave {
-		if _, err := uc.storage.StreamGenerations().Save(ctx, sg); err != nil {
+		if err := uc.storage.StreamGenerations().Upsert(ctx, sg); err != nil {
 			return fmt.Errorf("saving stream generation for %s.%s: %w", sg.StreamNamespace, sg.StreamName, err)
 		}
 	}

@@ -85,12 +85,12 @@ func (m *mockStreamGenerationsStorage) Find(_ context.Context, genFilter *pipeli
 	return result, nil
 }
 
-func (m *mockStreamGenerationsStorage) Save(_ context.Context, record *pipelineservice.StreamGeneration) (*pipelineservice.StreamGeneration, error) {
+func (m *mockStreamGenerationsStorage) Upsert(_ context.Context, record *pipelineservice.StreamGeneration) error {
 	cp := record.Copy()
 	key := streamGenKey(record.ConnectionID, record.StreamNamespace, record.StreamName)
 	m.gens[key] = &cp
 
-	return &cp, nil
+	return nil
 }
 
 // mockConnectionStatesStorage stores ConnectionState in memory.

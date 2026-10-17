@@ -57,7 +57,7 @@ func (uc *ClearSyncState) Execute(ctx context.Context, params ClearSyncStatePara
 			sg.GenerationID++
 
 			sg.UpdatedAt = now
-			if _, err := uc.storage.StreamGenerations().Save(ctx, sg); err != nil {
+			if err := uc.storage.StreamGenerations().Upsert(ctx, sg); err != nil {
 				return fmt.Errorf("incrementing generation for %s.%s: %w", sg.StreamNamespace, sg.StreamName, err)
 			}
 		}
@@ -129,23 +129,16 @@ func (uc *ClearSyncState) incrementStreamGeneration(ctx context.Context, connect
 		return fmt.Errorf("loading stream generation: %w", err)
 	}
 
-	now := time.Now()
-	if len(existing) == 0 {
-		// No existing record -- create with generation_id=1 (first increment from 0).
-		_, err := uc.storage.StreamGenerations().Save(ctx, &pipelineservice.StreamGeneration{
-			ConnectionID:    connectionID,
-			StreamNamespace: namespace,
-			StreamName:      name,
-			GenerationID:    1,
-			UpdatedAt:       now,
-		})
-
-		return err
+	generation := &pipelineservice.StreamGeneration{
+		ConnectionID:    connectionID,
+		StreamNamespace: namespace,
+		StreamName:      name,
+		GenerationID:    1,
+		UpdatedAt:       time.Now(),
+	}
+	if len(existing) > 0 {
+		generation.GenerationID = existing[0].GenerationID + 1
 	}
 
-	existing[0].GenerationID++
-	existing[0].UpdatedAt = now
-	_, err = uc.storage.StreamGenerations().Save(ctx, existing[0])
-
-	return err
+	return uc.storage.StreamGenerations().Upsert(ctx, generation)
 }
