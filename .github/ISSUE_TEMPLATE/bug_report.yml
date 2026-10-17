@@ -1,0 +1,64 @@
+name: Bug report
+description: Something in Synclet does not work as documented.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please search [existing issues](https://github.com/synclet-io/synclet/issues) first.
+        Security vulnerabilities go to [private reporting](https://github.com/synclet-io/synclet/security/advisories/new), not here.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What you did, what you expected and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Create a source with image ...
+        2. Create a connection to ...
+        3. Run a sync
+        4. See error
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Synclet version
+      description: Output of `synclet --version`, the image tag or the Helm chart version.
+      placeholder: v0.5.0
+    validations:
+      required: true
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: How do you run Synclet?
+      options:
+        - Release binary
+        - Docker Compose
+        - Kubernetes (Helm chart)
+        - Built from source
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: connectors
+    attributes:
+      label: Connectors involved
+      description: Source and destination images with tags, if the bug concerns a sync.
+      placeholder: airbyte/source-postgres:3.6.0 → airbyte/destination-bigquery:2.9.0
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Server log or job log around the failure. Remove secrets before pasting.
+      render: shell
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Environment details, screenshots, workarounds you tried.

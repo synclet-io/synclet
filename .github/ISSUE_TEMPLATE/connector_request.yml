@@ -1,0 +1,57 @@
+name: Connector request or problem
+description: A connector you want to run with Synclet, or one that fails under Synclet.
+labels: ["connector"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Synclet runs connectors that implement the Airbyte Protocol, as container images.
+        Tell us which connector you need and what happens when you try it.
+
+        Airbyte is a trademark of Airbyte, Inc.; Synclet is not affiliated.
+  - type: input
+    id: connector
+    attributes:
+      label: Connector
+      description: Name and image, with the tag you tried.
+      placeholder: source-hubspot, airbyte/source-hubspot:4.2.0
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Type
+      options:
+        - Source
+        - Destination
+    validations:
+      required: true
+  - type: dropdown
+    id: request
+    attributes:
+      label: What do you need?
+      options:
+        - The connector fails or misbehaves under Synclet
+        - I want this connector tested and listed in the registry
+        - A native (built-in) connector for this system
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: Details
+      description: What you tried (check, discover, sync), what you expected and what happened. Paste the job log with secrets removed.
+      render: shell
+  - type: input
+    id: version
+    attributes:
+      label: Synclet version
+      placeholder: v0.5.0
+  - type: dropdown
+    id: contribute
+    attributes:
+      label: Would you like to work on it?
+      options:
+        - "No"
+        - "Yes, with some guidance"
+        - "Yes, I can open a pull request"

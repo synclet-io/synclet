@@ -1,0 +1,37 @@
+<svg width="1280" height="640" viewBox="0 0 1280 640" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1280" height="640" fill="#11162a"/>
+  <rect x="0" y="0" width="1280" height="640" fill="url(#g)"/>
+  <defs>
+    <radialGradient id="g" cx="0.22" cy="0.45" r="0.6">
+      <stop offset="0" stop-color="#1c2442"/>
+      <stop offset="1" stop-color="#11162a" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <g transform="translate(40,60) scale(0.78)">
+    <circle cx="340" cy="265" r="152" fill="none" stroke="#263050" stroke-width="1.5" stroke-dasharray="5 7"/>
+    <circle cx="340" cy="265" r="85" fill="none" stroke="#263050" stroke-width="1.5" stroke-dasharray="5 7"/>
+    <line x1="340" y1="265" x2="340" y2="155" stroke="#2c3860" stroke-width="2" stroke-dasharray="4 5"/>
+    <line x1="340" y1="265" x2="435" y2="320" stroke="#2c3860" stroke-width="2" stroke-dasharray="4 5"/>
+    <line x1="340" y1="265" x2="245" y2="320" stroke="#2c3860" stroke-width="2" stroke-dasharray="4 5"/>
+    <circle cx="340" cy="265" r="22" fill="#1e2840" stroke="#3a4d72" stroke-width="2"/>
+    <circle cx="340" cy="265" r="9" fill="#a78bfa"/>
+    <path d="M 200 238 L 186 235 A 157 157 0 0 1 491 222 L 488 239 L 477 226 A 143 143 0 0 0 200 238 Z" fill="#4e8cff"/>
+    <circle cx="193" cy="236" r="7" fill="#4e8cff"/>
+    <path d="M 480 292 L 494 295 A 157 157 0 0 1 189 308 L 192 291 L 203 304 A 143 143 0 0 0 480 292 Z" fill="#22d3a0"/>
+    <circle cx="487" cy="294" r="7" fill="#22d3a0"/>
+    <circle cx="340" cy="155" r="20" fill="#11162a" stroke="#4e8cff" stroke-width="5"/>
+    <circle cx="340" cy="155" r="8" fill="#4e8cff"/>
+    <circle cx="435" cy="320" r="20" fill="#11162a" stroke="#22d3a0" stroke-width="5"/>
+    <circle cx="435" cy="320" r="8" fill="#22d3a0"/>
+    <circle cx="245" cy="320" r="20" fill="#11162a" stroke="#a78bfa" stroke-width="5"/>
+    <circle cx="245" cy="320" r="8" fill="#a78bfa"/>
+  </g>
+  <g font-family="Helvetica Neue, Helvetica, Arial, sans-serif">
+    <text x="560" y="250" font-size="96" font-weight="700" fill="#e6eeff" letter-spacing="-2">synclet</text>
+    <text x="562" y="318" font-size="34" fill="#c3d0ee">Self-hosted data sync for connectors</text>
+    <text x="562" y="362" font-size="34" fill="#c3d0ee">that implement the Airbyte Protocol.</text>
+    <text x="562" y="436" font-size="30" font-weight="700" fill="#22d3a0">One Go binary · One PostgreSQL · MIT</text>
+    <text x="562" y="496" font-size="22" fill="#7f8fb3">github.com/synclet-io/synclet</text>
+    <text x="640" y="596" text-anchor="middle" font-size="17" fill="#56658a">Airbyte is a trademark of Airbyte, Inc.; Synclet is not affiliated.</text>
+  </g>
+</svg>

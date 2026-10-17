@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or help
+    url: https://github.com/synclet-io/synclet/discussions/categories/q-a
+    about: Ask how to install, configure or use Synclet in Discussions.
+  - name: Idea or proposal
+    url: https://github.com/synclet-io/synclet/discussions/categories/ideas
+    about: Discuss a larger idea before it becomes a feature request.
+  - name: Security vulnerability
+    url: https://github.com/synclet-io/synclet/security/advisories/new
+    about: Report security issues privately, never in a public issue.
+  - name: Documentation
+    url: https://synclet-io.github.io/synclet-site/
+    about: Installation, configuration and guides.
