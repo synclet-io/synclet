@@ -9,6 +9,9 @@
 #   CHART_PROBES=1      keep the chart's /live and /ready probes; by default they call
 #                       /health on the public port, which images up to 0.4.0 serve
 #   EG_VERSION          Envoy Gateway chart version (default v1.4.2)
+#   SYNC=1              also build the e2e test connectors (images that run as root),
+#                       serve them from a throwaway local registry container and run a
+#                       sync through the API; the run fails unless the job completes
 #   POST_INSTALL=<cmd>  run after the route and UI checks, before cleanup, with CTX and
 #                       APP_NS exported; its failure fails the run
 set -euo pipefail
@@ -21,7 +24,11 @@ EG_NS=$RUN-eg
 GWC=$RUN-eg
 GW=$RUN-gateway
 HOST=$RUN.local
-CHART=$(cd "$(dirname "$0")/../deploy/helm/synclet" && pwd)
+ROOT=$(cd "$(dirname "$0")/.." && pwd)
+CHART=$ROOT/deploy/helm/synclet
+REGISTRY=$RUN-registry
+REG_PORT=$((30000 + RANDOM % 10000))
+REG=localhost:$REG_PORT
 WORK=$(mktemp -d)
 SNAP_KINDS=customresourcedefinitions,clusterroles,clusterrolebindings,mutatingwebhookconfigurations,validatingwebhookconfigurations,gatewayclasses.gateway.networking.k8s.io,namespaces,persistentvolumes
 PF_PID=
@@ -61,12 +68,30 @@ cleanup() {
     diff "$WORK/before" "$WORK/after"
     rc=1
   fi
+  if [[ ${SYNC:-} == 1 ]]; then
+    docker rm -f "$REGISTRY" >/dev/null 2>&1
+    docker rmi "$REG/synclet-test-source:$RUN" "$REG/synclet-test-dest:$RUN" >/dev/null 2>&1
+  fi
   rm -rf "$WORK"
   exit "$rc"
 }
 
 snapshot >"$WORK/before"
 trap cleanup EXIT
+
+if [[ ${SYNC:-} == 1 ]]; then
+  # Sync pods pull connector images with PullAlways, so they are served from a registry
+  # the orbstack node reaches on localhost.
+  log "test connectors in registry $REG"
+  docker run -d --name "$REGISTRY" -p "127.0.0.1:$REG_PORT:5000" registry:2 >/dev/null
+  for _ in $(seq 30); do curl -sf "http://$REG/v2/" >/dev/null && break; sleep 1; done
+  for c in source:source destination:dest; do
+    image=$REG/synclet-test-${c#*:}:$RUN
+    docker build -q -t "$image" -f "$ROOT/tests/e2e/testconnector/${c%%:*}/Dockerfile" "$ROOT/tests/e2e/testconnector" >/dev/null
+    docker push -q "$image" >/dev/null
+    echo "$image runs as: $(docker inspect -f '{{if .Config.User}}{{.Config.User}}{{else}}root{{end}}' "$image")"
+  done
+fi
 
 log "Envoy Gateway $EG_VERSION in $EG_NS"
 h install eg oci://docker.io/envoyproxy/gateway-helm --version "$EG_VERSION" -n "$EG_NS" --create-namespace --wait --timeout 5m
@@ -167,6 +192,50 @@ echo "GET / -> $code"
 if [[ $code != 200 ]] || ! grep -q '<title>Synclet</title>' "$WORK/ui.html"; then
   echo "UI did not answer through the route" >&2
   exit 1
+fi
+
+api() {
+  local hdrs=(-H "Host: $HOST" -H 'Content-Type: application/json')
+  [[ -n ${WS_ID:-} ]] && hdrs+=(-H "Workspace-Id: $WS_ID")
+  curl -sS --fail-with-body -b "$WORK/cookies" -c "$WORK/cookies" "${hdrs[@]}" \
+    "http://127.0.0.1:$port/synclet.publicapi.$1" -d "$2"
+}
+
+wait_task() {
+  local status=
+  for _ in $(seq 100); do
+    status=$(api pipeline.v1.ConnectorTaskService/GetConnectorTaskResult "{\"taskId\":\"$1\"}" | jq -r .status)
+    case $status in
+      CONNECTOR_TASK_STATUS_COMPLETED) return 0 ;;
+      CONNECTOR_TASK_STATUS_FAILED) api pipeline.v1.ConnectorTaskService/GetConnectorTaskResult "{\"taskId\":\"$1\"}" >&2; return 1 ;;
+    esac
+    sleep 3
+  done
+  echo "connector task $1 still $status" >&2
+  return 1
+}
+
+if [[ ${SYNC:-} == 1 ]]; then
+  log "sync with root-based connectors"
+  user_id=$(api auth.v1.AuthService/Register "{\"email\":\"$RUN@test.local\",\"password\":\"$(openssl rand -hex 12)Aa1!\",\"name\":\"Chart test\"}" | jq -r .user.id)
+  WS_ID=$(api workspace.v1.WorkspaceService/CreateWorkspace "{\"name\":\"$RUN\",\"ownerUserId\":\"$user_id\"}" | jq -r .workspace.id)
+  src_connector=$(api registry.v1.ConnectorRegistryService/AddConnector "{\"dockerImage\":\"$REG/synclet-test-source\",\"dockerTag\":\"$RUN\",\"name\":\"test source\",\"connectorType\":\"CONNECTOR_TYPE_SOURCE\"}" | jq -r .id)
+  dst_connector=$(api registry.v1.ConnectorRegistryService/AddConnector "{\"dockerImage\":\"$REG/synclet-test-dest\",\"dockerTag\":\"$RUN\",\"name\":\"test destination\",\"connectorType\":\"CONNECTOR_TYPE_DESTINATION\"}" | jq -r .id)
+  source_id=$(api pipeline.v1.SourceService/CreateSource "{\"workspaceId\":\"$WS_ID\",\"name\":\"source\",\"managedConnectorId\":\"$src_connector\",\"config\":{\"streams\":[{\"name\":\"users\",\"namespace\":\"public\",\"record_count\":100}]}}" | jq -r .source.id)
+  wait_task "$(api pipeline.v1.SourceService/DiscoverSourceSchema "{\"sourceId\":\"$source_id\"}" | jq -r .taskId)"
+  dest_id=$(api pipeline.v1.DestinationService/CreateDestination "{\"workspaceId\":\"$WS_ID\",\"name\":\"destination\",\"managedConnectorId\":\"$dst_connector\",\"config\":{\"output_dir\":\"/tmp/output\"}}" | jq -r .destination.id)
+  conn_id=$(api pipeline.v1.ConnectionService/CreateConnection "{\"workspaceId\":\"$WS_ID\",\"name\":\"$RUN\",\"sourceId\":\"$source_id\",\"destinationId\":\"$dest_id\"}" | jq -r .connection.id)
+  api pipeline.v1.ConnectionService/ConfigureStreams "{\"connectionId\":\"$conn_id\",\"streams\":[{\"streamName\":\"users\",\"namespace\":\"public\",\"syncMode\":\"SYNC_MODE_FULL_REFRESH\",\"destinationSyncMode\":\"DESTINATION_SYNC_MODE_OVERWRITE\"}]}" >/dev/null
+  job_id=$(api pipeline.v1.JobService/TriggerSync "{\"connectionId\":\"$conn_id\"}" | jq -r .job.id)
+  status=
+  for _ in $(seq 100); do
+    job=$(api pipeline.v1.JobService/GetJob "{\"jobId\":\"$job_id\"}")
+    status=$(jq -r .job.status <<<"$job")
+    [[ $status == JOB_STATUS_COMPLETED || $status == JOB_STATUS_FAILED || $status == JOB_STATUS_CANCELLED ]] && break
+    sleep 3
+  done
+  echo "job $job_id: $status"
+  [[ $status == JOB_STATUS_COMPLETED ]] || { jq . <<<"$job" >&2; k get pods -n "$APP_NS" >&2; exit 1; }
 fi
 
 if [[ -n ${POST_INSTALL:-} ]]; then

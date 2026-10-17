@@ -14,12 +14,20 @@ const (
 	DestStdoutFIFO   = "dest-stdout.fifo"
 )
 
+// fifoMode lets connector containers open the FIFOs whatever user they run as,
+// including root without CAP_DAC_OVERRIDE.
+const fifoMode = 0o666
+
 // CreateFIFOs creates the named pipes used for inter-container communication.
 func CreateFIFOs(dir string) error {
 	for _, name := range []string{SourceStdoutFIFO, DestStdinFIFO, DestStdoutFIFO} {
 		path := filepath.Join(dir, name)
-		if err := syscall.Mkfifo(path, 0o600); err != nil {
+		if err := syscall.Mkfifo(path, fifoMode); err != nil {
 			return fmt.Errorf("creating FIFO %s: %w", name, err)
+		}
+
+		if err := os.Chmod(path, fifoMode); err != nil { //nolint:gosec // the FIFOs are shared with connector containers running as other users
+			return fmt.Errorf("setting mode of FIFO %s: %w", name, err)
 		}
 	}
 

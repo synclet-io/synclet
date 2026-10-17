@@ -168,24 +168,26 @@ func Run(ctx context.Context, cfg Config) error {
 }
 
 func runPipeline(ctx context.Context, cfg Config, reporter *Reporter) (*pipelineexec.Stats, error) {
-	// Open FIFOs with context awareness. FIFO opens block until both ends connect;
-	// if a connector fails to start, the open hangs indefinitely. Using a goroutine
-	// with select on ctx.Done() ensures we unblock on context cancellation.
-	sourceStdout, err := openFIFO(ctx, filepath.Join(cfg.DataDir, SourceStdoutFIFO), os.O_RDONLY)
+	// FIFO opens block until both ends connect, so each open also gives up when
+	// the context ends or the connector that owns the FIFO has already exited.
+	sourceExit := filepath.Join(cfg.DataDir, "source.exitcode")
+	destExit := filepath.Join(cfg.DataDir, "dest.exitcode")
+
+	sourceStdout, err := openFIFO(ctx, filepath.Join(cfg.DataDir, SourceStdoutFIFO), os.O_RDONLY, "source", sourceExit)
 	if err != nil {
 		return nil, fmt.Errorf("opening source stdout FIFO: %w", err)
 	}
 
 	defer func() { _ = sourceStdout.Close() }()
 
-	destStdin, err := openFIFO(ctx, filepath.Join(cfg.DataDir, DestStdinFIFO), os.O_WRONLY)
+	destStdin, err := openFIFO(ctx, filepath.Join(cfg.DataDir, DestStdinFIFO), os.O_WRONLY, "destination", destExit)
 	if err != nil {
 		return nil, fmt.Errorf("opening dest stdin FIFO: %w", err)
 	}
 	// Note: destStdin is an *os.File which implements io.WriteCloser.
 	// pipelineexec.Run will close it when source EOF is reached.
 
-	destStdout, err := openFIFO(ctx, filepath.Join(cfg.DataDir, DestStdoutFIFO), os.O_RDONLY)
+	destStdout, err := openFIFO(ctx, filepath.Join(cfg.DataDir, DestStdoutFIFO), os.O_RDONLY, "destination", destExit)
 	if err != nil {
 		_ = destStdin.Close()
 
@@ -284,10 +286,13 @@ func waitForExitCode(path string, timeout time.Duration) int32 {
 	}
 }
 
-// openFIFO opens a FIFO with context cancellation support. FIFO opens block in
-// the kernel until both ends connect, so we run OpenFile in a goroutine and
-// select on ctx.Done() to avoid hanging indefinitely if a connector fails to start.
-func openFIFO(ctx context.Context, path string, flag int) (*os.File, error) {
+var connectorExitPollInterval = 200 * time.Millisecond
+
+// openFIFO opens a FIFO, giving up when ctx ends. FIFO opens block in the kernel
+// until both ends connect, so OpenFile runs in a goroutine. When exitCodePath is
+// set and the connector owning the other end writes its exit code before the
+// open completes, that connector will never open the FIFO and the open fails.
+func openFIFO(ctx context.Context, path string, flag int, connector, exitCodePath string) (*os.File, error) {
 	type result struct {
 		file *os.File
 		err  error
@@ -299,11 +304,35 @@ func openFIFO(ctx context.Context, path string, flag int) (*os.File, error) {
 		ch <- result{f, err}
 	}()
 
-	select {
-	case <-ctx.Done():
-		return nil, fmt.Errorf("%s: %w", filepath.Base(path), ctx.Err())
-	case r := <-ch:
-		return r.file, r.err
+	var poll <-chan time.Time
+
+	if exitCodePath != "" {
+		ticker := time.NewTicker(connectorExitPollInterval)
+		defer ticker.Stop()
+
+		poll = ticker.C
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil, fmt.Errorf("%s: %w", filepath.Base(path), ctx.Err())
+		case r := <-ch:
+			return r.file, r.err
+		case <-poll:
+			code, err := ReadExitCode(exitCodePath)
+			if err != nil {
+				continue
+			}
+
+			select {
+			case r := <-ch:
+				return r.file, r.err
+			case <-time.After(connectorExitPollInterval):
+			}
+
+			return nil, fmt.Errorf("%s connector exited with code %d before opening %s", connector, code, filepath.Base(path))
+		}
 	}
 }
 

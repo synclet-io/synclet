@@ -7,4 +7,5 @@ RUN CGO_ENABLED=0 go build -mod=vendor -o /connector ./destination/
 
 FROM alpine:3.19
 COPY --from=builder /connector /connector
+ENV AIRBYTE_ENTRYPOINT=/connector
 ENTRYPOINT ["/connector"]

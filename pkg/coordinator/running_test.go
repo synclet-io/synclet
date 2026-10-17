@@ -90,13 +90,13 @@ func TestRunPipeline_ReportsRunningOnceConnectorsConnect(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 	assert.Empty(t, svc.runningJobs(), "job reported running before its connectors connected")
 
-	sourceOut, err := openFIFO(ctx, filepath.Join(dir, SourceStdoutFIFO), os.O_WRONLY)
+	sourceOut, err := openFIFO(ctx, filepath.Join(dir, SourceStdoutFIFO), os.O_WRONLY, "", "")
 	require.NoError(t, err)
 
-	destIn, err := openFIFO(ctx, filepath.Join(dir, DestStdinFIFO), os.O_RDONLY)
+	destIn, err := openFIFO(ctx, filepath.Join(dir, DestStdinFIFO), os.O_RDONLY, "", "")
 	require.NoError(t, err)
 
-	destOut, err := openFIFO(ctx, filepath.Join(dir, DestStdoutFIFO), os.O_WRONLY)
+	destOut, err := openFIFO(ctx, filepath.Join(dir, DestStdoutFIFO), os.O_WRONLY, "", "")
 	require.NoError(t, err)
 
 	require.Eventually(t, func() bool { return len(svc.runningJobs()) == 1 }, 5*time.Second, 10*time.Millisecond)
@@ -115,4 +115,68 @@ func TestRunPipeline_ReportsRunningOnceConnectorsConnect(t *testing.T) {
 	}
 
 	r.Stop()
+}
+
+func TestRunPipeline_FailsWhenConnectorExitsBeforeOpeningFIFO(t *testing.T) {
+	tests := []struct {
+		name         string
+		exitCodeFile string
+		openSource   bool
+		wantErr      string
+	}{
+		{
+			name:         "source",
+			exitCodeFile: "source.exitcode",
+			wantErr:      "source connector exited with code 2 before opening source-stdout.fifo",
+		},
+		{
+			name:         "destination",
+			exitCodeFile: "dest.exitcode",
+			openSource:   true,
+			wantErr:      "destination connector exited with code 2 before opening dest-stdin.fifo",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := &runningExecutorService{}
+			dir := t.TempDir()
+			require.NoError(t, CreateFIFOs(dir))
+
+			r := NewReporter(startRunningServer(t, svc), "job-1", "conn-1")
+			r.Start(context.Background())
+			t.Cleanup(r.Stop)
+
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+
+			if tt.openSource {
+				go func() {
+					sourceOut, err := openFIFO(ctx, filepath.Join(dir, SourceStdoutFIFO), os.O_WRONLY, "", "")
+					if err == nil {
+						t.Cleanup(func() { _ = sourceOut.Close() })
+					}
+				}()
+			}
+
+			require.NoError(t, os.WriteFile(filepath.Join(dir, tt.exitCodeFile), []byte("2\n"), 0o600))
+
+			done := make(chan error, 1)
+
+			go func() {
+				_, err := runPipeline(ctx, Config{DataDir: dir, SecretsDir: dir}, r)
+				done <- err
+			}()
+
+			select {
+			case err := <-done:
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.wantErr)
+			case <-time.After(5 * time.Second):
+				t.Fatal("runPipeline kept waiting for a connector that had already exited")
+			}
+
+			assert.Empty(t, svc.runningJobs())
+		})
+	}
 }
