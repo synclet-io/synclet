@@ -2,6 +2,8 @@ package pipelineexecdocker
 
 import (
 	"context"
+	"sync"
+	"time"
 
 	"github.com/go-pnp/go-pnp/logging"
 	"github.com/google/uuid"
@@ -14,9 +16,16 @@ import (
 	"github.com/synclet-io/synclet/pkg/protocol"
 )
 
+const (
+	defaultLogBatchSize     = 500
+	defaultLogFlushInterval = time.Second
+	logFlushTimeout         = 10 * time.Second
+)
+
 // DockerHandler implements Handler for Docker mode sync execution.
 // It persists confirmed state via SaveSyncState and handles CONTROL config
-// updates by delegating to the HandleConfigUpdate use case.
+// updates by delegating to the HandleConfigUpdate use case. Log lines are
+// buffered and appended in batches, in the order they arrived.
 type DockerHandler struct {
 	pipelineexec.DefaultHandler
 	connID             uuid.UUID
@@ -25,8 +34,13 @@ type DockerHandler struct {
 	jobID              uuid.UUID
 	handleConfigUpdate *pipelinejobs.HandleConfigUpdate
 	saveSyncState      *pipelinestate.SaveSyncState
-	appendJobLog       *pipelinelogs.AppendJobLog
+	appendJobLogs      logAppender
+	logBatchSize       int
+	logFlushInterval   time.Duration
 	logger             *logging.Logger
+
+	logMu  sync.Mutex
+	logBuf []string
 }
 
 // DockerHandlerParams holds constructor parameters for DockerHandler.
@@ -37,12 +51,28 @@ type DockerHandlerParams struct {
 	JobID              uuid.UUID
 	HandleConfigUpdate *pipelinejobs.HandleConfigUpdate
 	SaveSyncState      *pipelinestate.SaveSyncState
-	AppendJobLog       *pipelinelogs.AppendJobLog
+	AppendJobLogs      logAppender
+	LogBatchSize       int
+	LogFlushInterval   time.Duration
 	Logger             *logging.Logger
+}
+
+type logAppender interface {
+	Execute(ctx context.Context, params pipelinelogs.BatchAppendJobLogsParams) error
 }
 
 // NewDockerHandler creates a new DockerHandler.
 func NewDockerHandler(params DockerHandlerParams) *DockerHandler {
+	batchSize := params.LogBatchSize
+	if batchSize <= 0 {
+		batchSize = defaultLogBatchSize
+	}
+
+	flushInterval := params.LogFlushInterval
+	if flushInterval <= 0 {
+		flushInterval = defaultLogFlushInterval
+	}
+
 	return &DockerHandler{
 		connID:             params.ConnectionID,
 		sourceID:           params.SourceID,
@@ -50,7 +80,9 @@ func NewDockerHandler(params DockerHandlerParams) *DockerHandler {
 		jobID:              params.JobID,
 		handleConfigUpdate: params.HandleConfigUpdate,
 		saveSyncState:      params.SaveSyncState,
-		appendJobLog:       params.AppendJobLog,
+		appendJobLogs:      params.AppendJobLogs,
+		logBatchSize:       batchSize,
+		logFlushInterval:   flushInterval,
 		logger:             params.Logger.Named("docker-handler"),
 	}
 }
@@ -108,15 +140,75 @@ func (h *DockerHandler) OnSourceTrace(ctx context.Context, msg *protocol.Airbyte
 	return nil
 }
 
-// OnLog appends a pre-formatted log line to the job's log storage.
-// Errors are non-fatal to avoid disrupting sync execution.
+// OnLog buffers a pre-formatted log line and appends the buffer once it
+// holds a full batch. Errors are non-fatal to avoid disrupting sync execution.
 func (h *DockerHandler) OnLog(ctx context.Context, line string) error {
-	if err := h.appendJobLog.Execute(ctx, pipelinelogs.AppendJobLogParams{
-		JobID:   h.jobID,
-		LogLine: line,
-	}); err != nil {
-		h.logger.WithError(err).Error(ctx, "failed to append log")
+	h.logMu.Lock()
+	defer h.logMu.Unlock()
+
+	h.logBuf = append(h.logBuf, line)
+	if len(h.logBuf) >= h.logBatchSize {
+		h.flushLogsLocked(ctx)
 	}
 
-	return nil // non-fatal
+	return nil
+}
+
+// StartLogFlush appends buffered log lines every flush interval until the
+// returned stop function is called. Stop appends whatever is still buffered
+// and returns once it is stored, so it must run when the attempt ends,
+// whatever the outcome. Appends outlive ctx cancellation.
+func (h *DockerHandler) StartLogFlush(ctx context.Context) (stop func()) {
+	stopCh := make(chan struct{})
+	done := make(chan struct{})
+
+	go func() {
+		defer close(done)
+
+		ticker := time.NewTicker(h.logFlushInterval)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				h.flushLogs(ctx)
+			case <-stopCh:
+				return
+			}
+		}
+	}()
+
+	return func() {
+		close(stopCh)
+		<-done
+		h.flushLogs(ctx)
+	}
+}
+
+func (h *DockerHandler) flushLogs(ctx context.Context) {
+	h.logMu.Lock()
+	defer h.logMu.Unlock()
+
+	h.flushLogsLocked(ctx)
+}
+
+// flushLogsLocked appends the buffer as one batch. Holding logMu across the
+// append keeps batches in arrival order.
+func (h *DockerHandler) flushLogsLocked(ctx context.Context) {
+	if len(h.logBuf) == 0 {
+		return
+	}
+
+	lines := h.logBuf
+	h.logBuf = nil
+
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), logFlushTimeout)
+	defer cancel()
+
+	if err := h.appendJobLogs.Execute(ctx, pipelinelogs.BatchAppendJobLogsParams{
+		JobID:    h.jobID,
+		LogLines: lines,
+	}); err != nil {
+		h.logger.WithError(err).WithField("lines", len(lines)).Error(ctx, "failed to append logs")
+	}
 }

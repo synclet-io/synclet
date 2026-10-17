@@ -145,6 +145,28 @@ func TestBatchAppendJobLogs_CapsLinesPerAttempt(t *testing.T) {
 	assert.Equal(t, []string{"1", "2", "3", "[synclet] log truncated: 4 further lines dropped", "a", "b"}, f.get(t, 0, 0).Lines)
 }
 
+func TestBatchAppendJobLogs_CapAndDroppedCountMatchAcrossBatchSizes(t *testing.T) {
+	lines := []string{"1", "2", "3", "4", "5", "6", "7", "8"}
+
+	for _, sizes := range [][]int{{1, 1, 1, 1, 1, 1, 1, 1}, {8}, {2, 3, 3}, {4, 1, 3}, {5, 3}} {
+		t.Run(fmt.Sprint(sizes), func(t *testing.T) {
+			f := newLogFixture(t)
+
+			rest := lines
+			for _, size := range sizes {
+				f.append(t, 4, rest[:size]...)
+				rest = rest[size:]
+			}
+
+			assert.Equal(t, []string{"1", "2", "3", "4", "[synclet] log truncated: 4 further lines dropped"}, f.get(t, 0, 0).Lines)
+
+			segment := f.store.segments[segmentKey{f.jobID, 1}]
+			assert.Equal(t, 4, segment.LineCount)
+			assert.Equal(t, 4, segment.DroppedCount)
+		})
+	}
+}
+
 func TestBatchAppendJobLogs_ReinsertsMarkerAfterItWasArchived(t *testing.T) {
 	f := newLogFixture(t)
 

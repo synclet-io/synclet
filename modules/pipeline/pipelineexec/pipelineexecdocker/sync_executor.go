@@ -41,7 +41,7 @@ func dockerVolumesToMounts(volumes []pipelineservice.DockerVolume) []pkgcontaine
 type DockerSyncExecutor struct {
 	client             *ConnectorClient
 	saveSyncState      *pipelinestate.SaveSyncState
-	appendJobLog       *pipelinelogs.AppendJobLog
+	appendJobLogs      *pipelinelogs.BatchAppendJobLogs
 	handleConfigUpdate *pipelinejobs.HandleConfigUpdate
 	runtimeDefaults    pipelineservice.RuntimeDefaults
 	idleTimeout        time.Duration
@@ -54,7 +54,7 @@ type DockerSyncExecutorParams struct {
 
 	Client             *ConnectorClient
 	SaveSyncState      *pipelinestate.SaveSyncState
-	AppendJobLog       *pipelinelogs.AppendJobLog
+	AppendJobLogs      *pipelinelogs.BatchAppendJobLogs
 	HandleConfigUpdate *pipelinejobs.HandleConfigUpdate
 	Config             pipelineservice.Config
 	Logger             *logging.Logger
@@ -65,7 +65,7 @@ func NewDockerSyncExecutor(params DockerSyncExecutorParams) *DockerSyncExecutor 
 	return &DockerSyncExecutor{
 		client:             params.Client,
 		saveSyncState:      params.SaveSyncState,
-		appendJobLog:       params.AppendJobLog,
+		appendJobLogs:      params.AppendJobLogs,
 		handleConfigUpdate: params.HandleConfigUpdate,
 		runtimeDefaults:    params.Config.RuntimeDefaults,
 		idleTimeout:        params.Config.IdleTimeout,
@@ -145,9 +145,12 @@ func (e *DockerSyncExecutor) Execute(ctx context.Context, bundle *pipelineexec.S
 		JobID:              bundle.Job.ID,
 		HandleConfigUpdate: e.handleConfigUpdate,
 		SaveSyncState:      e.saveSyncState,
-		AppendJobLog:       e.appendJobLog,
+		AppendJobLogs:      e.appendJobLogs,
 		Logger:             e.logger,
 	})
+
+	stopLogFlush := handler.StartLogFlush(ctx)
+	defer stopLogFlush()
 
 	// Wrap source output to filter record data by selected fields.
 	filteredSource := pipelineexec.NewFilteringReader(sourceStdout, catalog)
