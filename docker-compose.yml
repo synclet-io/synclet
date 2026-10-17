@@ -1,40 +1,44 @@
+x-synclet-image: &synclet-image ghcr.io/synclet-io/synclet:0.5.0 # x-release-please-version
+
+x-synclet-env: &synclet-env
+  DB_DSN: postgres://synclet:synclet@postgres:5432/synclet?sslmode=disable
+
 services:
   migrate:
-    build: .
+    image: *synclet-image
     command: ["migrate", "up"]
-    environment:
-      DB_DSN: postgres://synclet:synclet@postgres:5432/synclet?sslmode=disable
+    env_file: &synclet-env-files
+      - .env.compose
+      - path: .env
+        required: false
+    environment: *synclet-env
     depends_on:
       postgres:
         condition: service_healthy
 
   synclet:
-    build: .
+    image: *synclet-image
     command: ["server", "--standalone"]
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
+    env_file: *synclet-env-files
     environment:
-      DB_DSN: postgres://synclet:synclet@postgres:5432/synclet?sslmode=disable
+      <<: *synclet-env
       WATERMILL_TRANSPORT: sql
       WATERMILL_SQL_DRIVER: "postgres"
       WATERMILL_SQL_CONSUMER_GROUP: "local"
       PUBLIC_HTTP_SERVER_ADDR: 0.0.0.0:8080
       INTERNAL_HTTP_SERVER_ADDR: 0.0.0.0:8081
-      # Generate each with `openssl rand -base64 32` and put them in .env next
-      # to this file. Losing SECRET_ENCRYPTION_KEY makes stored connector
-      # secrets unreadable.
-      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:?set AUTH_JWT_SECRET in .env}
-      SECRET_ENCRYPTION_KEY: ${SECRET_ENCRYPTION_KEY:?set SECRET_ENCRYPTION_KEY in .env}
       ENVIRONMENT: development
       LOG_LEVEL: info
       # Scratch dir shared with the host so the host Docker daemon can
       # bind-mount per-task config/catalog/state files into spawned connector
       # containers. Path must match the volume mount below verbatim.
       DOCKER_EXECUTOR_TEMP_DIR_ROOT: /tmp/synclet
-    # The image runs as UID 65532; join the group that owns the Docker socket
-    # (`stat -c %g /var/run/docker.sock` on Linux, 0 on Docker Desktop/OrbStack).
-    group_add:
-      - "${DOCKER_GID:-0}"
+    # Root reaches the Docker socket whatever group owns it on the host, and
+    # writes to /tmp/synclet, which the daemon creates root-owned. Access to
+    # the socket is root-equivalent on the host either way.
+    user: "0:0"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /tmp/synclet:/tmp/synclet
@@ -51,7 +55,7 @@ services:
       POSTGRES_PASSWORD: synclet
       POSTGRES_DB: synclet
     ports:
-      - "5437:5432"
+      - "127.0.0.1:5437:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:

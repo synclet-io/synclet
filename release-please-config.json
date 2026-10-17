@@ -8,7 +8,8 @@
       "component": "synclet",
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
-        {"type": "yaml", "path": "deploy/helm/synclet/Chart.yaml", "jsonpath": "$.appVersion"}
+        {"type": "yaml", "path": "deploy/helm/synclet/Chart.yaml", "jsonpath": "$.appVersion"},
+        {"type": "generic", "path": "docker-compose.yml"}
       ]
     },
     "connectors/source-google-sheets": {

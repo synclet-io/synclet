@@ -34,14 +34,26 @@ Synclet is a **modular monolith** -- a single Go binary runs the API server, sch
 
 ## Quick Start
 
-### Prerequisites
+With Docker and Docker Compose installed:
 
-- Go 1.26+
-- PostgreSQL 16+
-- Docker
-- Bun (for frontend)
+```bash
+git clone https://github.com/synclet-io/synclet && cd synclet && docker compose up -d
+```
+
+Open `http://localhost:8080` a minute later. The stack runs PostgreSQL, migrations and a standalone server that starts connectors through the host Docker daemon. Synclet (8080) and PostgreSQL (5437) listen on `127.0.0.1` only.
+
+The secrets come from the committed `.env.compose`, whose values are public. Before Synclet is reachable from anywhere but your machine, put your own in an untracked `.env` next to `docker-compose.yml`, which overrides `.env.compose`, and keep a copy of `SECRET_ENCRYPTION_KEY`, since stored connector secrets cannot be decrypted without it:
+```bash
+echo "AUTH_JWT_SECRET=$(openssl rand -base64 32)" >> .env
+echo "SECRET_ENCRYPTION_KEY=$(openssl rand -base64 32)" >> .env
+docker compose up -d
+```
+
+To expose Synclet deliberately, change `127.0.0.1:8080:8080` under `synclet.ports` in `docker-compose.yml` to `8080:8080`, or put a TLS reverse proxy in front of it. Anyone who can reach it can start containers on the host through the mounted Docker socket.
 
 ### Development Setup
+
+Building from source needs Go 1.26+, PostgreSQL 16+, Docker and Bun (for the frontend).
 
 1. Clone the repository:
    ```bash
@@ -90,15 +102,7 @@ cd synclet-v<version>-linux-amd64
 ./synclet server --standalone
 ```
 
-**Docker Compose** (PostgreSQL, migrations and a standalone server with the Docker executor):
-```bash
-echo "AUTH_JWT_SECRET=$(openssl rand -base64 32)" >> .env
-echo "SECRET_ENCRYPTION_KEY=$(openssl rand -base64 32)" >> .env
-mkdir -p /tmp/synclet && chmod 1777 /tmp/synclet
-docker compose up -d
-```
-
-The image runs as UID 65532. On Linux, add `DOCKER_GID=$(stat -c %g /var/run/docker.sock)` to `.env` so the container can reach the Docker socket.
+**Docker Compose:** `docker compose up -d` as in [Quick Start](#quick-start), with your own secrets in `.env`. The `synclet` service runs as root so it can reach the Docker socket and write the connector scratch directory `/tmp/synclet`, which Docker creates on the host.
 
 **Docker:**
 ```bash
