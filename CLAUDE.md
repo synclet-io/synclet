@@ -31,3 +31,7 @@ Format: `feat(module): description` (conventional commits). Commit after complet
 
 Requires: Go 1.26, PostgreSQL 16 (via `docker compose`), Bun, Docker.
 Config: `.env` file (copy from `.env.dist`; `go run . generate dotenv` appends every other variable with its default). Key vars: `DB_DSN`, `AUTH_JWT_SECRET`, `SECRET_ENCRYPTION_KEY`.
+
+## Architecture decisions
+
+Decisions about the sync engine's architecture (job queue, executors, router, connector protocol boundary, state handling, native connectors) are made by a human: present the options with their trade-offs and wait for the choice; never settle one yourself.
