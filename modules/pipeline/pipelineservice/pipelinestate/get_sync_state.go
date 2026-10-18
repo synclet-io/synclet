@@ -43,7 +43,11 @@ func NewGetSyncState(storage pipelineservice.Storage) *GetSyncState {
 //   - STREAM/GLOBAL: array of AirbyteStateMessage objects with UPPERCASE type
 //   - LEGACY: the raw data object (unwrapped from the storage array)
 //
-// Returns nil if no state exists (connector will do full refresh).
+// When SourceCatalog is set, a stream configured as full refresh gets no state:
+// its STREAM entries and its GLOBAL stream_states are left out, and GLOBAL and
+// LEGACY state are left out when every catalog stream is full refresh. The stored state is not changed.
+//
+// Returns nil if no state is left (connector will do full refresh).
 func (uc *GetSyncState) Execute(ctx context.Context, params GetSyncStateParams) (json.RawMessage, error) {
 	state, err := uc.storage.ConnectionStates().First(ctx, &pipelineservice.ConnectionStateFilter{
 		ConnectionID: filter.Equals(params.ConnectionID),
@@ -69,7 +73,7 @@ func (uc *GetSyncState) Execute(ctx context.Context, params GetSyncStateParams) 
 	// Legacy state must be unwrapped: connectors expect a plain JSON object
 	// (the raw cursor/state data), not the array wrapper we use for storage.
 	if protocol.AirbyteStateType(state.StateType) == protocol.StateTypeLegacy {
-		if messages[0].Data == nil {
+		if messages[0].Data == nil || (params.SourceCatalog != nil && !hasIncremental(params.SourceCatalog)) {
 			return nil, nil
 		}
 
@@ -77,7 +81,10 @@ func (uc *GetSyncState) Execute(ctx context.Context, params GetSyncStateParams) 
 	}
 
 	if params.SourceCatalog != nil {
-		messages = restoreSourceNames(messages, params)
+		messages = omitFullRefresh(restoreSourceNames(messages, params), params.SourceCatalog)
+		if len(messages) == 0 {
+			return nil, nil
+		}
 	}
 
 	// Airbyte CDK expects UPPERCASE type values ("STREAM", "GLOBAL").
@@ -185,4 +192,62 @@ func restoreSourceNames(messages []*protocol.AirbyteStateMessage, params GetSync
 	}
 
 	return restored
+}
+
+func hasIncremental(catalog *protocol.ConfiguredAirbyteCatalog) bool {
+	for _, stream := range catalog.Streams {
+		if stream.SyncMode != protocol.SyncModeFullRefresh {
+			return true
+		}
+	}
+
+	return false
+}
+
+// omitFullRefresh drops the state of every catalog stream configured as full
+// refresh. Descriptors that match no catalog stream are kept. A GLOBAL message
+// keeps its shared_state while the catalog has an incremental stream and is
+// dropped when every stream is full refresh.
+func omitFullRefresh(messages []*protocol.AirbyteStateMessage, catalog *protocol.ConfiguredAirbyteCatalog) []*protocol.AirbyteStateMessage {
+	fullRefresh := make(map[protocol.StreamDescriptor]bool, len(catalog.Streams))
+
+	for _, stream := range catalog.Streams {
+		if stream.SyncMode == protocol.SyncModeFullRefresh {
+			fullRefresh[protocol.StreamDescriptor{Name: stream.Stream.Name, Namespace: stream.Stream.Namespace}] = true
+		}
+	}
+
+	if len(fullRefresh) == 0 {
+		return messages
+	}
+
+	incremental := hasIncremental(catalog)
+	kept := make([]*protocol.AirbyteStateMessage, 0, len(messages))
+
+	for _, msg := range messages {
+		switch {
+		case msg.Stream != nil:
+			if fullRefresh[msg.Stream.StreamDescriptor] {
+				continue
+			}
+		case msg.Global != nil:
+			if !incremental {
+				continue
+			}
+
+			streamStates := make([]protocol.AirbyteStreamState, 0, len(msg.Global.StreamStates))
+
+			for _, streamState := range msg.Global.StreamStates {
+				if !fullRefresh[streamState.StreamDescriptor] {
+					streamStates = append(streamStates, streamState)
+				}
+			}
+
+			msg.Global.StreamStates = streamStates
+		}
+
+		kept = append(kept, msg)
+	}
+
+	return kept
 }

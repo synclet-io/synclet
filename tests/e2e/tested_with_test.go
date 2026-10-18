@@ -70,11 +70,10 @@ func TestTestedWith(t *testing.T) {
 			rows:    []int{250, 251},
 		},
 		{
-			// The second run reads no records: Synclet hands the saved state to the full-refresh stream.
 			name: "faker-full-refresh-overwrite", source: faker, destination: destinationPostgres,
 			sourceConfig: fakerConfig, targetDB: "tw_target_faker_fr", table: "x.users",
 			streams: []streamOpt{{Name: "users", SyncMode: "full_refresh", DestinationSyncMode: "overwrite"}},
-			rows:    []int{100, -1},
+			rows:    []int{100, 100},
 		},
 		{
 			// The DuckDB file lives in the job's /local directory, removed with
@@ -90,7 +89,7 @@ func TestTestedWith(t *testing.T) {
 			sourceConfig:      fakerConfig,
 			destinationConfig: map[string]any{"test_destination": map[string]any{"test_destination_type": "SILENT"}},
 			streams:           []streamOpt{{Name: "users", SyncMode: "full_refresh", DestinationSyncMode: "overwrite"}},
-			recordsRead:       []int64{100, 0},
+			recordsRead:       []int64{100, 100},
 		},
 	}
 
@@ -133,9 +132,7 @@ func TestTestedWith(t *testing.T) {
 				t.Logf("TESTED-WITH %s -> %s | %s | run %d: status=%s records_read=%d rows=%d",
 					tc.source, tc.destination, tc.name, run+1, res.JobStatus, res.RecordsRead, rows)
 
-				if want := tc.rows[run]; want >= 0 {
-					assert.Equal(t, want, rows, "rows in %s after run %d", tc.table, run+1)
-				}
+				assert.Equal(t, tc.rows[run], rows, "rows in %s after run %d", tc.table, run+1)
 			}
 		})
 	}
@@ -154,7 +151,7 @@ type twCase struct {
 	destinationConfig map[string]any
 	targetDB, table   string
 	streams           []streamOpt
-	// rows is the expected row count in table after each run; -1 skips the check.
+	// rows is the expected row count in table after each run.
 	rows []int
 	// recordsRead is the expected records read by each run, for a destination
 	// whose output the test cannot query.
