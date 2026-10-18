@@ -347,7 +347,7 @@ func (r *SyncRunner) LaunchSync(ctx context.Context, opts SyncOptions) (string, 
 
 	// Source container: waits for .ready, then runs source-run.sh.
 	sourceContainer := corev1.Container{
-		Name:         "source",
+		Name:         sourceContainerName,
 		Image:        opts.SourceImage,
 		Command:      []string{"sh", "-c", fmt.Sprintf("while [ ! -f %s/.ready ]; do sleep 0.1; done; sh %s/source-run.sh", dataDir, dataDir)},
 		VolumeMounts: sourceVolumeMounts,
@@ -362,7 +362,7 @@ func (r *SyncRunner) LaunchSync(ctx context.Context, opts SyncOptions) (string, 
 
 	// Destination container: waits for .ready, then runs dest-run.sh.
 	destContainer := corev1.Container{
-		Name:         "destination",
+		Name:         destinationContainerName,
 		Image:        opts.DestImage,
 		Command:      []string{"sh", "-c", fmt.Sprintf("while [ ! -f %s/.ready ]; do sleep 0.1; done; sh %s/dest-run.sh", dataDir, dataDir)},
 		VolumeMounts: destVolumeMounts,

@@ -87,14 +87,14 @@ func (w *K8sSyncWorker) Execute(ctx context.Context) error {
 	// Source catalog keeps original namespaces; destination catalog gets rewritten.
 	var catalog protocol.ConfiguredAirbyteCatalog
 	if err := json.Unmarshal(result.ConfiguredCatalog, &catalog); err != nil {
-		w.failJob(ctx, result.Job.ID, fmt.Errorf("unmarshaling catalog: %w", err))
+		w.failJob(ctx, result, fmt.Errorf("unmarshaling catalog: %w", err))
 
 		return nil
 	}
 
 	destCatalog, err := pipelineservice.BuildDestinationCatalog(&catalog)
 	if err != nil {
-		w.failJob(ctx, result.Job.ID, fmt.Errorf("building destination catalog: %w", err))
+		w.failJob(ctx, result, fmt.Errorf("building destination catalog: %w", err))
 
 		return nil
 	}
@@ -103,7 +103,7 @@ func (w *K8sSyncWorker) Execute(ctx context.Context) error {
 
 	destCatalogJSON, err := json.Marshal(destCatalog)
 	if err != nil {
-		w.failJob(ctx, result.Job.ID, fmt.Errorf("marshaling dest catalog: %w", err))
+		w.failJob(ctx, result, fmt.Errorf("marshaling dest catalog: %w", err))
 
 		return nil
 	}
@@ -131,7 +131,7 @@ func (w *K8sSyncWorker) Execute(ctx context.Context) error {
 	// Create K8s Job -- fire-and-forget per D-09, do NOT wait for completion.
 	k8sJobName, err := w.k8sRunner.LaunchSyncJob(ctx, opts)
 	if err != nil {
-		w.failJob(ctx, result.Job.ID, fmt.Errorf("creating k8s job: %w", err))
+		w.failJob(ctx, result, fmt.Errorf("creating k8s job: %w", err))
 
 		return nil
 	}
@@ -146,15 +146,17 @@ func (w *K8sSyncWorker) Execute(ctx context.Context) error {
 	return nil
 }
 
-// failJob updates the job status to failed with the given error via ExecutorBackend.
-func (w *K8sSyncWorker) failJob(ctx context.Context, jobID uuid.UUID, reason error) {
-	w.logger.WithError(reason).WithField("job_id", jobID.String()).Error(ctx, "k8s sync worker: job failed")
+// failJob reports the job as failed through ReportCompletion. It runs before
+// any pod exists, so no connector exit code is known.
+func (w *K8sSyncWorker) failJob(ctx context.Context, result *pipelineexec.ClaimJobResult, reason error) {
+	w.logger.WithError(reason).WithField("job_id", result.Job.ID.String()).Error(ctx, "k8s sync worker: job failed")
 
-	if err := w.backend.UpdateJobStatus(ctx, pipelineexec.UpdateJobStatusParams{
-		JobID:        jobID,
+	if err := w.backend.ReportCompletion(ctx, pipelineexec.ReportCompletionParams{
+		JobID:        result.Job.ID,
+		ConnectionID: result.ConnectionID,
 		Success:      false,
 		ErrorMessage: reason.Error(),
 	}); err != nil {
-		w.logger.WithError(err).WithField("job_id", jobID.String()).Error(ctx, "failed to update job status")
+		w.logger.WithError(err).WithField("job_id", result.Job.ID.String()).Error(ctx, "failed to report job failure")
 	}
 }

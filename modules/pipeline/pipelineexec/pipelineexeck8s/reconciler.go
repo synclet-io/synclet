@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/go-pnp/go-pnp/logging"
+	"github.com/google/uuid"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineexec"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -13,13 +14,20 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-const orphanGracePeriod = 15 * time.Minute
+const (
+	orphanGracePeriod = 15 * time.Minute
+
+	sourceContainerName      = "source"
+	destinationContainerName = "destination"
+	oomKilledReason          = "OOMKilled"
+	oomKilledExitCode        = 137
+)
 
 // ResourceChecker checks job/task status via API and reports failures.
 type ResourceChecker interface {
 	IsJobActive(ctx context.Context, jobID string) (bool, error)
 	IsTaskActive(ctx context.Context, taskID string) (bool, error)
-	FailJob(ctx context.Context, jobID string, reason string) error
+	ReportCompletion(ctx context.Context, params pipelineexec.ReportCompletionParams) error
 }
 
 // ResourceCleaner iterates the K8s Jobs and Secrets labelled with its owner id
@@ -145,12 +153,9 @@ func (r *ResourceCleaner) reconcileSyncJobs(ctx context.Context, applyGrace bool
 			continue
 		}
 
-		if failed, reason := r.checkPodFailure(ctx, job.Name); failed {
-			log.WithField("reason", reason).Warn(ctx, "pod failure detected, failing job")
-
-			if err := r.checker.FailJob(ctx, syncJobID, reason); err != nil {
-				log.WithError(err).Error(ctx, "failed to mark job as failed")
-			}
+		if failure := r.checkPodFailure(ctx, job.Name); failure != nil {
+			log.WithField("reason", failure.reason).Warn(ctx, "pod failure detected, failing job")
+			r.reportPodFailure(ctx, log, syncJobID, job.Labels["synclet.io/connection"], failure)
 
 			r.deleteK8sJob(ctx, job.Name)
 
@@ -250,48 +255,127 @@ func (r *ResourceCleaner) ownedSelector(labelKey string) string {
 	return labelKey + "," + pipelineexec.OwnerLabel + "=" + r.ownerID
 }
 
-// checkPodFailure checks pods for a K8s Job and returns whether any pod is in a
-// terminal failure state. Returns (failed, reason).
-func (r *ResourceCleaner) checkPodFailure(ctx context.Context, k8sJobName string) (failed bool, reason string) {
+// podFailure is a terminal failure of a sync pod with the exit codes of its
+// connector containers; an exit code is 0 where none is known.
+type podFailure struct {
+	reason         string
+	sourceExitCode int
+	destExitCode   int
+}
+
+// reportPodFailure fails the sync job through ReportCompletion with the
+// connector exit codes read from the pod.
+func (r *ResourceCleaner) reportPodFailure(ctx context.Context, log *logging.Logger, syncJobID, connectionLabel string, failure *podFailure) {
+	jobID, err := uuid.Parse(syncJobID)
+	if err != nil {
+		log.WithError(err).Error(ctx, "sync job label is not a job id")
+
+		return
+	}
+
+	// A missing connection id only skips the retention cleanup that follows completion.
+	connectionID, _ := uuid.Parse(connectionLabel)
+
+	if err := r.checker.ReportCompletion(ctx, pipelineexec.ReportCompletionParams{
+		JobID:          jobID,
+		ConnectionID:   connectionID,
+		Success:        false,
+		ErrorMessage:   failure.reason,
+		SourceExitCode: failure.sourceExitCode,
+		DestExitCode:   failure.destExitCode,
+	}); err != nil {
+		log.WithError(err).Error(ctx, "failed to mark job as failed")
+	}
+}
+
+// checkPodFailure checks the pods of a K8s Job and returns the first terminal
+// failure it finds, or nil when no pod has failed.
+func (r *ResourceCleaner) checkPodFailure(ctx context.Context, k8sJobName string) *podFailure {
 	pods, err := r.client.CoreV1().Pods(r.namespace).List(ctx, metav1.ListOptions{
 		LabelSelector: "synclet.io/job=" + k8sJobName,
 	})
 	if err != nil {
 		r.logger.WithError(err).WithField("k8s_job", k8sJobName).Error(ctx, "failed to list pods")
 
-		return false, ""
+		return nil
 	}
 
-	if len(pods.Items) == 0 {
-		// No pods yet — pod may not have been scheduled. Don't treat as failure;
-		// the orphan check (IsJobActive) handles truly orphaned jobs.
-		return false, ""
-	}
-
+	// No pods yet means the pod may not have been scheduled; the orphan check
+	// (IsJobActive) handles truly orphaned jobs.
 	for _, pod := range pods.Items {
-		if pod.Status.Phase == corev1.PodFailed {
-			return true, "pod failed: " + pod.Status.Reason
+		if reason := podFailureReason(&pod); reason != "" {
+			failure := &podFailure{reason: reason}
+			failure.sourceExitCode, failure.destExitCode = connectorExitCodes(&pod)
+
+			return failure
 		}
+	}
 
-		// Check both regular and init container statuses for failure states.
-		allStatuses := make([]corev1.ContainerStatus, 0, len(pod.Status.ContainerStatuses)+len(pod.Status.InitContainerStatuses))
-		allStatuses = append(allStatuses, pod.Status.ContainerStatuses...)
-		allStatuses = append(allStatuses, pod.Status.InitContainerStatuses...)
+	return nil
+}
 
-		for _, status := range allStatuses {
-			if status.State.Waiting != nil {
-				waiting := status.State.Waiting.Reason
-				switch waiting {
-				case "CrashLoopBackOff":
-					return true, fmt.Sprintf("container %s in CrashLoopBackOff", status.Name)
-				case "ImagePullBackOff", "ErrImagePull":
-					return true, fmt.Sprintf("container %s: %s", status.Name, waiting)
-				}
+// podFailureReason returns why the pod has failed for good, or "" when it has not.
+func podFailureReason(pod *corev1.Pod) string {
+	if pod.Status.Phase == corev1.PodFailed {
+		return "pod failed: " + pod.Status.Reason
+	}
+
+	for _, status := range podContainerStatuses(pod) {
+		if status.State.Waiting != nil {
+			waiting := status.State.Waiting.Reason
+			switch waiting {
+			case "CrashLoopBackOff":
+				return fmt.Sprintf("container %s in CrashLoopBackOff", status.Name)
+			case "ImagePullBackOff", "ErrImagePull":
+				return fmt.Sprintf("container %s: %s", status.Name, waiting)
 			}
 		}
+
+		// Sync pods never restart a container, so an OOM kill is final.
+		if status.State.Terminated != nil && status.State.Terminated.Reason == oomKilledReason {
+			return fmt.Sprintf("container %s %s", status.Name, oomKilledReason)
+		}
 	}
 
-	return false, ""
+	return ""
+}
+
+// connectorExitCodes returns the exit codes of the pod's terminated source and
+// destination containers, 0 for a container that has not terminated.
+func connectorExitCodes(pod *corev1.Pod) (source, dest int) {
+	for _, status := range podContainerStatuses(pod) {
+		switch status.Name {
+		case sourceContainerName:
+			source = containerExitCode(status)
+		case destinationContainerName:
+			dest = containerExitCode(status)
+		}
+	}
+
+	return source, dest
+}
+
+// containerExitCode returns a terminated container's exit code; an OOM kill
+// reports 137 whatever the runtime recorded.
+func containerExitCode(status corev1.ContainerStatus) int {
+	terminated := status.State.Terminated
+	if terminated == nil {
+		return 0
+	}
+
+	if terminated.Reason == oomKilledReason {
+		return oomKilledExitCode
+	}
+
+	return int(terminated.ExitCode)
+}
+
+// podContainerStatuses returns the statuses of the pod's regular and init containers.
+func podContainerStatuses(pod *corev1.Pod) []corev1.ContainerStatus {
+	statuses := make([]corev1.ContainerStatus, 0, len(pod.Status.ContainerStatuses)+len(pod.Status.InitContainerStatuses))
+	statuses = append(statuses, pod.Status.ContainerStatuses...)
+
+	return append(statuses, pod.Status.InitContainerStatuses...)
 }
 
 func (r *ResourceCleaner) deleteK8sJob(ctx context.Context, jobName string) {

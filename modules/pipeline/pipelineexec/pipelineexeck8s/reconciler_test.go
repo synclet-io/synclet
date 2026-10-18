@@ -17,14 +17,9 @@ import (
 
 // mockResourceChecker records calls for verification.
 type mockResourceChecker struct {
-	activeJobs   map[string]bool
-	activeTasks  map[string]bool
-	failJobCalls []failJobCall
-}
-
-type failJobCall struct {
-	JobID  string
-	Reason string
+	activeJobs  map[string]bool
+	activeTasks map[string]bool
+	completions []pipelineexec.ReportCompletionParams
 }
 
 func (m *mockResourceChecker) IsJobActive(_ context.Context, jobID string) (bool, error) {
@@ -43,8 +38,8 @@ func (m *mockResourceChecker) IsTaskActive(_ context.Context, taskID string) (bo
 	return false, nil
 }
 
-func (m *mockResourceChecker) FailJob(_ context.Context, jobID, reason string) error {
-	m.failJobCalls = append(m.failJobCalls, failJobCall{JobID: jobID, Reason: reason})
+func (m *mockResourceChecker) ReportCompletion(_ context.Context, params pipelineexec.ReportCompletionParams) error {
+	m.completions = append(m.completions, params)
 
 	return nil
 }
@@ -62,7 +57,12 @@ func (d noopDelegate) WithError(error) logging.Delegate                   { retu
 func (d noopDelegate) Named(string) logging.Delegate                      { return d }
 func (d noopDelegate) SkipCallers(int) logging.Delegate                   { return d }
 
-const testOwner = "executor-0"
+const (
+	testOwner = "executor-0"
+	jobID1    = "11111111-1111-1111-1111-111111111111"
+	jobID2    = "22222222-2222-2222-2222-222222222222"
+	jobID3    = "33333333-3333-3333-3333-333333333333"
+)
 
 func newTestReconciler(client *fake.Clientset, checker *mockResourceChecker) *ResourceCleaner {
 	return NewReconciler(client, "default", testOwner, checker, &logging.Logger{Delegate: noopDelegate{}})
@@ -72,7 +72,7 @@ func TestReconcileSyncJob_ImagePullBackOff(t *testing.T) {
 	ctx := context.Background()
 	client := fake.NewSimpleClientset()
 	checker := &mockResourceChecker{
-		activeJobs: map[string]bool{"job-1": true},
+		activeJobs: map[string]bool{jobID1: true},
 	}
 
 	oldTime := metav1.NewTime(time.Now().Add(-30 * time.Minute))
@@ -83,7 +83,7 @@ func TestReconcileSyncJob_ImagePullBackOff(t *testing.T) {
 			Name:              "k8s-job-1",
 			Namespace:         "default",
 			CreationTimestamp: oldTime,
-			Labels:            map[string]string{pipelineexec.OwnerLabel: testOwner, "synclet.io/sync-job": "job-1"},
+			Labels:            map[string]string{pipelineexec.OwnerLabel: testOwner, "synclet.io/sync-job": jobID1},
 		},
 	}, metav1.CreateOptions{})
 	require.NoError(t, err)
@@ -114,10 +114,10 @@ func TestReconcileSyncJob_ImagePullBackOff(t *testing.T) {
 	r.Reconcile(ctx, true)
 
 	// Verify FailJob was called with ImagePullBackOff reason.
-	require.Len(t, checker.failJobCalls, 1)
-	assert.Equal(t, "job-1", checker.failJobCalls[0].JobID)
-	assert.Contains(t, checker.failJobCalls[0].Reason, "ImagePullBackOff")
-	assert.Contains(t, checker.failJobCalls[0].Reason, "source")
+	require.Len(t, checker.completions, 1)
+	assert.Equal(t, jobID1, checker.completions[0].JobID.String())
+	assert.Contains(t, checker.completions[0].ErrorMessage, "ImagePullBackOff")
+	assert.Contains(t, checker.completions[0].ErrorMessage, "source")
 
 	// Verify K8s job was deleted.
 	_, err = client.BatchV1().Jobs("default").Get(ctx, "k8s-job-1", metav1.GetOptions{})
@@ -128,7 +128,7 @@ func TestReconcileSyncJob_ErrImagePull(t *testing.T) {
 	ctx := context.Background()
 	client := fake.NewSimpleClientset()
 	checker := &mockResourceChecker{
-		activeJobs: map[string]bool{"job-2": true},
+		activeJobs: map[string]bool{jobID2: true},
 	}
 
 	oldTime := metav1.NewTime(time.Now().Add(-30 * time.Minute))
@@ -138,7 +138,7 @@ func TestReconcileSyncJob_ErrImagePull(t *testing.T) {
 			Name:              "k8s-job-2",
 			Namespace:         "default",
 			CreationTimestamp: oldTime,
-			Labels:            map[string]string{pipelineexec.OwnerLabel: testOwner, "synclet.io/sync-job": "job-2"},
+			Labels:            map[string]string{pipelineexec.OwnerLabel: testOwner, "synclet.io/sync-job": jobID2},
 		},
 	}, metav1.CreateOptions{})
 	require.NoError(t, err)
@@ -167,10 +167,10 @@ func TestReconcileSyncJob_ErrImagePull(t *testing.T) {
 	r := newTestReconciler(client, checker)
 	r.Reconcile(ctx, true)
 
-	require.Len(t, checker.failJobCalls, 1)
-	assert.Equal(t, "job-2", checker.failJobCalls[0].JobID)
-	assert.Contains(t, checker.failJobCalls[0].Reason, "ErrImagePull")
-	assert.Contains(t, checker.failJobCalls[0].Reason, "destination")
+	require.Len(t, checker.completions, 1)
+	assert.Equal(t, jobID2, checker.completions[0].JobID.String())
+	assert.Contains(t, checker.completions[0].ErrorMessage, "ErrImagePull")
+	assert.Contains(t, checker.completions[0].ErrorMessage, "destination")
 
 	_, err = client.BatchV1().Jobs("default").Get(ctx, "k8s-job-2", metav1.GetOptions{})
 	assert.Error(t, err, "K8s job should have been deleted")
@@ -180,7 +180,7 @@ func TestReconcileSyncJob_InitContainerImagePullBackOff(t *testing.T) {
 	ctx := context.Background()
 	client := fake.NewSimpleClientset()
 	checker := &mockResourceChecker{
-		activeJobs: map[string]bool{"job-3": true},
+		activeJobs: map[string]bool{jobID3: true},
 	}
 
 	oldTime := metav1.NewTime(time.Now().Add(-30 * time.Minute))
@@ -190,7 +190,7 @@ func TestReconcileSyncJob_InitContainerImagePullBackOff(t *testing.T) {
 			Name:              "k8s-job-3",
 			Namespace:         "default",
 			CreationTimestamp: oldTime,
-			Labels:            map[string]string{pipelineexec.OwnerLabel: testOwner, "synclet.io/sync-job": "job-3"},
+			Labels:            map[string]string{pipelineexec.OwnerLabel: testOwner, "synclet.io/sync-job": jobID3},
 		},
 	}, metav1.CreateOptions{})
 	require.NoError(t, err)
@@ -219,9 +219,9 @@ func TestReconcileSyncJob_InitContainerImagePullBackOff(t *testing.T) {
 	r := newTestReconciler(client, checker)
 	r.Reconcile(ctx, true)
 
-	require.Len(t, checker.failJobCalls, 1)
-	assert.Contains(t, checker.failJobCalls[0].Reason, "ImagePullBackOff")
-	assert.Contains(t, checker.failJobCalls[0].Reason, "init-sidecar")
+	require.Len(t, checker.completions, 1)
+	assert.Contains(t, checker.completions[0].ErrorMessage, "ImagePullBackOff")
+	assert.Contains(t, checker.completions[0].ErrorMessage, "init-sidecar")
 }
 
 func TestReconciler_OrphanSyncJobCleanup(t *testing.T) {
@@ -312,7 +312,7 @@ func TestReconciler_OrphanSyncJobCleanup(t *testing.T) {
 	// Recent active job should still exist: pod failure checks wait for the grace period.
 	_, err = client.BatchV1().Jobs("default").Get(ctx, "recent-k8s-job", metav1.GetOptions{})
 	require.NoError(t, err, "recent K8s job should NOT have been deleted")
-	assert.Empty(t, checker.failJobCalls, "recent job should not be failed within grace period")
+	assert.Empty(t, checker.completions, "recent job should not be failed within grace period")
 }
 
 func TestReconciler_DeletesInactiveSyncJobWithinGrace(t *testing.T) {
@@ -346,7 +346,7 @@ func TestReconciler_DeletesInactiveSyncJobWithinGrace(t *testing.T) {
 
 	_, err = client.BatchV1().Jobs("default").Get(ctx, "cancelled-k8s-job", metav1.GetOptions{})
 	require.Error(t, err, "K8s job of an inactive DB job should be deleted without grace")
-	assert.Empty(t, checker.failJobCalls, "inactive job must not be failed")
+	assert.Empty(t, checker.completions, "inactive job must not be failed")
 }
 
 func TestReconciler_CleansOrphanedSyncSecrets(t *testing.T) {
@@ -363,7 +363,7 @@ func TestReconciler_CleansOrphanedSyncSecrets(t *testing.T) {
 			Name:              "synclet-sync-job-1",
 			Namespace:         "default",
 			CreationTimestamp: oldTime,
-			Labels:            map[string]string{pipelineexec.OwnerLabel: testOwner, "synclet.io/sync-job": "job-1"},
+			Labels:            map[string]string{pipelineexec.OwnerLabel: testOwner, "synclet.io/sync-job": jobID1},
 		},
 	}, metav1.CreateOptions{})
 	require.NoError(t, err)
@@ -379,7 +379,7 @@ func TestReconciler_KeepsSyncSecretForActiveJob(t *testing.T) {
 	ctx := context.Background()
 	client := fake.NewSimpleClientset()
 	checker := &mockResourceChecker{
-		activeJobs: map[string]bool{"job-2": true},
+		activeJobs: map[string]bool{jobID2: true},
 	}
 
 	oldTime := metav1.NewTime(time.Now().Add(-30 * time.Minute))
@@ -389,7 +389,7 @@ func TestReconciler_KeepsSyncSecretForActiveJob(t *testing.T) {
 			Name:              "synclet-sync-job-2",
 			Namespace:         "default",
 			CreationTimestamp: oldTime,
-			Labels:            map[string]string{pipelineexec.OwnerLabel: testOwner, "synclet.io/sync-job": "job-2"},
+			Labels:            map[string]string{pipelineexec.OwnerLabel: testOwner, "synclet.io/sync-job": jobID2},
 		},
 	}, metav1.CreateOptions{})
 	require.NoError(t, err)

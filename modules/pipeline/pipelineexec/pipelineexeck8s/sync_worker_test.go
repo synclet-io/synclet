@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/go-pnp/go-pnp/logging"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,14 +17,18 @@ import (
 
 // mockBackend implements pipelineexec.ExecutorBackend for testing.
 type mockBackend struct {
-	claimResult *pipelineexec.ClaimJobResult
+	claimResult   *pipelineexec.ClaimJobResult
+	statusUpdates []pipelineexec.UpdateJobStatusParams
+	completions   []pipelineexec.ReportCompletionParams
 }
 
 func (m *mockBackend) ClaimJob(_ context.Context, _ string) (*pipelineexec.ClaimJobResult, error) {
 	return m.claimResult, nil
 }
 
-func (m *mockBackend) UpdateJobStatus(_ context.Context, _ pipelineexec.UpdateJobStatusParams) error {
+func (m *mockBackend) UpdateJobStatus(_ context.Context, params pipelineexec.UpdateJobStatusParams) error {
+	m.statusUpdates = append(m.statusUpdates, params)
+
 	return nil
 }
 
@@ -47,7 +52,9 @@ func (m *mockBackend) ReportState(_ context.Context, _, _ uuid.UUID, _ *protocol
 	return nil
 }
 
-func (m *mockBackend) ReportCompletion(_ context.Context, _ pipelineexec.ReportCompletionParams) error {
+func (m *mockBackend) ReportCompletion(_ context.Context, params pipelineexec.ReportCompletionParams) error {
+	m.completions = append(m.completions, params)
+
 	return nil
 }
 
@@ -135,6 +142,34 @@ func TestK8sSyncWorker_K8sSyncJobOptions(t *testing.T) {
 	assert.NotEmpty(t, opts.DestCatalog)
 	assert.NotEmpty(t, opts.State)
 	assert.NotEmpty(t, opts.RuntimeConfig)
+}
+
+func TestK8sSyncWorker_Execute_LaunchFailureReportsCompletion(t *testing.T) {
+	jobID := uuid.New()
+	connectionID := uuid.New()
+	backend := &mockBackend{claimResult: &pipelineexec.ClaimJobResult{
+		Job:               &pipelineservice.Job{ID: jobID},
+		ConnectionID:      connectionID,
+		ConfiguredCatalog: []byte(`{"streams":[]}`),
+	}}
+	runner := &mockK8sSyncLauncher{
+		launchSyncJobFn: func(context.Context, K8sSyncJobOptions) (string, error) {
+			return "", errors.New("k8s api unavailable")
+		},
+	}
+
+	worker := NewK8sSyncWorker(backend, runner, "", "test-worker", &logging.Logger{Delegate: noopDelegate{}})
+	require.NoError(t, worker.Execute(context.Background()))
+
+	assert.Empty(t, backend.statusUpdates)
+	require.Len(t, backend.completions, 1)
+	completion := backend.completions[0]
+	assert.Equal(t, jobID, completion.JobID)
+	assert.Equal(t, connectionID, completion.ConnectionID)
+	assert.False(t, completion.Success)
+	assert.Contains(t, completion.ErrorMessage, "k8s api unavailable")
+	assert.Zero(t, completion.SourceExitCode)
+	assert.Zero(t, completion.DestExitCode)
 }
 
 func TestK8sSyncWorker_LaunchSyncJobFailure(t *testing.T) {
