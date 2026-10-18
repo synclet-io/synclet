@@ -44,7 +44,7 @@ type StatsStorage interface {
 	UpsertRollups(ctx context.Context, bucketSize BucketSize, since time.Time, truncUnit string) error
 
 	// QueryConnectionRollup returns aggregated rollup data for a connection over a time range.
-	QueryConnectionRollup(ctx context.Context, connectionID uuid.UUID, from, to time.Time) (ConnectionRollup, error)
+	QueryConnectionRollup(ctx context.Context, connectionID uuid.UUID, bucketSize BucketSize, from, to time.Time) (ConnectionRollup, error)
 
 	// QueryLastSyncAt returns the last completed_at time for a connection.
 	QueryLastSyncAt(ctx context.Context, connectionID uuid.UUID) (*time.Time, error)
@@ -56,22 +56,22 @@ type StatsStorage interface {
 	QueryDurationChart(ctx context.Context, connectionID uuid.UUID, from, to time.Time, limit int) ([]DurationChartRow, error)
 
 	// QueryRecordsChart returns raw records chart rows from rollups for a connection.
-	QueryRecordsChart(ctx context.Context, connectionID uuid.UUID, from, to time.Time) ([]RecordsChartRow, error)
+	QueryRecordsChart(ctx context.Context, connectionID uuid.UUID, bucketSize BucketSize, from, to time.Time) ([]RecordsChartRow, error)
 
 	// QueryConnectionFailedJobs returns failed job error info for a connection in a time range.
 	QueryConnectionFailedJobs(ctx context.Context, connectionID uuid.UUID, from, to time.Time) ([]FailedJobRow, error)
 
 	// QueryWorkspaceRollup returns aggregated rollup totals for a workspace over a time range.
-	QueryWorkspaceRollup(ctx context.Context, workspaceID uuid.UUID, from, to time.Time) (RollupTotals, error)
+	QueryWorkspaceRollup(ctx context.Context, workspaceID uuid.UUID, bucketSize BucketSize, from, to time.Time) (RollupTotals, error)
 
 	// QueryTopConnections returns top connections by records synced for a workspace.
-	QueryTopConnections(ctx context.Context, workspaceID uuid.UUID, from, to time.Time, limit int) ([]TopConnectionRow, error)
+	QueryTopConnections(ctx context.Context, workspaceID uuid.UUID, bucketSize BucketSize, from, to time.Time, limit int) ([]TopConnectionRow, error)
 
 	// QueryConnectionLastCompletedAt returns the last completed job time for a connection.
 	QueryConnectionLastCompletedAt(ctx context.Context, connectionID uuid.UUID) (*time.Time, error)
 
 	// QueryConnectionSparkline returns recent rollup records_read values for a connection.
-	QueryConnectionSparkline(ctx context.Context, connectionID uuid.UUID, from, to time.Time, limit int) ([]int64, error)
+	QueryConnectionSparkline(ctx context.Context, connectionID uuid.UUID, bucketSize BucketSize, from, to time.Time, limit int) ([]int64, error)
 
 	// QueryWorkspaceFailedJobs returns failed job error info for a workspace in a time range.
 	QueryWorkspaceFailedJobs(ctx context.Context, workspaceID uuid.UUID, from, to time.Time) ([]FailedJobRow, error)
@@ -86,7 +86,7 @@ type StatsStorage interface {
 	QueryConnectionLastCompletedAtBatch(ctx context.Context, connectionIDs []uuid.UUID) (map[uuid.UUID]*time.Time, error)
 
 	// QueryConnectionSparklineBatch returns recent rollup records_read values for each of the given connection IDs.
-	QueryConnectionSparklineBatch(ctx context.Context, connectionIDs []uuid.UUID, from, to time.Time, limit int) (map[uuid.UUID][]int64, error)
+	QueryConnectionSparklineBatch(ctx context.Context, connectionIDs []uuid.UUID, bucketSize BucketSize, from, to time.Time, limit int) (map[uuid.UUID][]int64, error)
 
 	// DeleteWorkspaceRollups removes every rollup bucket of a workspace.
 	DeleteWorkspaceRollups(ctx context.Context, workspaceID uuid.UUID) error

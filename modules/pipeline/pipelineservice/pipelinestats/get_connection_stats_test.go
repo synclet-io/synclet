@@ -258,3 +258,23 @@ func TestGetConnectionStats_StorageErrors(t *testing.T) {
 		})
 	}
 }
+
+func TestGetConnectionStats_BucketSize(t *testing.T) {
+	cases := map[pipelineservice.TimeRange]pipelineservice.BucketSize{
+		pipelineservice.TimeRange24h: pipelineservice.BucketSizeHourly,
+		pipelineservice.TimeRange7d:  pipelineservice.BucketSizeDaily,
+		pipelineservice.TimeRange30d: pipelineservice.BucketSizeDaily,
+	}
+
+	for timeRange, want := range cases {
+		t.Run(string(timeRange), func(t *testing.T) {
+			stats := &fakeStatsStorage{}
+			executeConnectionStats(t, newActiveConnection(uuid.New(), nil), stats, timeRange)
+
+			assert.Equal(t, map[string][]pipelineservice.BucketSize{
+				"QueryConnectionRollup": {want, want},
+				"QueryRecordsChart":     {want},
+			}, stats.bucketSizes)
+		})
+	}
+}

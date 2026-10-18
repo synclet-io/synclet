@@ -80,6 +80,15 @@ type fakeStatsStorage struct {
 	sparklineLimit   int
 	lastJobInfoBatch []uuid.UUID
 	queriedLastJob   bool
+	bucketSizes      map[string][]pipelineservice.BucketSize
+}
+
+func (s *fakeStatsStorage) recordBucketSize(method string, bucketSize pipelineservice.BucketSize) {
+	if s.bucketSizes == nil {
+		s.bucketSizes = map[string][]pipelineservice.BucketSize{}
+	}
+
+	s.bucketSizes[method] = append(s.bucketSizes[method], bucketSize)
 }
 
 func (s *fakeStatsStorage) err(method string) error {
@@ -121,7 +130,9 @@ func (s *fakeStatsStorage) UpsertRollups(_ context.Context, bucketSize pipelines
 	return s.err("UpsertRollups:" + truncUnit)
 }
 
-func (s *fakeStatsStorage) QueryConnectionRollup(_ context.Context, connectionID uuid.UUID, from, to time.Time) (pipelineservice.ConnectionRollup, error) {
+func (s *fakeStatsStorage) QueryConnectionRollup(_ context.Context, connectionID uuid.UUID, bucketSize pipelineservice.BucketSize, from, to time.Time) (pipelineservice.ConnectionRollup, error) {
+	s.recordBucketSize("QueryConnectionRollup", bucketSize)
+
 	if err := s.err("QueryConnectionRollup"); err != nil {
 		return pipelineservice.ConnectionRollup{}, err
 	}
@@ -136,7 +147,9 @@ func (s *fakeStatsStorage) QueryConnectionRollup(_ context.Context, connectionID
 	return rollup, nil
 }
 
-func (s *fakeStatsStorage) QueryWorkspaceRollup(_ context.Context, _ uuid.UUID, from, to time.Time) (pipelineservice.RollupTotals, error) {
+func (s *fakeStatsStorage) QueryWorkspaceRollup(_ context.Context, _ uuid.UUID, bucketSize pipelineservice.BucketSize, from, to time.Time) (pipelineservice.RollupTotals, error) {
+	s.recordBucketSize("QueryWorkspaceRollup", bucketSize)
+
 	if err := s.err("QueryWorkspaceRollup"); err != nil {
 		return pipelineservice.RollupTotals{}, err
 	}
@@ -173,7 +186,9 @@ func (s *fakeStatsStorage) QueryDurationChart(_ context.Context, _ uuid.UUID, fr
 	return s.durationRows, s.err("QueryDurationChart")
 }
 
-func (s *fakeStatsStorage) QueryRecordsChart(_ context.Context, _ uuid.UUID, from, to time.Time) ([]pipelineservice.RecordsChartRow, error) {
+func (s *fakeStatsStorage) QueryRecordsChart(_ context.Context, _ uuid.UUID, bucketSize pipelineservice.BucketSize, from, to time.Time) ([]pipelineservice.RecordsChartRow, error) {
+	s.recordBucketSize("QueryRecordsChart", bucketSize)
+
 	s.recordsWindow = window{from: from, to: to}
 
 	return s.recordRows, s.err("QueryRecordsChart")
@@ -202,7 +217,9 @@ func (s *fakeStatsStorage) QuerySyncTimeline(_ context.Context, workspaceID uuid
 	return s.timelineRows, s.err("QuerySyncTimeline")
 }
 
-func (s *fakeStatsStorage) QueryTopConnections(_ context.Context, _ uuid.UUID, from, to time.Time, limit int) ([]pipelineservice.TopConnectionRow, error) {
+func (s *fakeStatsStorage) QueryTopConnections(_ context.Context, _ uuid.UUID, bucketSize pipelineservice.BucketSize, from, to time.Time, limit int) ([]pipelineservice.TopConnectionRow, error) {
+	s.recordBucketSize("QueryTopConnections", bucketSize)
+
 	s.topWindow = window{from: from, to: to}
 	s.topLimit = limit
 
@@ -226,7 +243,9 @@ func (s *fakeStatsStorage) QueryConnectionLastCompletedAtBatch(context.Context, 
 	return s.lastCompleted, nil
 }
 
-func (s *fakeStatsStorage) QueryConnectionSparklineBatch(_ context.Context, _ []uuid.UUID, _, _ time.Time, limit int) (map[uuid.UUID][]int64, error) {
+func (s *fakeStatsStorage) QueryConnectionSparklineBatch(_ context.Context, _ []uuid.UUID, bucketSize pipelineservice.BucketSize, _, _ time.Time, limit int) (map[uuid.UUID][]int64, error) {
+	s.recordBucketSize("QueryConnectionSparklineBatch", bucketSize)
+
 	s.sparklineLimit = limit
 	if err := s.err("QueryConnectionSparklineBatch"); err != nil {
 		return nil, err

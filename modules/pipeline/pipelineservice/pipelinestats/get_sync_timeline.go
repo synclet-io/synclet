@@ -43,13 +43,7 @@ func (uc *GetSyncTimeline) Execute(ctx context.Context, params pipelineservice.G
 	now := time.Now()
 	from := now.Add(-duration)
 
-	// Auto-select bucket size per D-20.
-	bucketSize := pipelineservice.BucketSizeDaily
-	if params.TimeRange == pipelineservice.TimeRange24h {
-		bucketSize = pipelineservice.BucketSizeHourly
-	}
-
-	rows, err := uc.statsStorage.QuerySyncTimeline(ctx, params.WorkspaceID, bucketSize, from, now, params.ConnectionID)
+	rows, err := uc.statsStorage.QuerySyncTimeline(ctx, params.WorkspaceID, params.TimeRange.BucketSize(), from, now, params.ConnectionID)
 	if err != nil {
 		return nil, fmt.Errorf("querying timeline: %w", err)
 	}

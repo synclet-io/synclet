@@ -94,8 +94,13 @@ func (s *StatsStorage) UpsertRollups(ctx context.Context, bucketSize pipelinesvc
 }
 
 // QueryConnectionRollup returns aggregated rollup data for a connection over a time range.
-func (s *StatsStorage) QueryConnectionRollup(ctx context.Context, connectionID uuid.UUID, from, to time.Time) (pipelinesvc.ConnectionRollup, error) {
+func (s *StatsStorage) QueryConnectionRollup(ctx context.Context, connectionID uuid.UUID, bucketSize pipelinesvc.BucketSize, from, to time.Time) (pipelinesvc.ConnectionRollup, error) {
 	var stats pipelinesvc.ConnectionRollup
+
+	dbBucketSize, err := convertBucketSizeToDB(bucketSize)
+	if err != nil {
+		return stats, err
+	}
 
 	row := s.db.WithContext(ctx).Raw(`
 		SELECT
@@ -106,9 +111,10 @@ func (s *StatsStorage) QueryConnectionRollup(ctx context.Context, connectionID u
 			COALESCE(SUM(total_duration_ms), 0)
 		FROM pipeline.stats_rollups
 		WHERE connection_id = ?
+			AND bucket_size = ?
 			AND bucket_start >= ?
 			AND bucket_start < ?
-	`, connectionID, from, to).Row()
+	`, connectionID, dbBucketSize, from, to).Row()
 
 	if err := row.Scan(&stats.SyncsTotal, &stats.SyncsSucceeded, &stats.SyncsFailed, &stats.RecordsRead, &stats.TotalDurationMs); err != nil {
 		return stats, fmt.Errorf("scanning connection rollup: %w", err)
@@ -182,17 +188,23 @@ func (s *StatsStorage) QueryDurationChart(ctx context.Context, connectionID uuid
 }
 
 // QueryRecordsChart returns raw records chart rows from rollups for a connection.
-func (s *StatsStorage) QueryRecordsChart(ctx context.Context, connectionID uuid.UUID, from, to time.Time) ([]pipelinesvc.RecordsChartRow, error) {
+func (s *StatsStorage) QueryRecordsChart(ctx context.Context, connectionID uuid.UUID, bucketSize pipelinesvc.BucketSize, from, to time.Time) ([]pipelinesvc.RecordsChartRow, error) {
 	var rows []pipelinesvc.RecordsChartRow
+
+	dbBucketSize, err := convertBucketSizeToDB(bucketSize)
+	if err != nil {
+		return nil, err
+	}
 
 	if err := s.db.WithContext(ctx).Raw(`
 		SELECT bucket_start, records_read
 		FROM pipeline.stats_rollups
 		WHERE connection_id = ?
+			AND bucket_size = ?
 			AND bucket_start >= ?
 			AND bucket_start < ?
 		ORDER BY bucket_start ASC
-	`, connectionID, from, to).Scan(&rows).Error; err != nil {
+	`, connectionID, dbBucketSize, from, to).Scan(&rows).Error; err != nil {
 		return nil, fmt.Errorf("querying records chart: %w", err)
 	}
 
@@ -218,8 +230,13 @@ func (s *StatsStorage) QueryConnectionFailedJobs(ctx context.Context, connection
 }
 
 // QueryWorkspaceRollup returns aggregated rollup totals for a workspace over a time range.
-func (s *StatsStorage) QueryWorkspaceRollup(ctx context.Context, workspaceID uuid.UUID, from, to time.Time) (pipelinesvc.RollupTotals, error) {
+func (s *StatsStorage) QueryWorkspaceRollup(ctx context.Context, workspaceID uuid.UUID, bucketSize pipelinesvc.BucketSize, from, to time.Time) (pipelinesvc.RollupTotals, error) {
 	var totals pipelinesvc.RollupTotals
+
+	dbBucketSize, err := convertBucketSizeToDB(bucketSize)
+	if err != nil {
+		return totals, err
+	}
 
 	row := s.db.WithContext(ctx).Raw(`
 		SELECT
@@ -229,9 +246,10 @@ func (s *StatsStorage) QueryWorkspaceRollup(ctx context.Context, workspaceID uui
 			COALESCE(SUM(records_read), 0)
 		FROM pipeline.stats_rollups
 		WHERE workspace_id = ?
+			AND bucket_size = ?
 			AND bucket_start >= ?
 			AND bucket_start < ?
-	`, workspaceID, from, to).Row()
+	`, workspaceID, dbBucketSize, from, to).Row()
 
 	if err := row.Scan(&totals.SyncsTotal, &totals.SyncsSucceeded, &totals.SyncsFailed, &totals.RecordsRead); err != nil {
 		return totals, fmt.Errorf("scanning workspace rollup: %w", err)
@@ -241,8 +259,13 @@ func (s *StatsStorage) QueryWorkspaceRollup(ctx context.Context, workspaceID uui
 }
 
 // QueryTopConnections returns top connections by records synced for a workspace.
-func (s *StatsStorage) QueryTopConnections(ctx context.Context, workspaceID uuid.UUID, from, to time.Time, limit int) ([]pipelinesvc.TopConnectionRow, error) {
+func (s *StatsStorage) QueryTopConnections(ctx context.Context, workspaceID uuid.UUID, bucketSize pipelinesvc.BucketSize, from, to time.Time, limit int) ([]pipelinesvc.TopConnectionRow, error) {
 	var rows []pipelinesvc.TopConnectionRow
+
+	dbBucketSize, err := convertBucketSizeToDB(bucketSize)
+	if err != nil {
+		return nil, err
+	}
 
 	if err := s.db.WithContext(ctx).Raw(`
 		SELECT
@@ -251,12 +274,13 @@ func (s *StatsStorage) QueryTopConnections(ctx context.Context, workspaceID uuid
 			SUM(bytes_synced) AS bytes_synced
 		FROM pipeline.stats_rollups
 		WHERE workspace_id = ?
+			AND bucket_size = ?
 			AND bucket_start >= ?
 			AND bucket_start < ?
 		GROUP BY connection_id
 		ORDER BY records_synced DESC
 		LIMIT ?
-	`, workspaceID, from, to, limit).Scan(&rows).Error; err != nil {
+	`, workspaceID, dbBucketSize, from, to, limit).Scan(&rows).Error; err != nil {
 		return nil, fmt.Errorf("querying top connections: %w", err)
 	}
 
@@ -279,17 +303,23 @@ func (s *StatsStorage) QueryConnectionLastCompletedAt(ctx context.Context, conne
 }
 
 // QueryConnectionSparkline returns recent rollup records_read values for a connection.
-func (s *StatsStorage) QueryConnectionSparkline(ctx context.Context, connectionID uuid.UUID, from, to time.Time, limit int) ([]int64, error) {
+func (s *StatsStorage) QueryConnectionSparkline(ctx context.Context, connectionID uuid.UUID, bucketSize pipelinesvc.BucketSize, from, to time.Time, limit int) ([]int64, error) {
 	var sparkline []int64
+
+	dbBucketSize, err := convertBucketSizeToDB(bucketSize)
+	if err != nil {
+		return nil, err
+	}
 
 	if err := s.db.WithContext(ctx).Raw(`
 		SELECT COALESCE(records_read, 0) FROM pipeline.stats_rollups
 		WHERE connection_id = ?
+			AND bucket_size = ?
 			AND bucket_start >= ?
 			AND bucket_start < ?
 		ORDER BY bucket_start DESC
 		LIMIT ?
-	`, connectionID, from, to, limit).Scan(&sparkline).Error; err != nil {
+	`, connectionID, dbBucketSize, from, to, limit).Scan(&sparkline).Error; err != nil {
 		return nil, fmt.Errorf("querying connection sparkline: %w", err)
 	}
 
@@ -384,9 +414,14 @@ func (s *StatsStorage) QueryConnectionLastCompletedAtBatch(ctx context.Context, 
 
 // QueryConnectionSparklineBatch returns recent rollup records_read values for each of the given
 // connection IDs in a single query, with up to `limit` values per connection.
-func (s *StatsStorage) QueryConnectionSparklineBatch(ctx context.Context, connectionIDs []uuid.UUID, from, to time.Time, limit int) (map[uuid.UUID][]int64, error) {
+func (s *StatsStorage) QueryConnectionSparklineBatch(ctx context.Context, connectionIDs []uuid.UUID, bucketSize pipelinesvc.BucketSize, from, to time.Time, limit int) (map[uuid.UUID][]int64, error) {
 	if len(connectionIDs) == 0 {
 		return make(map[uuid.UUID][]int64), nil
+	}
+
+	dbBucketSize, err := convertBucketSizeToDB(bucketSize)
+	if err != nil {
+		return nil, err
 	}
 
 	var rows []struct {
@@ -401,12 +436,13 @@ func (s *StatsStorage) QueryConnectionSparklineBatch(ctx context.Context, connec
 				ROW_NUMBER() OVER (PARTITION BY connection_id ORDER BY bucket_start DESC) AS rn
 			FROM pipeline.stats_rollups
 			WHERE connection_id IN ?
+				AND bucket_size = ?
 				AND bucket_start >= ?
 				AND bucket_start < ?
 		) sub
 		WHERE rn <= ?
 		ORDER BY connection_id, rn ASC
-	`, connectionIDs, from, to, limit).Scan(&rows).Error; err != nil {
+	`, connectionIDs, dbBucketSize, from, to, limit).Scan(&rows).Error; err != nil {
 		return nil, fmt.Errorf("querying connection sparkline batch: %w", err)
 	}
 

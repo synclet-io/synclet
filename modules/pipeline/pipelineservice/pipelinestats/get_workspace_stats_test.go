@@ -254,3 +254,33 @@ func TestGetWorkspaceStats_StorageErrors(t *testing.T) {
 		require.ErrorIs(t, err, errStorage)
 	})
 }
+
+func TestGetWorkspaceStats_BucketSize(t *testing.T) {
+	cases := map[pipelineservice.TimeRange]pipelineservice.BucketSize{
+		pipelineservice.TimeRange24h: pipelineservice.BucketSizeHourly,
+		pipelineservice.TimeRange7d:  pipelineservice.BucketSizeDaily,
+		pipelineservice.TimeRange30d: pipelineservice.BucketSizeDaily,
+	}
+
+	for timeRange, want := range cases {
+		t.Run(string(timeRange), func(t *testing.T) {
+			workspaceID := uuid.New()
+			conn := newActiveConnection(workspaceID, nil)
+			stats := &fakeStatsStorage{
+				topConnections: []pipelineservice.TopConnectionRow{{ConnectionID: conn.ID, RecordsSynced: 1}},
+			}
+
+			_, err := pipelinestats.NewGetWorkspaceStats(stats, newFakeStorage(conn), newLogger()).Execute(context.Background(), pipelineservice.GetWorkspaceStatsParams{
+				WorkspaceID: workspaceID,
+				TimeRange:   timeRange,
+			})
+			require.NoError(t, err)
+
+			assert.Equal(t, map[string][]pipelineservice.BucketSize{
+				"QueryWorkspaceRollup":          {want, want},
+				"QueryTopConnections":           {want},
+				"QueryConnectionSparklineBatch": {want},
+			}, stats.bucketSizes)
+		})
+	}
+}

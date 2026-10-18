@@ -30,11 +30,12 @@ func (uc *GetWorkspaceStats) Execute(ctx context.Context, params pipelineservice
 	now := time.Now()
 	currentStart := now.Add(-duration)
 	previousStart := currentStart.Add(-duration)
+	bucketSize := params.TimeRange.BucketSize()
 
 	result := &pipelineservice.WorkspaceStatsResult{}
 
 	// Query current period rollup totals.
-	currentStats, err := uc.statsStorage.QueryWorkspaceRollup(ctx, params.WorkspaceID, currentStart, now)
+	currentStats, err := uc.statsStorage.QueryWorkspaceRollup(ctx, params.WorkspaceID, bucketSize, currentStart, now)
 	if err != nil {
 		return nil, fmt.Errorf("querying current stats: %w", err)
 	}
@@ -48,7 +49,7 @@ func (uc *GetWorkspaceStats) Execute(ctx context.Context, params pipelineservice
 	}
 
 	// Query previous period for trend deltas.
-	previousStats, err := uc.statsStorage.QueryWorkspaceRollup(ctx, params.WorkspaceID, previousStart, currentStart)
+	previousStats, err := uc.statsStorage.QueryWorkspaceRollup(ctx, params.WorkspaceID, bucketSize, previousStart, currentStart)
 	if err != nil {
 		return nil, fmt.Errorf("querying previous stats: %w", err)
 	}
@@ -86,7 +87,7 @@ func (uc *GetWorkspaceStats) Execute(ctx context.Context, params pipelineservice
 	result.ConnectionHealths = uc.computeConnectionHealths(ctx, connections)
 
 	// Top connections by records synced.
-	topConns, topErr := uc.queryTopConnections(ctx, params.WorkspaceID, currentStart, now, connections)
+	topConns, topErr := uc.queryTopConnections(ctx, params.WorkspaceID, bucketSize, currentStart, now, connections)
 	if topErr != nil {
 		uc.logger.WithError(topErr).Warn(ctx, "failed to query top connections for dashboard")
 	}
@@ -152,14 +153,14 @@ func (uc *GetWorkspaceStats) computeConnectionHealths(ctx context.Context, conne
 	return healthItems
 }
 
-func (uc *GetWorkspaceStats) queryTopConnections(ctx context.Context, workspaceID uuid.UUID, from, to time.Time, connections []*pipelineservice.Connection) ([]pipelineservice.TopConnectionItem, error) {
+func (uc *GetWorkspaceStats) queryTopConnections(ctx context.Context, workspaceID uuid.UUID, bucketSize pipelineservice.BucketSize, from, to time.Time, connections []*pipelineservice.Connection) ([]pipelineservice.TopConnectionItem, error) {
 	// Build connection name map.
 	nameMap := make(map[uuid.UUID]string)
 	for _, c := range connections {
 		nameMap[c.ID] = c.Name
 	}
 
-	rows, err := uc.statsStorage.QueryTopConnections(ctx, workspaceID, from, to, 5)
+	rows, err := uc.statsStorage.QueryTopConnections(ctx, workspaceID, bucketSize, from, to, 5)
 	if err != nil {
 		return nil, err
 	}
@@ -175,7 +176,7 @@ func (uc *GetWorkspaceStats) queryTopConnections(ctx context.Context, workspaceI
 		lastCompletedMap = make(map[uuid.UUID]*time.Time)
 	}
 
-	sparklineMap, _ := uc.statsStorage.QueryConnectionSparklineBatch(ctx, topConnIDs, from, to, 7)
+	sparklineMap, _ := uc.statsStorage.QueryConnectionSparklineBatch(ctx, topConnIDs, bucketSize, from, to, 7)
 	if sparklineMap == nil {
 		sparklineMap = make(map[uuid.UUID][]int64)
 	}

@@ -40,6 +40,7 @@ func (uc *GetConnectionStats) Execute(ctx context.Context, params pipelineservic
 	now := time.Now()
 	currentStart := now.Add(-duration)
 	previousStart := currentStart.Add(-duration)
+	bucketSize := params.TimeRange.BucketSize()
 
 	result := &pipelineservice.ConnectionStatsResult{}
 
@@ -53,7 +54,7 @@ func (uc *GetConnectionStats) Execute(ctx context.Context, params pipelineservic
 	}
 
 	// Current period stats from rollups.
-	currentStats, err := uc.statsStorage.QueryConnectionRollup(ctx, params.ConnectionID, currentStart, now)
+	currentStats, err := uc.statsStorage.QueryConnectionRollup(ctx, params.ConnectionID, bucketSize, currentStart, now)
 	if err != nil {
 		return nil, fmt.Errorf("querying current stats: %w", err)
 	}
@@ -65,7 +66,7 @@ func (uc *GetConnectionStats) Execute(ctx context.Context, params pipelineservic
 	}
 
 	// Previous period for deltas.
-	previousStats, err := uc.statsStorage.QueryConnectionRollup(ctx, params.ConnectionID, previousStart, currentStart)
+	previousStats, err := uc.statsStorage.QueryConnectionRollup(ctx, params.ConnectionID, bucketSize, previousStart, currentStart)
 	if err != nil {
 		return nil, fmt.Errorf("querying previous stats: %w", err)
 	}
@@ -143,7 +144,7 @@ func (uc *GetConnectionStats) Execute(ctx context.Context, params pipelineservic
 	result.DurationChart = points
 
 	// Records chart: time-bucketed from rollups.
-	recordRows, err := uc.statsStorage.QueryRecordsChart(ctx, params.ConnectionID, currentStart, now)
+	recordRows, err := uc.statsStorage.QueryRecordsChart(ctx, params.ConnectionID, bucketSize, currentStart, now)
 	if err != nil {
 		return nil, fmt.Errorf("querying records chart: %w", err)
 	}

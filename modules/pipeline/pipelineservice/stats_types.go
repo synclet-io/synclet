@@ -27,6 +27,16 @@ func (tr TimeRange) Duration() time.Duration {
 	}
 }
 
+// BucketSize returns the rollup bucket size that stats over the TimeRange read:
+// hourly buckets for 24h, daily buckets for longer ranges.
+func (tr TimeRange) BucketSize() BucketSize {
+	if tr == TimeRange24h {
+		return BucketSizeHourly
+	}
+
+	return BucketSizeDaily
+}
+
 // GetConnectionStatsParams holds parameters for the connection stats query.
 type GetConnectionStatsParams struct {
 	ConnectionID uuid.UUID
