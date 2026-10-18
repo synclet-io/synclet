@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.6.0](https://github.com/synclet-io/synclet/compare/synclet-v0.5.1...synclet-v0.6.0) (2026-10-18)
+
+
+### Features
+
+* **compose:** one-command quickstart on the published image ([d854386](https://github.com/synclet-io/synclet/commit/d854386d2eaf291d26a9135327eb9c3e46abe803))
+* **connectors:** drop connectors/, e2e test connector on synclet-go-sdk v0.3.0 ([a48c70a](https://github.com/synclet-io/synclet/commit/a48c70a9d26790d17aba3df58c27027804052d4b))
+* **executor:** executors run their own fx graphs without the database ([5582a83](https://github.com/synclet-io/synclet/commit/5582a83979aacdfafd3e348bce900a2a3c05b65e))
+* **executor:** owner label scopes Docker orphan cleanup to one executor ([c2d3a26](https://github.com/synclet-io/synclet/commit/c2d3a263cf3e06296e661a6323011d715087da69))
+* **pipeline:** default Synclet registry is served from synclet-io/connectors ([5666e59](https://github.com/synclet-io/synclet/commit/5666e59bde330c3387cce2577ae790db1feb8fc1))
+
+
+### Bug Fixes
+
+* **ci:** pin golangci-lint, faster test lock retry, default-secret warning ([1fde6c2](https://github.com/synclet-io/synclet/commit/1fde6c25fd78ea0bb6261b70b7589ff2a92eb912))
+* **e2e:** test connector links to synclet-io/synclet, CI runs its tests ([13e3d92](https://github.com/synclet-io/synclet/commit/13e3d9201a123d8764c3e71f9acb2a79ba63a652))
+* **executor:** drain the attach stream after the container exits ([d424858](https://github.com/synclet-io/synclet/commit/d4248584b5a39be3fa2e0dceb524a05d5624327d))
+* **pipeline:** save state under source stream names, map rewritten names back on read ([bde8d68](https://github.com/synclet-io/synclet/commit/bde8d68176fec749bdeae2953da8a5e97a201239))
+* **pipeline:** STREAM save after GLOBAL or LEGACY state starts a fresh STREAM-only array ([d15879d](https://github.com/synclet-io/synclet/commit/d15879d8824b5fea5bf6d8e21bf141f081a2760f))
+* **release:** archives fail on missing files, sha256sum docs, task test:db ([550923d](https://github.com/synclet-io/synclet/commit/550923d9797930570cbfdf6c6e0761596eb1bd94)), closes [#26](https://github.com/synclet-io/synclet/issues/26) [#27](https://github.com/synclet-io/synclet/issues/27) [#28](https://github.com/synclet-io/synclet/issues/28)
+
 ## [0.5.1](https://github.com/synclet-io/synclet/compare/synclet-v0.5.0...synclet-v0.5.1) (2026-10-17)
 
 
