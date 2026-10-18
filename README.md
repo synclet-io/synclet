@@ -9,6 +9,10 @@
 
 Run Airbyte connectors without Airbyte: one Go binary, one PostgreSQL. Synclet is a self-hosted control plane for connectors that implement the Airbyte Protocol, with schema discovery, incremental sync and monitoring.
 
+<p align="center">
+  <img src=".github/assets/demo-first-sync.gif" alt="Creating a connection from a Faker source to PostgreSQL in Synclet and running its first sync" width="880">
+</p>
+
 ## Features
 
 - **Airbyte Protocol connectors** -- Runs source and destination images that implement the Airbyte Protocol; see [Tested with](#tested-with) for the pairs and versions tested
@@ -22,6 +26,20 @@ Run Airbyte connectors without Airbyte: one Go binary, one PostgreSQL. Synclet i
 - **Config Import/Export** -- YAML-based workspace backup and restore
 - **Dark Mode** -- System-aware theme switching
 - **Native Connectors** -- Go-native high-performance connectors alongside Docker-based Airbyte connectors
+
+## Screenshots
+
+The images come from the demo workspace that [`scripts/demo-seed`](scripts/demo-seed/README.md) creates on mock data.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/screenshots/dashboard-dark.png">
+  <img src=".github/assets/screenshots/dashboard-light.png" alt="Dashboard with sync totals, success rate, timeline and throughput">
+</picture>
+
+| | |
+|---|---|
+| <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/screenshots/connection-dark.png"><img src=".github/assets/screenshots/connection-light.png" alt="Connection page with status, schedule and replication stats"></picture> | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/screenshots/topology-dark.png"><img src=".github/assets/screenshots/topology-light.png" alt="Topology of sources, connections and destinations coloured by health"></picture> |
+| <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/screenshots/job-logs-dark.png"><img src=".github/assets/screenshots/job-logs-light.png" alt="Job page with its timeline and the combined connector logs"></picture> | <picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/screenshots/audit-log-dark.png"><img src=".github/assets/screenshots/audit-log-light.png" alt="Audit log of connection changes with a before and after diff"></picture> |
 
 ## Architecture
 
