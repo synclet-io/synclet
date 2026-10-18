@@ -189,33 +189,48 @@ func (w *DockerSyncWorker) executeJob(ctx context.Context, result *pipelineexec.
 		return
 	}
 
-	// Update job status via ExecutorBackend.
-	var errMsg string
+	completion := pipelineexec.ReportCompletionParams{
+		JobID:        result.Job.ID,
+		ConnectionID: result.ConnectionID,
+		Success:      execErr == nil,
+	}
 
-	var recordsRead, bytesSynced, durationMs int64
 	if stats != nil {
-		recordsRead = stats.RecordsRead
-		bytesSynced = stats.BytesSynced
-		durationMs = stats.Duration.Milliseconds()
+		completion.RecordsRead = stats.RecordsRead
+		completion.BytesSynced = stats.BytesSynced
+		completion.DurationMs = stats.Duration.Milliseconds()
 	}
 
 	if execErr != nil {
-		errMsg = execErr.Error()
+		completion.ErrorMessage = execErr.Error()
+		completion.SourceExitCode, completion.DestExitCode = connectorExitCodes(execErr)
 	}
 
-	if completeErr := w.backend.UpdateJobStatus(ctx, pipelineexec.UpdateJobStatusParams{
-		JobID:        result.Job.ID,
-		Success:      execErr == nil,
-		ErrorMessage: errMsg,
-		RecordsRead:  recordsRead,
-		BytesSynced:  bytesSynced,
-		DurationMs:   durationMs,
-	}); completeErr != nil {
+	if completeErr := w.backend.ReportCompletion(ctx, completion); completeErr != nil {
 		w.logger.WithError(completeErr).WithFields(map[string]interface{}{"worker_id": w.workerID, "job_id": result.Job.ID.String()}).Error(ctx, "complete job failed")
 	}
 
 	// Record local prometheus metrics (events/notifications now handled server-side).
 	w.recordMetrics(ctx, result, execErr, stats)
+}
+
+// connectorExitCodes returns the first non-zero exit code err carries for the
+// source and for the destination connector, 0 where it carries none.
+func connectorExitCodes(err error) (source, dest int) {
+	for _, exitErr := range pipelineservice.ExitCodeErrors(err) {
+		switch exitErr.Role {
+		case pipelineservice.ExitRoleSource:
+			if source == 0 {
+				source = exitErr.ExitCode
+			}
+		case pipelineservice.ExitRoleDestination:
+			if dest == 0 {
+				dest = exitErr.ExitCode
+			}
+		}
+	}
+
+	return source, dest
 }
 
 // recordMetrics records local prometheus metrics for the completed sync.

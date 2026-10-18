@@ -43,11 +43,17 @@ func (e *InUseError) Error() string {
 		e.Resource, strings.Join(e.ConnectionNames, ", "))
 }
 
+// Roles of the connector an ExitCodeError reports.
+const (
+	ExitRoleSource      = "source"
+	ExitRoleDestination = "destination"
+)
+
 // ExitCodeError wraps a connector exit with a typed exit code for classification.
 // Enables downstream code to extract exit codes via errors.As for retry decisions.
 type ExitCodeError struct {
 	ExitCode int
-	Role     string // "source" or "destination"
+	Role     string // ExitRoleSource or ExitRoleDestination
 	Stderr   string
 }
 
@@ -58,3 +64,52 @@ func (e *ExitCodeError) Error() string {
 
 	return fmt.Sprintf("%s connector exited with code %d", e.Role, e.ExitCode)
 }
+
+// ExitCodeErrors returns every ExitCodeError in err's tree, depth first.
+func ExitCodeErrors(err error) []*ExitCodeError {
+	switch typed := err.(type) { //nolint:errorlint // walks the whole tree, errors.As stops at the first match
+	case nil:
+		return nil
+	case *ExitCodeError:
+		return []*ExitCodeError{typed}
+	case interface{ Unwrap() error }:
+		return ExitCodeErrors(typed.Unwrap())
+	case interface{ Unwrap() []error }:
+		var found []*ExitCodeError
+		for _, wrapped := range typed.Unwrap() {
+			found = append(found, ExitCodeErrors(wrapped)...)
+		}
+
+		return found
+	default:
+		return nil
+	}
+}
+
+// ReportedFailureError is a sync failure an executor reported by message and
+// connector exit codes. Its text is the message; it unwraps to an
+// ExitCodeError per connector that exited with a non-zero code.
+type ReportedFailureError struct {
+	Message string
+	Exits   []error
+}
+
+// NewReportedFailureError builds a ReportedFailureError; a zero exit code
+// means the connector exited cleanly or reported none.
+func NewReportedFailureError(message string, sourceExitCode, destExitCode int) *ReportedFailureError {
+	failure := &ReportedFailureError{Message: message}
+
+	if sourceExitCode != 0 {
+		failure.Exits = append(failure.Exits, &ExitCodeError{ExitCode: sourceExitCode, Role: ExitRoleSource})
+	}
+
+	if destExitCode != 0 {
+		failure.Exits = append(failure.Exits, &ExitCodeError{ExitCode: destExitCode, Role: ExitRoleDestination})
+	}
+
+	return failure
+}
+
+func (e *ReportedFailureError) Error() string { return e.Message }
+
+func (e *ReportedFailureError) Unwrap() []error { return e.Exits }

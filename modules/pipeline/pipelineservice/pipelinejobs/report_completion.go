@@ -22,6 +22,10 @@ type ReportCompletionParams struct {
 	RecordsRead  int64
 	BytesSynced  int64
 	DurationMs   int64
+	// SourceExitCode and DestExitCode are the connectors' exit codes; 0 means
+	// a clean exit or none reported.
+	SourceExitCode int
+	DestExitCode   int
 }
 
 // ReportCompletion records a job's final result and triggers retention cleanup
@@ -68,7 +72,7 @@ func (uc *ReportCompletion) Execute(ctx context.Context, params ReportCompletion
 
 	var syncErr error
 	if !params.Success {
-		syncErr = fmt.Errorf("%s", params.ErrorMessage)
+		syncErr = pipelineservice.NewReportedFailureError(params.ErrorMessage, params.SourceExitCode, params.DestExitCode)
 	}
 
 	if err := uc.updateJobStatus.Execute(ctx, UpdateJobStatusParams{

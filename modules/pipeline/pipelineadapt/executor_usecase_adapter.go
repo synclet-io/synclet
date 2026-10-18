@@ -161,13 +161,15 @@ func (a *UseCaseExecutorBackend) ReportState(ctx context.Context, connectionID, 
 // ReportCompletion reports job completion with full stats and triggers events.
 func (a *UseCaseExecutorBackend) ReportCompletion(ctx context.Context, params pipelineexec.ReportCompletionParams) error {
 	return a.reportCompletion.Execute(ctx, pipelinejobs.ReportCompletionParams{
-		JobID:        params.JobID,
-		ConnectionID: params.ConnectionID,
-		Success:      params.Success,
-		ErrorMessage: params.ErrorMessage,
-		RecordsRead:  params.RecordsRead,
-		BytesSynced:  params.BytesSynced,
-		DurationMs:   params.DurationMs,
+		JobID:          params.JobID,
+		ConnectionID:   params.ConnectionID,
+		Success:        params.Success,
+		ErrorMessage:   params.ErrorMessage,
+		RecordsRead:    params.RecordsRead,
+		BytesSynced:    params.BytesSynced,
+		DurationMs:     params.DurationMs,
+		SourceExitCode: params.SourceExitCode,
+		DestExitCode:   params.DestExitCode,
 	})
 }
 

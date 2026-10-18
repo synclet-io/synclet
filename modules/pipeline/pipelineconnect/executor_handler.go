@@ -158,13 +158,15 @@ func (h *ExecutorHandler) ReportCompletion(ctx context.Context, req *connect.Req
 	}
 
 	if err := h.reportCompletion.Execute(ctx, pipelinejobs.ReportCompletionParams{
-		JobID:        jobID,
-		ConnectionID: connectionID,
-		Success:      req.Msg.GetSuccess(),
-		ErrorMessage: req.Msg.GetErrorMessage(),
-		RecordsRead:  req.Msg.GetRecordsRead(),
-		BytesSynced:  req.Msg.GetBytesSynced(),
-		DurationMs:   req.Msg.GetDurationMs(),
+		JobID:          jobID,
+		ConnectionID:   connectionID,
+		Success:        req.Msg.GetSuccess(),
+		ErrorMessage:   req.Msg.GetErrorMessage(),
+		RecordsRead:    req.Msg.GetRecordsRead(),
+		BytesSynced:    req.Msg.GetBytesSynced(),
+		DurationMs:     req.Msg.GetDurationMs(),
+		SourceExitCode: int(req.Msg.GetSourceExitCode()),
+		DestExitCode:   int(req.Msg.GetDestExitCode()),
 	}); err != nil {
 		h.logger.WithError(err).Error(ctx, "executor: completion failed",
 			"job_id", req.Msg.GetJobId())

@@ -33,6 +33,10 @@ type ReportCompletionParams struct {
 	RecordsRead  int64
 	BytesSynced  int64
 	DurationMs   int64
+	// SourceExitCode and DestExitCode are the connectors' non-zero exit codes;
+	// 0 means a clean exit or none known.
+	SourceExitCode int
+	DestExitCode   int
 }
 
 // ClaimJobResult bundles everything an executor needs to run a sync.

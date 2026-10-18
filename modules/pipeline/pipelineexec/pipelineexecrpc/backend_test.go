@@ -9,10 +9,12 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	executorv1 "github.com/synclet-io/synclet/gen/proto/synclet/internalapi/executor/v1"
+	"github.com/synclet-io/synclet/gen/proto/synclet/internalapi/executor/v1/executorv1connect"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineexec"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
 )
@@ -45,6 +47,39 @@ func TestBackend_TokenInterceptorSetsHeader(t *testing.T) {
 	_, _ = backend.IsJobActive(t.Context(), "00000000-0000-0000-0000-000000000001")
 
 	assert.Equal(t, "test-secret-token", receivedHeader)
+}
+
+type completionRecorder struct {
+	executorv1connect.UnimplementedExecutorServiceHandler
+	got *executorv1.ReportCompletionRequest
+}
+
+func (r *completionRecorder) ReportCompletion(_ context.Context, req *connect.Request[executorv1.ReportCompletionRequest]) (*connect.Response[executorv1.ReportCompletionResponse], error) {
+	r.got = req.Msg
+
+	return connect.NewResponse(&executorv1.ReportCompletionResponse{}), nil
+}
+
+func TestBackend_ReportCompletionSendsExitCodes(t *testing.T) {
+	recorder := &completionRecorder{}
+	_, handler := executorv1connect.NewExecutorServiceHandler(recorder)
+
+	server := httptest.NewServer(handler)
+	defer server.Close()
+
+	backend := NewBackend(server.URL, "token")
+	err := backend.ReportCompletion(t.Context(), pipelineexec.ReportCompletionParams{
+		JobID:          uuid.New(),
+		ConnectionID:   uuid.New(),
+		ErrorMessage:   "destination connector exited with code 137",
+		SourceExitCode: 1,
+		DestExitCode:   137,
+	})
+	require.NoError(t, err)
+
+	require.NotNil(t, recorder.got)
+	assert.Equal(t, int32(1), recorder.got.GetSourceExitCode())
+	assert.Equal(t, int32(137), recorder.got.GetDestExitCode())
 }
 
 func TestBackend_ProtoJobTypeToDomain(t *testing.T) {

@@ -3,7 +3,6 @@ package pipelinejobs
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"time"
 
@@ -88,13 +87,19 @@ func (uc *UpdateJobStatus) Execute(ctx context.Context, params UpdateJobStatusPa
 		// Classify exit code if available for retry decisions.
 		skipRetry := params.SkipRetry
 
-		var exitErr *pipelineservice.ExitCodeError
-		if errors.As(params.SyncErr, &exitErr) {
+		// The first permanent (OOM, segfault) or intentional (SIGTERM) exit names
+		// the failure and stops retries; without one, the first exit names it.
+		for i, exitErr := range pipelineservice.ExitCodeErrors(params.SyncErr) {
 			category, reason := ClassifyExitCode(exitErr.ExitCode)
-			job.FailureReason = &reason
-			// Permanent failures (OOM, segfault) and intentional kills (SIGTERM) should not retry.
 			if category == FailurePermanent || category == FailureIntentional {
+				job.FailureReason = &reason
 				skipRetry = true
+
+				break
+			}
+
+			if i == 0 {
+				job.FailureReason = &reason
 			}
 		}
 

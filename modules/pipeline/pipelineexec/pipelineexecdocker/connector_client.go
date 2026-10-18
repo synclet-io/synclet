@@ -153,7 +153,7 @@ func (c *ConnectorClient) Read(ctx context.Context, image string, config json.Ra
 		_ = c.runner.Remove(context.Background(), result.ContainerID)
 	}
 
-	wrapped := newExitAwareReader(result.Stdout, result.Stderr, result.Done, &result.ExitCode, "source", pipelineexec.NewRedactor(config))
+	wrapped := newExitAwareReader(result.Stdout, result.Stderr, result.Done, &result.ExitCode, pipelineservice.ExitRoleSource, pipelineexec.NewRedactor(config))
 
 	return wrapped, cleanup, nil
 }
@@ -197,7 +197,7 @@ func (c *ConnectorClient) Write(ctx context.Context, image string, config json.R
 		_ = c.runner.Remove(context.Background(), result.ContainerID)
 	}
 
-	wrapped := newExitAwareReader(result.Stdout, result.Stderr, result.Done, &result.ExitCode, "destination", pipelineexec.NewRedactor(config))
+	wrapped := newExitAwareReader(result.Stdout, result.Stderr, result.Done, &result.ExitCode, pipelineservice.ExitRoleDestination, pipelineexec.NewRedactor(config))
 
 	return wrapped, cleanup, nil
 }

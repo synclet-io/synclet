@@ -3,6 +3,7 @@ package pipelineexecdocker
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"sync/atomic"
 	"testing"
@@ -29,6 +30,8 @@ type mockBackend struct {
 	heartbeatErr     error
 	updateCalled     atomic.Int32
 	lastUpdateParams pipelineexec.UpdateJobStatusParams
+	completionCalled atomic.Int32
+	lastCompletion   pipelineexec.ReportCompletionParams
 	markRunningCalls []uuid.UUID
 }
 
@@ -65,8 +68,11 @@ func (m *mockBackend) ReportState(_ context.Context, _, _ uuid.UUID, _ *protocol
 	return nil
 }
 
-func (m *mockBackend) ReportCompletion(_ context.Context, _ pipelineexec.ReportCompletionParams) error {
-	return nil
+func (m *mockBackend) ReportCompletion(_ context.Context, params pipelineexec.ReportCompletionParams) error {
+	m.completionCalled.Add(1)
+	m.lastCompletion = params
+
+	return m.updateErr
 }
 
 func (m *mockBackend) ReportConfigUpdate(_ context.Context, _ pipelineservice.ConnectorType, _ uuid.UUID, _ []byte) error {
@@ -199,8 +205,8 @@ func TestDockerSyncWorker_Execute_ClaimsJobAndSpawnsGoroutine(t *testing.T) {
 	assert.Equal(t, wsID, executor.lastBundle.WorkspaceID)
 
 	// Verify UpdateJobStatus was called (success).
-	assert.Equal(t, int32(1), backend.updateCalled.Load())
-	assert.True(t, backend.lastUpdateParams.Success)
+	assert.Equal(t, int32(1), backend.completionCalled.Load())
+	assert.True(t, backend.lastCompletion.Success)
 }
 
 func TestDockerSyncWorker_Execute_ReportsExecutorFailure(t *testing.T) {
@@ -210,10 +216,29 @@ func TestDockerSyncWorker_Execute_ReportsExecutorFailure(t *testing.T) {
 
 	worker.executeJob(context.Background(), backend.claimResult)
 
-	require.Equal(t, int32(1), backend.updateCalled.Load())
-	assert.False(t, backend.lastUpdateParams.Success)
-	assert.Equal(t, backend.claimResult.Job.ID, backend.lastUpdateParams.JobID)
-	assert.Equal(t, "source failed: connection refused", backend.lastUpdateParams.ErrorMessage)
+	require.Equal(t, int32(1), backend.completionCalled.Load())
+	assert.False(t, backend.lastCompletion.Success)
+	assert.Equal(t, backend.claimResult.Job.ID, backend.lastCompletion.JobID)
+	assert.Equal(t, "source failed: connection refused", backend.lastCompletion.ErrorMessage)
+}
+
+func TestDockerSyncWorker_Execute_ReportsConnectorExitCodes(t *testing.T) {
+	backend := &mockBackend{claimResult: newClaimResult()}
+	backend.claimResult.ConnectionID = uuid.New()
+	executor := &mockExecutor{err: fmt.Errorf("sync failed: %w", errors.Join(
+		fmt.Errorf("reading source: %w", &pipelineservice.ExitCodeError{ExitCode: 1, Role: "source"}),
+		fmt.Errorf("writing destination: %w", &pipelineservice.ExitCodeError{ExitCode: 137, Role: "destination", Stderr: "killed"}),
+	))}
+	worker := newTestWorker(backend, executor)
+
+	worker.executeJob(context.Background(), backend.claimResult)
+
+	require.Equal(t, int32(1), backend.completionCalled.Load())
+	assert.False(t, backend.lastCompletion.Success)
+	assert.Equal(t, backend.claimResult.ConnectionID, backend.lastCompletion.ConnectionID)
+	assert.Equal(t, 1, backend.lastCompletion.SourceExitCode)
+	assert.Equal(t, 137, backend.lastCompletion.DestExitCode)
+	assert.Equal(t, executor.err.Error(), backend.lastCompletion.ErrorMessage)
 }
 
 func TestDockerSyncWorker_Execute_SkipsStatusUpdateWhenCancelledViaHeartbeat(t *testing.T) {
@@ -227,6 +252,7 @@ func TestDockerSyncWorker_Execute_SkipsStatusUpdateWhenCancelledViaHeartbeat(t *
 	worker.executeJob(context.Background(), backend.claimResult)
 
 	assert.Equal(t, int32(0), backend.updateCalled.Load())
+	assert.Equal(t, int32(0), backend.completionCalled.Load())
 }
 
 func TestDockerSyncWorker_Execute_MarksJobRunningOnceConnectorsStart(t *testing.T) {
@@ -245,7 +271,7 @@ func TestDockerSyncWorker_Execute_MarksJobRunningOnceConnectorsStart(t *testing.
 
 	assert.Equal(t, []uuid.UUID{backend.claimResult.Job.ID}, runningWhileExecuting)
 	assert.Equal(t, []uuid.UUID{backend.claimResult.Job.ID}, backend.markRunningCalls)
-	assert.True(t, backend.lastUpdateParams.Success)
+	assert.True(t, backend.lastCompletion.Success)
 }
 
 func TestDockerSyncWorker_Execute_DoesNotMarkRunningWhenConnectorsFailToStart(t *testing.T) {
@@ -256,7 +282,7 @@ func TestDockerSyncWorker_Execute_DoesNotMarkRunningWhenConnectorsFailToStart(t 
 	worker.executeJob(context.Background(), backend.claimResult)
 
 	assert.Empty(t, backend.markRunningCalls)
-	assert.False(t, backend.lastUpdateParams.Success)
+	assert.False(t, backend.lastCompletion.Success)
 }
 
 func TestDockerSyncWorker_Execute_ReturnsNilWhenNoJobs(t *testing.T) {
