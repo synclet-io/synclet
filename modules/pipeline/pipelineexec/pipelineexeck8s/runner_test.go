@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineexec"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,6 +24,7 @@ func newTestSyncRunner(client *fake.Clientset) *SyncRunner {
 		config: Config{
 			SyncletImage: "synclet:test",
 			ServerAddr:   "http://synclet:8081",
+			OwnerID:      testOwner,
 		},
 	}
 }
@@ -704,5 +706,43 @@ func TestNewSyncRunner_InvalidDefaultResources(t *testing.T) {
 		_, err := NewSyncRunner(cfg)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "default")
+	}
+}
+
+func TestLaunch_StampsOwnerLabel(t *testing.T) {
+	ctx := context.Background()
+	client := fake.NewSimpleClientset()
+	runner := newTestSyncRunner(client)
+
+	_, err := runner.LaunchSync(ctx, SyncOptions{
+		JobID:        "job-owner",
+		ConnectionID: "conn-1",
+		SourceImage:  "source:latest",
+		DestImage:    "dest:latest",
+	})
+	require.NoError(t, err)
+
+	_, err = runner.LaunchConnectorTask(ctx, ConnectorTaskOptions{
+		TaskID:   "task-owner",
+		TaskType: "Check",
+		Image:    "connector:latest",
+		Config:   []byte(`{}`),
+	})
+	require.NoError(t, err)
+
+	jobs, err := client.BatchV1().Jobs("test-ns").List(ctx, metav1.ListOptions{})
+	require.NoError(t, err)
+	require.Len(t, jobs.Items, 2)
+
+	for _, job := range jobs.Items {
+		assert.Equal(t, testOwner, job.Labels[pipelineexec.OwnerLabel], "job %s", job.Name)
+	}
+
+	secrets, err := client.CoreV1().Secrets("test-ns").List(ctx, metav1.ListOptions{})
+	require.NoError(t, err)
+	require.Len(t, secrets.Items, 2)
+
+	for _, secret := range secrets.Items {
+		assert.Equal(t, testOwner, secret.Labels[pipelineexec.OwnerLabel], "secret %s", secret.Name)
 	}
 }

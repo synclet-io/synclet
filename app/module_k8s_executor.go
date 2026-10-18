@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"os"
 	"time"
 
 	"github.com/go-pnp/go-pnp/config/configutil"
@@ -21,14 +22,19 @@ type k8sExecutorJobsConfig struct {
 }
 
 type k8sExecutorConfig struct {
-	Namespace       string                `env:"NAMESPACE"`
-	Kubeconfig      string                `env:"KUBECONFIG"`
-	ImagePullSecret string                `env:"IMAGE_PULL_SECRET"`
-	DefaultMemory   string                `env:"DEFAULT_MEMORY" envDefault:"2Gi"`
-	DefaultCPU      string                `env:"DEFAULT_CPU" envDefault:"1"`
-	SyncletImage    string                `env:"SYNCLET_IMAGE"`
-	ServerAddr      string                `env:"SERVER_ADDR"`
-	Jobs            k8sExecutorJobsConfig `envPrefix:"JOB_"`
+	Namespace       string `env:"NAMESPACE"`
+	Kubeconfig      string `env:"KUBECONFIG"`
+	ImagePullSecret string `env:"IMAGE_PULL_SECRET"`
+	DefaultMemory   string `env:"DEFAULT_MEMORY" envDefault:"2Gi"`
+	DefaultCPU      string `env:"DEFAULT_CPU" envDefault:"1"`
+	SyncletImage    string `env:"SYNCLET_IMAGE"`
+	ServerAddr      string `env:"SERVER_ADDR"`
+	// OwnerID is stamped as the synclet.io/owner label on every Job and
+	// Secret the executor creates, and the reconciler handles only those
+	// carrying it. Empty uses the hostname, which a StatefulSet keeps stable
+	// per replica; executors sharing one namespace need distinct values.
+	OwnerID string                `env:"OWNER_ID"`
+	Jobs    k8sExecutorJobsConfig `envPrefix:"JOB_"`
 }
 
 // k8sExecutorConfigModule provides *k8sExecutorConfig to a process that runs
@@ -92,6 +98,11 @@ func k8sExecutorModule() fx.Option {
 // process: the executor's EXECUTOR_API_TOKEN, or the server's own
 // PIPELINE_EXECUTOR_API_TOKEN inside `server --standalone`.
 func newK8sSyncRunner(cfg *k8sExecutorConfig, apiToken string) (*pipelineexeck8s.SyncRunner, error) {
+	ownerID, err := pipelineexec.ResolveOwnerID(cfg.OwnerID, "K8S_EXECUTOR_OWNER_ID", os.Hostname)
+	if err != nil {
+		return nil, err
+	}
+
 	return pipelineexeck8s.NewSyncRunner(pipelineexeck8s.Config{
 		Namespace:       cfg.Namespace,
 		Kubeconfig:      cfg.Kubeconfig,
@@ -101,11 +112,12 @@ func newK8sSyncRunner(cfg *k8sExecutorConfig, apiToken string) (*pipelineexeck8s
 		SyncletImage:    cfg.SyncletImage,
 		ServerAddr:      cfg.ServerAddr,
 		APIToken:        apiToken,
+		OwnerID:         ownerID,
 	})
 }
 
 func newK8sReconciler(runner *pipelineexeck8s.SyncRunner, checker pipelineexeck8s.ResourceChecker, logger *logging.Logger) *pipelineexeck8s.ResourceCleaner {
-	return pipelineexeck8s.NewReconciler(runner.Client(), runner.Namespace(), checker, logger)
+	return pipelineexeck8s.NewReconciler(runner.Client(), runner.Namespace(), runner.OwnerID(), checker, logger)
 }
 
 func newK8sResourceCleanupJob(cfg *k8sExecutorConfig, reconciler *pipelineexeck8s.ResourceCleaner) jobber.Job {

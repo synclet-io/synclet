@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/go-pnp/go-pnp/logging"
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineexec"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -21,7 +22,8 @@ type ResourceChecker interface {
 	FailJob(ctx context.Context, jobID string, reason string) error
 }
 
-// ResourceCleaner iterates K8s resources and reconciles them against the API.
+// ResourceCleaner iterates the K8s Jobs and Secrets labelled with its owner id
+// and reconciles them against the API.
 // It handles:
 // 1. Sync jobs whose DB job is no longer active (including cancelled) → delete K8s Job, no grace
 // 2. Pod failure detection (CrashLoopBackOff, ImagePullBackOff, PodFailed) → fail job + delete K8s resources
@@ -29,6 +31,7 @@ type ResourceChecker interface {
 type ResourceCleaner struct {
 	client    kubernetes.Interface
 	namespace string
+	ownerID   string
 	checker   ResourceChecker
 	logger    *logging.Logger
 }
@@ -37,12 +40,14 @@ type ResourceCleaner struct {
 func NewReconciler(
 	client kubernetes.Interface,
 	namespace string,
+	ownerID string,
 	checker ResourceChecker,
 	logger *logging.Logger,
 ) *ResourceCleaner {
 	return &ResourceCleaner{
 		client:    client,
 		namespace: namespace,
+		ownerID:   ownerID,
 		checker:   checker,
 		logger:    logger.Named("k8s-reconciler"),
 	}
@@ -94,11 +99,11 @@ func (r *ResourceCleaner) Reconcile(ctx context.Context, applyGrace bool) {
 	}
 }
 
-// reconcileSyncJobs lists all K8s Jobs with sync-job label, checks pod status
+// reconcileSyncJobs lists its own K8s Jobs with the sync-job label, checks pod status
 // for failures, and cleans up orphans.
 func (r *ResourceCleaner) reconcileSyncJobs(ctx context.Context, applyGrace bool) (int, error) {
 	jobs, err := r.client.BatchV1().Jobs(r.namespace).List(ctx, metav1.ListOptions{
-		LabelSelector: "synclet.io/sync-job",
+		LabelSelector: r.ownedSelector("synclet.io/sync-job"),
 	})
 	if err != nil {
 		return 0, fmt.Errorf("listing managed K8s sync jobs: %w", err)
@@ -156,10 +161,10 @@ func (r *ResourceCleaner) reconcileSyncJobs(ctx context.Context, applyGrace bool
 	return cleaned, nil
 }
 
-// cleanupTaskJobs lists all K8s Jobs with task label and removes orphans.
+// cleanupTaskJobs lists its own K8s Jobs with the task label and removes orphans.
 func (r *ResourceCleaner) cleanupTaskJobs(ctx context.Context, applyGrace bool) (int, error) {
 	jobs, err := r.client.BatchV1().Jobs(r.namespace).List(ctx, metav1.ListOptions{
-		LabelSelector: "synclet.io/task",
+		LabelSelector: r.ownedSelector("synclet.io/task"),
 	})
 	if err != nil {
 		return 0, fmt.Errorf("listing managed K8s task jobs: %w", err)
@@ -198,10 +203,10 @@ func (r *ResourceCleaner) cleanupTaskJobs(ctx context.Context, applyGrace bool) 
 	return cleaned, nil
 }
 
-// cleanupSecrets removes orphaned secrets matching a label selector.
+// cleanupSecrets removes its own orphaned secrets carrying labelKey.
 func (r *ResourceCleaner) cleanupSecrets(ctx context.Context, labelKey string, applyGrace bool, isActive func(context.Context, string) (bool, error)) (int, error) {
 	secrets, err := r.client.CoreV1().Secrets(r.namespace).List(ctx, metav1.ListOptions{
-		LabelSelector: labelKey,
+		LabelSelector: r.ownedSelector(labelKey),
 	})
 	if err != nil {
 		return 0, fmt.Errorf("listing managed K8s secrets (%s): %w", labelKey, err)
@@ -238,6 +243,11 @@ func (r *ResourceCleaner) cleanupSecrets(ctx context.Context, labelKey string, a
 	}
 
 	return cleaned, nil
+}
+
+// ownedSelector selects the resources carrying labelKey that this executor owns.
+func (r *ResourceCleaner) ownedSelector(labelKey string) string {
+	return labelKey + "," + pipelineexec.OwnerLabel + "=" + r.ownerID
 }
 
 // checkPodFailure checks pods for a K8s Job and returns whether any pod is in a

@@ -7,10 +7,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineexec"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -26,6 +28,7 @@ type Config struct {
 	SyncletImage    string // Docker image containing the synclet binary (for orchestrator)
 	ServerAddr      string // Synclet server address reachable from pods
 	APIToken        string // Internal API token the in-pod coordinator sends to the server
+	OwnerID         string // Value of the owner label on every Job and Secret the runner creates
 }
 
 // SyncOptions contains all parameters needed to launch a sync pod.
@@ -86,6 +89,10 @@ func NewSyncRunner(cfg Config) (*SyncRunner, error) {
 		return nil, err
 	}
 
+	if errs := validation.IsValidLabelValue(cfg.OwnerID); cfg.OwnerID == "" || len(errs) > 0 {
+		return nil, fmt.Errorf("owner id %q is not a valid label value: %s", cfg.OwnerID, strings.Join(errs, "; "))
+	}
+
 	var restConfig *rest.Config
 	var err error
 
@@ -126,6 +133,11 @@ func NewSyncRunner(cfg Config) (*SyncRunner, error) {
 // Client returns the underlying Kubernetes client for use by the reconciler.
 func (r *SyncRunner) Client() kubernetes.Interface {
 	return r.client
+}
+
+// OwnerID returns the owner id stamped on the runner's Jobs and Secrets.
+func (r *SyncRunner) OwnerID() string {
+	return r.config.OwnerID
 }
 
 // Namespace returns the configured namespace.
@@ -178,8 +190,9 @@ func (r *SyncRunner) LaunchSync(ctx context.Context, opts SyncOptions) (string, 
 			Name:      secretName,
 			Namespace: r.namespace,
 			Labels: map[string]string{
-				"app":                 "synclet",
-				"synclet.io/sync-job": opts.JobID,
+				"app":                   "synclet",
+				"synclet.io/sync-job":   opts.JobID,
+				pipelineexec.OwnerLabel: r.config.OwnerID,
 			},
 		},
 		Type: corev1.SecretTypeOpaque,
@@ -386,6 +399,7 @@ func (r *SyncRunner) LaunchSync(ctx context.Context, opts SyncOptions) (string, 
 				"synclet.io/job":        jobName,
 				"synclet.io/sync-job":   opts.JobID,
 				"synclet.io/connection": sanitizeLabel(opts.ConnectionID),
+				pipelineexec.OwnerLabel: r.config.OwnerID,
 			},
 		},
 		Spec: batchv1.JobSpec{
@@ -452,8 +466,9 @@ func (r *SyncRunner) LaunchConnectorTask(ctx context.Context, opts ConnectorTask
 				Name:      secretName,
 				Namespace: r.namespace,
 				Labels: map[string]string{
-					"app":             "synclet",
-					"synclet.io/task": opts.TaskID,
+					"app":                   "synclet",
+					"synclet.io/task":       opts.TaskID,
+					pipelineexec.OwnerLabel: r.config.OwnerID,
 				},
 			},
 			Type: corev1.SecretTypeOpaque,
@@ -596,10 +611,11 @@ func (r *SyncRunner) LaunchConnectorTask(ctx context.Context, opts ConnectorTask
 			Name:      jobName,
 			Namespace: r.namespace,
 			Labels: map[string]string{
-				"app":                  "synclet",
-				"synclet.io/job":       jobName,
-				"synclet.io/task":      opts.TaskID,
-				"synclet.io/task-type": strings.ToLower(opts.TaskType),
+				"app":                   "synclet",
+				"synclet.io/job":        jobName,
+				"synclet.io/task":       opts.TaskID,
+				"synclet.io/task-type":  strings.ToLower(opts.TaskType),
+				pipelineexec.OwnerLabel: r.config.OwnerID,
 			},
 		},
 		Spec: batchv1.JobSpec{

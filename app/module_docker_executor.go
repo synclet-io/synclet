@@ -59,7 +59,7 @@ func dockerExecutorConfigModule() fx.Option {
 }
 
 func newContainerRunner(cfg *dockerExecutorConfig) (*pipelineexecdocker.ContainerRunner, error) {
-	ownerID, err := pipelineexecdocker.ResolveOwnerID(cfg.OwnerID, os.Hostname)
+	ownerID, err := pipelineexec.ResolveOwnerID(cfg.OwnerID, "DOCKER_EXECUTOR_OWNER_ID", os.Hostname)
 	if err != nil {
 		return nil, err
 	}

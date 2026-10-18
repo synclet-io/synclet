@@ -190,6 +190,7 @@ func TestConfigInventoryRoles(t *testing.T) {
 		"INTERNAL_HTTP_SERVER_ADDR":   roleBoth,
 		"DOCKER_EXECUTOR_OWNER_ID":    roleBoth,
 		"K8S_EXECUTOR_NAMESPACE":      roleBoth,
+		"K8S_EXECUTOR_OWNER_ID":       roleBoth,
 		"PIPELINE_RUNTIME_CPU_LIMIT":  roleBoth,
 		"PIPELINE_IDLE_TIMEOUT":       roleBoth,
 	} {

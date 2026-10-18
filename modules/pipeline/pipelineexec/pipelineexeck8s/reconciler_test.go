@@ -8,6 +8,7 @@ import (
 	"github.com/go-pnp/go-pnp/logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineexec"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -61,8 +62,10 @@ func (d noopDelegate) WithError(error) logging.Delegate                   { retu
 func (d noopDelegate) Named(string) logging.Delegate                      { return d }
 func (d noopDelegate) SkipCallers(int) logging.Delegate                   { return d }
 
+const testOwner = "executor-0"
+
 func newTestReconciler(client *fake.Clientset, checker *mockResourceChecker) *ResourceCleaner {
-	return NewReconciler(client, "default", checker, &logging.Logger{Delegate: noopDelegate{}})
+	return NewReconciler(client, "default", testOwner, checker, &logging.Logger{Delegate: noopDelegate{}})
 }
 
 func TestReconcileSyncJob_ImagePullBackOff(t *testing.T) {
@@ -80,7 +83,7 @@ func TestReconcileSyncJob_ImagePullBackOff(t *testing.T) {
 			Name:              "k8s-job-1",
 			Namespace:         "default",
 			CreationTimestamp: oldTime,
-			Labels:            map[string]string{"synclet.io/sync-job": "job-1"},
+			Labels:            map[string]string{pipelineexec.OwnerLabel: testOwner, "synclet.io/sync-job": "job-1"},
 		},
 	}, metav1.CreateOptions{})
 	require.NoError(t, err)
@@ -135,7 +138,7 @@ func TestReconcileSyncJob_ErrImagePull(t *testing.T) {
 			Name:              "k8s-job-2",
 			Namespace:         "default",
 			CreationTimestamp: oldTime,
-			Labels:            map[string]string{"synclet.io/sync-job": "job-2"},
+			Labels:            map[string]string{pipelineexec.OwnerLabel: testOwner, "synclet.io/sync-job": "job-2"},
 		},
 	}, metav1.CreateOptions{})
 	require.NoError(t, err)
@@ -187,7 +190,7 @@ func TestReconcileSyncJob_InitContainerImagePullBackOff(t *testing.T) {
 			Name:              "k8s-job-3",
 			Namespace:         "default",
 			CreationTimestamp: oldTime,
-			Labels:            map[string]string{"synclet.io/sync-job": "job-3"},
+			Labels:            map[string]string{pipelineexec.OwnerLabel: testOwner, "synclet.io/sync-job": "job-3"},
 		},
 	}, metav1.CreateOptions{})
 	require.NoError(t, err)
@@ -236,7 +239,7 @@ func TestReconciler_OrphanSyncJobCleanup(t *testing.T) {
 			Name:              "orphan-k8s-job",
 			Namespace:         "default",
 			CreationTimestamp: oldTime,
-			Labels:            map[string]string{"synclet.io/sync-job": "orphan-job-id"},
+			Labels:            map[string]string{pipelineexec.OwnerLabel: testOwner, "synclet.io/sync-job": "orphan-job-id"},
 		},
 	}, metav1.CreateOptions{})
 	require.NoError(t, err)
@@ -258,7 +261,7 @@ func TestReconciler_OrphanSyncJobCleanup(t *testing.T) {
 			Name:              "active-k8s-job",
 			Namespace:         "default",
 			CreationTimestamp: oldTime,
-			Labels:            map[string]string{"synclet.io/sync-job": "active-job"},
+			Labels:            map[string]string{pipelineexec.OwnerLabel: testOwner, "synclet.io/sync-job": "active-job"},
 		},
 	}, metav1.CreateOptions{})
 	require.NoError(t, err)
@@ -280,7 +283,7 @@ func TestReconciler_OrphanSyncJobCleanup(t *testing.T) {
 			Name:              "recent-k8s-job",
 			Namespace:         "default",
 			CreationTimestamp: metav1.NewTime(time.Now()),
-			Labels:            map[string]string{"synclet.io/sync-job": "recent-job-id"},
+			Labels:            map[string]string{pipelineexec.OwnerLabel: testOwner, "synclet.io/sync-job": "recent-job-id"},
 		},
 	}, metav1.CreateOptions{})
 	require.NoError(t, err)
@@ -324,7 +327,7 @@ func TestReconciler_DeletesInactiveSyncJobWithinGrace(t *testing.T) {
 			Name:              "cancelled-k8s-job",
 			Namespace:         "default",
 			CreationTimestamp: metav1.NewTime(time.Now()),
-			Labels:            map[string]string{"synclet.io/sync-job": "cancelled-job"},
+			Labels:            map[string]string{pipelineexec.OwnerLabel: testOwner, "synclet.io/sync-job": "cancelled-job"},
 		},
 	}, metav1.CreateOptions{})
 	require.NoError(t, err)
@@ -360,7 +363,7 @@ func TestReconciler_CleansOrphanedSyncSecrets(t *testing.T) {
 			Name:              "synclet-sync-job-1",
 			Namespace:         "default",
 			CreationTimestamp: oldTime,
-			Labels:            map[string]string{"synclet.io/sync-job": "job-1"},
+			Labels:            map[string]string{pipelineexec.OwnerLabel: testOwner, "synclet.io/sync-job": "job-1"},
 		},
 	}, metav1.CreateOptions{})
 	require.NoError(t, err)
@@ -386,7 +389,7 @@ func TestReconciler_KeepsSyncSecretForActiveJob(t *testing.T) {
 			Name:              "synclet-sync-job-2",
 			Namespace:         "default",
 			CreationTimestamp: oldTime,
-			Labels:            map[string]string{"synclet.io/sync-job": "job-2"},
+			Labels:            map[string]string{pipelineexec.OwnerLabel: testOwner, "synclet.io/sync-job": "job-2"},
 		},
 	}, metav1.CreateOptions{})
 	require.NoError(t, err)
@@ -412,7 +415,7 @@ func TestReconciler_CleansOrphanedTaskSecrets(t *testing.T) {
 			Name:              "synclet-task-check-123",
 			Namespace:         "default",
 			CreationTimestamp: oldTime,
-			Labels:            map[string]string{"synclet.io/task": "task-1"},
+			Labels:            map[string]string{pipelineexec.OwnerLabel: testOwner, "synclet.io/task": "task-1"},
 		},
 	}, metav1.CreateOptions{})
 	require.NoError(t, err)
@@ -437,7 +440,7 @@ func TestReconciler_GracePeriodApplies(t *testing.T) {
 			Name:              "synclet-sync-recent",
 			Namespace:         "default",
 			CreationTimestamp: metav1.NewTime(time.Now()),
-			Labels:            map[string]string{"synclet.io/sync-job": "recent-job"},
+			Labels:            map[string]string{pipelineexec.OwnerLabel: testOwner, "synclet.io/sync-job": "recent-job"},
 		},
 	}, metav1.CreateOptions{})
 	require.NoError(t, err)
@@ -453,4 +456,55 @@ func TestReconciler_GracePeriodApplies(t *testing.T) {
 	rec.Reconcile(ctx, false)
 	_, err = client.CoreV1().Secrets("default").Get(ctx, "synclet-sync-recent", metav1.GetOptions{})
 	assert.Error(t, err, "recent sync secret should have been deleted by startup reconcile")
+}
+
+func TestReconciler_HandlesOnlyOwnJobs(t *testing.T) {
+	ctx := context.Background()
+	client := fake.NewSimpleClientset()
+	checker := &mockResourceChecker{}
+	oldTime := metav1.NewTime(time.Now().Add(-30 * time.Minute))
+
+	owners := map[string]map[string]string{
+		"own":       {pipelineexec.OwnerLabel: testOwner},
+		"other":     {pipelineexec.OwnerLabel: "executor-1"},
+		"unlabeled": {},
+	}
+
+	for name, labels := range owners {
+		syncLabels := map[string]string{"synclet.io/sync-job": "job-" + name}
+		taskLabels := map[string]string{"synclet.io/task": "task-" + name}
+
+		for k, v := range labels {
+			syncLabels[k] = v
+			taskLabels[k] = v
+		}
+
+		for _, meta := range []metav1.ObjectMeta{
+			{Name: "sync-" + name, Namespace: "default", CreationTimestamp: oldTime, Labels: syncLabels},
+			{Name: "task-" + name, Namespace: "default", CreationTimestamp: oldTime, Labels: taskLabels},
+		} {
+			_, err := client.BatchV1().Jobs("default").Create(ctx, &batchv1.Job{ObjectMeta: meta}, metav1.CreateOptions{})
+			require.NoError(t, err)
+
+			_, err = client.CoreV1().Secrets("default").Create(ctx, &corev1.Secret{ObjectMeta: meta}, metav1.CreateOptions{})
+			require.NoError(t, err)
+		}
+	}
+
+	newTestReconciler(client, checker).Reconcile(ctx, true)
+
+	for name := range owners {
+		for _, resource := range []string{"sync-" + name, "task-" + name} {
+			_, jobErr := client.BatchV1().Jobs("default").Get(ctx, resource, metav1.GetOptions{})
+			_, secretErr := client.CoreV1().Secrets("default").Get(ctx, resource, metav1.GetOptions{})
+
+			if name == "own" {
+				require.Error(t, jobErr, "own Job %s should have been deleted", resource)
+				require.Error(t, secretErr, "own Secret %s should have been deleted", resource)
+			} else {
+				require.NoError(t, jobErr, "Job %s of another owner should survive", resource)
+				require.NoError(t, secretErr, "Secret %s of another owner should survive", resource)
+			}
+		}
+	}
 }

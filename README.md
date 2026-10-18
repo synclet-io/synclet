@@ -279,6 +279,7 @@ server:
 | `DOCKER_EXECUTOR_TEMP_DIR_ROOT` | Scratch directory shared with the host Docker daemon | empty |
 | `DOCKER_EXECUTOR_OWNER_ID` | Owner label that scopes orphan container cleanup to this executor. Executors sharing one Docker daemon need distinct values; two standalone servers on one machine must set it explicitly. A containerised executor needs a stable hostname (the compose file sets `hostname: synclet`) or an explicit value, since a container's default hostname changes on recreation. Containers without the label (from earlier versions) are left alone; remove them by hand once | hostname |
 | `K8S_EXECUTOR_NAMESPACE` | Namespace for connector pods | empty |
+| `K8S_EXECUTOR_OWNER_ID` | Owner label on the Jobs and Secrets the Kubernetes executor creates; its reconciler handles only those carrying it, so executors sharing one namespace need distinct values. The default is the pod name: the Helm chart runs the executor as a StatefulSet (stable names `<release>-executor-0`, `-1`, ...), so a restarted replica reclaims its own leftovers, and in standalone mode, where the server runs it in a Deployment, the chart sets the release fullname (`k8s.ownerId` overrides both). Jobs without the label (from earlier versions) are left alone; remove them by hand once | hostname |
 | `EXECUTOR_API_URL` | Internal server URL used by distributed executors | empty |
 | `EXECUTOR_API_TOKEN` | Token distributed executors present to the internal server | empty |
 | `WATERMILL_TRANSPORT` | Event bus transport | `sql` |
