@@ -3,7 +3,7 @@ name: synclet
 description: Data synchronization platform with Airbyte connector compatibility
 type: application
 version: 0.2.0
-appVersion: 0.5.1
+appVersion: 0.6.0
 home: https://github.com/synclet-io/synclet
 sources:
   - https://github.com/synclet-io/synclet
