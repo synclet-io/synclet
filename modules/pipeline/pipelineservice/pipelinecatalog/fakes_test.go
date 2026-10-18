@@ -18,6 +18,25 @@ import (
 
 var errStorage = errors.New("storage unavailable")
 
+const nestedSchema = `{
+	"type": "object",
+	"properties": {
+		"id": {"type": "integer"},
+		"name": {"type": "string"},
+		"updated_at": {"type": "string"},
+		"address": {"type": "object", "properties": {"city": {"type": "string"}}}
+	}
+}`
+
+func fields(paths ...[]string) []protocol.SelectedField {
+	out := make([]protocol.SelectedField, len(paths))
+	for i, p := range paths {
+		out[i] = protocol.SelectedField{FieldPath: p}
+	}
+
+	return out
+}
+
 type fakeStore struct {
 	pipelineservice.Storage
 

@@ -34,6 +34,7 @@ type UseCaseExecutorBackend struct {
 	claimTask          *pipelinetasks.ClaimTask
 	reportTaskResult   *pipelinetasks.ReportTaskResult
 	isTaskActive       *pipelinejobs.IsTaskActive
+	setK8sJobName      *pipelinejobs.SetK8sJobName
 }
 
 // NewUseCaseExecutorBackend creates a new UseCaseExecutorBackend.
@@ -51,6 +52,7 @@ func NewUseCaseExecutorBackend(
 	claimTask *pipelinetasks.ClaimTask,
 	reportTaskResult *pipelinetasks.ReportTaskResult,
 	isTaskActive *pipelinejobs.IsTaskActive,
+	setK8sJobName *pipelinejobs.SetK8sJobName,
 ) *UseCaseExecutorBackend {
 	return &UseCaseExecutorBackend{
 		claimJobBundle:     claimJobBundle,
@@ -66,17 +68,40 @@ func NewUseCaseExecutorBackend(
 		claimTask:          claimTask,
 		reportTaskResult:   reportTaskResult,
 		isTaskActive:       isTaskActive,
+		setK8sJobName:      setK8sJobName,
 	}
 }
 
 // ClaimJob claims the next available job and returns the full executor bundle.
-func (a *UseCaseExecutorBackend) ClaimJob(ctx context.Context, workerID string) (*pipelinejobs.ClaimJobBundleResult, error) {
+func (a *UseCaseExecutorBackend) ClaimJob(ctx context.Context, workerID string) (*pipelineexec.ClaimJobResult, error) {
 	result, err := a.claimJobBundle.Execute(ctx, pipelinejobs.ClaimJobParams{WorkerID: workerID})
 	if err != nil {
 		return nil, fmt.Errorf("claiming job bundle: %w", err)
 	}
 
-	return result, nil
+	if result == nil {
+		return nil, nil
+	}
+
+	return &pipelineexec.ClaimJobResult{
+		Job:                   result.Job,
+		ConnectionID:          result.ConnectionID,
+		WorkspaceID:           result.WorkspaceID,
+		SourceID:              result.SourceID,
+		DestinationID:         result.DestinationID,
+		SourceImage:           result.SourceImage,
+		SourceConfig:          result.SourceConfig,
+		DestImage:             result.DestImage,
+		DestConfig:            result.DestConfig,
+		ConfiguredCatalog:     result.ConfiguredCatalog,
+		StateBlob:             result.StateBlob,
+		SourceRuntimeConfig:   result.SourceRuntimeConfig,
+		DestRuntimeConfig:     result.DestRuntimeConfig,
+		NamespaceDefinition:   result.NamespaceDefinition,
+		CustomNamespaceFormat: result.CustomNamespaceFormat,
+		StreamPrefix:          result.StreamPrefix,
+		MaxAttempts:           result.MaxAttempts,
+	}, nil
 }
 
 // UpdateJobStatus reports job completion or failure.
@@ -232,5 +257,13 @@ func (a *UseCaseExecutorBackend) FailJob(ctx context.Context, jobID, reason stri
 	return a.updateJobStatus.Execute(ctx, pipelinejobs.UpdateJobStatusParams{
 		ID:      parsed,
 		SyncErr: errors.New(reason),
+	})
+}
+
+// SetK8sJobName stores the Kubernetes Job name launched for a job.
+func (a *UseCaseExecutorBackend) SetK8sJobName(ctx context.Context, jobID uuid.UUID, name string) error {
+	return a.setK8sJobName.Execute(ctx, pipelinejobs.SetK8sJobNameParams{
+		ID:         jobID,
+		K8sJobName: name,
 	})
 }

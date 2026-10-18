@@ -12,7 +12,6 @@ import (
 
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineexec"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
-	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinejobs"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinemetrics"
 	"github.com/synclet-io/synclet/pkg/jobutil"
 	"github.com/synclet-io/synclet/pkg/protocol"
@@ -123,13 +122,13 @@ func (w *DockerSyncWorker) Execute(ctx context.Context) error {
 
 // executeJob runs a sync job end-to-end: starts combined heartbeat+cancel
 // polling, delegates to DockerSyncExecutor, then handles completion via ExecutorBackend.
-func (w *DockerSyncWorker) executeJob(ctx context.Context, result *pipelinejobs.ClaimJobBundleResult) {
+func (w *DockerSyncWorker) executeJob(ctx context.Context, result *pipelineexec.ClaimJobResult) {
 	if w.metrics != nil {
 		w.metrics.ObserveActiveSyncStarted()
 		defer w.metrics.ObserveActiveSyncStopped()
 	}
 
-	// Build SyncBundle from ClaimJobBundleResult.
+	// Build SyncBundle from ClaimJobResult.
 	catalog := &protocol.ConfiguredAirbyteCatalog{}
 	if err := json.Unmarshal(result.ConfiguredCatalog, catalog); err != nil {
 		w.failJob(ctx, result.Job.ID, result.WorkspaceID, result.ConnectionID, fmt.Errorf("unmarshaling catalog: %w", err))
@@ -221,7 +220,7 @@ func (w *DockerSyncWorker) executeJob(ctx context.Context, result *pipelinejobs.
 
 // recordMetrics records local prometheus metrics for the completed sync.
 // Events and notifications are now handled server-side in UpdateJobStatus.
-func (w *DockerSyncWorker) recordMetrics(ctx context.Context, result *pipelinejobs.ClaimJobBundleResult, execErr error, stats *pipelineservice.SyncStats) {
+func (w *DockerSyncWorker) recordMetrics(ctx context.Context, result *pipelineexec.ClaimJobResult, execErr error, stats *pipelineservice.SyncStats) {
 	if w.metrics == nil {
 		return
 	}

@@ -4,7 +4,6 @@ import (
 	"github.com/go-pnp/go-pnp/logging"
 	"go.uber.org/fx"
 
-	"github.com/synclet-io/synclet/modules/pipeline/pipelineexec/pipelineexecdocker"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinecatalog"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelineconfig"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelineconnections"
@@ -175,7 +174,6 @@ func pipelineUseCasesModule() fx.Option {
 
 		// Sync use cases
 		fx.Provide(
-			pipelineexecdocker.NewDockerSyncExecutor,
 			pipelinejobs.NewSyncScheduler,
 		),
 

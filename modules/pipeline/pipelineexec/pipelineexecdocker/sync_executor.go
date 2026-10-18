@@ -7,14 +7,9 @@ import (
 	"time"
 
 	"github.com/go-pnp/go-pnp/logging"
-	"go.uber.org/fx"
 
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineexec"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
-	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinecatalog"
-	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinejobs"
-	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinelogs"
-	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinestate"
 	pkgcontainer "github.com/synclet-io/synclet/pkg/container"
 )
 
@@ -36,40 +31,33 @@ func dockerVolumesToMounts(volumes []pipelineservice.DockerVolume) []pkgcontaine
 	return mounts
 }
 
-// DockerSyncExecutor orchestrates a sync job using pre-loaded data from SyncBundle.
-// It no longer accesses storage for data loading — all data arrives via the bundle.
+// DockerSyncExecutor runs a sync job from the pre-loaded data of a SyncBundle
+// and reports state, config updates and logs through the SyncReporter.
 type DockerSyncExecutor struct {
-	client             *ConnectorClient
-	saveSyncState      *pipelinestate.SaveSyncState
-	appendJobLogs      *pipelinelogs.BatchAppendJobLogs
-	handleConfigUpdate *pipelinejobs.HandleConfigUpdate
-	runtimeDefaults    pipelineservice.RuntimeDefaults
-	idleTimeout        time.Duration
-	logger             *logging.Logger
+	client          *ConnectorClient
+	reporter        pipelineexec.SyncReporter
+	runtimeDefaults pipelineservice.RuntimeDefaults
+	idleTimeout     time.Duration
+	logger          *logging.Logger
 }
 
 // DockerSyncExecutorParams holds all dependencies for DockerSyncExecutor.
 type DockerSyncExecutorParams struct {
-	fx.In
-
-	Client             *ConnectorClient
-	SaveSyncState      *pipelinestate.SaveSyncState
-	AppendJobLogs      *pipelinelogs.BatchAppendJobLogs
-	HandleConfigUpdate *pipelinejobs.HandleConfigUpdate
-	Config             pipelineservice.Config
-	Logger             *logging.Logger
+	Client          *ConnectorClient
+	Reporter        pipelineexec.SyncReporter
+	RuntimeDefaults pipelineservice.RuntimeDefaults
+	IdleTimeout     time.Duration
+	Logger          *logging.Logger
 }
 
 // NewDockerSyncExecutor creates a new sync executor.
 func NewDockerSyncExecutor(params DockerSyncExecutorParams) *DockerSyncExecutor {
 	return &DockerSyncExecutor{
-		client:             params.Client,
-		saveSyncState:      params.SaveSyncState,
-		appendJobLogs:      params.AppendJobLogs,
-		handleConfigUpdate: params.HandleConfigUpdate,
-		runtimeDefaults:    params.Config.RuntimeDefaults,
-		idleTimeout:        params.Config.IdleTimeout,
-		logger:             params.Logger.Named("sync-executor"),
+		client:          params.Client,
+		reporter:        params.Reporter,
+		runtimeDefaults: params.RuntimeDefaults,
+		idleTimeout:     params.IdleTimeout,
+		logger:          params.Logger.Named("sync-executor"),
 	}
 }
 
@@ -103,14 +91,14 @@ func (e *DockerSyncExecutor) Execute(ctx context.Context, bundle *pipelineexec.S
 	defer sourceCleanup()
 
 	// Build destination catalog with filtered schemas for selected fields.
-	destCatalog, err := pipelinecatalog.BuildDestinationCatalog(catalog)
+	destCatalog, err := pipelineservice.BuildDestinationCatalog(catalog)
 	if err != nil {
 		return nil, fmt.Errorf("building destination catalog: %w", err)
 	}
 
 	// Apply namespace rewriting and stream prefix to dest catalog.
 	// Source catalog retains original namespaces for filtering and rewriter mapping.
-	pipelinecatalog.ApplyNamespaceAndPrefix(destCatalog, bundle.NamespaceDefinition, bundle.CustomNamespaceFormat, bundle.StreamPrefix)
+	pipelineservice.ApplyNamespaceAndPrefix(destCatalog, bundle.NamespaceDefinition, bundle.CustomNamespaceFormat, bundle.StreamPrefix)
 
 	// Create pipe for source-to-dest message routing.
 	srcPipeReader, srcPipeWriter := io.Pipe()
@@ -139,14 +127,12 @@ func (e *DockerSyncExecutor) Execute(ctx context.Context, bundle *pipelineexec.S
 
 	// Create handler for Docker mode side effects.
 	handler := NewDockerHandler(DockerHandlerParams{
-		ConnectionID:       bundle.ConnectionID,
-		SourceID:           bundle.SourceID,
-		DestinationID:      bundle.DestinationID,
-		JobID:              bundle.Job.ID,
-		HandleConfigUpdate: e.handleConfigUpdate,
-		SaveSyncState:      e.saveSyncState,
-		AppendJobLogs:      e.appendJobLogs,
-		Logger:             e.logger,
+		ConnectionID:  bundle.ConnectionID,
+		SourceID:      bundle.SourceID,
+		DestinationID: bundle.DestinationID,
+		JobID:         bundle.Job.ID,
+		Reporter:      e.reporter,
+		Logger:        e.logger,
 	})
 
 	stopLogFlush := handler.StartLogFlush(ctx)

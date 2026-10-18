@@ -15,16 +15,18 @@ import (
 
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineadapt"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineexec"
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineexec/pipelineexecrpc"
 	"github.com/synclet-io/synclet/pkg/jobutil"
 )
 
-// executorBackendConfig holds configuration for the RPC executor backend.
+// executorBackendConfig points an executor process at the server's executor API.
 type executorBackendConfig struct {
 	URL   string `env:"EXECUTOR_API_URL"`
 	Token string `env:"EXECUTOR_API_TOKEN"`
 }
 
-// standaloneBackendModule provides UseCaseExecutorBackend (in-process, per D-15).
+// standaloneBackendModule backs an executor embedded in the server with the
+// use cases of the same process.
 func standaloneBackendModule() fx.Option {
 	return fx.Provide(
 		fx.Annotate(
@@ -34,7 +36,8 @@ func standaloneBackendModule() fx.Option {
 	)
 }
 
-// rpcBackendModule provides RPCExecutorBackend (distributed, per D-15).
+// rpcBackendModule backs an executor process with the ConnectRPC client of
+// the executor API.
 func rpcBackendModule() fx.Option {
 	return fx.Provide(
 		configutil.NewPrefixedConfigProvider[executorBackendConfig](""),
@@ -43,24 +46,40 @@ func rpcBackendModule() fx.Option {
 	)
 }
 
-// NewFxAppOptions returns common fx options for all binaries.
+func newRPCExecutorBackend(cfg *executorBackendConfig) *pipelineexecrpc.Backend {
+	return pipelineexecrpc.NewBackend(cfg.URL, cfg.Token)
+}
+
+// processModule is the infrastructure every synclet process has: environment,
+// logging, health checkers, the worker manager and Prometheus metrics.
+func processModule() fx.Option {
+	return fx.Options(
+		pnpenv.Module(),
+		pnpzap.Module(),
+		pnphealthcheck.Module(),
+		fx.Provide(fx.Annotate(jobutil.NewWorkerManager, fx.OnStop(stopWorkerManager))),
+		metricsModule(),
+	)
+}
+
+// NewFxAppOptions returns the fx graph of the server and jobs commands.
 func NewFxAppOptions(options *RunAppOptions) fx.Option {
 	return fx.Options(
 		fx.NopLogger,
+		processModule(),
 		pnpgorm.Module("postgres"),
 		fx.Provide(func(db *gorm.DB) (*sql.DB, error) {
 			return db.DB()
 		}),
-		pnpenv.Module(),
-		pnpzap.Module(),
-		pnphealthcheck.Module(),
 		pnphealthcheckgorm.Module(),
 		fx.Supply(options),
 
-		fx.Provide(fx.Annotate(jobutil.NewWorkerManager, fx.OnStop(stopWorkerManager))),
-
 		publicHTTPServerModule(options),
-		internalHTTPServerModule(options),
+		internalHTTPServerModule(
+			options.RunInternalHTTPServer || options.RunJobs,
+			healthcheckModule(options.RunJobs, options.RunConsumers),
+			conditionalFxOptions(options.RunInternalHTTPServer, pipelineInternalHTTPServerModule),
+		),
 
 		// Domain modules
 		authModule(options),
@@ -71,19 +90,14 @@ func NewFxAppOptions(options *RunAppOptions) fx.Option {
 		auditModule(options),
 		messagingModule(options),
 
-		// K8s executor
-		k8sExecutorModule(options),
-		// Docker executor — config is always-on (ContainerRunner needs it
-		// regardless of whether worker jobs run); worker jobs are conditional.
+		// Docker executor config is always-on: ContainerRunner serves image
+		// pulls and connector tasks whether or not worker jobs run.
 		dockerExecutorConfigModule(),
-		dockerExecutorModule(options),
 
-		// Metrics
-		metricsModule(),
-
-		// ExecutorBackend: standalone mode (use-case adapter) vs distributed mode (RPC adapter) per D-16
-		conditionalFxOptions(options.Standalone && (options.DockerExecutor || options.K8sExecutor), standaloneBackendModule),
-		conditionalFxOptions(!options.Standalone && (options.DockerExecutor || options.K8sExecutor), rpcBackendModule),
+		// An executor flag embeds that executor, backed by the use cases.
+		conditionalFxOptions(options.runsExecutor(), standaloneBackendModule, serverExecutorRuntimeModule),
+		conditionalFxOptions(options.DockerExecutor, dockerExecutorModule),
+		conditionalFxOptions(options.K8sExecutor, k8sExecutorConfigModule, k8sExecutorModule, serverK8sPodAPITokenModule),
 
 		fx.Options(options.fxOptions...),
 	)
@@ -91,8 +105,4 @@ func NewFxAppOptions(options *RunAppOptions) fx.Option {
 
 func stopWorkerManager(ctx context.Context, workerManager *jobutil.WorkerManager) error {
 	return workerManager.Close(ctx)
-}
-
-func newRPCExecutorBackend(cfg *executorBackendConfig) pipelineexec.ExecutorBackend {
-	return pipelineadapt.NewRPCExecutorBackend(cfg.URL, cfg.Token)
 }

@@ -35,6 +35,7 @@ type ExecutorHandler struct {
 	claimTask          *pipelinetasks.ClaimTask
 	reportTaskResult   *pipelinetasks.ReportTaskResult
 	isTaskActive       *pipelinejobs.IsTaskActive
+	setK8sJobName      *pipelinejobs.SetK8sJobName
 	logger             *logging.Logger
 }
 
@@ -52,6 +53,7 @@ func NewExecutorHandler(
 	claimTask *pipelinetasks.ClaimTask,
 	reportTaskResult *pipelinetasks.ReportTaskResult,
 	isTaskActive *pipelinejobs.IsTaskActive,
+	setK8sJobName *pipelinejobs.SetK8sJobName,
 	logger *logging.Logger,
 ) *ExecutorHandler {
 	return &ExecutorHandler{
@@ -67,6 +69,7 @@ func NewExecutorHandler(
 		claimTask:          claimTask,
 		reportTaskResult:   reportTaskResult,
 		isTaskActive:       isTaskActive,
+		setK8sJobName:      setK8sJobName,
 		logger:             logger.Named("executor-handler"),
 	}
 }
@@ -405,4 +408,24 @@ func (h *ExecutorHandler) FailJob(ctx context.Context, req *connect.Request[exec
 	}
 
 	return connect.NewResponse(&executorv1.FailJobResponse{}), nil
+}
+
+// SetK8sJobName stores the Kubernetes Job name the executor launched for a job.
+func (h *ExecutorHandler) SetK8SJobName(ctx context.Context, req *connect.Request[executorv1.SetK8SJobNameRequest]) (*connect.Response[executorv1.SetK8SJobNameResponse], error) {
+	jobID, err := uuid.Parse(req.Msg.GetJobId())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid job_id: %w", err))
+	}
+
+	if err := h.setK8sJobName.Execute(ctx, pipelinejobs.SetK8sJobNameParams{
+		ID:         jobID,
+		K8sJobName: req.Msg.GetK8SJobName(),
+	}); err != nil {
+		h.logger.WithError(err).Error(ctx, "executor: set k8s job name failed",
+			"job_id", req.Msg.GetJobId())
+
+		return nil, mapError(err)
+	}
+
+	return connect.NewResponse(&executorv1.SetK8SJobNameResponse{}), nil
 }

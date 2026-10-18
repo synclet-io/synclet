@@ -9,8 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineexec"
-	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinecatalog"
-	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinejobs"
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
 	"github.com/synclet-io/synclet/pkg/protocol"
 )
 
@@ -48,7 +47,6 @@ type K8sSyncJobOptions struct {
 // communication per D-14.
 type K8sSyncWorker struct {
 	backend        pipelineexec.ExecutorBackend
-	setK8sJobName  *pipelinejobs.SetK8sJobName // K8s-specific, keep
 	k8sRunner      K8sSyncLauncher
 	internalAPIURL string
 	workerID       string
@@ -58,7 +56,6 @@ type K8sSyncWorker struct {
 // NewK8sSyncWorker creates a new K8sSyncWorker.
 func NewK8sSyncWorker(
 	backend pipelineexec.ExecutorBackend,
-	setK8sJobName *pipelinejobs.SetK8sJobName,
 	k8sRunner K8sSyncLauncher,
 	internalAPIURL string,
 	workerID string,
@@ -66,7 +63,6 @@ func NewK8sSyncWorker(
 ) *K8sSyncWorker {
 	return &K8sSyncWorker{
 		backend:        backend,
-		setK8sJobName:  setK8sJobName,
 		k8sRunner:      k8sRunner,
 		internalAPIURL: internalAPIURL,
 		workerID:       workerID,
@@ -96,14 +92,14 @@ func (w *K8sSyncWorker) Execute(ctx context.Context) error {
 		return nil
 	}
 
-	destCatalog, err := pipelinecatalog.BuildDestinationCatalog(&catalog)
+	destCatalog, err := pipelineservice.BuildDestinationCatalog(&catalog)
 	if err != nil {
 		w.failJob(ctx, result.Job.ID, fmt.Errorf("building destination catalog: %w", err))
 
 		return nil
 	}
 
-	pipelinecatalog.ApplyNamespaceAndPrefix(destCatalog, result.NamespaceDefinition, pipelineexec.NilIfEmpty(result.CustomNamespaceFormat), pipelineexec.NilIfEmpty(result.StreamPrefix))
+	pipelineservice.ApplyNamespaceAndPrefix(destCatalog, result.NamespaceDefinition, pipelineexec.NilIfEmpty(result.CustomNamespaceFormat), pipelineexec.NilIfEmpty(result.StreamPrefix))
 
 	destCatalogJSON, err := json.Marshal(destCatalog)
 	if err != nil {
@@ -112,7 +108,7 @@ func (w *K8sSyncWorker) Execute(ctx context.Context) error {
 		return nil
 	}
 
-	// Build K8s job options directly from ClaimJobBundleResult bundle.
+	// Build K8s job options directly from the claimed bundle.
 	opts := K8sSyncJobOptions{
 		JobID:                 result.Job.ID,
 		ConnectionID:          result.ConnectionID,
@@ -141,10 +137,7 @@ func (w *K8sSyncWorker) Execute(ctx context.Context) error {
 	}
 
 	// Store the K8s job name on the job record.
-	if err := w.setK8sJobName.Execute(ctx, pipelinejobs.SetK8sJobNameParams{
-		ID:         result.Job.ID,
-		K8sJobName: k8sJobName,
-	}); err != nil {
+	if err := w.backend.SetK8sJobName(ctx, result.Job.ID, k8sJobName); err != nil {
 		w.logger.WithError(err).WithFields(map[string]interface{}{"job_id": result.Job.ID.String(), "k8s_job_name": k8sJobName}).Error(ctx, "failed to set k8s job name")
 	}
 

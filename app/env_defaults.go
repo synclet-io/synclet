@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -26,6 +27,34 @@ var envDefaults = map[string]string{
 	"INTERNAL_HTTP_SERVER_IDLE_TIMEOUT":        "120s",
 }
 
+// controlPlaneOnlyKeys are read by the server and jobs processes alone. An
+// executor reaches the control plane through the executor API and drops them
+// from its environment at startup.
+var controlPlaneOnlyKeys = []string{
+	"DB_DSN",
+	"AUTH_JWT_SECRET",
+	"SECRET_ENCRYPTION_KEY",
+	"SECRET_ENCRYPTION_KEY_PREVIOUS",
+	"PIPELINE_EXECUTOR_API_TOKEN",
+}
+
+// controlPlaneOnlyPrefixes extend controlPlaneOnlyKeys to whole families.
+var controlPlaneOnlyPrefixes = []string{"WATERMILL_"}
+
+func isControlPlaneOnlyKey(key string) bool {
+	if slices.Contains(controlPlaneOnlyKeys, key) {
+		return true
+	}
+
+	for _, prefix := range controlPlaneOnlyPrefixes {
+		if strings.HasPrefix(key, prefix) {
+			return true
+		}
+	}
+
+	return false
+}
+
 // applyEnvDefaults fills plain defaults and the secrets the server and jobs
 // need. When a secret is missing and cannot be generated safely, it logs which
 // variable to set and exits the process with status 1.
@@ -39,12 +68,37 @@ func applyEnvDefaults(logger *slog.Logger) {
 }
 
 func applyPlainEnvDefaults() {
+	applyEnvDefaultsFor(func(string) bool { return true })
+}
+
+// applyExecutorEnvDefaults fills the plain defaults an executor reads.
+func applyExecutorEnvDefaults() {
+	applyEnvDefaultsFor(func(key string) bool { return !isControlPlaneOnlyKey(key) })
+}
+
+func applyEnvDefaultsFor(reads func(key string) bool) {
 	for key, value := range envDefaults {
-		if os.Getenv(key) != "" {
+		if !reads(key) || os.Getenv(key) != "" {
 			continue
 		}
 
 		_ = os.Setenv(key, value)
+	}
+}
+
+// dropControlPlaneEnv unsets every control-plane variable an executor was
+// started with and logs each one.
+func dropControlPlaneEnv(logger *slog.Logger) {
+	for _, entry := range os.Environ() {
+		key, _, _ := strings.Cut(entry, "=")
+		if !isControlPlaneOnlyKey(key) {
+			continue
+		}
+
+		_ = os.Unsetenv(key)
+
+		logger.Warn("ignoring "+key+": control-plane variable, executors reach the server through the executor API",
+			slog.String("variable", key))
 	}
 }
 

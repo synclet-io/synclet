@@ -1,4 +1,4 @@
-package pipelineadapt
+package pipelineexecrpc
 
 import (
 	"context"
@@ -17,7 +17,6 @@ import (
 	pipelinev1 "github.com/synclet-io/synclet/gen/proto/synclet/publicapi/pipeline/v1"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineexec"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
-	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinejobs"
 	"github.com/synclet-io/synclet/pkg/protocol"
 )
 
@@ -42,9 +41,9 @@ func (i *tokenInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFun
 	return next
 }
 
-// RPCExecutorBackend implements pipelineexec.ExecutorBackend by calling
-// ExecutorService RPCs over HTTP. Used in distributed mode (per D-15).
-type RPCExecutorBackend struct {
+// Backend implements pipelineexec.ExecutorBackend over the ExecutorService
+// RPCs: it is the only path from an executor process to the control plane.
+type Backend struct {
 	client         executorv1connect.ExecutorServiceClient
 	retryBaseDelay time.Duration
 	retryMaxDelay  time.Duration
@@ -54,8 +53,9 @@ type RPCExecutorBackend struct {
 // with a transient error gives up after about two and a half minutes.
 const rpcMaxAttempts = 10
 
-// NewRPCExecutorBackend creates a new RPCExecutorBackend with the given API URL and token.
-func NewRPCExecutorBackend(apiURL, token string) *RPCExecutorBackend {
+// NewBackend returns a client of the executor API at apiURL authenticating
+// with token.
+func NewBackend(apiURL, token string) *Backend {
 	httpClient := &http.Client{Timeout: 30 * time.Second}
 
 	var opts []connect.ClientOption
@@ -65,7 +65,7 @@ func NewRPCExecutorBackend(apiURL, token string) *RPCExecutorBackend {
 
 	client := executorv1connect.NewExecutorServiceClient(httpClient, apiURL, opts...)
 
-	return &RPCExecutorBackend{
+	return &Backend{
 		client:         client,
 		retryBaseDelay: time.Second,
 		retryMaxDelay:  30 * time.Second,
@@ -73,8 +73,8 @@ func NewRPCExecutorBackend(apiURL, token string) *RPCExecutorBackend {
 }
 
 // ClaimJob calls the ClaimJob RPC and maps the proto response to the domain type.
-func (a *RPCExecutorBackend) ClaimJob(ctx context.Context, workerID string) (*pipelinejobs.ClaimJobBundleResult, error) {
-	var result *pipelinejobs.ClaimJobBundleResult
+func (a *Backend) ClaimJob(ctx context.Context, workerID string) (*pipelineexec.ClaimJobResult, error) {
+	var result *pipelineexec.ClaimJobResult
 
 	err := a.sendWithRetry(ctx, "ClaimJob", func(ctx context.Context) error {
 		resp, callErr := a.client.ClaimJob(ctx, connect.NewRequest(&executorv1.ClaimJobRequest{
@@ -116,8 +116,7 @@ func (a *RPCExecutorBackend) ClaimJob(ctx context.Context, workerID string) (*pi
 			return fmt.Errorf("parsing destination_id: %w", parseErr)
 		}
 
-		// Map all proto response fields explicitly to ClaimJobBundleResult.
-		result = &pipelinejobs.ClaimJobBundleResult{
+		result = &pipelineexec.ClaimJobResult{
 			Job: &pipelineservice.Job{
 				ID:           parsedJobID,
 				ConnectionID: parsedConnID,
@@ -155,7 +154,7 @@ func (a *RPCExecutorBackend) ClaimJob(ctx context.Context, workerID string) (*pi
 }
 
 // UpdateJobStatus calls the UpdateJobStatus RPC with retry.
-func (a *RPCExecutorBackend) UpdateJobStatus(ctx context.Context, params pipelineexec.UpdateJobStatusParams) error {
+func (a *Backend) UpdateJobStatus(ctx context.Context, params pipelineexec.UpdateJobStatusParams) error {
 	return a.sendWithRetry(ctx, "UpdateJobStatus", func(ctx context.Context) error {
 		_, err := a.client.UpdateJobStatus(ctx, connect.NewRequest(&executorv1.UpdateJobStatusRequest{
 			JobId:        params.JobID.String(),
@@ -171,7 +170,7 @@ func (a *RPCExecutorBackend) UpdateJobStatus(ctx context.Context, params pipelin
 }
 
 // MarkJobRunning calls the MarkJobRunning RPC with retry.
-func (a *RPCExecutorBackend) MarkJobRunning(ctx context.Context, jobID uuid.UUID) error {
+func (a *Backend) MarkJobRunning(ctx context.Context, jobID uuid.UUID) error {
 	return a.sendWithRetry(ctx, "MarkJobRunning", func(ctx context.Context) error {
 		_, err := a.client.MarkJobRunning(ctx, connect.NewRequest(&executorv1.MarkJobRunningRequest{
 			JobId: jobID.String(),
@@ -182,7 +181,7 @@ func (a *RPCExecutorBackend) MarkJobRunning(ctx context.Context, jobID uuid.UUID
 }
 
 // Heartbeat calls the Heartbeat RPC with retry and returns cancellation status.
-func (a *RPCExecutorBackend) Heartbeat(ctx context.Context, jobID uuid.UUID, recordsRead, bytesSynced int64) (*pipelineexec.HeartbeatResult, error) {
+func (a *Backend) Heartbeat(ctx context.Context, jobID uuid.UUID, recordsRead, bytesSynced int64) (*pipelineexec.HeartbeatResult, error) {
 	var result *pipelineexec.HeartbeatResult
 
 	err := a.sendWithRetry(ctx, "Heartbeat", func(ctx context.Context) error {
@@ -208,7 +207,7 @@ func (a *RPCExecutorBackend) Heartbeat(ctx context.Context, jobID uuid.UUID, rec
 
 // ReportState serializes the state message and sends it via RPC.
 // Best-effort: no retry (state will be re-sent on next checkpoint).
-func (a *RPCExecutorBackend) ReportState(ctx context.Context, connectionID, jobID uuid.UUID, stateMsg *protocol.AirbyteStateMessage) error {
+func (a *Backend) ReportState(ctx context.Context, connectionID, jobID uuid.UUID, stateMsg *protocol.AirbyteStateMessage) error {
 	stateData, err := json.Marshal(stateMsg)
 	if err != nil {
 		return fmt.Errorf("marshaling state message: %w", err)
@@ -225,7 +224,7 @@ func (a *RPCExecutorBackend) ReportState(ctx context.Context, connectionID, jobI
 }
 
 // ReportCompletion calls the ReportCompletion RPC with retry.
-func (a *RPCExecutorBackend) ReportCompletion(ctx context.Context, params pipelineexec.ReportCompletionParams) error {
+func (a *Backend) ReportCompletion(ctx context.Context, params pipelineexec.ReportCompletionParams) error {
 	return a.sendWithRetry(ctx, "ReportCompletion", func(ctx context.Context) error {
 		_, err := a.client.ReportCompletion(ctx, connect.NewRequest(&executorv1.ReportCompletionRequest{
 			JobId:        params.JobID.String(),
@@ -243,7 +242,7 @@ func (a *RPCExecutorBackend) ReportCompletion(ctx context.Context, params pipeli
 
 // ReportConfigUpdate calls the ReportConfigUpdate RPC.
 // Best-effort: no retry (config updates are rare and can be re-triggered).
-func (a *RPCExecutorBackend) ReportConfigUpdate(ctx context.Context, connectorType pipelineservice.ConnectorType, connectorID uuid.UUID, config []byte) error {
+func (a *Backend) ReportConfigUpdate(ctx context.Context, connectorType pipelineservice.ConnectorType, connectorID uuid.UUID, config []byte) error {
 	_, err := a.client.ReportConfigUpdate(ctx, connect.NewRequest(&executorv1.ReportConfigUpdateRequest{
 		ConnectorType: domainConnectorTypeToExecutorProto(connectorType),
 		ConnectorId:   connectorID.String(),
@@ -255,7 +254,7 @@ func (a *RPCExecutorBackend) ReportConfigUpdate(ctx context.Context, connectorTy
 
 // ReportLog calls the ReportLog RPC.
 // Best-effort: no retry (log lines are non-critical).
-func (a *RPCExecutorBackend) ReportLog(ctx context.Context, jobID uuid.UUID, lines []string) error {
+func (a *Backend) ReportLog(ctx context.Context, jobID uuid.UUID, lines []string) error {
 	_, err := a.client.ReportLog(ctx, connect.NewRequest(&executorv1.ReportLogRequest{
 		JobId:    jobID.String(),
 		LogLines: lines,
@@ -265,7 +264,7 @@ func (a *RPCExecutorBackend) ReportLog(ctx context.Context, jobID uuid.UUID, lin
 }
 
 // ClaimConnectorTask calls the ClaimConnectorTask RPC with retry (D-15).
-func (a *RPCExecutorBackend) ClaimConnectorTask(ctx context.Context, workerID string) (*pipelineexec.ClaimConnectorTaskResult, error) {
+func (a *Backend) ClaimConnectorTask(ctx context.Context, workerID string) (*pipelineexec.ClaimConnectorTaskResult, error) {
 	var result *pipelineexec.ClaimConnectorTaskResult
 
 	err := a.sendWithRetry(ctx, "ClaimConnectorTask", func(ctx context.Context) error {
@@ -310,7 +309,7 @@ func (a *RPCExecutorBackend) ClaimConnectorTask(ctx context.Context, workerID st
 }
 
 // ReportConnectorTaskResult calls the ReportConnectorTaskResult RPC with retry (D-18/D-19).
-func (a *RPCExecutorBackend) ReportConnectorTaskResult(ctx context.Context, params pipelineexec.ReportConnectorTaskResultParams) error {
+func (a *Backend) ReportConnectorTaskResult(ctx context.Context, params pipelineexec.ReportConnectorTaskResultParams) error {
 	return a.sendWithRetry(ctx, "ReportConnectorTaskResult", func(ctx context.Context) error {
 		_, err := a.client.ReportConnectorTaskResult(ctx, connect.NewRequest(&executorv1.ReportConnectorTaskResultRequest{
 			TaskId:       params.TaskID.String(),
@@ -325,7 +324,7 @@ func (a *RPCExecutorBackend) ReportConnectorTaskResult(ctx context.Context, para
 
 // IsJobActive calls the IsJobActive RPC.
 // Best-effort: no retry (orphan cleanup can re-check later).
-func (a *RPCExecutorBackend) IsJobActive(ctx context.Context, jobID string) (bool, error) {
+func (a *Backend) IsJobActive(ctx context.Context, jobID string) (bool, error) {
 	resp, err := a.client.IsJobActive(ctx, connect.NewRequest(&executorv1.IsJobActiveRequest{
 		JobId: jobID,
 	}))
@@ -338,7 +337,7 @@ func (a *RPCExecutorBackend) IsJobActive(ctx context.Context, jobID string) (boo
 
 // IsTaskActive calls the IsTaskActive RPC.
 // Best-effort: no retry (reconciler can re-check later).
-func (a *RPCExecutorBackend) IsTaskActive(ctx context.Context, taskID string) (bool, error) {
+func (a *Backend) IsTaskActive(ctx context.Context, taskID string) (bool, error) {
 	resp, err := a.client.IsTaskActive(ctx, connect.NewRequest(&executorv1.IsTaskActiveRequest{
 		TaskId: taskID,
 	}))
@@ -350,7 +349,7 @@ func (a *RPCExecutorBackend) IsTaskActive(ctx context.Context, taskID string) (b
 }
 
 // FailJob calls the FailJob RPC with retry.
-func (a *RPCExecutorBackend) FailJob(ctx context.Context, jobID, reason string) error {
+func (a *Backend) FailJob(ctx context.Context, jobID, reason string) error {
 	return a.sendWithRetry(ctx, "FailJob", func(ctx context.Context) error {
 		_, err := a.client.FailJob(ctx, connect.NewRequest(&executorv1.FailJobRequest{
 			JobId:  jobID,
@@ -365,7 +364,7 @@ func (a *RPCExecutorBackend) FailJob(ctx context.Context, jobID, reason string) 
 // Used for critical operations: ClaimJob, UpdateJobStatus, Heartbeat, ReportCompletion.
 // Errors with a non-retryable code are returned at once; transient ones are
 // retried up to rpcMaxAttempts times.
-func (a *RPCExecutorBackend) sendWithRetry(ctx context.Context, name string, fn func(context.Context) error) error {
+func (a *Backend) sendWithRetry(ctx context.Context, name string, fn func(context.Context) error) error {
 	backoff := a.retryBaseDelay
 	maxBackoff := a.retryMaxDelay
 
@@ -478,4 +477,16 @@ func airbyteStateTypeToProto(t protocol.AirbyteStateType) protocolv1.StateType {
 	default:
 		return protocolv1.StateType_STATE_TYPE_STREAM
 	}
+}
+
+// SetK8sJobName calls the SetK8sJobName RPC with retry.
+func (a *Backend) SetK8sJobName(ctx context.Context, jobID uuid.UUID, name string) error {
+	return a.sendWithRetry(ctx, "SetK8sJobName", func(ctx context.Context) error {
+		_, err := a.client.SetK8SJobName(ctx, connect.NewRequest(&executorv1.SetK8SJobNameRequest{
+			JobId:      jobID.String(),
+			K8SJobName: name,
+		}))
+
+		return err
+	})
 }

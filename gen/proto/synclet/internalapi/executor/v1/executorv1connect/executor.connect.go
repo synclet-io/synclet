@@ -71,6 +71,9 @@ const (
 	ExecutorServiceIsTaskActiveProcedure = "/synclet.internalapi.executor.v1.ExecutorService/IsTaskActive"
 	// ExecutorServiceFailJobProcedure is the fully-qualified name of the ExecutorService's FailJob RPC.
 	ExecutorServiceFailJobProcedure = "/synclet.internalapi.executor.v1.ExecutorService/FailJob"
+	// ExecutorServiceSetK8SJobNameProcedure is the fully-qualified name of the ExecutorService's
+	// SetK8sJobName RPC.
+	ExecutorServiceSetK8SJobNameProcedure = "/synclet.internalapi.executor.v1.ExecutorService/SetK8sJobName"
 )
 
 // ExecutorServiceClient is a client for the synclet.internalapi.executor.v1.ExecutorService
@@ -93,6 +96,8 @@ type ExecutorServiceClient interface {
 	// Resource status RPCs for K8s reconciler
 	IsTaskActive(context.Context, *connect.Request[v1.IsTaskActiveRequest]) (*connect.Response[v1.IsTaskActiveResponse], error)
 	FailJob(context.Context, *connect.Request[v1.FailJobRequest]) (*connect.Response[v1.FailJobResponse], error)
+	// Kubernetes executor records the Job it launched for a sync
+	SetK8SJobName(context.Context, *connect.Request[v1.SetK8SJobNameRequest]) (*connect.Response[v1.SetK8SJobNameResponse], error)
 }
 
 // NewExecutorServiceClient constructs a client for the
@@ -185,6 +190,12 @@ func NewExecutorServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(executorServiceMethods.ByName("FailJob")),
 			connect.WithClientOptions(opts...),
 		),
+		setK8SJobName: connect.NewClient[v1.SetK8SJobNameRequest, v1.SetK8SJobNameResponse](
+			httpClient,
+			baseURL+ExecutorServiceSetK8SJobNameProcedure,
+			connect.WithSchema(executorServiceMethods.ByName("SetK8sJobName")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -203,6 +214,7 @@ type executorServiceClient struct {
 	reportConnectorTaskResult *connect.Client[v1.ReportConnectorTaskResultRequest, v1.ReportConnectorTaskResultResponse]
 	isTaskActive              *connect.Client[v1.IsTaskActiveRequest, v1.IsTaskActiveResponse]
 	failJob                   *connect.Client[v1.FailJobRequest, v1.FailJobResponse]
+	setK8SJobName             *connect.Client[v1.SetK8SJobNameRequest, v1.SetK8SJobNameResponse]
 }
 
 // Heartbeat calls synclet.internalapi.executor.v1.ExecutorService.Heartbeat.
@@ -271,6 +283,11 @@ func (c *executorServiceClient) FailJob(ctx context.Context, req *connect.Reques
 	return c.failJob.CallUnary(ctx, req)
 }
 
+// SetK8SJobName calls synclet.internalapi.executor.v1.ExecutorService.SetK8sJobName.
+func (c *executorServiceClient) SetK8SJobName(ctx context.Context, req *connect.Request[v1.SetK8SJobNameRequest]) (*connect.Response[v1.SetK8SJobNameResponse], error) {
+	return c.setK8SJobName.CallUnary(ctx, req)
+}
+
 // ExecutorServiceHandler is an implementation of the
 // synclet.internalapi.executor.v1.ExecutorService service.
 type ExecutorServiceHandler interface {
@@ -291,6 +308,8 @@ type ExecutorServiceHandler interface {
 	// Resource status RPCs for K8s reconciler
 	IsTaskActive(context.Context, *connect.Request[v1.IsTaskActiveRequest]) (*connect.Response[v1.IsTaskActiveResponse], error)
 	FailJob(context.Context, *connect.Request[v1.FailJobRequest]) (*connect.Response[v1.FailJobResponse], error)
+	// Kubernetes executor records the Job it launched for a sync
+	SetK8SJobName(context.Context, *connect.Request[v1.SetK8SJobNameRequest]) (*connect.Response[v1.SetK8SJobNameResponse], error)
 }
 
 // NewExecutorServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -378,6 +397,12 @@ func NewExecutorServiceHandler(svc ExecutorServiceHandler, opts ...connect.Handl
 		connect.WithSchema(executorServiceMethods.ByName("FailJob")),
 		connect.WithHandlerOptions(opts...),
 	)
+	executorServiceSetK8SJobNameHandler := connect.NewUnaryHandler(
+		ExecutorServiceSetK8SJobNameProcedure,
+		svc.SetK8SJobName,
+		connect.WithSchema(executorServiceMethods.ByName("SetK8sJobName")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/synclet.internalapi.executor.v1.ExecutorService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ExecutorServiceHeartbeatProcedure:
@@ -406,6 +431,8 @@ func NewExecutorServiceHandler(svc ExecutorServiceHandler, opts ...connect.Handl
 			executorServiceIsTaskActiveHandler.ServeHTTP(w, r)
 		case ExecutorServiceFailJobProcedure:
 			executorServiceFailJobHandler.ServeHTTP(w, r)
+		case ExecutorServiceSetK8SJobNameProcedure:
+			executorServiceSetK8SJobNameHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -465,4 +492,8 @@ func (UnimplementedExecutorServiceHandler) IsTaskActive(context.Context, *connec
 
 func (UnimplementedExecutorServiceHandler) FailJob(context.Context, *connect.Request[v1.FailJobRequest]) (*connect.Response[v1.FailJobResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("synclet.internalapi.executor.v1.ExecutorService.FailJob is not implemented"))
+}
+
+func (UnimplementedExecutorServiceHandler) SetK8SJobName(context.Context, *connect.Request[v1.SetK8SJobNameRequest]) (*connect.Response[v1.SetK8SJobNameResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("synclet.internalapi.executor.v1.ExecutorService.SetK8sJobName is not implemented"))
 }

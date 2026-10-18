@@ -1,4 +1,4 @@
-package pipelineadapt
+package pipelineexecrpc
 
 import (
 	"context"
@@ -17,15 +17,15 @@ import (
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
 )
 
-// Compile-time check that RPCExecutorBackend implements ExecutorBackend.
-var _ pipelineexec.ExecutorBackend = (*RPCExecutorBackend)(nil)
+// Compile-time check that Backend implements ExecutorBackend.
+var _ pipelineexec.ExecutorBackend = (*Backend)(nil)
 
-func TestRPCExecutorBackend_ImplementsInterface(t *testing.T) {
+func TestBackend_ImplementsInterface(t *testing.T) {
 	// This test verifies the interface implementation at compile time.
-	t.Log("RPCExecutorBackend implements pipelineexec.ExecutorBackend")
+	t.Log("Backend implements pipelineexec.ExecutorBackend")
 }
 
-func TestRPCExecutorBackend_TokenInterceptorSetsHeader(t *testing.T) {
+func TestBackend_TokenInterceptorSetsHeader(t *testing.T) {
 	// Verify that the token interceptor sets the X-Internal-Secret header.
 	var receivedHeader string
 
@@ -37,7 +37,7 @@ func TestRPCExecutorBackend_TokenInterceptorSetsHeader(t *testing.T) {
 	}))
 	defer server.Close()
 
-	backend := NewRPCExecutorBackend(server.URL, "test-secret-token")
+	backend := NewBackend(server.URL, "test-secret-token")
 	require.NotNil(t, backend)
 
 	// Call IsJobActive (simplest RPC) to trigger the interceptor.
@@ -47,7 +47,7 @@ func TestRPCExecutorBackend_TokenInterceptorSetsHeader(t *testing.T) {
 	assert.Equal(t, "test-secret-token", receivedHeader)
 }
 
-func TestRPCExecutorBackend_ProtoJobTypeToDomain(t *testing.T) {
+func TestBackend_ProtoJobTypeToDomain(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    executorv1.JobType
@@ -65,8 +65,8 @@ func TestRPCExecutorBackend_ProtoJobTypeToDomain(t *testing.T) {
 	}
 }
 
-func TestRPCExecutorBackend_SendWithRetry(t *testing.T) {
-	backend := &RPCExecutorBackend{retryBaseDelay: time.Millisecond, retryMaxDelay: time.Millisecond}
+func TestBackend_SendWithRetry(t *testing.T) {
+	backend := &Backend{retryBaseDelay: time.Millisecond, retryMaxDelay: time.Millisecond}
 
 	t.Run("stops on non-retryable code", func(t *testing.T) {
 		calls := 0

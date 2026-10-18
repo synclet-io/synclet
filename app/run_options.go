@@ -16,6 +16,8 @@ func isRunningInK8s() bool {
 
 type RunOption = optionutil.Option[RunAppOptions]
 
+// RunAppOptions select what a server or jobs process runs. An executor flag
+// embeds that executor in the process, backed by the use cases.
 type RunAppOptions struct {
 	DotEnvFiles           []string
 	RunModule             map[string]bool
@@ -25,7 +27,6 @@ type RunAppOptions struct {
 	RunJobs               bool
 	DockerExecutor        bool
 	K8sExecutor           bool
-	Standalone            bool // When true, executors run in-process with use-case adapter
 	fxOptions             []fx.Option
 }
 
@@ -35,6 +36,10 @@ func (r *RunAppOptions) needToRunModule(module string) bool {
 	}
 
 	return r.RunModule[module]
+}
+
+func (r *RunAppOptions) runsExecutor() bool {
+	return r.DockerExecutor || r.K8sExecutor
 }
 
 func WithDotEnvFiles(dotEnvFiles ...string) RunOption {
@@ -89,12 +94,6 @@ func WithAutoExecutor() RunOption {
 	}
 }
 
-func WithStandalone() RunOption {
-	return func(options *RunAppOptions) {
-		options.Standalone = true
-	}
-}
-
 func WithFxOptions(fxOptions ...fx.Option) RunOption {
 	return func(options *RunAppOptions) {
 		options.fxOptions = fxOptions
@@ -130,7 +129,7 @@ func WithRunModule(module string) RunOption {
 func ServerCommandOptions(standalone bool) []RunOption {
 	opts := []RunOption{WithRunPublicHTTPServer(), WithRunInternalHTTPServer()}
 	if standalone {
-		opts = append(opts, WithRunJobs(), WithRunConsumers(), WithStandalone(), WithAutoExecutor())
+		opts = append(opts, WithRunJobs(), WithRunConsumers(), WithAutoExecutor())
 	}
 
 	return opts
@@ -140,17 +139,4 @@ func ServerCommandOptions(standalone bool) []RunOption {
 // the outbox publisher and event consumers, no public API.
 func JobsCommandOptions() []RunOption {
 	return []RunOption{WithRunJobs(), WithRunConsumers()}
-}
-
-// ExecutorCommandOptions are the run options of the executor commands. An
-// executor runs its own workers but no background jobs or consumers;
-// scheduling, retention and the outbox publisher belong to `jobs` or
-// `server --standalone`.
-func ExecutorCommandOptions(executor RunOption, standalone bool) []RunOption {
-	opts := []RunOption{executor}
-	if standalone {
-		opts = append(opts, WithStandalone())
-	}
-
-	return opts
 }

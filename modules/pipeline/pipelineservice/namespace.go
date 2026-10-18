@@ -1,9 +1,8 @@
-package pipelinecatalog
+package pipelineservice
 
 import (
 	"strings"
 
-	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
 	"github.com/synclet-io/synclet/pkg/protocol"
 )
 
@@ -11,7 +10,7 @@ import (
 // rewriting and stream prefix per connection settings.
 func ApplyNamespaceAndPrefix(
 	catalog *protocol.ConfiguredAirbyteCatalog,
-	nsDef pipelineservice.NamespaceDefinition,
+	nsDef NamespaceDefinition,
 	customFormat *string,
 	prefix *string,
 ) {
@@ -25,12 +24,12 @@ func ApplyNamespaceAndPrefix(
 
 		// Apply namespace rewriting.
 		switch nsDef {
-		case pipelineservice.NamespaceDefinitionSource:
+		case NamespaceDefinitionSource:
 			// No-op: keep original namespace from source.
-		case pipelineservice.NamespaceDefinitionDestination:
+		case NamespaceDefinitionDestination:
 			// Clear namespace so destination uses its default.
 			stream.Stream.Namespace = ""
-		case pipelineservice.NamespaceDefinitionCustom:
+		case NamespaceDefinitionCustom:
 			if customFormat != nil {
 				stream.Stream.Namespace = strings.ReplaceAll(
 					*customFormat,

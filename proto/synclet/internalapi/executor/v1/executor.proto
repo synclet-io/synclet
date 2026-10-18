@@ -49,6 +49,9 @@ service ExecutorService {
   // Resource status RPCs for K8s reconciler
   rpc IsTaskActive(IsTaskActiveRequest) returns (IsTaskActiveResponse);
   rpc FailJob(FailJobRequest) returns (FailJobResponse);
+
+  // Kubernetes executor records the Job it launched for a sync
+  rpc SetK8sJobName(SetK8sJobNameRequest) returns (SetK8sJobNameResponse);
 }
 
 message HeartbeatRequest {
@@ -199,3 +202,11 @@ message FailJobRequest {
 }
 
 message FailJobResponse {}
+
+// SetK8sJobName: the Kubernetes executor stores the Job name on the job record
+message SetK8sJobNameRequest {
+  string job_id = 1;
+  string k8s_job_name = 2;
+}
+
+message SetK8sJobNameResponse {}

@@ -36,6 +36,10 @@ Config: `.env` file (copy from `.env.dist`; `go run . generate dotenv` appends e
 
 Decisions about the sync engine's architecture (job queue, executors, router, connector protocol boundary, state handling, native connectors) are made by a human: present the options with their trade-offs and wait for the choice; never settle one yourself.
 
+## Executors
+
+Executor packages (`modules/pipeline/pipelineexec/...`) and the executor graphs (`app.RunDockerExecutor`, `app.RunK8sExecutor`) never import storage, use cases, `pnpgorm` or database drivers and reach the control plane only through `ExecutorBackend`; `TestExecutorGraph` and `TestExecutorDependencies` guard it.
+
 ## Migrations
 
 A migration file may be modified only while it has not been pushed to GitHub; once pushed, every schema change (a new table, column, type or index) goes into a new migration file, never into an existing one.

@@ -111,21 +111,21 @@ type pipelineConfig struct {
 	MaxLogLinesPerAttempt       int                      `env:"LOG_MAX_LINES_PER_ATTEMPT" envDefault:"100000"`
 }
 
-// runtimeDefaults converts pipelineRuntimeConfig to RuntimeDefaults.
-func (c *pipelineConfig) runtimeDefaults() pipelineservice.RuntimeDefaults {
+// defaults converts pipelineRuntimeConfig to RuntimeDefaults.
+func (c pipelineRuntimeConfig) defaults() pipelineservice.RuntimeDefaults {
 	return pipelineservice.RuntimeDefaults{
-		CPURequest:         c.Runtime.CPURequest,
-		CPULimit:           c.Runtime.CPULimit,
-		MemoryRequest:      c.Runtime.MemoryRequest,
-		MemoryLimit:        c.Runtime.MemoryLimit,
-		ServiceAccountName: c.Runtime.ServiceAccountName,
+		CPURequest:         c.CPURequest,
+		CPULimit:           c.CPULimit,
+		MemoryRequest:      c.MemoryRequest,
+		MemoryLimit:        c.MemoryLimit,
+		ServiceAccountName: c.ServiceAccountName,
 	}
 }
 
 func pipelineModule(options *RunAppOptions) fx.Option {
 	return fx.Options(
 		pipelineConfigModule(),
-		pipelineMetricsModule(),
+		pipelineMetricsModule(newPipelineMetricsCollector),
 		pipelineDependenciesModule(),
 		pipelineUseCasesModule(),
 		pipelineEventHandlersModule(),
@@ -153,9 +153,11 @@ func pipelineConfigModule() fx.Option {
 	)
 }
 
-func pipelineMetricsModule() fx.Option {
+// pipelineMetricsModule provides the pipeline metrics collector built by
+// newCollector and registers it with Prometheus.
+func pipelineMetricsModule(newCollector any) fx.Option {
 	return fx.Provide(
-		newPipelineMetricsCollector,
+		newCollector,
 		pnpprometheus.MetricsCollectorProvider(pipelineMetricsCollectorAdapter),
 	)
 }
@@ -255,12 +257,12 @@ func newPipelineSourceHandlerConfig(params pipelineSourceHandlerConfigParams) pi
 }
 
 func newPipelineRuntimeDefaults(cfg *pipelineConfig) pipelineservice.RuntimeDefaults {
-	return cfg.runtimeDefaults()
+	return cfg.Runtime.defaults()
 }
 
 func newPipelineServiceConfig(cfg *pipelineConfig) pipelineservice.Config {
 	return pipelineservice.Config{
-		RuntimeDefaults:             cfg.runtimeDefaults(),
+		RuntimeDefaults:             cfg.Runtime.defaults(),
 		IdleTimeout:                 cfg.IdleTimeout,
 		MaxConcurrentJobs:           cfg.MaxConcurrentJobs,
 		ConnectorTaskRetention:      cfg.ConnectorTaskRetention,

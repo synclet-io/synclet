@@ -10,7 +10,7 @@ import (
 )
 
 // SyncBundle contains all pre-loaded data needed to execute a sync.
-// Populated by ClaimJobBundleResult from ExecutorBackend.
+// Populated from the ClaimJobResult the ExecutorBackend returns.
 type SyncBundle struct {
 	Job                   *pipelineservice.Job
 	ConnectionID          uuid.UUID

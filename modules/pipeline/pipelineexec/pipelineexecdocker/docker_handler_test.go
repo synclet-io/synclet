@@ -12,17 +12,26 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinelogs"
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
+	"github.com/synclet-io/synclet/pkg/protocol"
 )
 
-// fakeLogAppender records each appended batch and, like a database call,
-// fails when its context is done.
-type fakeLogAppender struct {
+// fakeReporter records each reported log batch and, like a call to the
+// control plane, fails when its context is done.
+type fakeReporter struct {
 	mu      sync.Mutex
 	batches [][]string
 }
 
-func (f *fakeLogAppender) Execute(ctx context.Context, params pipelinelogs.BatchAppendJobLogsParams) error {
+func (f *fakeReporter) ReportState(context.Context, uuid.UUID, uuid.UUID, *protocol.AirbyteStateMessage) error {
+	return nil
+}
+
+func (f *fakeReporter) ReportConfigUpdate(context.Context, pipelineservice.ConnectorType, uuid.UUID, []byte) error {
+	return nil
+}
+
+func (f *fakeReporter) ReportLog(ctx context.Context, _ uuid.UUID, lines []string) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -30,19 +39,19 @@ func (f *fakeLogAppender) Execute(ctx context.Context, params pipelinelogs.Batch
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	f.batches = append(f.batches, slices.Clone(params.LogLines))
+	f.batches = append(f.batches, slices.Clone(lines))
 
 	return nil
 }
 
-func (f *fakeLogAppender) snapshot() [][]string {
+func (f *fakeReporter) snapshot() [][]string {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
 	return slices.Clone(f.batches)
 }
 
-func (f *fakeLogAppender) lines() []string {
+func (f *fakeReporter) lines() []string {
 	var all []string
 	for _, batch := range f.snapshot() {
 		all = append(all, batch...)
@@ -51,10 +60,10 @@ func (f *fakeLogAppender) lines() []string {
 	return all
 }
 
-func newTestHandler(appender *fakeLogAppender, batchSize int, interval time.Duration) *DockerHandler {
+func newTestHandler(reporter *fakeReporter, batchSize int, interval time.Duration) *DockerHandler {
 	return NewDockerHandler(DockerHandlerParams{
 		JobID:            uuid.New(),
-		AppendJobLogs:    appender,
+		Reporter:         reporter,
 		LogBatchSize:     batchSize,
 		LogFlushInterval: interval,
 	})
@@ -70,24 +79,24 @@ func numberedLines(n int) []string {
 }
 
 func TestDockerHandler_FlushesLogsWhenBatchIsFull(t *testing.T) {
-	appender := &fakeLogAppender{}
-	h := newTestHandler(appender, 3, time.Hour)
+	reporter := &fakeReporter{}
+	h := newTestHandler(reporter, 3, time.Hour)
 	stop := h.StartLogFlush(context.Background())
 
 	for _, line := range numberedLines(7) {
 		require.NoError(t, h.OnLog(context.Background(), line))
 	}
 
-	assert.Equal(t, [][]string{{"line-0", "line-1", "line-2"}, {"line-3", "line-4", "line-5"}}, appender.snapshot())
+	assert.Equal(t, [][]string{{"line-0", "line-1", "line-2"}, {"line-3", "line-4", "line-5"}}, reporter.snapshot())
 
 	stop()
 
-	assert.Equal(t, [][]string{{"line-0", "line-1", "line-2"}, {"line-3", "line-4", "line-5"}, {"line-6"}}, appender.snapshot())
+	assert.Equal(t, [][]string{{"line-0", "line-1", "line-2"}, {"line-3", "line-4", "line-5"}, {"line-6"}}, reporter.snapshot())
 }
 
 func TestDockerHandler_FlushesLogsOnInterval(t *testing.T) {
-	appender := &fakeLogAppender{}
-	h := newTestHandler(appender, 100, 10*time.Millisecond)
+	reporter := &fakeReporter{}
+	h := newTestHandler(reporter, 100, 10*time.Millisecond)
 
 	stop := h.StartLogFlush(context.Background())
 	defer stop()
@@ -96,28 +105,28 @@ func TestDockerHandler_FlushesLogsOnInterval(t *testing.T) {
 	require.NoError(t, h.OnLog(context.Background(), "b"))
 
 	require.Eventually(t, func() bool {
-		return slices.Equal(appender.lines(), []string{"a", "b"})
+		return slices.Equal(reporter.lines(), []string{"a", "b"})
 	}, time.Second, 5*time.Millisecond)
-	assert.Equal(t, [][]string{{"a", "b"}}, appender.snapshot())
+	assert.Equal(t, [][]string{{"a", "b"}}, reporter.snapshot())
 }
 
 func TestDockerHandler_FlushesBufferedLogsWhenAttemptEnds(t *testing.T) {
-	appender := &fakeLogAppender{}
-	h := newTestHandler(appender, 100, time.Hour)
+	reporter := &fakeReporter{}
+	h := newTestHandler(reporter, 100, time.Hour)
 	stop := h.StartLogFlush(context.Background())
 
 	require.NoError(t, h.OnLog(context.Background(), "a"))
 	require.NoError(t, h.OnLog(context.Background(), "b"))
-	assert.Empty(t, appender.snapshot())
+	assert.Empty(t, reporter.snapshot())
 
 	stop()
 
-	assert.Equal(t, [][]string{{"a", "b"}}, appender.snapshot())
+	assert.Equal(t, [][]string{{"a", "b"}}, reporter.snapshot())
 }
 
 func TestDockerHandler_FlushesLogsAfterCancel(t *testing.T) {
-	appender := &fakeLogAppender{}
-	h := newTestHandler(appender, 2, time.Hour)
+	reporter := &fakeReporter{}
+	h := newTestHandler(reporter, 2, time.Hour)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	stop := h.StartLogFlush(ctx)
@@ -129,12 +138,12 @@ func TestDockerHandler_FlushesLogsAfterCancel(t *testing.T) {
 
 	stop()
 
-	assert.Equal(t, [][]string{{"a", "b"}, {"c"}}, appender.snapshot())
+	assert.Equal(t, [][]string{{"a", "b"}, {"c"}}, reporter.snapshot())
 }
 
 func TestDockerHandler_PreservesLogOrder(t *testing.T) {
-	appender := &fakeLogAppender{}
-	h := newTestHandler(appender, 7, time.Millisecond)
+	reporter := &fakeReporter{}
+	h := newTestHandler(reporter, 7, time.Millisecond)
 	stop := h.StartLogFlush(context.Background())
 
 	lines := numberedLines(2000)
@@ -144,6 +153,6 @@ func TestDockerHandler_PreservesLogOrder(t *testing.T) {
 
 	stop()
 
-	assert.Equal(t, lines, appender.lines())
-	assert.Greater(t, len(appender.snapshot()), 1)
+	assert.Equal(t, lines, reporter.lines())
+	assert.Greater(t, len(reporter.snapshot()), 1)
 }

@@ -472,8 +472,8 @@ Every command accepts `--dotenv <file>` (repeatable) to load environment files f
 | `synclet server` | Public API, UI and internal executor API |
 | `synclet server --standalone` | Also run background jobs, event consumers and an executor (Kubernetes inside a pod, Docker otherwise) |
 | `synclet jobs` | Background jobs and event consumers only (distributed mode) |
-| `synclet docker-executor [--standalone]` | Docker sync executor; distributed by default, talking to `EXECUTOR_API_URL` |
-| `synclet k8s-executor [--standalone]` | Kubernetes sync executor; distributed by default |
+| `synclet docker-executor` | Docker sync executor, talking to the server at `EXECUTOR_API_URL` |
+| `synclet k8s-executor` | Kubernetes sync executor, talking to the server at `EXECUTOR_API_URL` |
 | `synclet migrate up [--module <name>]` | Apply pending migrations |
 | `synclet migrate down --module <name>` | Roll back the latest migration of one module |
 | `synclet migrate down --all` | Roll back the latest migration of every module |
@@ -483,6 +483,8 @@ Every command accepts `--dotenv <file>` (repeatable) to load environment files f
 | `synclet users reset-link --email <email>` | Print a single-use password reset link for a user |
 
 `migrate down` also needs `--yes` when `ENVIRONMENT` is anything other than `development`. `synclet --help` and `synclet <command> --help` list every flag.
+
+`server` and `jobs` start through `app.RunServer` and `app.RunJobs`, one fx graph with the database; `docker-executor` and `k8s-executor` start through `app.RunDockerExecutor` and `app.RunK8sExecutor`, whose graphs hold no database connection, storage or use cases and reach the server only through the executor API (`EXECUTOR_API_URL`, `EXECUTOR_API_TOKEN`); control-plane variables such as `DB_DSN` are dropped from an executor's environment with a warning. `TestExecutorGraph` (`app`) and `TestExecutorDependencies` (`modules/pipeline/pipelineexec`) guard that boundary.
 
 ## License
 

@@ -11,7 +11,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineexec"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineexec/pipelineexeck8s"
-	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinejobs"
 	"go.uber.org/fx"
 )
 
@@ -32,30 +31,45 @@ type k8sExecutorConfig struct {
 	Jobs            k8sExecutorJobsConfig `envPrefix:"JOB_"`
 }
 
-// k8sExecutorConfigModule provides *k8sExecutorConfig only to a process that
-// runs the Kubernetes executor.
-func k8sExecutorConfigModule(options *RunAppOptions) fx.Option {
-	if !options.K8sExecutor {
-		return fx.Options()
-	}
-
+// k8sExecutorConfigModule provides *k8sExecutorConfig to a process that runs
+// the Kubernetes executor.
+func k8sExecutorConfigModule() fx.Option {
 	return fx.Provide(
 		configutil.NewPrefixedConfigProvider[k8sExecutorConfig]("K8S_EXECUTOR_"),
 		configutil.NewPrefixedConfigInfoProvider[k8sExecutorConfig]("K8S_EXECUTOR_"),
 	)
 }
 
-func k8sExecutorModule(options *RunAppOptions) fx.Option {
-	if !options.K8sExecutor {
-		return fx.Options()
-	}
+// k8sPodAPITokenTag names the token the Kubernetes executor hands to the
+// coordinator pods it launches, so they can call the executor API.
+const k8sPodAPITokenTag = `name:"k8sPodAPIToken"` //nolint:gosec // fx name tag, not a credential.
 
+// executorK8sPodAPITokenModule passes on the token the executor process
+// itself authenticates with.
+func executorK8sPodAPITokenModule() fx.Option {
+	return fx.Provide(fx.Annotate(
+		func(cfg *executorBackendConfig) string { return cfg.Token },
+		fx.ResultTags(k8sPodAPITokenTag),
+	))
+}
+
+// serverK8sPodAPITokenModule passes on the token the server's executor API
+// accepts.
+func serverK8sPodAPITokenModule() fx.Option {
+	return fx.Provide(fx.Annotate(
+		func(cfg *pipelineConfig) string { return cfg.ExecutorAPIToken },
+		fx.ResultTags(k8sPodAPITokenTag),
+	))
+}
+
+// k8sExecutorModule runs the Kubernetes executor's workers. It needs
+// *k8sExecutorConfig, the named k8sPodAPIToken and an ExecutorBackend.
+func k8sExecutorModule() fx.Option {
 	return fx.Module(
 		"k8s-executor",
 		logging.DecorateNamed("k8s"),
-		k8sExecutorConfigModule(options),
 		fx.Provide(
-			newK8sSyncRunner,
+			fx.Annotate(newK8sSyncRunner, fx.ParamTags("", k8sPodAPITokenTag)),
 			newK8sReconciler,
 
 			fx.Annotate(pipelineexeck8s.NewK8sSyncLauncherAdapter, fx.As(new(pipelineexeck8s.K8sSyncLauncher))),
@@ -65,6 +79,7 @@ func k8sExecutorModule(options *RunAppOptions) fx.Option {
 			newK8sTaskWorker,
 
 			func(backend pipelineexec.ExecutorBackend) pipelineexeck8s.ResourceChecker { return backend },
+			fx.Private,
 		),
 
 		pnpjobber.Module(newK8sTaskWorkerJob),
@@ -73,25 +88,10 @@ func k8sExecutorModule(options *RunAppOptions) fx.Option {
 	)
 }
 
-type newK8sSyncRunnerParams struct {
-	fx.In
-
-	Config         *k8sExecutorConfig
-	PipelineConfig *pipelineConfig
-	BackendConfig  *executorBackendConfig `optional:"true"`
-}
-
-// newK8sSyncRunner gives pods the token this process authenticates with: the
-// executor's EXECUTOR_API_TOKEN in distributed mode, the server's own
-// PIPELINE_EXECUTOR_API_TOKEN in standalone mode.
-func newK8sSyncRunner(params newK8sSyncRunnerParams) (*pipelineexeck8s.SyncRunner, error) {
-	cfg := params.Config
-
-	apiToken := params.PipelineConfig.ExecutorAPIToken
-	if params.BackendConfig != nil && params.BackendConfig.Token != "" {
-		apiToken = params.BackendConfig.Token
-	}
-
+// newK8sSyncRunner gives the pods it launches the executor API token of the
+// process: the executor's EXECUTOR_API_TOKEN, or the server's own
+// PIPELINE_EXECUTOR_API_TOKEN inside `server --standalone`.
+func newK8sSyncRunner(cfg *k8sExecutorConfig, apiToken string) (*pipelineexeck8s.SyncRunner, error) {
 	return pipelineexeck8s.NewSyncRunner(pipelineexeck8s.Config{
 		Namespace:       cfg.Namespace,
 		Kubeconfig:      cfg.Kubeconfig,
@@ -124,7 +124,6 @@ func newK8sResourceCleanupJob(cfg *k8sExecutorConfig, reconciler *pipelineexeck8
 
 func newK8sSyncWorker(
 	backend pipelineexec.ExecutorBackend,
-	setK8sJobName *pipelinejobs.SetK8sJobName,
 	k8sRunner pipelineexeck8s.K8sSyncLauncher,
 	k8sCfg *k8sExecutorConfig,
 	logger *logging.Logger,
@@ -132,7 +131,7 @@ func newK8sSyncWorker(
 	workerID := uuid.New().String()[:8]
 
 	return pipelineexeck8s.NewK8sSyncWorker(
-		backend, setK8sJobName, k8sRunner,
+		backend, k8sRunner,
 		k8sCfg.ServerAddr, workerID, logger,
 	)
 }

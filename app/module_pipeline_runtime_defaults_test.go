@@ -27,7 +27,7 @@ func buildSourceHandlerConfig(t *testing.T, opts []RunOption) pipelineconnect.So
 		notifyConfigModule(),
 		pipelineConfigModule(),
 		dockerExecutorConfigModule(),
-		k8sExecutorConfigModule(options),
+		conditionalFxOptions(options.K8sExecutor, k8sExecutorConfigModule),
 		fx.Populate(&cfg),
 	)
 	require.NoError(t, app.Err())
@@ -47,11 +47,11 @@ func TestSourceHandlerConfig_K8sExecutorWiring(t *testing.T) {
 		cpu, memory string
 	}{
 		"docker executor": {
-			opts:     ExecutorCommandOptions(WithDockerExecutor(), true),
+			opts:     []RunOption{WithDockerExecutor()},
 			executor: pipelineconnect.ExecutorDocker,
 		},
 		"k8s executor": {
-			opts:     ExecutorCommandOptions(WithK8sExecutor(), true),
+			opts:     []RunOption{WithK8sExecutor()},
 			executor: pipelineconnect.ExecutorK8s,
 			cpu:      "750m",
 			memory:   "3Gi",

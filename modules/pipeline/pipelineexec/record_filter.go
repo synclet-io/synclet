@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"io"
 
-	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinecatalog"
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
 	"github.com/synclet-io/synclet/pkg/protocol"
 )
 
@@ -105,7 +105,7 @@ func (r *filteringReader) filterLine(line []byte) []byte {
 		return line // Stream not in field map; pass through.
 	}
 
-	filteredData, err := pipelinecatalog.FilterRecordData(env.Record.Data, fields)
+	filteredData, err := pipelineservice.FilterRecordData(env.Record.Data, fields)
 	if err != nil {
 		return line // Filtering failed; pass through original.
 	}

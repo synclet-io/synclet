@@ -71,11 +71,9 @@ func dockerContainerRunnerAdapter(r *pipelineexecdocker.ContainerRunner) contain
 	return r
 }
 
-func dockerExecutorModule(options *RunAppOptions) fx.Option {
-	if !options.DockerExecutor {
-		return fx.Options()
-	}
-
+// dockerExecutorModule runs the Docker executor's workers. It needs
+// *dockerExecutorConfig, *executorRuntimeConfig and an ExecutorBackend.
+func dockerExecutorModule() fx.Option {
 	return fx.Module(
 		"docker-executor",
 		logging.DecorateNamed("docker"),
@@ -85,8 +83,10 @@ func dockerExecutorModule(options *RunAppOptions) fx.Option {
 				return backend
 			},
 
+			newDockerSyncExecutor,
 			newDockerSyncWorker,
 			newDockerTaskWorker,
+			fx.Private,
 		),
 		fx.Invoke(invokeDockerCleanerStartup),
 		pnpjobber.Module(newDockerCleanerJob),
@@ -119,6 +119,21 @@ func newDockerCleanerJob(cfg *dockerExecutorConfig, cleaner *pipelineexecdocker.
 
 			return nil
 		},
+	})
+}
+
+func newDockerSyncExecutor(
+	cfg *executorRuntimeConfig,
+	backend pipelineexec.ExecutorBackend,
+	client *pipelineexecdocker.ConnectorClient,
+	logger *logging.Logger,
+) *pipelineexecdocker.DockerSyncExecutor {
+	return pipelineexecdocker.NewDockerSyncExecutor(pipelineexecdocker.DockerSyncExecutorParams{
+		Client:          client,
+		Reporter:        backend,
+		RuntimeDefaults: cfg.Runtime.defaults(),
+		IdleTimeout:     cfg.IdleTimeout,
+		Logger:          logger,
 	})
 }
 

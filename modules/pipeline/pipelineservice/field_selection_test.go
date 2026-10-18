@@ -1,4 +1,4 @@
-package pipelinecatalog
+package pipelineservice
 
 import (
 	"encoding/json"
@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
 	"github.com/synclet-io/synclet/pkg/protocol"
 )
 
@@ -43,7 +42,7 @@ func TestValidateSelectedFields(t *testing.T) {
 
 	t.Run("rejects empty path", func(t *testing.T) {
 		err := ValidateSelectedFields(fields([]string{}), json.RawMessage(nestedSchema))
-		require.ErrorIs(t, err, pipelineservice.ErrEmptyFieldPath)
+		require.ErrorIs(t, err, ErrEmptyFieldPath)
 	})
 
 	t.Run("rejects invalid schema", func(t *testing.T) {

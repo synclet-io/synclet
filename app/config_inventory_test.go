@@ -111,7 +111,7 @@ func TestEnvDistHasNoEmptyDefaultedValues(t *testing.T) {
 
 	for _, config := range configs {
 		for _, field := range config.Fields {
-			if field.HasDefaultValue && field.DefaultValue != "" {
+			if field.DefaultValue != "" {
 				defaults[field.Key] = field.DefaultValue
 			}
 		}
@@ -157,4 +157,77 @@ func hasKnownPrefix(known map[string]bool, prefix string) bool {
 	}
 
 	return false
+}
+
+// TestConfigInventoryRoles asserts who reads a key: the server alone, the
+// executors alone, or both, and that a key is listed once.
+func TestConfigInventoryRoles(t *testing.T) {
+	groups, err := configInventory()
+	if err != nil {
+		t.Fatalf("config inventory: %v", err)
+	}
+
+	roles := map[string]string{}
+
+	for _, group := range groups {
+		for _, field := range group.Fields {
+			if _, listed := roles[field.Key]; listed {
+				t.Errorf("%s is listed twice", field.Key)
+			}
+
+			roles[field.Key] = field.Role
+		}
+	}
+
+	for key, want := range map[string]string{
+		"DB_DSN":                      roleServer,
+		"AUTH_JWT_SECRET":             roleServer,
+		"WATERMILL_TRANSPORT":         roleServer,
+		"PIPELINE_EXECUTOR_API_TOKEN": roleServer,
+		"EXECUTOR_API_URL":            roleExecutor,
+		"EXECUTOR_API_TOKEN":          roleExecutor,
+		"LOG_LEVEL":                   roleBoth,
+		"INTERNAL_HTTP_SERVER_ADDR":   roleBoth,
+		"DOCKER_EXECUTOR_OWNER_ID":    roleBoth,
+		"K8S_EXECUTOR_NAMESPACE":      roleBoth,
+		"PIPELINE_RUNTIME_CPU_LIMIT":  roleBoth,
+		"PIPELINE_IDLE_TIMEOUT":       roleBoth,
+	} {
+		if got := roles[key]; got != want {
+			t.Errorf("%s: role %q, want %q", key, got, want)
+		}
+	}
+}
+
+// TestControlPlaneOnlyKeysAreServerOnly fails when an executor graph reads a
+// variable dropControlPlaneEnv unsets.
+func TestControlPlaneOnlyKeysAreServerOnly(t *testing.T) {
+	groups, err := configInventory()
+	if err != nil {
+		t.Fatalf("config inventory: %v", err)
+	}
+
+	for _, group := range groups {
+		for _, field := range group.Fields {
+			if field.Role != roleServer && isControlPlaneOnlyKey(field.Key) {
+				t.Errorf("%s is a control-plane variable but an executor reads it (%s)", field.Key, field.Role)
+			}
+		}
+	}
+}
+
+func TestDotEnvLine(t *testing.T) {
+	for _, tc := range []struct {
+		field configField
+		value string
+		want  string
+	}{
+		{configField{Key: "LOG_LEVEL", Role: roleBoth}, "info", `LOG_LEVEL="info" # server, executor`},
+		{configField{Key: "DB_DSN", Required: true, Role: roleServer}, "", "# DB_DSN= # required, server"},
+		{configField{Key: "EXECUTOR_API_URL", Role: roleExecutor}, "", "# EXECUTOR_API_URL= # executor"},
+	} {
+		if got := dotEnvLine(tc.field, tc.value); got != tc.want {
+			t.Errorf("dotEnvLine(%s) = %q, want %q", tc.field.Key, got, tc.want)
+		}
+	}
 }

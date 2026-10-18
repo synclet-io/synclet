@@ -11,16 +11,15 @@ import (
 
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineexec"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
-	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinejobs"
 	"github.com/synclet-io/synclet/pkg/protocol"
 )
 
 // mockBackend implements pipelineexec.ExecutorBackend for testing.
 type mockBackend struct {
-	claimResult *pipelinejobs.ClaimJobBundleResult
+	claimResult *pipelineexec.ClaimJobResult
 }
 
-func (m *mockBackend) ClaimJob(_ context.Context, _ string) (*pipelinejobs.ClaimJobBundleResult, error) {
+func (m *mockBackend) ClaimJob(_ context.Context, _ string) (*pipelineexec.ClaimJobResult, error) {
 	return m.claimResult, nil
 }
 
@@ -29,6 +28,10 @@ func (m *mockBackend) UpdateJobStatus(_ context.Context, _ pipelineexec.UpdateJo
 }
 
 func (m *mockBackend) MarkJobRunning(_ context.Context, _ uuid.UUID) error {
+	return nil
+}
+
+func (m *mockBackend) SetK8sJobName(_ context.Context, _ uuid.UUID, _ string) error {
 	return nil
 }
 

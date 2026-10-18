@@ -6,7 +6,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
-	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinejobs"
 	"github.com/synclet-io/synclet/pkg/protocol"
 )
 
@@ -36,6 +35,27 @@ type ReportCompletionParams struct {
 	DurationMs   int64
 }
 
+// ClaimJobResult bundles everything an executor needs to run a sync.
+type ClaimJobResult struct {
+	Job                   *pipelineservice.Job
+	ConnectionID          uuid.UUID
+	WorkspaceID           uuid.UUID
+	SourceID              uuid.UUID
+	DestinationID         uuid.UUID
+	SourceImage           string
+	SourceConfig          []byte // Decrypted JSON
+	DestImage             string
+	DestConfig            []byte // Decrypted JSON
+	ConfiguredCatalog     []byte // JSON-marshaled
+	StateBlob             []byte // JSON, may be nil
+	SourceRuntimeConfig   string
+	DestRuntimeConfig     string
+	NamespaceDefinition   pipelineservice.NamespaceDefinition
+	CustomNamespaceFormat string
+	StreamPrefix          string
+	MaxAttempts           int
+}
+
 // ClaimConnectorTaskResult bundles everything an executor needs to run a connector task.
 type ClaimConnectorTaskResult struct {
 	TaskID      uuid.UUID
@@ -53,18 +73,28 @@ type ReportConnectorTaskResultParams struct {
 	Result       []byte // JSON-encoded result
 }
 
-// ExecutorBackend abstracts all executor-to-server operations per D-14.
-// Two implementations: use-case adapter (standalone) and ConnectRPC client (distributed).
+// SyncReporter is the part of the executor API a running sync reports
+// through: confirmed state, connector config updates and log lines.
+type SyncReporter interface {
+	ReportState(ctx context.Context, connectionID, jobID uuid.UUID, stateMsg *protocol.AirbyteStateMessage) error
+	ReportConfigUpdate(ctx context.Context, connectorType pipelineservice.ConnectorType, connectorID uuid.UUID, config []byte) error
+	ReportLog(ctx context.Context, jobID uuid.UUID, lines []string) error
+}
+
+// ExecutorBackend is the only way an executor reaches the control plane.
+// Two implementations: the use-case adapter inside `server --standalone`
+// and the ConnectRPC client of the executor commands.
 type ExecutorBackend interface {
-	ClaimJob(ctx context.Context, workerID string) (*pipelinejobs.ClaimJobBundleResult, error)
+	SyncReporter
+
+	ClaimJob(ctx context.Context, workerID string) (*ClaimJobResult, error)
 	UpdateJobStatus(ctx context.Context, params UpdateJobStatusParams) error
 	// MarkJobRunning reports that the job's connectors have started.
 	MarkJobRunning(ctx context.Context, jobID uuid.UUID) error
 	Heartbeat(ctx context.Context, jobID uuid.UUID, recordsRead, bytesSynced int64) (*HeartbeatResult, error)
-	ReportState(ctx context.Context, connectionID, jobID uuid.UUID, stateMsg *protocol.AirbyteStateMessage) error
 	ReportCompletion(ctx context.Context, params ReportCompletionParams) error
-	ReportConfigUpdate(ctx context.Context, connectorType pipelineservice.ConnectorType, connectorID uuid.UUID, config []byte) error
-	ReportLog(ctx context.Context, jobID uuid.UUID, lines []string) error
+	// SetK8sJobName stores the Kubernetes Job name launched for a job.
+	SetK8sJobName(ctx context.Context, jobID uuid.UUID, name string) error
 	IsJobActive(ctx context.Context, jobID string) (bool, error)
 	IsTaskActive(ctx context.Context, taskID string) (bool, error)
 	FailJob(ctx context.Context, jobID string, reason string) error

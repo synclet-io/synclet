@@ -117,11 +117,11 @@ func (uc *ConfigureStreams) Execute(ctx context.Context, params ConfigureStreams
 
 		// Validate and enhance selected fields.
 		if len(configured.SelectedFields) > 0 {
-			if err := ValidateSelectedFields(configured.SelectedFields, available.JSONSchema); err != nil {
+			if err := pipelineservice.ValidateSelectedFields(configured.SelectedFields, available.JSONSchema); err != nil {
 				return streamValidationError("invalid selected fields for stream %q: %v", key, err)
 			}
 
-			params.Streams[i].SelectedFields = ForceIncludeFields(
+			params.Streams[i].SelectedFields = pipelineservice.ForceIncludeFields(
 				configured.SelectedFields,
 				configured.CursorField,
 				configured.PrimaryKey,

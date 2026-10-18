@@ -10,9 +10,6 @@ import (
 
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineexec"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
-	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinejobs"
-	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinelogs"
-	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinestate"
 	"github.com/synclet-io/synclet/pkg/protocol"
 )
 
@@ -22,22 +19,19 @@ const (
 	logFlushTimeout         = 10 * time.Second
 )
 
-// DockerHandler implements Handler for Docker mode sync execution.
-// It persists confirmed state via SaveSyncState and handles CONTROL config
-// updates by delegating to the HandleConfigUpdate use case. Log lines are
-// buffered and appended in batches, in the order they arrived.
+// DockerHandler implements Handler for Docker mode sync execution. It reports
+// confirmed state and CONTROL config updates through the SyncReporter. Log
+// lines are buffered and reported in batches, in the order they arrived.
 type DockerHandler struct {
 	pipelineexec.DefaultHandler
-	connID             uuid.UUID
-	sourceID           uuid.UUID
-	destID             uuid.UUID
-	jobID              uuid.UUID
-	handleConfigUpdate *pipelinejobs.HandleConfigUpdate
-	saveSyncState      *pipelinestate.SaveSyncState
-	appendJobLogs      logAppender
-	logBatchSize       int
-	logFlushInterval   time.Duration
-	logger             *logging.Logger
+	connID           uuid.UUID
+	sourceID         uuid.UUID
+	destID           uuid.UUID
+	jobID            uuid.UUID
+	reporter         pipelineexec.SyncReporter
+	logBatchSize     int
+	logFlushInterval time.Duration
+	logger           *logging.Logger
 
 	logMu  sync.Mutex
 	logBuf []string
@@ -45,20 +39,14 @@ type DockerHandler struct {
 
 // DockerHandlerParams holds constructor parameters for DockerHandler.
 type DockerHandlerParams struct {
-	ConnectionID       uuid.UUID
-	SourceID           uuid.UUID
-	DestinationID      uuid.UUID
-	JobID              uuid.UUID
-	HandleConfigUpdate *pipelinejobs.HandleConfigUpdate
-	SaveSyncState      *pipelinestate.SaveSyncState
-	AppendJobLogs      logAppender
-	LogBatchSize       int
-	LogFlushInterval   time.Duration
-	Logger             *logging.Logger
-}
-
-type logAppender interface {
-	Execute(ctx context.Context, params pipelinelogs.BatchAppendJobLogsParams) error
+	ConnectionID     uuid.UUID
+	SourceID         uuid.UUID
+	DestinationID    uuid.UUID
+	JobID            uuid.UUID
+	Reporter         pipelineexec.SyncReporter
+	LogBatchSize     int
+	LogFlushInterval time.Duration
+	Logger           *logging.Logger
 }
 
 // NewDockerHandler creates a new DockerHandler.
@@ -74,61 +62,49 @@ func NewDockerHandler(params DockerHandlerParams) *DockerHandler {
 	}
 
 	return &DockerHandler{
-		connID:             params.ConnectionID,
-		sourceID:           params.SourceID,
-		destID:             params.DestinationID,
-		jobID:              params.JobID,
-		handleConfigUpdate: params.HandleConfigUpdate,
-		saveSyncState:      params.SaveSyncState,
-		appendJobLogs:      params.AppendJobLogs,
-		logBatchSize:       batchSize,
-		logFlushInterval:   flushInterval,
-		logger:             params.Logger.Named("docker-handler"),
+		connID:           params.ConnectionID,
+		sourceID:         params.SourceID,
+		destID:           params.DestinationID,
+		jobID:            params.JobID,
+		reporter:         params.Reporter,
+		logBatchSize:     batchSize,
+		logFlushInterval: flushInterval,
+		logger:           params.Logger.Named("docker-handler"),
 	}
 }
 
-// OnStateConfirmed persists confirmed state via the SaveSyncState use case.
+// OnStateConfirmed reports confirmed state to the control plane.
 func (h *DockerHandler) OnStateConfirmed(ctx context.Context, msg *protocol.AirbyteStateMessage) error {
-	return h.saveSyncState.Execute(ctx, pipelinestate.SaveSyncStateParams{
-		ConnectionID: h.connID,
-		StateMessage: msg,
-	})
+	return h.reporter.ReportState(ctx, h.connID, h.jobID, msg)
 }
 
-// OnSourceControl handles CONTROL config updates from the source connector.
-// It delegates to the HandleConfigUpdate use case for secret encryption and persistence.
+// OnSourceControl reports CONTROL config updates from the source connector;
+// the control plane encrypts and persists them. A failed report is logged
+// and the sync goes on.
 func (h *DockerHandler) OnSourceControl(ctx context.Context, msg *protocol.AirbyteControlMessage) error {
 	if msg.Type != protocol.ControlMessageTypeConnectorConfig || msg.ConnectorConfig == nil {
 		return nil
 	}
 
-	if err := h.handleConfigUpdate.Execute(ctx, pipelinejobs.HandleConfigUpdateParams{
-		ConnectorType: pipelineservice.ConnectorTypeSource,
-		ConnectorID:   h.sourceID,
-		Config:        msg.ConnectorConfig.Config,
-	}); err != nil {
+	if err := h.reporter.ReportConfigUpdate(ctx, pipelineservice.ConnectorTypeSource, h.sourceID, msg.ConnectorConfig.Config); err != nil {
 		h.logger.WithError(err).Error(ctx, "docker handler: failed to update source config from CONTROL message")
 	}
 
-	return nil // non-fatal per existing behavior
+	return nil
 }
 
-// OnDestControl handles CONTROL config updates from the destination connector.
-// It delegates to the HandleConfigUpdate use case for secret encryption and persistence.
+// OnDestControl reports CONTROL config updates from the destination connector;
+// a failed report is logged and the sync goes on.
 func (h *DockerHandler) OnDestControl(ctx context.Context, msg *protocol.AirbyteControlMessage) error {
 	if msg.Type != protocol.ControlMessageTypeConnectorConfig || msg.ConnectorConfig == nil {
 		return nil
 	}
 
-	if err := h.handleConfigUpdate.Execute(ctx, pipelinejobs.HandleConfigUpdateParams{
-		ConnectorType: pipelineservice.ConnectorTypeDestination,
-		ConnectorID:   h.destID,
-		Config:        msg.ConnectorConfig.Config,
-	}); err != nil {
+	if err := h.reporter.ReportConfigUpdate(ctx, pipelineservice.ConnectorTypeDestination, h.destID, msg.ConnectorConfig.Config); err != nil {
 		h.logger.WithError(err).Error(ctx, "docker handler: failed to update destination config from CONTROL message")
 	}
 
-	return nil // non-fatal per existing behavior
+	return nil
 }
 
 // OnSourceTrace logs error traces from the source connector.
@@ -140,7 +116,7 @@ func (h *DockerHandler) OnSourceTrace(ctx context.Context, msg *protocol.Airbyte
 	return nil
 }
 
-// OnLog buffers a pre-formatted log line and appends the buffer once it
+// OnLog buffers a pre-formatted log line and reports the buffer once it
 // holds a full batch. Errors are non-fatal to avoid disrupting sync execution.
 func (h *DockerHandler) OnLog(ctx context.Context, line string) error {
 	h.logMu.Lock()
@@ -154,10 +130,10 @@ func (h *DockerHandler) OnLog(ctx context.Context, line string) error {
 	return nil
 }
 
-// StartLogFlush appends buffered log lines every flush interval until the
-// returned stop function is called. Stop appends whatever is still buffered
+// StartLogFlush reports buffered log lines every flush interval until the
+// returned stop function is called. Stop reports whatever is still buffered
 // and returns once it is stored, so it must run when the attempt ends,
-// whatever the outcome. Appends outlive ctx cancellation.
+// whatever the outcome. Reports outlive ctx cancellation.
 func (h *DockerHandler) StartLogFlush(ctx context.Context) (stop func()) {
 	stopCh := make(chan struct{})
 	done := make(chan struct{})
@@ -192,8 +168,8 @@ func (h *DockerHandler) flushLogs(ctx context.Context) {
 	h.flushLogsLocked(ctx)
 }
 
-// flushLogsLocked appends the buffer as one batch. Holding logMu across the
-// append keeps batches in arrival order.
+// flushLogsLocked reports the buffer as one batch. Holding logMu across the
+// report keeps batches in arrival order.
 func (h *DockerHandler) flushLogsLocked(ctx context.Context) {
 	if len(h.logBuf) == 0 {
 		return
@@ -205,10 +181,7 @@ func (h *DockerHandler) flushLogsLocked(ctx context.Context) {
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), logFlushTimeout)
 	defer cancel()
 
-	if err := h.appendJobLogs.Execute(ctx, pipelinelogs.BatchAppendJobLogsParams{
-		JobID:    h.jobID,
-		LogLines: lines,
-	}); err != nil {
-		h.logger.WithError(err).WithField("lines", len(lines)).Error(ctx, "failed to append logs")
+	if err := h.reporter.ReportLog(ctx, h.jobID, lines); err != nil {
+		h.logger.WithError(err).WithField("lines", len(lines)).Error(ctx, "failed to report logs")
 	}
 }

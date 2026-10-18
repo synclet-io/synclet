@@ -13,7 +13,6 @@ type runMatrix struct {
 	internalAPI bool
 	jobs        bool
 	consumers   bool
-	standalone  bool
 	executor    string
 }
 
@@ -28,10 +27,11 @@ func executorKind(options *RunAppOptions) string {
 	}
 }
 
-// TestFxGraph resolves the run options cmd/ passes for every CLI command on
-// top of the defaults of RunServer or RunJobs, asserts which HTTP servers,
-// background jobs and consumers each starts, and validates its dependency
-// graph without starting it.
+// TestFxGraph resolves the run options cmd/ passes for the server and jobs
+// commands on top of the defaults of RunServer or RunJobs, asserts which HTTP
+// servers, background jobs, consumers and executor each starts, and validates
+// its dependency graph without starting it. TestExecutorGraph covers the
+// executor commands.
 func TestFxGraph(t *testing.T) {
 	cases := []struct {
 		name     string
@@ -51,7 +51,7 @@ func TestFxGraph(t *testing.T) {
 			defaults: serverDefaultOptions,
 			opts:     ServerCommandOptions(true),
 			want: runMatrix{
-				publicAPI: true, internalAPI: true, jobs: true, consumers: true, standalone: true, executor: "docker",
+				publicAPI: true, internalAPI: true, jobs: true, consumers: true, executor: "docker",
 			},
 		},
 		{
@@ -60,7 +60,7 @@ func TestFxGraph(t *testing.T) {
 			defaults: serverDefaultOptions,
 			opts:     ServerCommandOptions(true),
 			want: runMatrix{
-				publicAPI: true, internalAPI: true, jobs: true, consumers: true, standalone: true, executor: "k8s",
+				publicAPI: true, internalAPI: true, jobs: true, consumers: true, executor: "k8s",
 			},
 		},
 		{
@@ -68,30 +68,6 @@ func TestFxGraph(t *testing.T) {
 			defaults: func() *RunAppOptions { return &RunAppOptions{} },
 			opts:     JobsCommandOptions(),
 			want:     runMatrix{jobs: true, consumers: true},
-		},
-		{
-			name:     "docker-executor",
-			defaults: serverDefaultOptions,
-			opts:     ExecutorCommandOptions(WithDockerExecutor(), false),
-			want:     runMatrix{publicAPI: true, internalAPI: true, executor: "docker"},
-		},
-		{
-			name:     "docker-executor --standalone",
-			defaults: serverDefaultOptions,
-			opts:     ExecutorCommandOptions(WithDockerExecutor(), true),
-			want:     runMatrix{publicAPI: true, internalAPI: true, standalone: true, executor: "docker"},
-		},
-		{
-			name:     "k8s-executor",
-			defaults: serverDefaultOptions,
-			opts:     ExecutorCommandOptions(WithK8sExecutor(), false),
-			want:     runMatrix{publicAPI: true, internalAPI: true, executor: "k8s"},
-		},
-		{
-			name:     "k8s-executor --standalone",
-			defaults: serverDefaultOptions,
-			opts:     ExecutorCommandOptions(WithK8sExecutor(), true),
-			want:     runMatrix{publicAPI: true, internalAPI: true, standalone: true, executor: "k8s"},
 		},
 	}
 
@@ -110,7 +86,6 @@ func TestFxGraph(t *testing.T) {
 				internalAPI: options.RunInternalHTTPServer,
 				jobs:        options.RunJobs,
 				consumers:   options.RunConsumers,
-				standalone:  options.Standalone,
 				executor:    executorKind(options),
 			})
 

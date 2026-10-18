@@ -31,8 +31,9 @@ const (
 
 // healthcheckModule serves /live (the process answers HTTP) and /ready (every
 // registered health checker passes: database ping, background jobs started,
-// event router running) on the internal HTTP server.
-func healthcheckModule(options *RunAppOptions) fx.Option {
+// event router running) on the internal HTTP server. jobs and consumers add
+// the checkers of the background jobs and of the event router.
+func healthcheckModule(jobs, consumers bool) fx.Option {
 	return fx.Options(
 		pnphttphealthcheck.Module(
 			pnphttphealthcheck.WithFxPrivate(),
@@ -42,8 +43,8 @@ func healthcheckModule(options *RunAppOptions) fx.Option {
 			pnphttpserver.MuxHandlerRegistrarProvider(newLivenessRegistrar),
 			fx.Private,
 		),
-		conditionalFxOptions(options.RunJobs, jobsHealthModule),
-		conditionalFxOptions(options.RunConsumers, routerHealthModule),
+		conditionalFxOptions(jobs, jobsHealthModule),
+		conditionalFxOptions(consumers, routerHealthModule),
 	)
 }
 

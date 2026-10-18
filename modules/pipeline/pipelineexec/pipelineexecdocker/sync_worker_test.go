@@ -14,7 +14,6 @@ import (
 
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineexec"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
-	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinejobs"
 	"github.com/synclet-io/synclet/pkg/jobutil"
 	"github.com/synclet-io/synclet/pkg/protocol"
 )
@@ -23,7 +22,7 @@ import (
 
 // mockBackend implements ExecutorBackend for testing.
 type mockBackend struct {
-	claimResult      *pipelinejobs.ClaimJobBundleResult
+	claimResult      *pipelineexec.ClaimJobResult
 	claimErr         error
 	updateErr        error
 	heartbeatResult  *pipelineexec.HeartbeatResult
@@ -33,7 +32,7 @@ type mockBackend struct {
 	markRunningCalls []uuid.UUID
 }
 
-func (m *mockBackend) ClaimJob(_ context.Context, _ string) (*pipelinejobs.ClaimJobBundleResult, error) {
+func (m *mockBackend) ClaimJob(_ context.Context, _ string) (*pipelineexec.ClaimJobResult, error) {
 	return m.claimResult, m.claimErr
 }
 
@@ -47,6 +46,10 @@ func (m *mockBackend) UpdateJobStatus(_ context.Context, params pipelineexec.Upd
 func (m *mockBackend) MarkJobRunning(_ context.Context, jobID uuid.UUID) error {
 	m.markRunningCalls = append(m.markRunningCalls, jobID)
 
+	return nil
+}
+
+func (m *mockBackend) SetK8sJobName(_ context.Context, _ uuid.UUID, _ string) error {
 	return nil
 }
 
@@ -136,8 +139,8 @@ func newTestWorker(backend *mockBackend, executor *mockExecutor) *DockerSyncWork
 	}
 }
 
-func newClaimResult() *pipelinejobs.ClaimJobBundleResult {
-	return &pipelinejobs.ClaimJobBundleResult{
+func newClaimResult() *pipelineexec.ClaimJobResult {
+	return &pipelineexec.ClaimJobResult{
 		Job: &pipelineservice.Job{
 			ID:      uuid.New(),
 			JobType: pipelineservice.JobTypeSync,
@@ -155,7 +158,7 @@ func TestDockerSyncWorker_Execute_ClaimsJobAndSpawnsGoroutine(t *testing.T) {
 	wsID := uuid.New()
 
 	backend := &mockBackend{
-		claimResult: &pipelinejobs.ClaimJobBundleResult{
+		claimResult: &pipelineexec.ClaimJobResult{
 			Job: &pipelineservice.Job{
 				ID:           jobID,
 				ConnectionID: connID,
@@ -271,7 +274,7 @@ func TestDockerSyncWorker_Execute_ReturnsNilWhenNoJobs(t *testing.T) {
 
 func TestDockerSyncWorker_Execute_ReturnsNilWhenSemaphoreFull(t *testing.T) {
 	backend := &mockBackend{
-		claimResult: &pipelinejobs.ClaimJobBundleResult{
+		claimResult: &pipelineexec.ClaimJobResult{
 			Job: &pipelineservice.Job{ID: uuid.New()},
 		},
 	}

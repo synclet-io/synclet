@@ -288,3 +288,19 @@ func TestEnsureSecretsWarnsOnComposeDefaults(t *testing.T) {
 		})
 	}
 }
+
+func TestDropControlPlaneEnv(t *testing.T) {
+	t.Setenv("DB_DSN", "postgres://control-plane/synclet")
+	t.Setenv("WATERMILL_TRANSPORT", "sql")
+	t.Setenv("EXECUTOR_API_URL", "http://server:8081")
+
+	var buf bytes.Buffer
+
+	dropControlPlaneEnv(slog.New(slog.NewTextHandler(&buf, nil)))
+
+	assert.Empty(t, os.Getenv("DB_DSN"))
+	assert.Empty(t, os.Getenv("WATERMILL_TRANSPORT"))
+	assert.Equal(t, "http://server:8081", os.Getenv("EXECUTOR_API_URL"))
+	assert.Contains(t, buf.String(), "ignoring DB_DSN: control-plane variable, executors reach the server through the executor API")
+	assert.Contains(t, buf.String(), "ignoring WATERMILL_TRANSPORT")
+}

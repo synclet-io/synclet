@@ -1,11 +1,10 @@
-package pipelinecatalog
+package pipelineservice
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
 	"github.com/synclet-io/synclet/pkg/protocol"
 )
 
@@ -32,32 +31,32 @@ func TestApplyNamespaceAndPrefix(t *testing.T) {
 
 	tests := []struct {
 		name         string
-		nsDef        pipelineservice.NamespaceDefinition
+		nsDef        NamespaceDefinition
 		customFormat *string
 		prefix       *string
 		want         [][2]string
 	}{
 		{
 			name:   "source keeps namespace and applies prefix",
-			nsDef:  pipelineservice.NamespaceDefinitionSource,
+			nsDef:  NamespaceDefinitionSource,
 			prefix: &prefix,
 			want:   [][2]string{{"public", "raw_users"}, {"", "raw_orders"}},
 		},
 		{
 			name:  "destination clears namespace",
-			nsDef: pipelineservice.NamespaceDefinitionDestination,
+			nsDef: NamespaceDefinitionDestination,
 			want:  [][2]string{{"", "users"}, {"", "orders"}},
 		},
 		{
 			name:         "custom format substitutes source namespace",
-			nsDef:        pipelineservice.NamespaceDefinitionCustom,
+			nsDef:        NamespaceDefinitionCustom,
 			customFormat: &custom,
 			prefix:       &empty,
 			want:         [][2]string{{"tenant_public", "users"}, {"tenant_", "orders"}},
 		},
 		{
 			name:  "custom without format leaves namespace untouched",
-			nsDef: pipelineservice.NamespaceDefinitionCustom,
+			nsDef: NamespaceDefinitionCustom,
 			want:  [][2]string{{"public", "users"}, {"", "orders"}},
 		},
 	}
