@@ -10,6 +10,7 @@ metadata:
     {{- include "synclet.executor.labels" . | nindent 4 }}
 spec:
   serviceName: {{ include "synclet.fullname" . }}-executor
+  podManagementPolicy: Parallel
   replicas: {{ .Values.executor.replicaCount }}
   revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
   {{- with .Values.executor.updateStrategy }}

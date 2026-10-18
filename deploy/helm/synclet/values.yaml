@@ -185,6 +185,7 @@ jobs:
 ## (<fullname>-executor-0, -1, ...) across restarts, and that name is its owner id unless
 ## k8s.ownerId is set. Pods update one at a time, highest ordinal first; after a scale-down
 ## the Jobs a removed ordinal left behind wait until a pod with that ordinal runs again.
+## Executor pods start in parallel, since each replica claims jobs on its own and never waits for another.
 ## Upgrading from a chart that ran the executor as a Deployment: delete the old Deployment
 ## first (`kubectl delete deployment <fullname>-executor`), then run helm upgrade.
 ## executor.strategy was renamed to executor.updateStrategy (StatefulSet update strategy:

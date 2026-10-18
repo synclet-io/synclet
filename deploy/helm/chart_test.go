@@ -30,9 +30,10 @@ type manifest struct {
 		Name string `yaml:"name"`
 	} `yaml:"subjects"`
 	Spec struct {
-		ServiceName string `yaml:"serviceName"`
-		ClusterIP   string `yaml:"clusterIP"`
-		Template    struct {
+		ServiceName         string `yaml:"serviceName"`
+		PodManagementPolicy string `yaml:"podManagementPolicy"`
+		ClusterIP           string `yaml:"clusterIP"`
+		Template            struct {
 			Spec struct {
 				ServiceAccountName string      `yaml:"serviceAccountName"`
 				InitContainers     []container `yaml:"initContainers"`
@@ -366,6 +367,7 @@ func TestChart_ExecutorStatefulSet(t *testing.T) {
 
 	executor := r.get(t, "StatefulSet", "t-synclet-executor")
 	assert.Equal(t, "t-synclet-executor", executor.Spec.ServiceName)
+	assert.Equal(t, "Parallel", executor.Spec.PodManagementPolicy)
 	assert.Empty(t, initNames(executor), "the executor reaches the control plane through its API, not Postgres")
 
 	assert.Equal(t, "None", r.get(t, "Service", "t-synclet-executor").Spec.ClusterIP)
