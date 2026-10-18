@@ -26,7 +26,7 @@ var DefaultRegistries = []DefaultRegistry{
 	},
 	{
 		Name: "Synclet",
-		URL:  "https://synclet-io.github.io/synclet-connector-registry/registry.json",
+		URL:  "https://synclet-io.github.io/connectors/registry.json",
 	},
 }
 
