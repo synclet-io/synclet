@@ -10,8 +10,8 @@ import (
 )
 
 type k8sModeRunner struct {
+	connectionSyncer
 	server *syncletServer
-	client *apiClient
 }
 
 func setupK8sMode(t *testing.T) modeRunner {
@@ -37,41 +37,10 @@ func setupK8sMode(t *testing.T) modeRunner {
 		server.Stop()
 	})
 
-	return &k8sModeRunner{server: server, client: client}
-}
-
-func (k *k8sModeRunner) RunSync(t *testing.T, ctx context.Context, opts syncOpts) *syncResult {
-	t.Helper()
-
-	// 1. CreateSource with opts.SourceConfig.
-	sourceID := k.client.CreateSource(ctx, t, t.Name()+"-src", opts.SourceConfig)
-
-	// 2. Discover source schema (required before ConfigureStreams validation).
-	k.client.DiscoverSourceSchema(ctx, t, sourceID)
-
-	// 3. CreateDestination with opts.DestConfig.
-	destConfig := opts.DestConfig
-	if destConfig == nil {
-		destConfig = map[string]any{"output_dir": "/tmp/output"}
+	return &k8sModeRunner{
+		connectionSyncer: connectionSyncer{client: client, timeout: 5 * time.Minute},
+		server:           server,
 	}
-	destID := k.client.CreateDestination(ctx, t, t.Name()+"-dst", destConfig)
-
-	// 4. CreateConnection.
-	connID := k.client.CreateConnection(ctx, t, t.Name(), sourceID, destID)
-
-	// 5. ConfigureStreams.
-	k.client.ConfigureStreams(ctx, t, connID, opts.Streams)
-
-	// 6. TriggerSync.
-	jobID := k.client.TriggerSync(ctx, t, connID)
-
-	// 7. WaitForJob (poll until terminal) -- K8s pods may take longer to schedule.
-	result := k.client.WaitForJob(ctx, t, jobID, 5*time.Minute)
-
-	// 8. Get stream states for incremental verification.
-	result.StreamStates, result.StateType = k.client.ListStreamStates(ctx, t, connID)
-
-	return result
 }
 
 func (k *k8sModeRunner) Cleanup(t *testing.T) {

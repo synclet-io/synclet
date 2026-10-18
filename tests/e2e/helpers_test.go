@@ -170,8 +170,8 @@ func (c *apiClient) managedConnector(t *testing.T, image, connectorType string) 
 	t.Helper()
 
 	var id string
-	err := testDB.QueryRow(`INSERT INTO pipeline.managed_connectors (id, workspace_id, docker_image, docker_tag, name, connector_type)
-		VALUES (gen_random_uuid(), $1, $2, 'latest', $2, $3) RETURNING id`, c.workspaceID, image, connectorType).Scan(&id)
+	err := testDB.QueryRow(`INSERT INTO pipeline.managed_connectors (id, workspace_id, docker_image, docker_tag, name, connector_type, spec)
+		VALUES (gen_random_uuid(), $1, $2, 'latest', $2, $3, $4) RETURNING id`, c.workspaceID, image, connectorType, connectorSpecs[image]).Scan(&id)
 	require.NoError(t, err, "seeding managed connector %s", image)
 
 	return id
@@ -205,6 +205,16 @@ func (c *apiClient) CreateDestination(ctx context.Context, t *testing.T, name st
 	}))
 	require.NoError(t, err, "creating destination")
 	return resp.Msg.GetDestination().GetId()
+}
+
+// UpdateSourceConfig replaces the config of a source.
+func (c *apiClient) UpdateSourceConfig(ctx context.Context, t *testing.T, sourceID string, config map[string]any) {
+	t.Helper()
+	_, err := c.source.UpdateSource(ctx, newAuthRequest(c, &pipelinev1.UpdateSourceRequest{
+		Id:     sourceID,
+		Config: mapToStruct(t, config),
+	}))
+	require.NoError(t, err, "updating source")
 }
 
 // CreateConnection creates a connection and returns its ID.
@@ -323,6 +333,45 @@ func (c *apiClient) ListStreamStates(ctx context.Context, t *testing.T, connecti
 		}
 	}
 	return states, resp.Msg.GetStateType()
+}
+
+// connectionSyncer runs every sync of one test on the same connection, so state
+// from one run is the starting state of the next.
+type connectionSyncer struct {
+	client   *apiClient
+	timeout  time.Duration
+	sourceID string
+	connID   string
+}
+
+// RunSync creates the source, destination and connection on the first call;
+// later calls apply opts.SourceConfig and opts.Streams to them.
+func (s *connectionSyncer) RunSync(t *testing.T, ctx context.Context, opts syncOpts) *syncResult {
+	t.Helper()
+
+	if s.connID == "" {
+		s.sourceID = s.client.CreateSource(ctx, t, t.Name()+"-src", opts.SourceConfig)
+
+		destConfig := opts.DestConfig
+		if destConfig == nil {
+			destConfig = map[string]any{"output_dir": "/tmp/output"}
+		}
+
+		destID := s.client.CreateDestination(ctx, t, t.Name()+"-dst", destConfig)
+
+		s.connID = s.client.CreateConnection(ctx, t, t.Name(), s.sourceID, destID)
+	} else {
+		s.client.UpdateSourceConfig(ctx, t, s.sourceID, opts.SourceConfig)
+	}
+
+	s.client.DiscoverSourceSchema(ctx, t, s.sourceID)
+	s.client.ConfigureStreams(ctx, t, s.connID, opts.Streams)
+
+	jobID := s.client.TriggerSync(ctx, t, s.connID)
+	result := s.client.WaitForJob(ctx, t, jobID, s.timeout)
+	result.StreamStates, result.StateType = s.client.ListStreamStates(ctx, t, s.connID)
+
+	return result
 }
 
 // syncResult holds the outcome of a sync run.

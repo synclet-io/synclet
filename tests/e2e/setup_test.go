@@ -3,7 +3,10 @@
 package e2e
 
 import (
+	"bufio"
+	"bytes"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -24,6 +27,9 @@ var testDB *sql.DB
 
 // testDSN is the PostgreSQL DSN used by both setup and server subprocesses.
 var testDSN string
+
+// connectorSpecs holds the spec each test connector image reports, keyed by image name.
+var connectorSpecs = map[string]string{}
 
 // kindClusterName is set when E2E_K8S=1 and kind cluster is created.
 var kindClusterName string
@@ -67,6 +73,15 @@ func TestMain(m *testing.M) {
 	}
 	log.Println("Test connector images built")
 
+	for _, img := range []string{testSourceImage, testDestImage} {
+		spec, err := readConnectorSpec(img)
+		if err != nil {
+			log.Fatalf("Failed to read spec of %s: %v", img, err)
+		}
+
+		connectorSpecs[img] = spec
+	}
+
 	// Step 3: Connect to PostgreSQL and run migrations.
 	testDSN = os.Getenv("E2E_DATABASE_URL")
 	if testDSN == "" {
@@ -108,6 +123,34 @@ func TestMain(m *testing.M) {
 	}
 
 	os.Exit(code)
+}
+
+// readConnectorSpec runs the image's spec command and returns the spec of its SPEC message.
+func readConnectorSpec(image string) (string, error) {
+	out, err := exec.Command("docker", "run", "--rm", image, "spec").Output()
+	if err != nil {
+		return "", fmt.Errorf("running spec: %w", err)
+	}
+
+	scanner := bufio.NewScanner(bytes.NewReader(out))
+	scanner.Buffer(make([]byte, 0, 64*1024), 10*1024*1024)
+
+	for scanner.Scan() {
+		var msg struct {
+			Type string          `json:"type"`
+			Spec json.RawMessage `json:"spec"`
+		}
+
+		if json.Unmarshal(scanner.Bytes(), &msg) == nil && msg.Type == "SPEC" && len(msg.Spec) > 0 {
+			return string(msg.Spec), nil
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return "", fmt.Errorf("reading spec output: %w", err)
+	}
+
+	return "", fmt.Errorf("no SPEC message in output of %s", image)
 }
 
 func setupKindCluster() {
@@ -219,7 +262,6 @@ func truncateTestTables(t *testing.T) {
 		"pipeline.connections",
 		"pipeline.sources",
 		"pipeline.destinations",
-		"pipeline.secrets",
 		"workspace.workspace_members",
 		"workspace.workspace_invites",
 		"workspace.workspaces",

@@ -41,6 +41,42 @@ jobs:
           name: backend-coverage
           path: coverage.out
 
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: synclet_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      mailpit:
+        image: axllent/mailpit:v1.27
+        ports:
+          - 1025:1025
+          - 8025:8025
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: arduino/setup-task@v2
+        with:
+          version: 3.x
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run e2e tests
+        env:
+          E2E_DATABASE_URL: postgres://postgres:test@localhost:5432/synclet_e2e?sslmode=disable
+          E2E_MAILPIT_URL: http://localhost:8025
+          E2E_MAILPIT_SMTP_PORT: "1025"
+        run: task e2e
+
   codegen-drift:
     runs-on: ubuntu-latest
     steps:
