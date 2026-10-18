@@ -138,6 +138,8 @@ func routeSourceMessages(ctx context.Context, reader *protocol.MessageReader, wr
 
 	var idle <-chan time.Time
 
+	counter := newSourceStatsCounter()
+
 	for {
 		var read sourceRead
 
@@ -171,6 +173,8 @@ func routeSourceMessages(ctx context.Context, reader *protocol.MessageReader, wr
 				stats.bytesSynced += int64(len(msg.Record.Data))
 			}
 
+			counter.countRecord(msg.Record)
+
 			if cfg.Rewriter != nil {
 				cfg.Rewriter.RewriteRecord(msg)
 			}
@@ -180,6 +184,8 @@ func routeSourceMessages(ctx context.Context, reader *protocol.MessageReader, wr
 			}
 
 		case protocol.MessageTypeState:
+			counter.fillState(msg.State)
+
 			// Rewrite stream descriptors before forwarding to destination.
 			if cfg.Rewriter != nil {
 				cfg.Rewriter.RewriteState(msg)

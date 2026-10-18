@@ -14,7 +14,7 @@ Self-hosted Synclet stays MIT with all features. A managed cloud version may com
 
 ## Next: connector compatibility and Go connectors
 
-- Fix the known issues of the tested-with matrix: state handling of full-refresh streams, `sourceStats` on state messages for destinations that require it, stream status messages, and a `/local` mount for file destinations.
+- Fix the known issues of the tested-with matrix: state handling of full-refresh streams, stream status messages, and a `/local` mount for file destinations.
 - Grow the tested-with matrix: more source and destination pairs, each with pinned versions, and a test per major Airbyte Protocol change.
 - MIT Go connectors in [synclet-io/connectors](https://github.com/synclet-io/connectors), built on [synclet-go-sdk](https://github.com/synclet-io/synclet-go-sdk): hardening the MySQL, PostgreSQL and Google Sheets sources, then MongoDB, S3 (CSV, JSONL, Parquet), Stripe, GitHub, HubSpot, Salesforce and Shopify sources, and CDC for PostgreSQL and MySQL.
 - A connector developer guide for writing your own connector.

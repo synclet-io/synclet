@@ -444,12 +444,13 @@ Native connectors implement the same Airbyte Protocol and can be used interchang
 
 ## Tested with
 
-These pairs were run end to end through Synclet 0.6.0 (`main` at `1b02969`) on 2026-10-18: Docker executor, PostgreSQL 16, two runs per pair so the second run starts from the saved state. A connector that is not listed here may work; it has not been tested.
+These pairs were run end to end through Synclet 0.6.0 (`main` at `b7d946b`) on 2026-10-19: Docker executor, PostgreSQL 16, two runs per pair so the second run starts from the saved state. A connector that is not listed here may work; it has not been tested.
 
 | Source | Destination | Streams and mode | Result |
 |---|---|---|---|
 | `airbyte/source-faker:6.2.38` | `airbyte/destination-postgres:3.0.23` | `users`, incremental, append | Passed: 100 records; the second run read 0 new records |
 | `airbyte/source-postgres:3.8.7` | `airbyte/destination-postgres:3.0.23` | `public.cities`, incremental on `id`, append | Passed: 250 records; the second run re-read the row at the cursor |
+| `ghcr.io/synclet-io/connectors/source-postgres:0.2.0` | `airbyte/destination-postgres:3.0.23` | `public.cities`, incremental on `id`, append | Passed: 250 records; the second run re-read the row at the cursor |
 | `airbyte/source-faker:6.2.38` | `airbyte/destination-postgres:3.0.23` | `users`, full refresh, overwrite | Passed: 100 records; the second run re-read all 100 and kept 100 rows |
 | `airbyte/source-faker:6.2.38` | `airbyte/destination-dev-null:0.7.24` | `users`, full refresh, overwrite | Passed: 100 records; the second run re-read all 100 |
 

@@ -51,6 +51,7 @@ func TestTestedWith(t *testing.T) {
 
 	faker := twImage{"airbyte/source-faker", "6.2.38"}
 	sourcePostgres := twImage{"airbyte/source-postgres", "3.8.7"}
+	goSourcePostgres := twImage{"ghcr.io/synclet-io/connectors/source-postgres", "0.2.0"}
 	destinationPostgres := twImage{"airbyte/destination-postgres", "3.0.23"}
 	destinationDevNull := twImage{"airbyte/destination-dev-null", "0.7.24"}
 	destinationDuckDB := twImage{"airbyte/destination-duckdb", "0.6.0"}
@@ -66,6 +67,13 @@ func TestTestedWith(t *testing.T) {
 		{
 			name: "source-postgres-incremental-append", source: sourcePostgres, destination: destinationPostgres,
 			sourceConfig: pg.sourceConfig("tw_source"), targetDB: "tw_target_postgres_inc", table: "public.cities",
+			streams: []streamOpt{{Name: "cities", Namespace: "public", SyncMode: "incremental", CursorField: "id", DestinationSyncMode: "append"}},
+			rows:    []int{250, 251},
+		},
+		{
+			// The Go source reads cursor >= saved, re-reading the cursor row.
+			name: "go-source-postgres-incremental-append", source: goSourcePostgres, destination: destinationPostgres,
+			sourceConfig: pg.sourceConfig("tw_source"), targetDB: "tw_target_go_postgres_inc", table: "public.cities",
 			streams: []streamOpt{{Name: "cities", Namespace: "public", SyncMode: "incremental", CursorField: "id", DestinationSyncMode: "append"}},
 			rows:    []int{250, 251},
 		},
