@@ -386,9 +386,7 @@ func (r *SyncRunner) LaunchSync(ctx context.Context, opts SyncOptions) (string, 
 		podSpec.Affinity = opts.Affinity
 	}
 
-	if opts.ServiceAccountName != "" {
-		podSpec.ServiceAccountName = opts.ServiceAccountName
-	}
+	applyServiceAccount(&podSpec, opts.ServiceAccountName)
 
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -596,9 +594,7 @@ func (r *SyncRunner) LaunchConnectorTask(ctx context.Context, opts ConnectorTask
 		Volumes:       append([]corev1.Volume{sharedVolume}, taskSecretVolumes...),
 	}
 
-	if opts.ServiceAccountName != "" {
-		podSpec.ServiceAccountName = opts.ServiceAccountName
-	}
+	applyServiceAccount(&podSpec, opts.ServiceAccountName)
 
 	if r.config.ImagePullSecret != "" {
 		podSpec.ImagePullSecrets = []corev1.LocalObjectReference{
@@ -764,4 +760,19 @@ func (d resourceDefaults) apply(reqs corev1.ResourceRequirements) corev1.Resourc
 	}
 
 	return reqs
+}
+
+// applyServiceAccount runs the pod as the named service account, or, when none
+// is named, keeps the cluster API token out of every container: connector
+// images are third-party code and the coordinator authenticates to the control
+// plane with the per-job token instead.
+func applyServiceAccount(podSpec *corev1.PodSpec, name string) {
+	if name != "" {
+		podSpec.ServiceAccountName = name
+
+		return
+	}
+
+	automount := false
+	podSpec.AutomountServiceAccountToken = &automount
 }

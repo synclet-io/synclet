@@ -421,6 +421,11 @@ pipeline:
   ## destination's). Annotate it so connectors reach the cloud through Workload Identity:
   ##   GKE: iam.gke.io/gcp-service-account: <gsa>@<project>.iam.gserviceaccount.com
   ##   EKS: eks.amazonaws.com/role-arn: arn:aws:iam::<account>:role/<role>
+  ## With create=false and name="" (and pipeline.resources.serviceAccountName empty) connector pods
+  ## that set no service_account_name get no Kubernetes API token
+  ## (automountServiceAccountToken: false). An account named or created here is for cloud
+  ## identity annotations, not for cluster rights: the chart binds it to no Role, and its
+  ## pods keep the cluster's default token mount.
   serviceAccount:
     create: false
     ## Defaults to <fullname>-connector when create is true; with create=false, an existing account.

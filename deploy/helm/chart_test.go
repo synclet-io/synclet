@@ -20,6 +20,7 @@ type manifest struct {
 		Annotations map[string]string `yaml:"annotations"`
 	} `yaml:"metadata"`
 	Data    map[string]string `yaml:"data"`
+	Rules   []rbacRule        `yaml:"rules"`
 	RoleRef struct {
 		Kind string `yaml:"kind"`
 		Name string `yaml:"name"`
@@ -39,6 +40,12 @@ type manifest struct {
 			} `yaml:"spec"`
 		} `yaml:"template"`
 	} `yaml:"spec"`
+}
+
+type rbacRule struct {
+	APIGroups       []string `yaml:"apiGroups"`
+	Resources       []string `yaml:"resources"`
+	NonResourceURLs []string `yaml:"nonResourceURLs"`
 }
 
 type container struct {
@@ -193,6 +200,68 @@ func TestChart_ConnectorServiceAccount(t *testing.T) {
 	assert.Equal(t, map[string]string{"eks.amazonaws.com/role-arn": "arn:aws:iam::1:role/connectors"}, sa.Metadata.Annotations)
 	assert.Empty(t, docs.bindingsOf("t-synclet-connector"))
 	assert.Equal(t, "t-synclet-connector", docs.get(t, "ConfigMap", "t-synclet").Data["PIPELINE_RUNTIME_SERVICE_ACCOUNT_NAME"])
+}
+
+// namespacedResources lists every resource, by API group, the chart's Role may
+// grant; each is namespaced, so the Role cannot reach past its namespace.
+var namespacedResources = map[string][]string{
+	"":      {"pods", "pods/log", "configmaps", "secrets", "events"},
+	"batch": {"jobs"},
+}
+
+func TestChart_RBACStaysInNamespace(t *testing.T) {
+	modes := map[string][]string{
+		"standalone":                      nil,
+		"standalone with connector SA":    {"--set", "pipeline.serviceAccount.create=true"},
+		"distributed":                     {"--set", "mode=distributed"},
+		"distributed with connector SA":   {"--set", "mode=distributed", "--set", "pipeline.serviceAccount.create=true", "--set", "k8s.namespace=connectors"},
+		"distributed with existing SAs":   {"--set", "mode=distributed", "--set", "executor.serviceAccount.create=false", "--set", "executor.serviceAccount.name=byo-executor"},
+		"distributed without executor SA": {"--set", "mode=distributed", "--set", "serviceAccount.create=false", "--set", "executor.serviceAccount.create=false"},
+	}
+
+	for name, args := range modes {
+		t.Run(name, func(t *testing.T) {
+			docs := renderChart(t, args...)
+
+			assert.Empty(t, docs.names("ClusterRole"))
+			assert.Empty(t, docs.names("ClusterRoleBinding"))
+
+			for _, m := range docs {
+				switch m.Kind {
+				case "Role":
+					for _, rule := range m.Rules {
+						assert.Empty(t, rule.NonResourceURLs, "Role %s", m.Metadata.Name)
+
+						for _, group := range rule.APIGroups {
+							allowed, known := namespacedResources[group]
+							require.True(t, known, "Role %s grants API group %q", m.Metadata.Name, group)
+
+							for _, resource := range rule.Resources {
+								assert.Contains(t, allowed, resource, "Role %s grants %s in API group %q", m.Metadata.Name, resource, group)
+							}
+						}
+					}
+				case "RoleBinding":
+					assert.Equal(t, "Role", m.RoleRef.Kind, "RoleBinding %s", m.Metadata.Name)
+				}
+			}
+
+			if contains(args, "pipeline.serviceAccount.create=true") {
+				docs.get(t, "ServiceAccount", "t-synclet-connector")
+				assert.Empty(t, docs.bindingsOf("t-synclet-connector"))
+			}
+		})
+	}
+}
+
+func contains(values []string, want string) bool {
+	for _, v := range values {
+		if v == want {
+			return true
+		}
+	}
+
+	return false
 }
 
 func TestChart_DockerOwnerID(t *testing.T) {

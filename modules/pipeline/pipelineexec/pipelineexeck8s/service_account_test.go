@@ -51,6 +51,7 @@ func TestLaunchSyncJob_ServiceAccountName(t *testing.T) {
 			job, err := client.BatchV1().Jobs("test-ns").Get(context.Background(), jobName, metav1.GetOptions{})
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, job.Spec.Template.Spec.ServiceAccountName)
+			assertTokenAutomount(t, tt.want, job.Spec.Template.Spec.AutomountServiceAccountToken)
 		})
 	}
 }
@@ -77,7 +78,23 @@ func TestLaunchTask_ServiceAccountName(t *testing.T) {
 				job, err := client.BatchV1().Jobs("test-ns").Get(context.Background(), jobName, metav1.GetOptions{})
 				require.NoError(t, err)
 				assert.Equal(t, defaultAccount, job.Spec.Template.Spec.ServiceAccountName)
+				assertTokenAutomount(t, defaultAccount, job.Spec.Template.Spec.AutomountServiceAccountToken)
 			})
 		}
 	}
+}
+
+// assertTokenAutomount checks that a pod without a service account gets no
+// cluster token and a pod with one keeps the cluster default.
+func assertTokenAutomount(t *testing.T, serviceAccount string, automount *bool) {
+	t.Helper()
+
+	if serviceAccount != "" {
+		assert.Nil(t, automount, "pod with service account %q must leave automountServiceAccountToken unset", serviceAccount)
+
+		return
+	}
+
+	require.NotNil(t, automount, "pod without a service account must set automountServiceAccountToken")
+	assert.False(t, *automount)
 }
