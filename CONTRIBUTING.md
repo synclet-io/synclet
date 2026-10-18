@@ -54,7 +54,7 @@ TEST_DATABASE_DSN='postgres://user:pass@localhost:5432/synclet_test?sslmode=disa
 - `pkg/` — shared infrastructure, including the coordinator that runs connector containers.
 - `proto/` — ConnectRPC API definitions; generated code lands in `gen/`.
 - `front/` — the Vue 3 UI.
-- `connectors/` — native connectors.
+- Synclet's own Go connectors live in a separate repository, [synclet-io/connectors](https://github.com/synclet-io/connectors).
 - `deploy/` — the Helm chart.
 
 Generated files (`gen/`, generated storage and models) are not edited by hand: change the source definition and run the generator. CI fails when generated code drifts.

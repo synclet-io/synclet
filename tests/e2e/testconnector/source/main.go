@@ -1,10 +1,13 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 
-	airbyte "github.com/saturn4er/airbyte-go-sdk"
+	airbyte "github.com/synclet-io/synclet-go-sdk"
+	"github.com/synclet-io/synclet-go-sdk/cli"
 )
 
 type sourceConfig struct {
@@ -22,7 +25,7 @@ type streamConfig struct {
 
 type testSource struct{}
 
-func (s *testSource) Spec(_ airbyte.LogTracker) (*airbyte.ConnectorSpecification, error) {
+func (s *testSource) Spec(context.Context) (*airbyte.ConnectorSpecification, error) {
 	return &airbyte.ConnectorSpecification{
 		DocumentationURL:    "https://github.com/saturn4er/synclet",
 		SupportsIncremental: true,
@@ -37,15 +40,15 @@ func (s *testSource) Spec(_ airbyte.LogTracker) (*airbyte.ConnectorSpecification
 					},
 					"crash_after_records": {
 						Description:  "Crash after emitting this many records (0 = no crash)",
-						PropertyType: airbyte.PropertyType{Type: []airbyte.PropType{airbyte.Integer}},
+						PropertyType: airbyte.PropertyType{Type: airbyte.PropTypes{airbyte.Integer}},
 					},
 					"exit_code": {
 						Description:  "Exit code on crash",
-						PropertyType: airbyte.PropertyType{Type: []airbyte.PropType{airbyte.Integer}},
+						PropertyType: airbyte.PropertyType{Type: airbyte.PropTypes{airbyte.Integer}},
 					},
 					"emit_state_every": {
 						Description:  "Emit state every N records (0 = only final state)",
-						PropertyType: airbyte.PropertyType{Type: []airbyte.PropType{airbyte.Integer}},
+						PropertyType: airbyte.PropertyType{Type: airbyte.PropTypes{airbyte.Integer}},
 					},
 				},
 			},
@@ -53,100 +56,62 @@ func (s *testSource) Spec(_ airbyte.LogTracker) (*airbyte.ConnectorSpecification
 	}, nil
 }
 
-func (s *testSource) Check(_ string, _ airbyte.LogTracker) error {
+func (s *testSource) Check(context.Context, sourceConfig) error {
 	return nil
 }
 
-func (s *testSource) Discover(srcCfgPath string, _ airbyte.LogTracker) (*airbyte.Catalog, error) {
-	// Try to read config to discover streams dynamically.
-	var cfg sourceConfig
-	if srcCfgPath != "" {
-		if err := airbyte.UnmarshalFromPath(srcCfgPath, &cfg); err == nil && len(cfg.Streams) > 0 {
-			var streams []airbyte.Stream
-			for _, sc := range cfg.Streams {
-				streams = append(streams, airbyte.Stream{
-					Name:      sc.Name,
-					Namespace: sc.Namespace,
-					JSONSchema: airbyte.Properties{
-						Properties: map[airbyte.PropertyName]airbyte.PropertySpec{
-							"id":         {PropertyType: airbyte.PropertyType{Type: []airbyte.PropType{airbyte.Integer}}},
-							"updated_at": {PropertyType: airbyte.PropertyType{Type: []airbyte.PropType{airbyte.Integer}}},
-							"data":       {PropertyType: airbyte.PropertyType{Type: []airbyte.PropType{airbyte.String}}},
-						},
-					},
-					SupportedSyncModes:  []airbyte.SyncMode{airbyte.SyncModeFullRefresh, airbyte.SyncModeIncremental},
-					SourceDefinedCursor: true,
-					DefaultCursorField:  []string{"updated_at"},
-				})
-			}
-			return &airbyte.Catalog{Streams: streams}, nil
-		}
+func (s *testSource) Discover(_ context.Context, cfg sourceConfig) (*airbyte.Catalog, error) {
+	if len(cfg.Streams) == 0 {
+		return &airbyte.Catalog{Streams: []airbyte.Stream{testStream("test_stream", "")}}, nil
 	}
-
-	// Fallback: return a default test_stream.
-	return &airbyte.Catalog{
-		Streams: []airbyte.Stream{
-			{
-				Name: "test_stream",
-				JSONSchema: airbyte.Properties{
-					Properties: map[airbyte.PropertyName]airbyte.PropertySpec{
-						"id":         {PropertyType: airbyte.PropertyType{Type: []airbyte.PropType{airbyte.Integer}}},
-						"updated_at": {PropertyType: airbyte.PropertyType{Type: []airbyte.PropType{airbyte.Integer}}},
-						"data":       {PropertyType: airbyte.PropertyType{Type: []airbyte.PropType{airbyte.String}}},
-					},
-				},
-				SupportedSyncModes:  []airbyte.SyncMode{airbyte.SyncModeFullRefresh, airbyte.SyncModeIncremental},
-				SourceDefinedCursor: true,
-				DefaultCursorField:  []string{"updated_at"},
-			},
-		},
-	}, nil
+	streams := make([]airbyte.Stream, 0, len(cfg.Streams))
+	for _, sc := range cfg.Streams {
+		streams = append(streams, testStream(sc.Name, sc.Namespace))
+	}
+	return &airbyte.Catalog{Streams: streams}, nil
 }
 
-func (s *testSource) Read(srcCfgPath string, prevStatePath string, _ *airbyte.ConfiguredCatalog, tracker airbyte.MessageTracker) error {
-	var cfg sourceConfig
-	if err := airbyte.UnmarshalFromPath(srcCfgPath, &cfg); err != nil {
-		return fmt.Errorf("loading config: %w", err)
+func testStream(name, namespace string) airbyte.Stream {
+	return airbyte.Stream{
+		Name:      name,
+		Namespace: namespace,
+		JSONSchema: airbyte.ObjectSchema(map[airbyte.PropertyName]airbyte.PropertySpec{
+			"id":         {PropertyType: airbyte.PropertyType{Type: airbyte.PropTypes{airbyte.Integer}}},
+			"updated_at": {PropertyType: airbyte.PropertyType{Type: airbyte.PropTypes{airbyte.Integer}}},
+			"data":       {PropertyType: airbyte.PropertyType{Type: airbyte.PropTypes{airbyte.String}}},
+		}),
+		SupportedSyncModes:  []airbyte.SyncMode{airbyte.SyncModeFullRefresh, airbyte.SyncModeIncremental},
+		SourceDefinedCursor: true,
+		DefaultCursorField:  []string{"updated_at"},
 	}
+}
 
-	// Load previous state for incremental syncs.
-	prevStates := make(map[string]map[string]interface{})
-	if prevStatePath != "" {
-		loaded, err := airbyte.LoadStreamStates(prevStatePath)
-		if err == nil {
-			prevStates = loaded
-		}
-	}
+type streamCursor struct {
+	Cursor int `json:"cursor"`
+}
 
+func (s *testSource) Read(_ context.Context, cfg sourceConfig, _ *airbyte.ConfiguredCatalog, state *airbyte.InputState, em *airbyte.Emitter) error {
 	totalEmitted := 0
 	for _, stream := range cfg.Streams {
-		// Determine start cursor from previous state.
-		startCursor := 0
-		stateKey := stream.Name
-		if stream.Namespace != "" {
-			stateKey = stream.Namespace + ":" + stream.Name
-		}
+		desc := airbyte.StreamDescriptor{Name: stream.Name, Namespace: stream.Namespace}
 
-		if prev, ok := prevStates[stateKey]; ok {
-			if cursor, ok := prev["cursor"]; ok {
-				switch v := cursor.(type) {
-				case float64:
-					startCursor = int(v)
-				case int:
-					startCursor = v
-				}
+		startCursor := 0
+		if raw := state.Stream(desc); raw != nil {
+			var prev streamCursor
+			if err := json.Unmarshal(raw, &prev); err == nil {
+				startCursor = prev.Cursor
 			}
 		}
 
 		// Emit records from startCursor to startCursor + recordCount.
 		for i := startCursor; i < startCursor+stream.RecordCount; i++ {
-			record := map[string]interface{}{
+			record := map[string]any{
 				"id":         i,
 				"updated_at": i,
 				"data":       fmt.Sprintf("record-%d", i),
 			}
 
-			if err := tracker.Record(record, stream.Name, stream.Namespace); err != nil {
+			if err := em.Record(desc, record); err != nil {
 				return fmt.Errorf("emitting record: %w", err)
 			}
 			totalEmitted++
@@ -162,32 +127,13 @@ func (s *testSource) Read(srcCfgPath string, prevStatePath string, _ *airbyte.Co
 
 			// Periodic state emission.
 			if cfg.EmitStateEvery > 0 && totalEmitted%cfg.EmitStateEvery == 0 {
-				stateData := &airbyte.StreamState{
-					StreamDescriptor: airbyte.StreamDescriptor{
-						Name:      stream.Name,
-						Namespace: strPtr(stream.Namespace),
-					},
-					StreamState: map[string]interface{}{
-						"cursor": i + 1,
-					},
-				}
-				if err := tracker.State(airbyte.StateTypeStream, stateData); err != nil {
+				if err := em.StreamState(desc, streamCursor{Cursor: i + 1}); err != nil {
 					return fmt.Errorf("emitting state: %w", err)
 				}
 			}
 		}
 
-		// Emit final stream state.
-		finalState := &airbyte.StreamState{
-			StreamDescriptor: airbyte.StreamDescriptor{
-				Name:      stream.Name,
-				Namespace: strPtr(stream.Namespace),
-			},
-			StreamState: map[string]interface{}{
-				"cursor": startCursor + stream.RecordCount,
-			},
-		}
-		if err := tracker.State(airbyte.StateTypeStream, finalState); err != nil {
+		if err := em.StreamState(desc, streamCursor{Cursor: startCursor + stream.RecordCount}); err != nil {
 			return fmt.Errorf("emitting final state: %w", err)
 		}
 	}
@@ -195,16 +141,6 @@ func (s *testSource) Read(srcCfgPath string, prevStatePath string, _ *airbyte.Co
 	return nil
 }
 
-func strPtr(s string) *string {
-	if s == "" {
-		return nil
-	}
-	return &s
-}
-
 func main() {
-	if err := airbyte.NewSourceRunner(&testSource{}, os.Stdout).Start(); err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		os.Exit(1)
-	}
+	cli.RunSource(&testSource{})
 }

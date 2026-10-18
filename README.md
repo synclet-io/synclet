@@ -401,14 +401,14 @@ Synclet uses the Airbyte connector protocol. Connectors are Docker images that i
 
 ## Native Connectors
 
-In addition to Docker-based Airbyte connectors, Synclet includes Go-native connectors built with the airbyte-go-sdk for improved performance and simplified deployment:
+Synclet's own Go connectors, built on [synclet-go-sdk](https://github.com/synclet-io/synclet-go-sdk), live in [synclet-io/connectors](https://github.com/synclet-io/connectors) and ship as Docker images:
 
 | Connector | Type | Directory |
 |-----------|------|-----------|
-| Google Sheets | Source | `connectors/source-google-sheets/` |
-| Google Sheets | Destination | `connectors/destination-google-sheets/` |
-| MySQL | Source | `connectors/source-mysql/` |
-| BigQuery | Destination | `connectors/destination-bigquery/` |
+| Google Sheets | Source | [`source-google-sheets`](https://github.com/synclet-io/connectors/tree/main/connectors/source-google-sheets) |
+| Google Sheets | Destination | [`destination-google-sheets`](https://github.com/synclet-io/connectors/tree/main/connectors/destination-google-sheets) |
+| MySQL | Source | [`source-mysql`](https://github.com/synclet-io/connectors/tree/main/connectors/source-mysql) |
+| BigQuery | Destination | [`destination-bigquery`](https://github.com/synclet-io/connectors/tree/main/connectors/destination-bigquery) |
 
 Native connectors implement the same Airbyte protocol and can be used interchangeably with their Docker-based counterparts.
 
@@ -440,7 +440,6 @@ synclet/
 │   ├── secret/           # Encrypted secret storage
 │   └── workspace/        # Workspaces, members, invites
 ├── pkg/                  # Shared libraries (coordinator, protocol, eventbus, migrations, ...)
-├── connectors/           # Go-native Airbyte connectors
 ├── proto/                # Protobuf definitions
 ├── gen/                  # Generated Go protobuf code
 ├── front/                # Frontend (Vue 3 + TypeScript)

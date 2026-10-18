@@ -1,7 +1,5 @@
 module synclet/tests/e2e/testconnector
 
-go 1.25.0
+go 1.26
 
-require github.com/saturn4er/airbyte-go-sdk v0.0.0
-
-replace github.com/saturn4er/airbyte-go-sdk => /Users/saturn4er/Dev/airbyte-go-sdk
+require github.com/synclet-io/synclet-go-sdk v0.3.0

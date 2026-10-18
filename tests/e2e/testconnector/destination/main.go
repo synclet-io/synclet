@@ -1,14 +1,16 @@
 package main
 
 import (
-	"bufio"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 
-	airbyte "github.com/saturn4er/airbyte-go-sdk"
+	airbyte "github.com/synclet-io/synclet-go-sdk"
+	"github.com/synclet-io/synclet-go-sdk/cli"
 )
 
 type destConfig struct {
@@ -17,7 +19,7 @@ type destConfig struct {
 
 type testDestination struct{}
 
-func (d *testDestination) Spec(_ airbyte.LogTracker) (*airbyte.ConnectorSpecification, error) {
+func (d *testDestination) Spec(context.Context) (*airbyte.ConnectorSpecification, error) {
 	return &airbyte.ConnectorSpecification{
 		DocumentationURL: "https://github.com/saturn4er/synclet",
 		SupportedDestinationSyncModes: []airbyte.DestinationSyncMode{
@@ -32,7 +34,7 @@ func (d *testDestination) Spec(_ airbyte.LogTracker) (*airbyte.ConnectorSpecific
 				Properties: map[airbyte.PropertyName]airbyte.PropertySpec{
 					"output_dir": {
 						Description:  "Directory to write output files",
-						PropertyType: airbyte.PropertyType{Type: []airbyte.PropType{airbyte.String}},
+						PropertyType: airbyte.PropertyType{Type: airbyte.PropTypes{airbyte.String}},
 					},
 				},
 			},
@@ -41,20 +43,11 @@ func (d *testDestination) Spec(_ airbyte.LogTracker) (*airbyte.ConnectorSpecific
 	}, nil
 }
 
-func (d *testDestination) Check(dstCfgPath string, _ airbyte.LogTracker) error {
-	var cfg destConfig
-	if err := airbyte.UnmarshalFromPath(dstCfgPath, &cfg); err != nil {
-		return fmt.Errorf("loading config: %w", err)
-	}
+func (d *testDestination) Check(_ context.Context, cfg destConfig) error {
 	return os.MkdirAll(cfg.OutputDir, 0o755)
 }
 
-func (d *testDestination) Write(dstCfgPath string, _ string, inputReader io.Reader, tracker airbyte.MessageTracker) error {
-	var cfg destConfig
-	if err := airbyte.UnmarshalFromPath(dstCfgPath, &cfg); err != nil {
-		return fmt.Errorf("loading config: %w", err)
-	}
-
+func (d *testDestination) Write(_ context.Context, cfg destConfig, _ *airbyte.ConfiguredCatalog, in *airbyte.MessageReader, em *airbyte.Emitter) error {
 	if err := os.MkdirAll(cfg.OutputDir, 0o755); err != nil {
 		return fmt.Errorf("creating output dir: %w", err)
 	}
@@ -69,29 +62,19 @@ func (d *testDestination) Write(dstCfgPath string, _ string, inputReader io.Read
 		}
 	}()
 
-	scanner := bufio.NewScanner(inputReader)
-	scanner.Buffer(make([]byte, 0, 1024*1024), 1024*1024) // 1MB buffer
-
-	for scanner.Scan() {
-		line := scanner.Bytes()
-
-		var msg struct {
-			Type   string          `json:"type"`
-			Record json.RawMessage `json:"record,omitempty"`
-			State  json.RawMessage `json:"state,omitempty"`
+	for {
+		msg, err := in.Next()
+		if errors.Is(err, io.EOF) {
+			break
 		}
-		if err := json.Unmarshal(line, &msg); err != nil {
-			continue
+		if err != nil {
+			return fmt.Errorf("reading input: %w", err)
 		}
 
 		switch msg.Type {
-		case "RECORD":
-			var rec struct {
-				Stream    string          `json:"stream"`
-				Namespace string          `json:"namespace"`
-				Data      json.RawMessage `json:"data"`
-			}
-			if err := json.Unmarshal(msg.Record, &rec); err != nil {
+		case airbyte.MessageTypeRecord:
+			rec := msg.Record
+			if rec == nil {
 				continue
 			}
 
@@ -112,7 +95,6 @@ func (d *testDestination) Write(dstCfgPath string, _ string, inputReader io.Read
 
 			f, ok := files[filePath]
 			if !ok {
-				var err error
 				f, err = os.OpenFile(filePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
 				if err != nil {
 					return fmt.Errorf("opening output file: %w", err)
@@ -129,32 +111,14 @@ func (d *testDestination) Write(dstCfgPath string, _ string, inputReader io.Read
 
 			streamCounts[key]++
 
-		case "STATE":
-			// Re-emit state to confirm committed records.
-			var stateMsg struct {
-				Type   string          `json:"type"`
-				Stream json.RawMessage `json:"stream,omitempty"`
-				Global json.RawMessage `json:"global,omitempty"`
-				Data   json.RawMessage `json:"data,omitempty"`
-			}
-			if err := json.Unmarshal(msg.State, &stateMsg); err != nil {
-				continue
-			}
-
-			if stateMsg.Type == "STREAM" && stateMsg.Stream != nil {
-				var streamState airbyte.StreamState
-				if err := json.Unmarshal(stateMsg.Stream, &streamState); err != nil {
-					continue
-				}
-				if err := tracker.State(airbyte.StateTypeStream, &streamState); err != nil {
+		case airbyte.MessageTypeState:
+			// Re-emit stream state to confirm committed records.
+			if msg.State != nil && msg.State.Type == airbyte.StateTypeStream && msg.State.Stream != nil {
+				if err := em.State(*msg.State); err != nil {
 					return fmt.Errorf("emitting state confirmation: %w", err)
 				}
 			}
 		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		return fmt.Errorf("reading input: %w", err)
 	}
 
 	// Close all files before writing summary.
@@ -177,8 +141,5 @@ func (d *testDestination) Write(dstCfgPath string, _ string, inputReader io.Read
 }
 
 func main() {
-	if err := airbyte.NewDestinationRunner(&testDestination{}, os.Stdout).Start(); err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		os.Exit(1)
-	}
+	cli.RunDestination(&testDestination{})
 }
