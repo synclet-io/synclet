@@ -76,6 +76,22 @@ type SyncOptions struct {
 // token; the coordinator reads it from <secrets-dir>/<APITokenSecretKey>.
 const APITokenSecretKey = "api-token"
 
+// localVolumeName is the pod's emptyDir mounted read-write at /local in the
+// connector containers, where Airbyte connectors write their files. It lives
+// as long as the pod.
+const localVolumeName = "local"
+
+func localVolume() corev1.Volume {
+	return corev1.Volume{
+		Name:         localVolumeName,
+		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+	}
+}
+
+func localVolumeMount() corev1.VolumeMount {
+	return corev1.VolumeMount{Name: localVolumeName, MountPath: "/local"}
+}
+
 // SyncRunner launches and manages K8s sync pods with the 3-container architecture.
 type SyncRunner struct {
 	client    kubernetes.Interface
@@ -300,7 +316,7 @@ func (r *SyncRunner) LaunchSync(ctx context.Context, opts SyncOptions) (string, 
 	destResources := defaults.apply(buildResourceRequirements(opts.DestMemoryLimit, opts.DestCPULimit, opts.DestMemoryRequest, opts.DestCPURequest))
 
 	// SubPath mounts: source container gets config/catalog/state directly from Secret.
-	sourceVolumeMounts := []corev1.VolumeMount{sharedMount}
+	sourceVolumeMounts := []corev1.VolumeMount{sharedMount, localVolumeMount()}
 
 	sourceVolumeMounts = append(sourceVolumeMounts, corev1.VolumeMount{
 		Name: "sync-configs", MountPath: "/shared/source-config.json", SubPath: "source-config", ReadOnly: true,
@@ -318,7 +334,7 @@ func (r *SyncRunner) LaunchSync(ctx context.Context, opts SyncOptions) (string, 
 	}
 
 	// SubPath mounts: destination container gets config/catalog directly from Secret.
-	destVolumeMounts := []corev1.VolumeMount{sharedMount}
+	destVolumeMounts := []corev1.VolumeMount{sharedMount, localVolumeMount()}
 
 	destVolumeMounts = append(destVolumeMounts, corev1.VolumeMount{
 		Name: "sync-configs", MountPath: "/shared/dest-config.json", SubPath: "dest-config", ReadOnly: true,
@@ -364,7 +380,7 @@ func (r *SyncRunner) LaunchSync(ctx context.Context, opts SyncOptions) (string, 
 	podSpec := corev1.PodSpec{
 		RestartPolicy: corev1.RestartPolicyNever,
 		Containers:    []corev1.Container{orchestratorContainer, sourceContainer, destContainer},
-		Volumes:       []corev1.Volume{sharedVolume, secretVolume},
+		Volumes:       []corev1.Volume{sharedVolume, secretVolume, localVolume()},
 	}
 
 	if r.config.ImagePullSecret != "" {
@@ -578,7 +594,7 @@ func (r *SyncRunner) LaunchConnectorTask(ctx context.Context, opts ConnectorTask
 			"while [ ! -f %s/.ready ]; do sleep 0.1; done; sh %s/connector-run.sh",
 			dataDir, dataDir,
 		)},
-		VolumeMounts:    append([]corev1.VolumeMount{sharedMount}, connectorConfigMounts...),
+		VolumeMounts:    append([]corev1.VolumeMount{sharedMount, localVolumeMount()}, connectorConfigMounts...),
 		ImagePullPolicy: corev1.PullAlways,
 		SecurityContext: &corev1.SecurityContext{
 			AllowPrivilegeEscalation: boolPtr(false),
@@ -591,7 +607,7 @@ func (r *SyncRunner) LaunchConnectorTask(ctx context.Context, opts ConnectorTask
 	podSpec := corev1.PodSpec{
 		RestartPolicy: corev1.RestartPolicyNever,
 		Containers:    []corev1.Container{coordinatorContainer, connectorContainer},
-		Volumes:       append([]corev1.Volume{sharedVolume}, taskSecretVolumes...),
+		Volumes:       append([]corev1.Volume{sharedVolume, localVolume()}, taskSecretVolumes...),
 	}
 
 	applyServiceAccount(&podSpec, opts.ServiceAccountName)

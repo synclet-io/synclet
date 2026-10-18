@@ -52,6 +52,7 @@ func TestTestedWith(t *testing.T) {
 	faker := twImage{"airbyte/source-faker", "6.2.38"}
 	sourcePostgres := twImage{"airbyte/source-postgres", "3.8.7"}
 	destinationPostgres := twImage{"airbyte/destination-postgres", "3.0.23"}
+	destinationDuckDB := twImage{"airbyte/destination-duckdb", "0.6.0"}
 	fakerConfig := map[string]any{"count": 100, "seed": 1, "records_per_slice": 1000, "always_updated": false, "parallelism": 1}
 
 	cases := []twCase{
@@ -74,6 +75,15 @@ func TestTestedWith(t *testing.T) {
 			streams: []streamOpt{{Name: "users", SyncMode: "full_refresh", DestinationSyncMode: "overwrite"}},
 			rows:    []int{100, -1},
 		},
+		{
+			// The DuckDB file lives in the job's /local directory, removed with
+			// the job, so the runs are checked by the records they read.
+			name: "faker-incremental-append-duckdb", source: faker, destination: destinationDuckDB,
+			sourceConfig:      fakerConfig,
+			destinationConfig: map[string]any{"destination_path": "/local/destination.duckdb", "schema": "x"},
+			streams:           []streamOpt{{Name: "users", SyncMode: "incremental", CursorField: "updated_at", DestinationSyncMode: "append"}},
+			recordsRead:       []int64{100, 0},
+		},
 	}
 
 	server := startSyncletServer(t, map[string]string{})
@@ -87,12 +97,25 @@ func TestTestedWith(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
 			defer cancel()
 
-			pg.recreateDatabase(t, tc.targetDB)
-			connID := tc.createConnection(ctx, t, client, pg.destinationConfig(tc.targetDB, "x"))
+			destConfig := tc.destinationConfig
+			if destConfig == nil {
+				pg.recreateDatabase(t, tc.targetDB)
+				destConfig = pg.destinationConfig(tc.targetDB, "x")
+			}
 
-			for run, want := range tc.rows {
+			connID := tc.createConnection(ctx, t, client, destConfig)
+
+			for run := range max(len(tc.rows), len(tc.recordsRead)) {
 				res := client.WaitForJob(ctx, t, client.TriggerSync(ctx, t, connID), 10*time.Minute)
 				require.NoError(t, res.Err, "run %d", run+1)
+
+				if run < len(tc.recordsRead) {
+					t.Logf("TESTED-WITH %s -> %s | %s | run %d: status=%s records_read=%d",
+						tc.source, tc.destination, tc.name, run+1, res.JobStatus, res.RecordsRead)
+					assert.Equal(t, tc.recordsRead[run], res.RecordsRead, "records read in run %d", run+1)
+
+					continue
+				}
 
 				target := pg.open(t, tc.targetDB)
 				var rows int
@@ -102,7 +125,7 @@ func TestTestedWith(t *testing.T) {
 				t.Logf("TESTED-WITH %s -> %s | %s | run %d: status=%s records_read=%d rows=%d",
 					tc.source, tc.destination, tc.name, run+1, res.JobStatus, res.RecordsRead, rows)
 
-				if want >= 0 {
+				if want := tc.rows[run]; want >= 0 {
 					assert.Equal(t, want, rows, "rows in %s after run %d", tc.table, run+1)
 				}
 			}
@@ -118,10 +141,16 @@ type twCase struct {
 	name                string
 	source, destination twImage
 	sourceConfig        map[string]any
-	targetDB, table     string
-	streams             []streamOpt
+	// destinationConfig configures a destination other than the test
+	// PostgreSQL; nil writes to targetDB there.
+	destinationConfig map[string]any
+	targetDB, table   string
+	streams           []streamOpt
 	// rows is the expected row count in table after each run; -1 skips the check.
 	rows []int
+	// recordsRead is the expected records read by each run, for a destination
+	// whose output the test cannot query.
+	recordsRead []int64
 }
 
 func (tc twCase) createConnection(ctx context.Context, t *testing.T, c *apiClient, destConfig map[string]any) string {

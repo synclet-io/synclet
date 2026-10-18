@@ -36,6 +36,7 @@ type ResourceLimits struct {
 	CPULimit    float64
 	NetworkMode string
 	ExtraMounts []pkgcontainer.BindMount
+	LocalDir    string
 }
 
 // Spec runs the connector's spec command and returns its specification.
@@ -141,6 +142,7 @@ func (c *ConnectorClient) Read(ctx context.Context, image string, config json.Ra
 		NetworkMode: networkMode,
 		Labels:      labels,
 		ExtraMounts: limits.ExtraMounts,
+		LocalDir:    limits.LocalDir,
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("read: %w", err)
@@ -185,6 +187,7 @@ func (c *ConnectorClient) Write(ctx context.Context, image string, config json.R
 		NetworkMode: networkMode,
 		Labels:      labels,
 		ExtraMounts: limits.ExtraMounts,
+		LocalDir:    limits.LocalDir,
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("write: %w", err)

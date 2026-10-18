@@ -227,10 +227,35 @@ func (r *ContainerRunner) Run(ctx context.Context, opts RunOptions) (*RunResult,
 		}
 	}
 
-	// Clean up helper used on error paths.
+	// A container run without a caller-owned /local directory gets its own,
+	// removed together with the temp dir.
+	localDir := opts.LocalDir
+
+	var ownLocalDir string
+
+	if localDir == "" {
+		var err error
+
+		ownLocalDir, err = CreateLocalDir(r.tempDirRoot)
+		if err != nil {
+			if tempDir != "" {
+				_ = os.RemoveAll(tempDir)
+			}
+
+			return nil, fmt.Errorf("creating local dir: %w", err)
+		}
+
+		localDir = ownLocalDir
+	}
+
+	// Clean up helper used on error paths and once the container is done.
 	cleanup := func() {
 		if tempDir != "" {
 			_ = os.RemoveAll(tempDir)
+		}
+
+		if ownLocalDir != "" {
+			_ = os.RemoveAll(ownLocalDir)
 		}
 	}
 
@@ -266,6 +291,13 @@ func (r *ContainerRunner) Run(ctx context.Context, opts RunOptions) (*RunResult,
 			},
 		}
 	}
+
+	hostCfg.Mounts = append(hostCfg.Mounts, mount.Mount{
+		Type:     mount.TypeBind,
+		Source:   localDir,
+		Target:   "/local",
+		ReadOnly: false,
+	})
 
 	for _, m := range opts.ExtraMounts {
 		hostCfg.Mounts = append(hostCfg.Mounts, mount.Mount{
@@ -408,9 +440,7 @@ func (r *ContainerRunner) Run(ctx context.Context, opts RunOptions) (*RunResult,
 
 		attachResp.Close()
 
-		if tempDir != "" {
-			_ = os.RemoveAll(tempDir)
-		}
+		cleanup()
 
 		if errors.Is(copyErr, os.ErrDeadlineExceeded) {
 			_ = stdoutWriter.CloseWithError(fmt.Errorf("%w: no output for %s after exit", ErrOutputDrainTimeout, drainTimeout))

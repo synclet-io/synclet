@@ -39,3 +39,29 @@ func CreateTempDir(rootDir string, files map[string][]byte) (string, error) {
 
 	return dir, nil
 }
+
+// CreateLocalDir creates an empty directory under rootDir for a connector's
+// /local mount, where Airbyte connectors write their files. It is
+// world-writable because connector images run as users the host does not
+// know. rootDir follows the rules of CreateTempDir.
+func CreateLocalDir(rootDir string) (string, error) {
+	if rootDir != "" {
+		if err := os.MkdirAll(rootDir, 0o750); err != nil {
+			return "", fmt.Errorf("ensuring temp dir root %s: %w", rootDir, err)
+		}
+	}
+
+	dir, err := os.MkdirTemp(rootDir, "synclet-local-*")
+	if err != nil {
+		return "", fmt.Errorf("creating local dir: %w", err)
+	}
+
+	//nolint:gosec // G302: connector containers write here under an arbitrary uid.
+	if err := os.Chmod(dir, 0o777); err != nil {
+		_ = os.RemoveAll(dir)
+
+		return "", fmt.Errorf("making local dir writable: %w", err)
+	}
+
+	return dir, nil
+}

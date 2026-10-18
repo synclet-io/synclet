@@ -157,6 +157,7 @@ func newDockerCleanerJob(cfg *dockerExecutorConfig, cleaner *pipelineexecdocker.
 
 func newDockerSyncExecutor(
 	cfg *executorRuntimeConfig,
+	dockerCfg *dockerExecutorConfig,
 	backend pipelineexec.ExecutorBackend,
 	client *pipelineexecdocker.ConnectorClient,
 	logger *logging.Logger,
@@ -166,6 +167,7 @@ func newDockerSyncExecutor(
 		Reporter:        backend,
 		RuntimeDefaults: cfg.Runtime.defaults(),
 		IdleTimeout:     cfg.IdleTimeout,
+		TempDirRoot:     dockerCfg.TempDirRoot,
 		Logger:          logger,
 	})
 }

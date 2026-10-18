@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"time"
 
 	"github.com/go-pnp/go-pnp/logging"
@@ -38,6 +39,7 @@ type DockerSyncExecutor struct {
 	reporter        pipelineexec.SyncReporter
 	runtimeDefaults pipelineservice.RuntimeDefaults
 	idleTimeout     time.Duration
+	tempDirRoot     string
 	logger          *logging.Logger
 }
 
@@ -47,7 +49,10 @@ type DockerSyncExecutorParams struct {
 	Reporter        pipelineexec.SyncReporter
 	RuntimeDefaults pipelineservice.RuntimeDefaults
 	IdleTimeout     time.Duration
-	Logger          *logging.Logger
+	// TempDirRoot is where the job's /local directory is created; see
+	// NewContainerRunner.
+	TempDirRoot string
+	Logger      *logging.Logger
 }
 
 // NewDockerSyncExecutor creates a new sync executor.
@@ -57,6 +62,7 @@ func NewDockerSyncExecutor(params DockerSyncExecutorParams) *DockerSyncExecutor 
 		reporter:        params.Reporter,
 		runtimeDefaults: params.RuntimeDefaults,
 		idleTimeout:     params.IdleTimeout,
+		tempDirRoot:     params.TempDirRoot,
 		logger:          params.Logger.Named("sync-executor"),
 	}
 }
@@ -73,6 +79,14 @@ func (e *DockerSyncExecutor) Execute(ctx context.Context, bundle *pipelineexec.S
 		"synclet.io/connection-id": bundle.ConnectionID.String(),
 	}
 
+	// The source and destination of the job share one /local directory,
+	// removed after both containers are.
+	localDir, err := CreateLocalDir(e.tempDirRoot)
+	if err != nil {
+		return nil, fmt.Errorf("creating the job's local dir: %w", err)
+	}
+	defer func() { _ = os.RemoveAll(localDir) }()
+
 	// Resolve runtime config for source and set resource limits.
 	srcRuntimeCfg := pipelineservice.ResolveRuntimeConfig(e.runtimeDefaults, pipelineservice.ParseRuntimeConfig(&bundle.SourceRuntimeConfig))
 
@@ -84,6 +98,7 @@ func (e *DockerSyncExecutor) Execute(ctx context.Context, bundle *pipelineexec.S
 		CPULimit:    srcCPULimit,
 		NetworkMode: srcRuntimeCfg.DockerNetwork,
 		ExtraMounts: dockerVolumesToMounts(srcRuntimeCfg.DockerVolumes),
+		LocalDir:    localDir,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("starting source read: %w", err)
@@ -114,6 +129,7 @@ func (e *DockerSyncExecutor) Execute(ctx context.Context, bundle *pipelineexec.S
 		CPULimit:    destCPULimit,
 		NetworkMode: destRuntimeCfg.DockerNetwork,
 		ExtraMounts: dockerVolumesToMounts(destRuntimeCfg.DockerVolumes),
+		LocalDir:    localDir,
 	})
 	if err != nil {
 		_ = srcPipeWriter.Close()
