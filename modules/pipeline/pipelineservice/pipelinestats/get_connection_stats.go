@@ -115,10 +115,8 @@ func (uc *GetConnectionStats) Execute(ctx context.Context, params pipelineservic
 		}
 
 		result.Health = ComputeHealthStatus(lastStatus, schedule, *lastSyncAt, now)
-	} else if schedule != "" {
-		result.Health = pipelineservice.HealthHealthy
 	} else {
-		result.Health = pipelineservice.HealthDisabled
+		result.Health = pipelineservice.HealthHealthy
 	}
 
 	// Duration chart: last 20 jobs with duration.

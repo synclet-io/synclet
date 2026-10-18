@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import type { Destination } from '@entities/destination'
+import { useManagedConnectors } from '@entities/connector'
 import { useDestinations } from '@entities/destination'
 import { SButton, SEmptyState, SSkeleton } from '@shared/ui'
+import { computed } from 'vue'
+import { formatConnector } from './connectorLabel'
 
 defineProps<{
   destinationId: string
@@ -14,6 +17,8 @@ const emit = defineEmits<{
 }>()
 
 const { data: destinations, isLoading } = useDestinations()
+const { data: connectors } = useManagedConnectors()
+const connectorsById = computed(() => new Map((connectors.value ?? []).map(c => [c.id, c])))
 
 function selectDestination(d: Destination) {
   emit('update:destinationId', d.id)
@@ -58,7 +63,7 @@ function selectDestination(d: Destination) {
           {{ d.name }}
         </div>
         <div class="text-xs text-text-muted mt-1">
-          {{ d.managedConnectorId }}
+          {{ formatConnector(connectorsById.get(d.managedConnectorId)) }}
         </div>
       </button>
     </div>

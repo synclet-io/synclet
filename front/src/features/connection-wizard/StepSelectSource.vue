@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import type { Source } from '@entities/source'
+import { useManagedConnectors } from '@entities/connector'
 import { useSources } from '@entities/source'
 import { SButton, SEmptyState, SSkeleton } from '@shared/ui'
+import { computed } from 'vue'
+import { formatConnector } from './connectorLabel'
 
 defineProps<{
   sourceId: string
@@ -14,6 +17,8 @@ const emit = defineEmits<{
 }>()
 
 const { data: sources, isLoading } = useSources()
+const { data: connectors } = useManagedConnectors()
+const connectorsById = computed(() => new Map((connectors.value ?? []).map(c => [c.id, c])))
 
 function selectSource(s: Source) {
   emit('update:sourceId', s.id)
@@ -58,7 +63,7 @@ function selectSource(s: Source) {
           {{ s.name }}
         </div>
         <div class="text-xs text-text-muted mt-1">
-          {{ s.managedConnectorId }}
+          {{ formatConnector(connectorsById.get(s.managedConnectorId)) }}
         </div>
       </button>
     </div>

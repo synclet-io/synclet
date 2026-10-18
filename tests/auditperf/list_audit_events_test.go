@@ -207,3 +207,5 @@ func percentile(sorted []time.Duration, pct int) time.Duration {
 type existingUsers struct{}
 
 func (existingUsers) UserExists(context.Context, uuid.UUID) (bool, error) { return true, nil }
+
+func (existingUsers) UserEmail(context.Context, uuid.UUID) (string, error) { return "", nil }

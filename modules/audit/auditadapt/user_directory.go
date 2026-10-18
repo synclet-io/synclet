@@ -39,3 +39,19 @@ func (d *UserDirectory) UserExists(ctx context.Context, id uuid.UUID) (bool, err
 
 	return true, nil
 }
+
+// UserEmail returns the user's email, or "" when the account does not exist.
+func (d *UserDirectory) UserEmail(ctx context.Context, id uuid.UUID) (string, error) {
+	user, err := d.getUser.Execute(ctx, id)
+
+	var notFound authservice.NotFoundError
+	if errors.As(err, &notFound) {
+		return "", nil
+	}
+
+	if err != nil {
+		return "", fmt.Errorf("getting user: %w", err)
+	}
+
+	return user.Email, nil
+}

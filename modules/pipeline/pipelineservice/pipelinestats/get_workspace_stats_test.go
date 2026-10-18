@@ -117,7 +117,7 @@ func TestGetWorkspaceStats_MixedConnections(t *testing.T) {
 		healthy.ID:     pipelineservice.HealthHealthy,
 		failing.ID:     pipelineservice.HealthFailing,
 		neverSynced.ID: pipelineservice.HealthHealthy,
-		manual.ID:      pipelineservice.HealthDisabled,
+		manual.ID:      pipelineservice.HealthHealthy,
 		paused.ID:      pipelineservice.HealthDisabled,
 	}, healths)
 }

@@ -28,7 +28,7 @@ func validRecordParams() RecordAuditEventParams {
 
 func TestRecordAuditEvent_SendsRecordedEventToOutbox(t *testing.T) {
 	storage := newFakeStorage()
-	uc := NewRecordAuditEvent(storage, nil)
+	uc := NewRecordAuditEvent(storage, &fakeUserDirectory{}, nil)
 	params := validRecordParams()
 	before := time.Now()
 
@@ -59,9 +59,41 @@ func TestRecordAuditEvent_SendsRecordedEventToOutbox(t *testing.T) {
 	assert.False(t, event.CreatedAt.Before(before))
 }
 
+func TestRecordAuditEvent_UserActorWithoutLabelGetsEmail(t *testing.T) {
+	storage := newFakeStorage()
+	params := validRecordParams()
+	params.ActorLabel = ""
+	users := &fakeUserDirectory{emails: map[uuid.UUID]string{params.ActorID: "bob@example.com"}}
+
+	NewRecordAuditEvent(storage, users, nil).Execute(context.Background(), params)
+
+	require.Len(t, storage.outbox, 1)
+	data, ok := storage.outbox[0].Data.(*AuditEventRecordedData)
+	require.True(t, ok)
+	assert.Equal(t, "bob@example.com", data.Event.ActorLabel)
+}
+
+func TestRecordAuditEvent_KeepsGivenLabelAndSkipsNonUserActors(t *testing.T) {
+	labelled := validRecordParams()
+	system := validRecordParams()
+	system.ActorType = ActorTypeSystem
+	system.ActorLabel = ""
+	users := &fakeUserDirectory{emails: map[uuid.UUID]string{labelled.ActorID: "other@example.com", system.ActorID: "x@example.com"}}
+	storage := newFakeStorage()
+	uc := NewRecordAuditEvent(storage, users, nil)
+
+	uc.Execute(context.Background(), labelled)
+	uc.Execute(context.Background(), system)
+
+	require.Len(t, storage.outbox, 2)
+	assert.Equal(t, labelled.ActorLabel, storage.outbox[0].Data.(*AuditEventRecordedData).Event.ActorLabel)
+	assert.Empty(t, storage.outbox[1].Data.(*AuditEventRecordedData).Event.ActorLabel)
+	assert.Empty(t, users.lookups)
+}
+
 func TestRecordAuditEvent_EachEventGetsOwnID(t *testing.T) {
 	storage := newFakeStorage()
-	uc := NewRecordAuditEvent(storage, nil)
+	uc := NewRecordAuditEvent(storage, &fakeUserDirectory{}, nil)
 
 	uc.Execute(context.Background(), validRecordParams())
 	uc.Execute(context.Background(), validRecordParams())
@@ -87,7 +119,7 @@ func TestRecordAuditEvent_SkipsInvalidEnums(t *testing.T) {
 	for name, mutate := range cases {
 		t.Run(name, func(t *testing.T) {
 			storage := newFakeStorage()
-			uc := NewRecordAuditEvent(storage, nil)
+			uc := NewRecordAuditEvent(storage, &fakeUserDirectory{}, nil)
 			params := validRecordParams()
 			mutate(&params)
 
@@ -102,7 +134,7 @@ func TestRecordAuditEvent_SkipsInvalidEnums(t *testing.T) {
 func TestRecordAuditEvent_OutboxFailureIsSwallowed(t *testing.T) {
 	storage := newFakeStorage()
 	storage.outboxErr = errors.New("db down")
-	uc := NewRecordAuditEvent(storage, nil)
+	uc := NewRecordAuditEvent(storage, &fakeUserDirectory{}, nil)
 
 	uc.Execute(context.Background(), validRecordParams())
 

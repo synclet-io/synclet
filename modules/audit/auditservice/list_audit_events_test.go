@@ -103,6 +103,7 @@ func TestListAuditEvents_OffsetIsExact(t *testing.T) {
 
 type fakeUserDirectory struct {
 	existing map[uuid.UUID]bool
+	emails   map[uuid.UUID]string
 	lookups  []uuid.UUID
 }
 
@@ -110,6 +111,12 @@ func (f *fakeUserDirectory) UserExists(_ context.Context, id uuid.UUID) (bool, e
 	f.lookups = append(f.lookups, id)
 
 	return f.existing[id], nil
+}
+
+func (f *fakeUserDirectory) UserEmail(_ context.Context, id uuid.UUID) (string, error) {
+	f.lookups = append(f.lookups, id)
+
+	return f.emails[id], nil
 }
 
 func TestListAuditEvents_FlagsDeletedUserActors(t *testing.T) {

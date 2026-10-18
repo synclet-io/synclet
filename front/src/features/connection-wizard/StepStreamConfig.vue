@@ -231,8 +231,9 @@ function toggleExpand(s: StreamRow) {
   expandedStream.value = expandedStream.value === key ? null : key
 }
 
+// An empty field selection syncs every field of the stream.
 function selectedFieldCount(s: StreamRow): number {
-  return s.selectedFields.length
+  return s.selectedFields.length || totalFieldCount(s)
 }
 
 function totalFieldCount(s: StreamRow): number {

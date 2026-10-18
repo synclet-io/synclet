@@ -35,11 +35,12 @@ type RecordAuditEventParams struct {
 // that produced it.
 type RecordAuditEvent struct {
 	storage Storage
+	users   UserDirectory
 	logger  *logging.Logger
 }
 
-func NewRecordAuditEvent(storage Storage, logger *logging.Logger) *RecordAuditEvent {
-	return &RecordAuditEvent{storage: storage, logger: logger.Named("record-audit-event")}
+func NewRecordAuditEvent(storage Storage, users UserDirectory, logger *logging.Logger) *RecordAuditEvent {
+	return &RecordAuditEvent{storage: storage, users: users, logger: logger.Named("record-audit-event")}
 }
 
 func (uc *RecordAuditEvent) Execute(ctx context.Context, params RecordAuditEventParams) {
@@ -47,6 +48,10 @@ func (uc *RecordAuditEvent) Execute(ctx context.Context, params RecordAuditEvent
 		uc.logger.WithField("action", params.Action).WithField("resource_type", params.ResourceType).Error(ctx, "skipping audit event with invalid enum values")
 
 		return
+	}
+
+	if params.ActorType == ActorTypeUser && params.ActorLabel == "" {
+		params.ActorLabel = uc.userEmail(ctx, params.ActorID)
 	}
 
 	changes := auditutil.Diff(params.Before, params.After)
@@ -92,4 +97,17 @@ func (uc *RecordAuditEvent) Execute(ctx context.Context, params RecordAuditEvent
 // Record enqueues the audit event described by params.
 func (uc *RecordAuditEvent) Record(ctx context.Context, params RecordAuditEventParams) {
 	uc.Execute(ctx, params)
+}
+
+// userEmail resolves a user actor's email for the event's actor label; a failed lookup
+// leaves the label empty rather than dropping the event.
+func (uc *RecordAuditEvent) userEmail(ctx context.Context, userID uuid.UUID) string {
+	email, err := uc.users.UserEmail(ctx, userID)
+	if err != nil {
+		uc.logger.WithError(err).WithField("user_id", userID).Warn(ctx, "resolving audit actor email failed")
+
+		return ""
+	}
+
+	return email
 }

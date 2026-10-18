@@ -137,7 +137,7 @@ func (uc *GetWorkspaceStats) computeConnectionHealths(ctx context.Context, conne
 		if conn.Status == pipelineservice.ConnectionStatusActive {
 			if lastSyncAt != nil {
 				health = ComputeHealthStatus(lastStatus, schedule, *lastSyncAt, time.Now())
-			} else if schedule != "" {
+			} else {
 				health = pipelineservice.HealthHealthy // New connection, not yet synced.
 			}
 		}

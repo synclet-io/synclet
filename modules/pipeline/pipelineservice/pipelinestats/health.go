@@ -11,17 +11,16 @@ import (
 
 var cronParser = cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
 
-// ComputeHealthStatus determines a connection's health badge from its last job status,
-// cron schedule expression, and time of last sync. This is a pure function for testability.
+// ComputeHealthStatus determines an active connection's health badge from its last job status,
+// cron schedule expression, and time of last sync. A manual connection (empty schedule) is never
+// overdue, so only its last job status counts. This is a pure function for testability.
 func ComputeHealthStatus(lastJobStatus, schedule string, lastSyncAt, now time.Time) pipelineservice.Health {
-	// No schedule means manual-only connection -- treated as disabled.
-	if schedule == "" {
-		return pipelineservice.HealthDisabled
+	if strings.EqualFold(lastJobStatus, "failed") {
+		return pipelineservice.HealthFailing
 	}
 
-	// If the last sync failed, the connection is failing.
-	if strings.EqualFold(lastJobStatus, "Failed") || strings.EqualFold(lastJobStatus, "failed") {
-		return pipelineservice.HealthFailing
+	if schedule == "" {
+		return pipelineservice.HealthHealthy
 	}
 
 	sched, err := cronParser.Parse(schedule)

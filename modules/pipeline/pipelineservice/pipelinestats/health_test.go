@@ -16,9 +16,14 @@ func TestComputeHealthStatus(t *testing.T) {
 	now := time.Date(2026, 5, 17, 12, 0, 0, 0, time.UTC)
 	hourlyCron := "0 * * * *"
 
-	t.Run("empty schedule is treated as disabled (manual-only)", func(t *testing.T) {
-		got := pipelinestats.ComputeHealthStatus("completed", "", now.Add(-time.Hour), now)
-		assert.Equal(t, pipelineservice.HealthDisabled, got)
+	t.Run("manual connection with a completed last sync is healthy however long ago it ran", func(t *testing.T) {
+		got := pipelinestats.ComputeHealthStatus("completed", "", now.Add(-30*24*time.Hour), now)
+		assert.Equal(t, pipelineservice.HealthHealthy, got)
+	})
+
+	t.Run("manual connection with a failed last sync is failing", func(t *testing.T) {
+		got := pipelinestats.ComputeHealthStatus("failed", "", now.Add(-time.Hour), now)
+		assert.Equal(t, pipelineservice.HealthFailing, got)
 	})
 
 	t.Run("last job failed produces failing regardless of timing", func(t *testing.T) {

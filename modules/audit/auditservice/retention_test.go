@@ -16,7 +16,7 @@ var testConfig = Config{DefaultRetentionDays: 90, MaxRetentionDays: 365}
 
 func TestUpdateAuditRetention_RejectsOutOfBounds(t *testing.T) {
 	storage := newFakeStorage()
-	uc := NewUpdateAuditRetention(storage, testConfig, NewRecordAuditEvent(storage, nil))
+	uc := NewUpdateAuditRetention(storage, testConfig, NewRecordAuditEvent(storage, &fakeUserDirectory{}, nil))
 	workspaceID := uuid.New()
 
 	for _, days := range []int{0, testConfig.MaxRetentionDays + 1} {
@@ -32,7 +32,7 @@ func TestUpdateAuditRetention_RejectsOutOfBounds(t *testing.T) {
 
 func TestUpdateAuditRetention_AuditsChangeByUser(t *testing.T) {
 	storage := newFakeStorage()
-	uc := NewUpdateAuditRetention(storage, testConfig, NewRecordAuditEvent(storage, nil))
+	uc := NewUpdateAuditRetention(storage, testConfig, NewRecordAuditEvent(storage, &fakeUserDirectory{}, nil))
 	workspaceID := uuid.New()
 	userID := uuid.New()
 	storage.retention = []*AuditRetentionSetting{{WorkspaceID: workspaceID, RetentionDays: 30}}
@@ -54,7 +54,7 @@ func TestUpdateAuditRetention_AuditsChangeByUser(t *testing.T) {
 
 func TestUpdateAuditRetention_AuditsChangeBySystemWithDefaultBefore(t *testing.T) {
 	storage := newFakeStorage()
-	uc := NewUpdateAuditRetention(storage, testConfig, NewRecordAuditEvent(storage, nil))
+	uc := NewUpdateAuditRetention(storage, testConfig, NewRecordAuditEvent(storage, &fakeUserDirectory{}, nil))
 	workspaceID := uuid.New()
 
 	_, err := uc.Execute(context.Background(), UpdateAuditRetentionParams{WorkspaceID: workspaceID, RetentionDays: 45})
@@ -81,7 +81,7 @@ func singleRecordedAuditEvent(t *testing.T, storage *fakeStorage) *AuditEvent {
 func TestUpdateAuditRetention_AcceptsBounds(t *testing.T) {
 	for _, days := range []int{1, testConfig.MaxRetentionDays} {
 		storage := newFakeStorage()
-		uc := NewUpdateAuditRetention(storage, testConfig, NewRecordAuditEvent(storage, nil))
+		uc := NewUpdateAuditRetention(storage, testConfig, NewRecordAuditEvent(storage, &fakeUserDirectory{}, nil))
 		workspaceID := uuid.New()
 
 		result, err := uc.Execute(context.Background(), UpdateAuditRetentionParams{WorkspaceID: workspaceID, RetentionDays: days})
@@ -96,7 +96,7 @@ func TestUpdateAuditRetention_AcceptsBounds(t *testing.T) {
 
 func TestUpdateAuditRetention_OverwritesExistingSetting(t *testing.T) {
 	storage := newFakeStorage()
-	uc := NewUpdateAuditRetention(storage, testConfig, NewRecordAuditEvent(storage, nil))
+	uc := NewUpdateAuditRetention(storage, testConfig, NewRecordAuditEvent(storage, &fakeUserDirectory{}, nil))
 	workspaceID := uuid.New()
 
 	_, err := uc.Execute(context.Background(), UpdateAuditRetentionParams{WorkspaceID: workspaceID, RetentionDays: 30})

@@ -1,11 +1,10 @@
-import type { WorkspaceStats } from '@entities/stats'
 import type { ComputedRef, MaybeRef } from 'vue'
 import { useAuth } from '@entities/auth'
 import { listConnections } from '@entities/connection/api'
 import { listDestinations } from '@entities/destination/api'
+import { listJobs } from '@entities/job/api'
 import { listSources } from '@entities/source/api'
-import { getWorkspaceStats } from '@entities/stats/api'
-import { connectionKeys, destinationKeys, sourceKeys, statsKeys } from '@shared/lib/queryKeys'
+import { connectionKeys, destinationKeys, jobKeys, sourceKeys } from '@shared/lib/queryKeys'
 import { useQuery } from '@tanstack/vue-query'
 import { computed, ref, watch } from 'vue'
 
@@ -48,12 +47,6 @@ interface OnboardingSignals {
   hasDestination: MaybeRef<boolean>
   hasConnection: MaybeRef<boolean>
   hasSuccessfulSync: MaybeRef<boolean>
-}
-
-export function hasSuccessfulSync(stats: Pick<WorkspaceStats, 'totalSyncs' | 'failedSyncs'> | undefined): boolean {
-  if (!stats)
-    return false
-  return stats.totalSyncs - stats.failedSyncs > 0
 }
 
 /**
@@ -164,9 +157,9 @@ export function useOnboardingState(): OnboardingState {
     queryFn: () => listConnections(probe),
     enabled,
   })
-  const { data: stats } = useQuery({
-    queryKey: computed(() => statsKeys.workspace(workspaceId.value, '30d')),
-    queryFn: () => getWorkspaceStats('30d'),
+  const { data: completedJobsPage } = useQuery({
+    queryKey: computed(() => [...jobKeys.list(workspaceId.value, ''), 'onboarding']),
+    queryFn: () => listJobs('', { ...probe, statuses: ['completed'] }),
     enabled,
   })
 
@@ -199,7 +192,7 @@ export function useOnboardingState(): OnboardingState {
       hasSource: computed(() => (sourcesPage.value?.total ?? 0) > 0),
       hasDestination: computed(() => (destinationsPage.value?.total ?? 0) > 0),
       hasConnection: computed(() => (connectionsPage.value?.total ?? 0) > 0),
-      hasSuccessfulSync: computed(() => hasSuccessfulSync(stats.value)),
+      hasSuccessfulSync: computed(() => (completedJobsPage.value?.total ?? 0) > 0),
     },
     dismissed,
   )

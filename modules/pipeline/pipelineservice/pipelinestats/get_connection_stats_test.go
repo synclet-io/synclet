@@ -131,10 +131,22 @@ func TestGetConnectionStats_Health(t *testing.T) {
 		assert.False(t, stats.queriedLastJob)
 	})
 
-	t.Run("manual connection without syncs is disabled", func(t *testing.T) {
+	t.Run("active manual connection without syncs is healthy", func(t *testing.T) {
 		result := executeConnectionStats(t, newActiveConnection(workspaceID, nil), &fakeStatsStorage{}, pipelineservice.TimeRange24h)
 
-		assert.Equal(t, pipelineservice.HealthDisabled, result.Health)
+		assert.Equal(t, pipelineservice.HealthHealthy, result.Health)
+	})
+
+	t.Run("active manual connection after a completed sync is healthy", func(t *testing.T) {
+		lastSync := minuteAligned()
+		stats := &fakeStatsStorage{
+			lastSyncAt:  &lastSync,
+			lastJobInfo: &pipelineservice.LastJobInfo{Status: "completed", CompletedAt: &lastSync},
+		}
+
+		result := executeConnectionStats(t, newActiveConnection(workspaceID, nil), stats, pipelineservice.TimeRange24h)
+
+		assert.Equal(t, pipelineservice.HealthHealthy, result.Health)
 	})
 
 	t.Run("recent successful sync is healthy", func(t *testing.T) {

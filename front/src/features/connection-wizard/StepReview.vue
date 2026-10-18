@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type { ManagedConnector } from '@entities/connector'
 import type { WizardState } from './useWizardState'
 import { useManagedConnector } from '@entities/connector'
 import { SButton, SCard } from '@shared/ui'
 import { computed } from 'vue'
+import { formatConnector } from './connectorLabel'
 
 const props = defineProps<{
   state: WizardState
@@ -15,12 +15,6 @@ defineEmits<{
 
 const { data: sourceConnector } = useManagedConnector(computed(() => props.state.source?.managedConnectorId ?? ''))
 const { data: destinationConnector } = useManagedConnector(computed(() => props.state.destination?.managedConnectorId ?? ''))
-
-function formatConnector(connector: ManagedConnector | null | undefined): string {
-  if (!connector)
-    return '-'
-  return connector.dockerTag ? `${connector.name} (${connector.dockerTag})` : connector.name
-}
 
 function formatSchedule(schedule: string): string {
   return schedule || 'Manual'
@@ -71,7 +65,7 @@ function formatNamespace(ns: string): string {
             Connector
           </dt>
           <dd class="text-heading">
-            {{ formatConnector(sourceConnector) }}
+            {{ formatConnector(sourceConnector) || '-' }}
           </dd>
         </div>
       </dl>
@@ -101,7 +95,7 @@ function formatNamespace(ns: string): string {
             Connector
           </dt>
           <dd class="text-heading">
-            {{ formatConnector(destinationConnector) }}
+            {{ formatConnector(destinationConnector) || '-' }}
           </dd>
         </div>
       </dl>
