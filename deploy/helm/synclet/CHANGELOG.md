@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/synclet-io/synclet/compare/synclet-helm-v0.2.0...synclet-helm-v0.3.0) (2026-10-18)
+
+
+### Features
+
+* **executor:** owner label scopes Docker orphan cleanup to one executor ([c2d3a26](https://github.com/synclet-io/synclet/commit/c2d3a263cf3e06296e661a6323011d715087da69))
+
 ## [0.2.0](https://github.com/synclet-io/synclet/compare/synclet-helm-v0.1.3...synclet-helm-v0.2.0) (2026-10-17)
 
 
