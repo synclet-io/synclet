@@ -190,7 +190,11 @@ func (uc *ClaimJobBundle) loadBundle(ctx context.Context, job *pipelineservice.J
 
 	// 8. Get sync state.
 	stateBlob, err := uc.getSyncState.Execute(ctx, pipelinestate.GetSyncStateParams{
-		ConnectionID: job.ConnectionID,
+		ConnectionID:          job.ConnectionID,
+		SourceCatalog:         catalog,
+		NamespaceDefinition:   conn.NamespaceDefinition,
+		CustomNamespaceFormat: conn.CustomNamespaceFormat,
+		StreamPrefix:          conn.StreamPrefix,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("loading state: %w", err)

@@ -16,6 +16,15 @@ import (
 // GetSyncStateParams holds parameters for retrieving sync state.
 type GetSyncStateParams struct {
 	ConnectionID uuid.UUID
+
+	// SourceCatalog and the naming settings below describe the connection the
+	// state is read for. When SourceCatalog is set, a stored descriptor that
+	// matches no catalog stream but is the destination name exactly one catalog
+	// stream gets under these settings is handed back under that stream's name.
+	SourceCatalog         *protocol.ConfiguredAirbyteCatalog
+	NamespaceDefinition   pipelineservice.NamespaceDefinition
+	CustomNamespaceFormat *string
+	StreamPrefix          *string
 }
 
 // GetSyncState retrieves the raw state blob for a connection.
@@ -67,6 +76,10 @@ func (uc *GetSyncState) Execute(ctx context.Context, params GetSyncStateParams) 
 		return messages[0].Data, nil
 	}
 
+	if params.SourceCatalog != nil {
+		messages = restoreSourceNames(messages, params)
+	}
+
 	// Airbyte CDK expects UPPERCASE type values ("STREAM", "GLOBAL").
 	// We store lowercase for the Postgres enum, so convert back before
 	// returning to connectors.
@@ -80,4 +93,96 @@ func (uc *GetSyncState) Execute(ctx context.Context, params GetSyncStateParams) 
 	}
 
 	return data, nil
+}
+
+// restoreSourceNames hands state stored under destination names back under the
+// source catalog's names. A descriptor that is itself a catalog stream is never
+// mapped, and a mapped entry is dropped when the blob also holds an entry under
+// that stream's own name.
+func restoreSourceNames(messages []*protocol.AirbyteStateMessage, params GetSyncStateParams) []*protocol.AirbyteStateMessage {
+	rewritten := &protocol.ConfiguredAirbyteCatalog{
+		Streams: append([]protocol.ConfiguredAirbyteStream(nil), params.SourceCatalog.Streams...),
+	}
+	pipelineservice.ApplyNamespaceAndPrefix(rewritten, params.NamespaceDefinition, params.CustomNamespaceFormat, params.StreamPrefix)
+
+	source := make(map[protocol.StreamDescriptor]bool, len(params.SourceCatalog.Streams))
+	toSource := make(map[protocol.StreamDescriptor]protocol.StreamDescriptor, len(params.SourceCatalog.Streams))
+	ambiguous := make(map[protocol.StreamDescriptor]bool)
+
+	for i, stream := range params.SourceCatalog.Streams {
+		src := protocol.StreamDescriptor{Name: stream.Stream.Name, Namespace: stream.Stream.Namespace}
+		dst := protocol.StreamDescriptor{Name: rewritten.Streams[i].Stream.Name, Namespace: rewritten.Streams[i].Stream.Namespace}
+
+		source[src] = true
+
+		if _, taken := toSource[dst]; taken {
+			ambiguous[dst] = true
+		}
+
+		toSource[dst] = src
+	}
+
+	// restore returns the descriptor to hand to the source and whether the
+	// entry is kept: entries that collide with an entry under the stream's own
+	// name are not.
+	restore := func(desc protocol.StreamDescriptor, present map[protocol.StreamDescriptor]bool) (protocol.StreamDescriptor, bool) {
+		if source[desc] || ambiguous[desc] {
+			return desc, true
+		}
+
+		src, ok := toSource[desc]
+		if !ok {
+			return desc, true
+		}
+
+		return src, !present[src]
+	}
+
+	present := make(map[protocol.StreamDescriptor]bool)
+
+	for _, msg := range messages {
+		if msg.Stream != nil && source[msg.Stream.StreamDescriptor] {
+			present[msg.Stream.StreamDescriptor] = true
+		}
+	}
+
+	restored := make([]*protocol.AirbyteStateMessage, 0, len(messages))
+
+	for _, msg := range messages {
+		switch {
+		case msg.Stream != nil:
+			desc, keep := restore(msg.Stream.StreamDescriptor, present)
+			if !keep {
+				continue
+			}
+
+			msg.Stream.StreamDescriptor = desc
+		case msg.Global != nil:
+			globalPresent := make(map[protocol.StreamDescriptor]bool)
+
+			for _, streamState := range msg.Global.StreamStates {
+				if source[streamState.StreamDescriptor] {
+					globalPresent[streamState.StreamDescriptor] = true
+				}
+			}
+
+			streamStates := make([]protocol.AirbyteStreamState, 0, len(msg.Global.StreamStates))
+
+			for _, streamState := range msg.Global.StreamStates {
+				desc, keep := restore(streamState.StreamDescriptor, globalPresent)
+				if !keep {
+					continue
+				}
+
+				streamState.StreamDescriptor = desc
+				streamStates = append(streamStates, streamState)
+			}
+
+			msg.Global.StreamStates = streamStates
+		}
+
+		restored = append(restored, msg)
+	}
+
+	return restored
 }

@@ -15,7 +15,7 @@ import (
 // RunConfig holds optional configuration for the routing session.
 type RunConfig struct {
 	IdleTimeout time.Duration      // Kill if no RECORD for this duration. 0 = disabled.
-	Rewriter    *NamespaceRewriter // Rewrite namespace/prefix on RECORD and STATE messages. nil = no rewriting.
+	Rewriter    *NamespaceRewriter // Rewrite namespace/prefix on messages to the destination and restore source names on confirmed STATE. nil = no rewriting.
 }
 
 // Stats holds the final statistics from a routing session.
@@ -59,7 +59,7 @@ func Run(ctx context.Context, sourceStdout io.Reader, destStdin io.WriteCloser, 
 	go func() {
 		defer wg.Done()
 
-		destErr = readDestOutput(ctx, destReader, handler, stats, logger)
+		destErr = readDestOutput(ctx, destReader, handler, cfg.Rewriter, logger)
 	}()
 
 	// Read source output, route messages to dest.
@@ -258,8 +258,9 @@ func routeSourceMessages(ctx context.Context, reader *protocol.MessageReader, wr
 }
 
 // readDestOutput reads messages from the destination's stdout and dispatches
-// side effects to the handler.
-func readDestOutput(ctx context.Context, reader *protocol.MessageReader, handler Handler, _ *internalStats, logger *logging.Logger) error {
+// side effects to the handler. Confirmed STATE carries the source catalog's
+// stream names when rewriter is set.
+func readDestOutput(ctx context.Context, reader *protocol.MessageReader, handler Handler, rewriter *NamespaceRewriter, logger *logging.Logger) error {
 	for {
 		msg, err := reader.Read()
 		if err != nil {
@@ -279,6 +280,10 @@ func readDestOutput(ctx context.Context, reader *protocol.MessageReader, handler
 		switch msg.Type {
 		case protocol.MessageTypeState:
 			if msg.State != nil {
+				if rewriter != nil {
+					rewriter.RestoreState(msg.State)
+				}
+
 				if err := handler.OnStateConfirmed(ctx, msg.State); err != nil {
 					logger.WithError(err).Error(ctx, "handler OnStateConfirmed error")
 				}
