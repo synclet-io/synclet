@@ -52,6 +52,7 @@ func TestTestedWith(t *testing.T) {
 	faker := twImage{"airbyte/source-faker", "6.2.38"}
 	sourcePostgres := twImage{"airbyte/source-postgres", "3.8.7"}
 	destinationPostgres := twImage{"airbyte/destination-postgres", "3.0.23"}
+	destinationDevNull := twImage{"airbyte/destination-dev-null", "0.7.24"}
 	destinationDuckDB := twImage{"airbyte/destination-duckdb", "0.6.0"}
 	fakerConfig := map[string]any{"count": 100, "seed": 1, "records_per_slice": 1000, "always_updated": false, "parallelism": 1}
 
@@ -82,6 +83,13 @@ func TestTestedWith(t *testing.T) {
 			sourceConfig:      fakerConfig,
 			destinationConfig: map[string]any{"destination_path": "/local/destination.duckdb", "schema": "x"},
 			streams:           []streamOpt{{Name: "users", SyncMode: "incremental", CursorField: "updated_at", DestinationSyncMode: "append"}},
+			recordsRead:       []int64{100, 0},
+		},
+		{
+			name: "faker-dev-null", source: faker, destination: destinationDevNull,
+			sourceConfig:      fakerConfig,
+			destinationConfig: map[string]any{"test_destination": map[string]any{"test_destination_type": "SILENT"}},
+			streams:           []streamOpt{{Name: "users", SyncMode: "full_refresh", DestinationSyncMode: "overwrite"}},
 			recordsRead:       []int64{100, 0},
 		},
 	}

@@ -151,7 +151,7 @@ func (r *NamespaceRewriter) restoreDescriptor(desc *protocol.StreamDescriptor) {
 }
 
 // RewriteTrace rewrites stream descriptors in TRACE messages (stream_status,
-// estimate, error) so the destination can match them against its catalog.
+// error) so the destination can match them against its catalog.
 // No-op if msg.Trace is nil.
 func (r *NamespaceRewriter) RewriteTrace(msg *protocol.AirbyteMessage) {
 	if msg.Trace == nil {
@@ -162,17 +162,6 @@ func (r *NamespaceRewriter) RewriteTrace(msg *protocol.AirbyteMessage) {
 	case protocol.TraceTypeStreamStatus:
 		if msg.Trace.StreamStatus != nil {
 			r.rewriteDescriptor(&msg.Trace.StreamStatus.StreamDescriptor)
-		}
-	case protocol.TraceTypeEstimate:
-		if msg.Trace.Estimate != nil {
-			src := streamKey{namespace: msg.Trace.Estimate.Namespace, name: msg.Trace.Estimate.Name}
-			if target, ok := r.mapping[src]; ok {
-				msg.Trace.Estimate.Name = target.name
-				msg.Trace.Estimate.Namespace = target.namespace
-			} else {
-				msg.Trace.Estimate.Name = r.rewriteName(msg.Trace.Estimate.Name)
-				msg.Trace.Estimate.Namespace = r.rewriteNamespace(msg.Trace.Estimate.Namespace)
-			}
 		}
 	case protocol.TraceTypeError:
 		if msg.Trace.Error != nil && msg.Trace.Error.StreamDescriptor != nil {

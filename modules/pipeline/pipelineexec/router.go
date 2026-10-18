@@ -219,6 +219,11 @@ func routeSourceMessages(ctx context.Context, reader *protocol.MessageReader, wr
 					if err := handler.OnLog(ctx, formatTraceLine("[src]", msg.Trace)); err != nil {
 						logger.WithError(err).Error(ctx, "failed to handle trace log")
 					}
+				case protocol.TraceTypeEstimate:
+					// Estimate traces are logged and not forwarded to the destination.
+					if err := handler.OnLog(ctx, formatTraceLine("[src]", msg.Trace)); err != nil {
+						logger.WithError(err).Error(ctx, "failed to handle trace log")
+					}
 				case protocol.TraceTypeError:
 					// Error traces are dispatched to handler AND forwarded to dest.
 					if err := handler.OnSourceTrace(ctx, msg.Trace); err != nil {
@@ -237,7 +242,7 @@ func routeSourceMessages(ctx context.Context, reader *protocol.MessageReader, wr
 						return err
 					}
 				default:
-					// Other traces (estimate, stream_status) are forwarded to dest.
+					// Stream status traces and trace types not handled above are forwarded to dest.
 					if cfg.Rewriter != nil {
 						cfg.Rewriter.RewriteTrace(msg)
 					}

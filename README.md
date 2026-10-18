@@ -451,6 +451,7 @@ These pairs were run end to end through Synclet 0.6.0 (`main` at `1b02969`) on 2
 | `airbyte/source-faker:6.2.38` | `airbyte/destination-postgres:3.0.23` | `users`, incremental, append | Passed: 100 records; the second run read 0 new records |
 | `airbyte/source-postgres:3.8.7` | `airbyte/destination-postgres:3.0.23` | `public.cities`, incremental on `id`, append | Passed: 250 records; the second run re-read the row at the cursor |
 | `airbyte/source-faker:6.2.38` | `airbyte/destination-postgres:3.0.23` | `users`, full refresh, overwrite | First run passed; the repeat run left the table empty (known issue) |
+| `airbyte/source-faker:6.2.38` | `airbyte/destination-dev-null:0.7.24` | `users`, full refresh, overwrite | Passed: 100 records; the repeat run read 0 records (known issue) |
 
 The matrix is produced by [`tests/e2e/tested_with_test.go`](tests/e2e/tested_with_test.go), an opt-in end-to-end test. To regenerate it, run `task e2e:tested-with` with `E2E_DATABASE_URL` pointing at a PostgreSQL that connector containers can reach through `TESTED_WITH_PG_HOST` (default `host.docker.internal`); the test logs one `TESTED-WITH` line per run.
 
