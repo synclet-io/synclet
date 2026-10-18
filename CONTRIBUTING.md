@@ -37,7 +37,7 @@ The frontend uses Bun only; please don't commit `package-lock.json` or `yarn.loc
 | `task proto` | Regenerates protobuf code (`buf generate`) |
 | `task boilerplate-go` | Regenerates domain models and storage from the model definitions |
 | `task migrate:up` | Applies database migrations |
-| `task e2e` | End-to-end tests (needs Docker) |
+| `task e2e` | End-to-end tests (needs Docker and Mailpit) |
 | `cd front && bun run test:run` | Frontend unit tests (Vitest) |
 
 Tests that need PostgreSQL read `TEST_DATABASE_DSN` and are skipped when it is unset, so `task test` alone does not run them. `task test:db` starts the dev PostgreSQL from `docker-compose.dev.yml`, creates the `synclet_test` database there if it is missing and runs the whole suite with `TEST_DATABASE_DSN` pointing at it. Set `POSTGRES_PORT` when port 5432 is taken, or set `TEST_DATABASE_DSN` yourself to use another database; arguments after `--` go to `go test`:
@@ -46,6 +46,13 @@ Tests that need PostgreSQL read `TEST_DATABASE_DSN` and are skipped when it is u
 task test:db
 POSTGRES_PORT=5438 task test:db -- -count=1
 TEST_DATABASE_DSN='postgres://user:pass@localhost:5432/synclet_test?sslmode=disable' task test:db
+```
+
+`task e2e` runs against the database in `E2E_DATABASE_URL` and expects a Mailpit on `localhost:8025` (API) and `localhost:1025` (SMTP) for the password reset test. When :8025 is not Mailpit, start one on other ports and set `E2E_MAILPIT_URL` and `E2E_MAILPIT_SMTP_PORT`:
+
+```bash
+docker run -d -p 18025:8025 -p 11025:1025 axllent/mailpit:v1.27
+E2E_MAILPIT_URL=http://localhost:18025 E2E_MAILPIT_SMTP_PORT=11025 task e2e
 ```
 
 ## Code layout

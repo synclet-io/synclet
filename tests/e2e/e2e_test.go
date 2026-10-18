@@ -141,21 +141,11 @@ func TestE2E_IncrementalSync(t *testing.T) {
 			require.NoError(t, result2.Err, "run 2 should complete without error")
 			assert.Equal(t, int64(30), result2.RecordsRead, "run 2 should read only 30 records (resumed)")
 
-			// Verify stream state reflects resumed cursor position.
-			if states := result2.StreamStates; states != nil {
-				stateKey := "public.events"
-				state, ok := states[stateKey]
-				if assert.True(t, ok, "stream state for %q should exist", stateKey) {
-					cursor, ok := state["cursor"]
-					if assert.True(t, ok, "cursor should exist in state") {
-						// Cursor should be 50+30=80 (started at 50, added 30).
-						cursorVal, ok := cursor.(float64)
-						if assert.True(t, ok, "cursor should be a number") {
-							assert.GreaterOrEqual(t, cursorVal, float64(50), "cursor should reflect resumed position")
-						}
-					}
-				}
-			}
+			require.NotNil(t, result2.StreamStates, "run 2 should leave stream states")
+
+			state, ok := result2.StreamStates["public.events"]
+			require.True(t, ok, "stream state for public.events should exist")
+			assert.Equal(t, float64(80), state["cursor"], "cursor should be 50+30")
 		})
 	}
 }

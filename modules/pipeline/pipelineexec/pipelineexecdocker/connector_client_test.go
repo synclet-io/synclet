@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 	"testing"
@@ -269,4 +270,34 @@ func TestConnectorClientRedactsSecrets(t *testing.T) {
 		require.ErrorAs(t, err, &exitErr)
 		assert.Equal(t, "password=***", exitErr.Stderr)
 	})
+}
+
+func TestConnectorClientDrainTimeoutCarriesExit(t *testing.T) {
+	drainErr := fmt.Errorf("%w: no output for 30s after exit", ErrOutputDrainTimeout)
+
+	stdoutReader, stdoutWriter := io.Pipe()
+	go func() {
+		_, _ = stdoutWriter.Write([]byte(`{"type":"LOG","log":{"level":"INFO","message":"x"}}` + "\n"))
+		_ = stdoutWriter.CloseWithError(drainErr)
+	}()
+
+	result := finishedRunResult("", "killed by oom", 137)
+	result.Stdout = stdoutReader
+
+	runner := &mockContainerRunner{runResults: []*pkgcontainer.RunResult{result}}
+
+	stdout, cleanup, err := NewConnectorClient(runner).Read(context.Background(), "img", json.RawMessage(`{}`), &protocol.ConfiguredAirbyteCatalog{}, nil, nil, ResourceLimits{})
+	require.NoError(t, err)
+
+	defer cleanup()
+
+	_, err = io.ReadAll(stdout)
+
+	require.ErrorIs(t, err, ErrOutputDrainTimeout)
+
+	var exitErr *pipelineservice.ExitCodeError
+	require.ErrorAs(t, err, &exitErr)
+	assert.Equal(t, 137, exitErr.ExitCode)
+	assert.Equal(t, "source", exitErr.Role)
+	assert.Equal(t, "killed by oom", exitErr.Stderr)
 }

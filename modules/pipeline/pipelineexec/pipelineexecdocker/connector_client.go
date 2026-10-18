@@ -228,23 +228,32 @@ func newExitAwareReader(stdout, stderr io.ReadCloser, done <-chan struct{}, exit
 
 func (r *exitAwareReader) Read(p []byte) (int, error) {
 	n, err := r.stdout.Read(p)
-	if err == io.EOF {
+
+	switch {
+	case err == io.EOF:
 		// Stdout closed — wait for container to fully exit.
 		<-r.done
 
 		if *r.exitCode != 0 {
-			stderrContent, _ := io.ReadAll(r.stderr)
-			stderrStr := truncateString(r.redactor.Redact(string(bytes.TrimSpace(stderrContent))), 1024)
-
-			return n, &pipelineservice.ExitCodeError{
-				ExitCode: *r.exitCode,
-				Role:     r.role,
-				Stderr:   stderrStr,
-			}
+			return n, r.exitError()
 		}
+	case errors.Is(err, ErrOutputDrainTimeout):
+		<-r.done
+
+		return n, fmt.Errorf("%w: %w", err, r.exitError())
 	}
 
 	return n, err
+}
+
+func (r *exitAwareReader) exitError() *pipelineservice.ExitCodeError {
+	stderrContent, _ := io.ReadAll(r.stderr)
+
+	return &pipelineservice.ExitCodeError{
+		ExitCode: *r.exitCode,
+		Role:     r.role,
+		Stderr:   truncateString(r.redactor.Redact(string(bytes.TrimSpace(stderrContent))), 1024),
+	}
 }
 
 func (r *exitAwareReader) Close() error {

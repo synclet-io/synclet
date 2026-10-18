@@ -40,7 +40,10 @@ type manifest struct {
 }
 
 type container struct {
-	Name           string `yaml:"name"`
+	Name string `yaml:"name"`
+	Env  []struct {
+		Name string `yaml:"name"`
+	} `yaml:"env"`
 	LivenessProbe  *probe `yaml:"livenessProbe"`
 	ReadinessProbe *probe `yaml:"readinessProbe"`
 }
@@ -256,4 +259,24 @@ func TestChart_DistributedPodsWaitForDatabase(t *testing.T) {
 	assert.Equal(t, []string{"migrate"}, inits(r, "t-synclet-server"))
 	assert.Equal(t, []string{"migrate"}, inits(r, "t-synclet-jobs"))
 	assert.Empty(t, inits(r, "t-synclet-executor"))
+}
+
+func TestChart_ExecutorGetsOnlyExecutorSecrets(t *testing.T) {
+	envNames := func(c container) []string {
+		names := make([]string, 0, len(c.Env))
+		for _, e := range c.Env {
+			names = append(names, e.Name)
+		}
+
+		return names
+	}
+
+	r := renderChart(t, "--set", "mode=distributed")
+
+	assert.Equal(t, []string{"EXECUTOR_API_TOKEN"}, envNames(r.get(t, "Deployment", "t-synclet-executor").container(t, "executor")))
+
+	server := envNames(r.get(t, "Deployment", "t-synclet-server").container(t, "synclet"))
+	assert.Contains(t, server, "DB_DSN")
+	assert.Contains(t, server, "PIPELINE_EXECUTOR_API_TOKEN")
+	assert.NotContains(t, server, "EXECUTOR_API_TOKEN")
 }

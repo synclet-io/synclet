@@ -462,7 +462,7 @@ key: internal-api-secret
 {{- end }}
 
 {{/*
-Common secret env vars shared across all deployments.
+Secret env vars of the control-plane deployments (server and jobs).
 */}}
 {{- define "synclet.secretEnvVars" -}}
 - name: AUTH_JWT_SECRET
@@ -567,12 +567,16 @@ Common secret env vars shared across all deployments.
       {{- end }}
 {{- end }}
 {{- end }}
-{{- if eq .Values.mode "distributed" }}
+{{- end }}
+
+{{/*
+Secret env vars of executor pods: only the token they authenticate to the control plane with.
+*/}}
+{{- define "synclet.executorSecretEnvVars" -}}
 - name: EXECUTOR_API_TOKEN
   valueFrom:
     secretKeyRef:
       {{- include "synclet.internalApi.secretRef" . | nindent 6 }}
-{{- end }}
 {{- end }}
 
 {{/*

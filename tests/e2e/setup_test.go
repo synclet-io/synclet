@@ -262,6 +262,8 @@ func truncateTestTables(t *testing.T) {
 		"pipeline.connections",
 		"pipeline.sources",
 		"pipeline.destinations",
+		"pipeline.managed_connectors",
+		"secret.secrets",
 		"workspace.workspace_members",
 		"workspace.workspace_invites",
 		"workspace.workspaces",
