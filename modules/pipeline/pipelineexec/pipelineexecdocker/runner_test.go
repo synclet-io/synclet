@@ -1,17 +1,23 @@
 package pipelineexecdocker
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	dockercontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/stdcopy"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -181,4 +187,188 @@ func TestContainerRunner_Run_StampsOwnerLabel(t *testing.T) {
 	require.NotNil(t, created, "Run did not create a container")
 	assert.Equal(t, "self", created.Labels[OwnerLabel])
 	assert.Equal(t, "true", created.Labels["synclet.io/managed"])
+}
+
+// fakeAttachDaemon serves the Docker API calls Run makes. The container exits
+// as soon as it starts: /wait answers immediately and exited is closed. attach
+// gets the hijacked connection and its buffered reader once the client switched
+// protocols.
+func fakeAttachDaemon(t *testing.T, attach func(conn net.Conn, rw *bufio.ReadWriter, exited <-chan struct{})) *client.Client {
+	t.Helper()
+
+	exited := make(chan struct{})
+
+	var exitOnce sync.Once
+
+	daemon := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/containers/create"):
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"Id":"ctr-1","Warnings":[]}`))
+		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/attach"):
+			conn, rw, err := w.(http.Hijacker).Hijack()
+			if err != nil {
+				t.Errorf("hijack: %v", err)
+
+				return
+			}
+			defer func() { _ = conn.Close() }()
+
+			_, _ = rw.WriteString("HTTP/1.1 101 UPGRADED\r\nContent-Type: application/vnd.docker.raw-stream\r\nConnection: Upgrade\r\nUpgrade: tcp\r\n\r\n")
+			_ = rw.Flush()
+
+			attach(conn, rw, exited)
+		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/start"):
+			w.WriteHeader(http.StatusNoContent)
+		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/wait"):
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"StatusCode":0}`))
+			w.(http.Flusher).Flush()
+			exitOnce.Do(func() { close(exited) })
+		default:
+			http.Error(w, "unsupported in test", http.StatusInternalServerError)
+		}
+	}))
+	t.Cleanup(daemon.Close)
+
+	cli, err := client.NewClientWithOpts(
+		client.WithHost("tcp://"+strings.TrimPrefix(daemon.URL, "http://")),
+		client.WithVersion("1.47"),
+	)
+	require.NoError(t, err)
+
+	return cli
+}
+
+func recordLines(from, to int) string {
+	var sb strings.Builder
+	for i := from; i < to; i++ {
+		fmt.Fprintf(&sb, "{\"type\":\"RECORD\",\"n\":%d}\n", i)
+	}
+
+	return sb.String()
+}
+
+func TestContainerRunner_Run_DrainsOutputAfterExit(t *testing.T) {
+	cli := fakeAttachDaemon(t, func(_ net.Conn, rw *bufio.ReadWriter, exited <-chan struct{}) {
+		stdout := stdcopy.NewStdWriter(rw, stdcopy.Stdout)
+
+		_, _ = stdout.Write([]byte(recordLines(0, 10)))
+		_ = rw.Flush()
+
+		<-exited
+
+		// The rest of the output reaches the client only after the runner has
+		// seen the exit and closed stdin to the container.
+		_, _ = io.Copy(io.Discard, rw)
+
+		time.Sleep(100 * time.Millisecond)
+
+		_, _ = stdout.Write([]byte(recordLines(10, 100)))
+		_ = rw.Flush()
+	})
+
+	stdinReader, stdinWriter := io.Pipe()
+
+	t.Cleanup(func() { _ = stdinWriter.Close() })
+
+	r := &ContainerRunner{client: cli, ownerID: "self", drainTimeout: 5 * time.Second}
+
+	result, err := r.Run(context.Background(), RunOptions{Image: "connector:1", Stdin: stdinReader})
+	require.NoError(t, err)
+
+	out, err := io.ReadAll(result.Stdout)
+	require.NoError(t, err)
+	assert.Equal(t, recordLines(0, 100), string(out))
+
+	<-result.Done
+	assert.Equal(t, 0, result.ExitCode)
+}
+
+func TestContainerRunner_Run_OutputThatNeverEndsFailsAfterGracePeriod(t *testing.T) {
+	release := make(chan struct{})
+
+	t.Cleanup(func() { close(release) })
+
+	cli := fakeAttachDaemon(t, func(_ net.Conn, rw *bufio.ReadWriter, _ <-chan struct{}) {
+		_, _ = stdcopy.NewStdWriter(rw, stdcopy.Stdout).Write([]byte(recordLines(0, 3)))
+		_ = rw.Flush()
+
+		<-release
+	})
+
+	r := &ContainerRunner{client: cli, ownerID: "self", drainTimeout: 200 * time.Millisecond}
+
+	result, err := r.Run(context.Background(), RunOptions{Image: "connector:1"})
+	require.NoError(t, err)
+
+	readDone := make(chan struct{})
+
+	var (
+		out     []byte
+		readErr error
+	)
+
+	go func() {
+		defer close(readDone)
+
+		out, readErr = io.ReadAll(result.Stdout)
+	}()
+
+	select {
+	case <-readDone:
+	case <-time.After(5 * time.Second):
+		t.Fatal("reading stdout hung after the container exited")
+	}
+
+	assert.Equal(t, recordLines(0, 3), string(out))
+	require.ErrorIs(t, readErr, ErrOutputDrainTimeout)
+
+	select {
+	case <-result.Done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("Done not closed after the grace period")
+	}
+}
+
+func TestContainerRunner_Run_SlowConsumerDrainsPastGracePeriod(t *testing.T) {
+	cli := fakeAttachDaemon(t, func(_ net.Conn, rw *bufio.ReadWriter, exited <-chan struct{}) {
+		<-exited
+
+		stdout := stdcopy.NewStdWriter(rw, stdcopy.Stdout)
+		for i := 0; i < 1000; i += 100 {
+			_, _ = stdout.Write([]byte(recordLines(i, i+100)))
+		}
+
+		_ = rw.Flush()
+	})
+
+	r := &ContainerRunner{client: cli, ownerID: "self", drainTimeout: 150 * time.Millisecond}
+
+	result, err := r.Run(context.Background(), RunOptions{Image: "connector:1"})
+	require.NoError(t, err)
+
+	time.Sleep(400 * time.Millisecond)
+
+	var out []byte
+
+	buf := make([]byte, 64*1024)
+
+	for {
+		n, err := result.Stdout.Read(buf)
+		out = append(out, buf[:n]...)
+
+		if errors.Is(err, io.EOF) {
+			break
+		}
+
+		require.NoError(t, err)
+
+		time.Sleep(250 * time.Millisecond)
+	}
+
+	assert.Equal(t, recordLines(0, 1000), string(out))
+
+	<-result.Done
+	assert.Equal(t, 0, result.ExitCode)
 }

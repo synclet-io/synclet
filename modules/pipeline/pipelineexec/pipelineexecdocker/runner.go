@@ -2,12 +2,16 @@ package pipelineexecdocker
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"maps"
+	"net"
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
+	"time"
 
 	dockercontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
@@ -21,6 +25,14 @@ import (
 )
 
 const defaultStderrMaxSize = 10 * 1024 * 1024 // 10MB
+
+// defaultDrainTimeout bounds how long the attach stream may stay idle after the
+// container exits before the runner gives up on reading the rest of its output.
+const defaultDrainTimeout = 30 * time.Second
+
+// ErrOutputDrainTimeout is the stdout read error of a container whose attach
+// stream stayed open without data for the drain timeout after the container exited.
+var ErrOutputDrainTimeout = errors.New("container exited but its output stream did not end")
 
 const (
 	// defaultDockerMemoryLimit is the default memory limit for connector containers (2Gi).
@@ -77,14 +89,39 @@ func (b *boundedBuffer) Read(dest []byte) (int, error) {
 	return n, nil
 }
 
+// drainingReader reads a container's attach stream. Once the container has
+// exited, every read gets a deadline of timeout, so a stream that stays open
+// without data ends with os.ErrDeadlineExceeded instead of blocking forever.
+type drainingReader struct {
+	r       io.Reader
+	conn    net.Conn
+	timeout time.Duration
+	exited  atomic.Bool
+}
+
+func (d *drainingReader) Read(p []byte) (int, error) {
+	if d.exited.Load() {
+		_ = d.conn.SetReadDeadline(time.Now().Add(d.timeout))
+	}
+
+	return d.r.Read(p)
+}
+
+// startDrain bounds the read in progress, and every later one, by the timeout.
+func (d *drainingReader) startDrain() {
+	d.exited.Store(true)
+	_ = d.conn.SetReadDeadline(time.Now().Add(d.timeout))
+}
+
 // Compile-time interface check.
 var _ pkgcontainer.Runner = (*ContainerRunner)(nil)
 
 // ContainerRunner manages Docker containers for running Airbyte connectors.
 type ContainerRunner struct {
-	client      *client.Client
-	tempDirRoot string
-	ownerID     string
+	client       *client.Client
+	tempDirRoot  string
+	ownerID      string
+	drainTimeout time.Duration
 }
 
 // NewContainerRunner creates a new ContainerRunner using the default Docker client
@@ -118,6 +155,14 @@ func (r *ContainerRunner) containerLabels(labels map[string]string) map[string]s
 	out[OwnerLabel] = r.ownerID
 
 	return out
+}
+
+func (r *ContainerRunner) outputDrainTimeout() time.Duration {
+	if r.drainTimeout > 0 {
+		return r.drainTimeout
+	}
+
+	return defaultDrainTimeout
 }
 
 // ResolveDigest returns the digest-pinned reference for a locally available image.
@@ -299,17 +344,26 @@ func (r *ContainerRunner) Run(ctx context.Context, opts RunOptions) (*RunResult,
 	done := make(chan struct{})
 	result.Done = done
 
+	drainTimeout := r.outputDrainTimeout()
+	attachOut := &drainingReader{r: attachResp.Reader, conn: attachResp.Conn, timeout: drainTimeout}
+
 	// exitCodeReady signals that result.ExitCode has been set by the exit-monitor.
 	exitCodeReady := make(chan struct{})
 
-	// Monitor container exit independently via Docker API. When the container
-	// exits, close opts.Stdin and the attach connection to unblock all goroutines.
+	// Monitor container exit via the Docker API. Once the container exits, stdin
+	// is closed and the attach stream is read to its end, each read bounded by
+	// the drain timeout. If waiting fails (ctx cancelled), the attach connection
+	// is closed at once.
 	go func() {
 		statusCh, errCh := r.client.ContainerWait(ctx, containerID, dockercontainer.WaitConditionNotRunning)
+
+		waitFailed := false
+
 		select {
 		case err := <-errCh:
 			if err != nil {
 				result.ExitCode = -1
+				waitFailed = true
 			}
 		case status := <-statusCh:
 			result.ExitCode = int(status.StatusCode)
@@ -324,8 +378,13 @@ func (r *ContainerRunner) Run(ctx context.Context, opts RunOptions) (*RunResult,
 			}
 		}
 
-		// Close the attach connection to unblock StdCopy.
-		attachResp.Close()
+		if waitFailed {
+			attachResp.Close()
+
+			return
+		}
+
+		attachOut.startDrain()
 	}()
 
 	// Pipe stdin if provided.
@@ -340,18 +399,26 @@ func (r *ContainerRunner) Run(ctx context.Context, opts RunOptions) (*RunResult,
 	// Background goroutine: demux streams, wait for exit code, then clean up.
 	go func() {
 		defer close(done)
-		defer func() { _ = stdoutWriter.Close() }()
 
 		// StdCopy demultiplexes the Docker attach stream into stdout and stderr.
-		_, _ = stdcopy.StdCopy(stdoutWriter, stderrBuf, attachResp.Reader)
+		_, copyErr := stdcopy.StdCopy(stdoutWriter, stderrBuf, attachOut)
 
 		// Wait for exit code to be set before signaling done to callers.
 		<-exitCodeReady
 
-		// Clean up temp directory after container exits.
+		attachResp.Close()
+
 		if tempDir != "" {
 			_ = os.RemoveAll(tempDir)
 		}
+
+		if errors.Is(copyErr, os.ErrDeadlineExceeded) {
+			_ = stdoutWriter.CloseWithError(fmt.Errorf("%w: no output for %s after exit", ErrOutputDrainTimeout, drainTimeout))
+
+			return
+		}
+
+		_ = stdoutWriter.Close()
 	}()
 
 	return result, nil
