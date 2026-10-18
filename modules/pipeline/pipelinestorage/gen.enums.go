@@ -534,6 +534,33 @@ func convertSyncStatusFromDB(syncStatusValue string) (pipelineservice.SyncStatus
 }
 
 const (
+	executorTypeDocker = "docker"
+	executorTypeK8s    = "k8s"
+)
+
+func convertExecutorTypeToDB(executorTypeValue pipelineservice.ExecutorType) (string, error) {
+	result, ok := map[pipelineservice.ExecutorType]string{
+		pipelineservice.ExecutorTypeDocker: executorTypeDocker,
+		pipelineservice.ExecutorTypeK8s:    executorTypeK8s,
+	}[executorTypeValue]
+	if !ok {
+		return "", fmt.Errorf("unknown ExecutorType value: %d", executorTypeValue)
+	}
+	return result, nil
+}
+
+func convertExecutorTypeFromDB(executorTypeValue string) (pipelineservice.ExecutorType, error) {
+	result, ok := map[string]pipelineservice.ExecutorType{
+		executorTypeDocker: pipelineservice.ExecutorTypeDocker,
+		executorTypeK8s:    pipelineservice.ExecutorTypeK8s,
+	}[executorTypeValue]
+	if !ok {
+		return 0, fmt.Errorf("unknown ExecutorType db value: %s", executorTypeValue)
+	}
+	return result, nil
+}
+
+const (
 	pipelineEventTypeJobCreated = "job_created"
 	pipelineEventTypeJobUpdated = "job_updated"
 )

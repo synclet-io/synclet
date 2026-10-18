@@ -131,6 +131,18 @@ const (
 	ErrStreamGenerationAlreadyExists = AlreadyExistsError("StreamGeneration")
 )
 const (
+	ErrExecutorNotFound      = NotFoundError("Executor")
+	ErrExecutorAlreadyExists = AlreadyExistsError("Executor")
+)
+const (
+	ErrExecutorCapabilitiesNotFound      = NotFoundError("ExecutorCapabilities")
+	ErrExecutorCapabilitiesAlreadyExists = AlreadyExistsError("ExecutorCapabilities")
+)
+const (
+	ErrExecutorResourceDefaultsNotFound      = NotFoundError("ExecutorResourceDefaults")
+	ErrExecutorResourceDefaultsAlreadyExists = AlreadyExistsError("ExecutorResourceDefaults")
+)
+const (
 	ErrPipelineEventNotFound      = NotFoundError("PipelineEvent")
 	ErrPipelineEventAlreadyExists = AlreadyExistsError("PipelineEvent")
 )

@@ -12,9 +12,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	pipelinev1 "github.com/synclet-io/synclet/gen/proto/synclet/publicapi/pipeline/v1"
 	"github.com/synclet-io/synclet/gen/proto/synclet/publicapi/pipeline/v1/pipelinev1connect"
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinejobs"
 	"github.com/synclet-io/synclet/pkg/connectutil"
 )
 
@@ -43,7 +46,6 @@ func TestSourceHandler_GetSystemInfo(t *testing.T) {
 		{
 			name: "runtime defaults are not exposed",
 			config: SourceHandlerConfig{RuntimeDefaults: RuntimeDefaultsInfo{
-				Executor:           ExecutorK8s,
 				ServiceAccountName: "synclet-sync",
 			}},
 			want: &pipelinev1.GetSystemInfoResponse{
@@ -63,114 +65,137 @@ func TestSourceHandler_GetSystemInfo(t *testing.T) {
 	}
 }
 
+// newRegistryHandler returns a SourceHandler whose executor registry holds rows.
+func newRegistryHandler(config RuntimeDefaultsInfo, rows ...*pipelineservice.Executor) *SourceHandler {
+	storage := &executorRegistryStorage{executors: &fakeExecutors{rows: rows}}
+
+	return &SourceHandler{
+		config:        SourceHandlerConfig{RuntimeDefaults: config},
+		listExecutors: pipelinejobs.NewListExecutors(storage, pipelineservice.Config{ExecutorSilenceTimeout: time.Hour}),
+	}
+}
+
 func TestSourceHandler_GetRuntimeDefaults(t *testing.T) {
+	now := time.Now()
+	config := RuntimeDefaultsInfo{
+		CPULimit:          "2",
+		MemoryLimit:       "2Gi",
+		MaxConcurrentJobs: 10,
+		IdleTimeout:       10 * time.Minute,
+		LogArchiveBackend: "s3",
+	}
+	global := &pipelinev1.RuntimeDefaults{
+		CpuLimit:           "2",
+		MemoryLimit:        "2Gi",
+		MaxConcurrentJobs:  10,
+		IdleTimeoutSeconds: 600,
+		LogArchiveBackend:  "s3",
+	}
+	docker := &pipelineservice.Executor{
+		InstanceID:       "docker-0",
+		Type:             pipelineservice.ExecutorTypeDocker,
+		Capacity:         5,
+		ResourceDefaults: pipelineservice.ExecutorResourceDefaults{CPULimit: "2", MemoryLimit: "2Gi"},
+		LastSeenAt:       now,
+	}
+	k8sOld := &pipelineservice.Executor{
+		InstanceID:       "k8s-0",
+		Type:             pipelineservice.ExecutorTypeK8s,
+		ResourceDefaults: pipelineservice.ExecutorResourceDefaults{CPURequest: "1", CPULimit: "1", CPUExecutorDefault: true},
+		LastSeenAt:       now.Add(-30 * time.Second),
+	}
+	k8sNew := &pipelineservice.Executor{
+		InstanceID: "k8s-1",
+		Type:       pipelineservice.ExecutorTypeK8s,
+		ResourceDefaults: pipelineservice.ExecutorResourceDefaults{
+			CPURequest: "750m", CPULimit: "750m", CPUExecutorDefault: true,
+			MemoryRequest: "3Gi", MemoryLimit: "3Gi", MemoryExecutorDefault: true,
+		},
+		LastSeenAt: now,
+	}
+
 	tests := []struct {
-		name   string
-		config RuntimeDefaultsInfo
-		want   *pipelinev1.RuntimeDefaults
+		name      string
+		rows      []*pipelineservice.Executor
+		executors []*pipelinev1.ExecutorTypeDefaults
 	}{
+		{name: "no executors", rows: nil, executors: nil},
 		{
-			name:   "external executor",
-			config: RuntimeDefaultsInfo{LogArchiveBackend: "none"},
-			want:   &pipelinev1.RuntimeDefaults{LogArchiveBackend: "none"},
-		},
-		{
-			name: "docker executor",
-			config: RuntimeDefaultsInfo{
-				Executor:                ExecutorDocker,
-				CPULimit:                "2",
-				MemoryLimit:             "2Gi",
-				MaxConcurrentJobs:       10,
-				IdleTimeout:             10 * time.Minute,
-				LogArchiveBackend:       "s3",
-				DockerMaxConcurrentJobs: 5,
-			},
-			want: &pipelinev1.RuntimeDefaults{
-				Executor:                pipelinev1.ExecutorType_EXECUTOR_TYPE_DOCKER,
-				CpuLimit:                "2",
-				MemoryLimit:             "2Gi",
-				MaxConcurrentJobs:       10,
-				IdleTimeoutSeconds:      600,
-				LogArchiveBackend:       "s3",
-				DockerMaxConcurrentJobs: 5,
+			name: "docker and k8s executors",
+			rows: []*pipelineservice.Executor{k8sNew, docker},
+			executors: []*pipelinev1.ExecutorTypeDefaults{
+				{
+					Type:             pipelinev1.ExecutorType_EXECUTOR_TYPE_DOCKER,
+					Capacity:         5,
+					ResourceDefaults: &pipelinev1.ExecutorResourceDefaults{CpuLimit: "2", MemoryLimit: "2Gi"},
+				},
+				{
+					Type: pipelinev1.ExecutorType_EXECUTOR_TYPE_K8S,
+					ResourceDefaults: &pipelinev1.ExecutorResourceDefaults{
+						CpuRequest: "750m", CpuLimit: "750m", CpuExecutorDefault: true,
+						MemoryRequest: "3Gi", MemoryLimit: "3Gi", MemoryExecutorDefault: true,
+					},
+				},
 			},
 		},
 		{
-			name: "k8s executor",
-			config: RuntimeDefaultsInfo{
-				Executor:           ExecutorK8s,
-				CPURequest:         "500m",
-				CPULimit:           "2",
-				MemoryRequest:      "512Mi",
-				MemoryLimit:        "2Gi",
-				ServiceAccountName: "synclet-sync",
-				LogArchiveBackend:  "gcs",
-			},
-			want: &pipelinev1.RuntimeDefaults{
-				Executor:           pipelinev1.ExecutorType_EXECUTOR_TYPE_K8S,
-				CpuRequest:         "500m",
-				CpuLimit:           "2",
-				MemoryRequest:      "512Mi",
-				MemoryLimit:        "2Gi",
-				ServiceAccountName: "synclet-sync",
-				LogArchiveBackend:  "gcs",
-			},
-		},
-		{
-			name: "k8s executor falls back to its default resources",
-			config: RuntimeDefaultsInfo{
-				Executor:         ExecutorK8s,
-				K8sDefaultCPU:    "1",
-				K8sDefaultMemory: "2Gi",
-			},
-			want: &pipelinev1.RuntimeDefaults{
-				Executor:              pipelinev1.ExecutorType_EXECUTOR_TYPE_K8S,
-				CpuRequest:            "1",
-				CpuLimit:              "1",
-				CpuExecutorDefault:    true,
-				MemoryRequest:         "2Gi",
-				MemoryLimit:           "2Gi",
-				MemoryExecutorDefault: true,
-			},
-		},
-		{
-			name: "k8s executor falls back only for the unset resource",
-			config: RuntimeDefaultsInfo{
-				Executor:         ExecutorK8s,
-				CPULimit:         "2",
-				K8sDefaultCPU:    "1",
-				K8sDefaultMemory: "2Gi",
-			},
-			want: &pipelinev1.RuntimeDefaults{
-				Executor:              pipelinev1.ExecutorType_EXECUTOR_TYPE_K8S,
-				CpuLimit:              "2",
-				MemoryRequest:         "2Gi",
-				MemoryLimit:           "2Gi",
-				MemoryExecutorDefault: true,
-			},
-		},
-		{
-			name: "docker executor ignores k8s defaults",
-			config: RuntimeDefaultsInfo{
-				Executor:         ExecutorDocker,
-				K8sDefaultCPU:    "1",
-				K8sDefaultMemory: "2Gi",
-			},
-			want: &pipelinev1.RuntimeDefaults{
-				Executor: pipelinev1.ExecutorType_EXECUTOR_TYPE_DOCKER,
+			name: "the most recently seen k8s executor wins",
+			rows: []*pipelineservice.Executor{k8sNew, k8sOld},
+			executors: []*pipelinev1.ExecutorTypeDefaults{
+				{
+					Type: pipelinev1.ExecutorType_EXECUTOR_TYPE_K8S,
+					ResourceDefaults: &pipelinev1.ExecutorResourceDefaults{
+						CpuRequest: "750m", CpuLimit: "750m", CpuExecutorDefault: true,
+						MemoryRequest: "3Gi", MemoryLimit: "3Gi", MemoryExecutorDefault: true,
+					},
+				},
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := &SourceHandler{config: SourceHandlerConfig{RuntimeDefaults: tt.config}}
+			h := newRegistryHandler(config, tt.rows...)
 
 			resp, err := h.GetRuntimeDefaults(context.Background(), connect.NewRequest(&pipelinev1.GetRuntimeDefaultsRequest{}))
 			require.NoError(t, err)
-			assert.True(t, proto.Equal(tt.want, resp.Msg.GetRuntimeDefaults()), "want %v, got %v", tt.want, resp.Msg.GetRuntimeDefaults())
+
+			want := proto.Clone(global).(*pipelinev1.RuntimeDefaults)
+			want.Executors = tt.executors
+			assert.True(t, proto.Equal(want, resp.Msg.GetRuntimeDefaults()), "want %v, got %v", want, resp.Msg.GetRuntimeDefaults())
 		})
 	}
+}
+
+func TestSourceHandler_ListExecutors(t *testing.T) {
+	seen := time.Date(2026, 10, 18, 12, 0, 0, 0, time.UTC)
+	now := time.Now()
+	h := newRegistryHandler(RuntimeDefaultsInfo{},
+		&pipelineservice.Executor{
+			InstanceID:       "synclet-executor-0",
+			Type:             pipelineservice.ExecutorTypeK8s,
+			Version:          "v0.5.0",
+			Capabilities:     pipelineservice.ExecutorCapabilities{NativeDestinations: []string{"postgres"}},
+			ResourceDefaults: pipelineservice.ExecutorResourceDefaults{CPURequest: "1"},
+			FirstSeenAt:      seen,
+			LastSeenAt:       now,
+		},
+		&pipelineservice.Executor{InstanceID: "silent", Type: pipelineservice.ExecutorTypeDocker, LastSeenAt: now.Add(-2 * time.Hour)},
+	)
+
+	resp, err := h.ListExecutors(context.Background(), connect.NewRequest(&pipelinev1.ListExecutorsRequest{}))
+	require.NoError(t, err)
+
+	want := &pipelinev1.ListExecutorsResponse{Executors: []*pipelinev1.ExecutorInstance{{
+		Id:                 "synclet-executor-0",
+		Type:               pipelinev1.ExecutorType_EXECUTOR_TYPE_K8S,
+		Version:            "v0.5.0",
+		NativeDestinations: []string{"postgres"},
+		ResourceDefaults:   &pipelinev1.ExecutorResourceDefaults{CpuRequest: "1"},
+		FirstSeenAt:        timestamppb.New(seen),
+		LastSeenAt:         timestamppb.New(now),
+	}}}
+	assert.True(t, proto.Equal(want, resp.Msg), "want %v, got %v", want, resp.Msg)
 }
 
 type fakeTokenValidator struct {
@@ -215,7 +240,11 @@ func TestGetRuntimeDefaults_RequiresWorkspaceMember(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := &SourceHandler{config: SourceHandlerConfig{RuntimeDefaults: RuntimeDefaultsInfo{Executor: ExecutorDocker}}}
+			h := newRegistryHandler(RuntimeDefaultsInfo{}, &pipelineservice.Executor{
+				InstanceID: "docker-0",
+				Type:       pipelineservice.ExecutorTypeDocker,
+				LastSeenAt: time.Now(),
+			})
 			path, handler := pipelinev1connect.NewSourceServiceHandler(h, connect.WithInterceptors(
 				connectutil.NewAuthInterceptor(fakeTokenValidator{userID: uuid.New()}),
 				connectutil.NewRoleInterceptor(fakeMembershipChecker{role: tt.role}),
@@ -241,7 +270,8 @@ func TestGetRuntimeDefaults_RequiresWorkspaceMember(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			assert.Equal(t, pipelinev1.ExecutorType_EXECUTOR_TYPE_DOCKER, resp.Msg.GetRuntimeDefaults().GetExecutor())
+			require.Len(t, resp.Msg.GetRuntimeDefaults().GetExecutors(), 1)
+			assert.Equal(t, pipelinev1.ExecutorType_EXECUTOR_TYPE_DOCKER, resp.Msg.GetRuntimeDefaults().GetExecutors()[0].GetType())
 		})
 	}
 }

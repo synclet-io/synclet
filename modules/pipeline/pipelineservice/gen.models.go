@@ -2684,6 +2684,215 @@ func (s *StreamGeneration) Equals(to *StreamGeneration) bool {
 	return true
 }
 
+type ExecutorField byte
+
+const (
+	ExecutorFieldID ExecutorField = iota + 1
+	ExecutorFieldInstanceID
+	ExecutorFieldType
+	ExecutorFieldVersion
+	ExecutorFieldCapacity
+	ExecutorFieldCapabilities
+	ExecutorFieldResourceDefaults
+	ExecutorFieldFirstSeenAt
+	ExecutorFieldLastSeenAt
+)
+
+type ExecutorFilter struct {
+	ID         filter.Filter[uuid.UUID]
+	InstanceID filter.Filter[string]
+	Type       filter.Filter[ExecutorType]
+	Or         []*ExecutorFilter
+	And        []*ExecutorFilter
+}
+type ExecutorOrder order.Order[ExecutorField]
+
+type Executor struct {
+	ID               uuid.UUID
+	InstanceID       string
+	Type             ExecutorType
+	Version          string
+	Capacity         int
+	Capabilities     ExecutorCapabilities
+	ResourceDefaults ExecutorResourceDefaults
+	FirstSeenAt      time.Time
+	LastSeenAt       time.Time
+}
+
+// user code 'Executor methods'
+// end user code 'Executor methods'
+
+func (e *Executor) Copy() Executor {
+	var result Executor
+	result.ID = e.ID
+	result.InstanceID = e.InstanceID
+	result.Type = e.Type // enum
+	result.Version = e.Version
+	result.Capacity = e.Capacity
+	result.Capabilities = e.Capabilities.Copy()         // model
+	result.ResourceDefaults = e.ResourceDefaults.Copy() // model
+	result.FirstSeenAt = e.FirstSeenAt
+	result.LastSeenAt = e.LastSeenAt
+
+	return result
+}
+func (e *Executor) Equals(to *Executor) bool {
+	if (e == nil) != (to == nil) {
+		return false
+	}
+	if e == nil && to == nil {
+		return true
+	}
+	if e.ID != to.ID {
+		return false
+	}
+	if e.InstanceID != to.InstanceID {
+		return false
+	}
+	if e.Type != to.Type {
+		return false
+	}
+	if e.Version != to.Version {
+		return false
+	}
+	if e.Capacity != to.Capacity {
+		return false
+	}
+	if !e.Capabilities.Equals(&to.Capabilities) {
+		return false
+	}
+	if !e.ResourceDefaults.Equals(&to.ResourceDefaults) {
+		return false
+	}
+	if e.FirstSeenAt != to.FirstSeenAt {
+		return false
+	}
+	if e.LastSeenAt != to.LastSeenAt {
+		return false
+	}
+
+	return true
+}
+
+type ExecutorCapabilitiesField byte
+
+const (
+	ExecutorCapabilitiesFieldNativeDestinations ExecutorCapabilitiesField = iota + 1
+)
+
+type ExecutorCapabilitiesFilter struct {
+	Or  []*ExecutorCapabilitiesFilter
+	And []*ExecutorCapabilitiesFilter
+}
+type ExecutorCapabilitiesOrder order.Order[ExecutorCapabilitiesField]
+
+type ExecutorCapabilities struct {
+	NativeDestinations []string
+}
+
+// user code 'ExecutorCapabilities methods'
+// end user code 'ExecutorCapabilities methods'
+
+func (e *ExecutorCapabilities) Copy() ExecutorCapabilities {
+	var result ExecutorCapabilities
+	tmp := make([]string, 0, len(e.NativeDestinations))
+	for _, i := range e.NativeDestinations {
+		var itemCopy string
+		itemCopy = i
+		tmp = append(tmp, itemCopy)
+	}
+	result.NativeDestinations = tmp
+
+	return result
+}
+func (e *ExecutorCapabilities) Equals(to *ExecutorCapabilities) bool {
+	if (e == nil) != (to == nil) {
+		return false
+	}
+	if e == nil && to == nil {
+		return true
+	}
+	if len(e.NativeDestinations) != len(to.NativeDestinations) {
+		return false
+	}
+	for idx := range e.NativeDestinations {
+		if e.NativeDestinations[idx] != to.NativeDestinations[idx] {
+			return false
+		}
+	}
+
+	return true
+}
+
+type ExecutorResourceDefaultsField byte
+
+const (
+	ExecutorResourceDefaultsFieldCPURequest ExecutorResourceDefaultsField = iota + 1
+	ExecutorResourceDefaultsFieldCPULimit
+	ExecutorResourceDefaultsFieldMemoryRequest
+	ExecutorResourceDefaultsFieldMemoryLimit
+	ExecutorResourceDefaultsFieldCPUExecutorDefault
+	ExecutorResourceDefaultsFieldMemoryExecutorDefault
+)
+
+type ExecutorResourceDefaultsFilter struct {
+	Or  []*ExecutorResourceDefaultsFilter
+	And []*ExecutorResourceDefaultsFilter
+}
+type ExecutorResourceDefaultsOrder order.Order[ExecutorResourceDefaultsField]
+
+type ExecutorResourceDefaults struct {
+	CPURequest            string
+	CPULimit              string
+	MemoryRequest         string
+	MemoryLimit           string
+	CPUExecutorDefault    bool
+	MemoryExecutorDefault bool
+}
+
+// user code 'ExecutorResourceDefaults methods'
+// end user code 'ExecutorResourceDefaults methods'
+
+func (e *ExecutorResourceDefaults) Copy() ExecutorResourceDefaults {
+	var result ExecutorResourceDefaults
+	result.CPURequest = e.CPURequest
+	result.CPULimit = e.CPULimit
+	result.MemoryRequest = e.MemoryRequest
+	result.MemoryLimit = e.MemoryLimit
+	result.CPUExecutorDefault = e.CPUExecutorDefault
+	result.MemoryExecutorDefault = e.MemoryExecutorDefault
+
+	return result
+}
+func (e *ExecutorResourceDefaults) Equals(to *ExecutorResourceDefaults) bool {
+	if (e == nil) != (to == nil) {
+		return false
+	}
+	if e == nil && to == nil {
+		return true
+	}
+	if e.CPURequest != to.CPURequest {
+		return false
+	}
+	if e.CPULimit != to.CPULimit {
+		return false
+	}
+	if e.MemoryRequest != to.MemoryRequest {
+		return false
+	}
+	if e.MemoryLimit != to.MemoryLimit {
+		return false
+	}
+	if e.CPUExecutorDefault != to.CPUExecutorDefault {
+		return false
+	}
+	if e.MemoryExecutorDefault != to.MemoryExecutorDefault {
+		return false
+	}
+
+	return true
+}
+
 type PipelineEventField byte
 
 const (

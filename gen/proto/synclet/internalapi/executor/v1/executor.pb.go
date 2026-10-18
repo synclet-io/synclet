@@ -1760,6 +1760,173 @@ func (*SetK8SJobNameResponse) Descriptor() ([]byte, []int) {
 	return file_synclet_internalapi_executor_v1_executor_proto_rawDescGZIP(), []int{27}
 }
 
+// ExecutorCapabilities lists what an executor can run beyond Docker images.
+type ExecutorCapabilities struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	NativeDestinations []string               `protobuf:"bytes,1,rep,name=native_destinations,json=nativeDestinations,proto3" json:"native_destinations,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *ExecutorCapabilities) Reset() {
+	*x = ExecutorCapabilities{}
+	mi := &file_synclet_internalapi_executor_v1_executor_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExecutorCapabilities) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExecutorCapabilities) ProtoMessage() {}
+
+func (x *ExecutorCapabilities) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_internalapi_executor_v1_executor_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExecutorCapabilities.ProtoReflect.Descriptor instead.
+func (*ExecutorCapabilities) Descriptor() ([]byte, []int) {
+	return file_synclet_internalapi_executor_v1_executor_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *ExecutorCapabilities) GetNativeDestinations() []string {
+	if x != nil {
+		return x.NativeDestinations
+	}
+	return nil
+}
+
+type ExecutorHeartbeatRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Owner id of the executor, unique per instance.
+	ExecutorId   string           `protobuf:"bytes,1,opt,name=executor_id,json=executorId,proto3" json:"executor_id,omitempty"`
+	ExecutorType v11.ExecutorType `protobuf:"varint,2,opt,name=executor_type,json=executorType,proto3,enum=synclet.publicapi.pipeline.v1.ExecutorType" json:"executor_type,omitempty"`
+	Version      string           `protobuf:"bytes,3,opt,name=version,proto3" json:"version,omitempty"`
+	// Concurrent syncs; 0 means unbounded.
+	Capacity         int32                         `protobuf:"varint,4,opt,name=capacity,proto3" json:"capacity,omitempty"`
+	Capabilities     *ExecutorCapabilities         `protobuf:"bytes,5,opt,name=capabilities,proto3" json:"capabilities,omitempty"`
+	ResourceDefaults *v11.ExecutorResourceDefaults `protobuf:"bytes,6,opt,name=resource_defaults,json=resourceDefaults,proto3" json:"resource_defaults,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *ExecutorHeartbeatRequest) Reset() {
+	*x = ExecutorHeartbeatRequest{}
+	mi := &file_synclet_internalapi_executor_v1_executor_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExecutorHeartbeatRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExecutorHeartbeatRequest) ProtoMessage() {}
+
+func (x *ExecutorHeartbeatRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_internalapi_executor_v1_executor_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExecutorHeartbeatRequest.ProtoReflect.Descriptor instead.
+func (*ExecutorHeartbeatRequest) Descriptor() ([]byte, []int) {
+	return file_synclet_internalapi_executor_v1_executor_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *ExecutorHeartbeatRequest) GetExecutorId() string {
+	if x != nil {
+		return x.ExecutorId
+	}
+	return ""
+}
+
+func (x *ExecutorHeartbeatRequest) GetExecutorType() v11.ExecutorType {
+	if x != nil {
+		return x.ExecutorType
+	}
+	return v11.ExecutorType(0)
+}
+
+func (x *ExecutorHeartbeatRequest) GetVersion() string {
+	if x != nil {
+		return x.Version
+	}
+	return ""
+}
+
+func (x *ExecutorHeartbeatRequest) GetCapacity() int32 {
+	if x != nil {
+		return x.Capacity
+	}
+	return 0
+}
+
+func (x *ExecutorHeartbeatRequest) GetCapabilities() *ExecutorCapabilities {
+	if x != nil {
+		return x.Capabilities
+	}
+	return nil
+}
+
+func (x *ExecutorHeartbeatRequest) GetResourceDefaults() *v11.ExecutorResourceDefaults {
+	if x != nil {
+		return x.ResourceDefaults
+	}
+	return nil
+}
+
+type ExecutorHeartbeatResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ExecutorHeartbeatResponse) Reset() {
+	*x = ExecutorHeartbeatResponse{}
+	mi := &file_synclet_internalapi_executor_v1_executor_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExecutorHeartbeatResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExecutorHeartbeatResponse) ProtoMessage() {}
+
+func (x *ExecutorHeartbeatResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_internalapi_executor_v1_executor_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExecutorHeartbeatResponse.ProtoReflect.Descriptor instead.
+func (*ExecutorHeartbeatResponse) Descriptor() ([]byte, []int) {
+	return file_synclet_internalapi_executor_v1_executor_proto_rawDescGZIP(), []int{30}
+}
+
 var File_synclet_internalapi_executor_v1_executor_proto protoreflect.FileDescriptor
 
 const file_synclet_internalapi_executor_v1_executor_proto_rawDesc = "" +
@@ -1873,7 +2040,18 @@ const file_synclet_internalapi_executor_v1_executor_proto_rawDesc = "" +
 	"\x06job_id\x18\x01 \x01(\tR\x05jobId\x12 \n" +
 	"\fk8s_job_name\x18\x02 \x01(\tR\n" +
 	"k8sJobName\"\x17\n" +
-	"\x15SetK8sJobNameResponse*j\n" +
+	"\x15SetK8sJobNameResponse\"G\n" +
+	"\x14ExecutorCapabilities\x12/\n" +
+	"\x13native_destinations\x18\x01 \x03(\tR\x12nativeDestinations\"\x84\x03\n" +
+	"\x18ExecutorHeartbeatRequest\x12\x1f\n" +
+	"\vexecutor_id\x18\x01 \x01(\tR\n" +
+	"executorId\x12P\n" +
+	"\rexecutor_type\x18\x02 \x01(\x0e2+.synclet.publicapi.pipeline.v1.ExecutorTypeR\fexecutorType\x12\x18\n" +
+	"\aversion\x18\x03 \x01(\tR\aversion\x12\x1a\n" +
+	"\bcapacity\x18\x04 \x01(\x05R\bcapacity\x12Y\n" +
+	"\fcapabilities\x18\x05 \x01(\v25.synclet.internalapi.executor.v1.ExecutorCapabilitiesR\fcapabilities\x12d\n" +
+	"\x11resource_defaults\x18\x06 \x01(\v27.synclet.publicapi.pipeline.v1.ExecutorResourceDefaultsR\x10resourceDefaults\"\x1b\n" +
+	"\x19ExecutorHeartbeatResponse*j\n" +
 	"\rConnectorType\x12\x1e\n" +
 	"\x1aCONNECTOR_TYPE_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15CONNECTOR_TYPE_SOURCE\x10\x01\x12\x1e\n" +
@@ -1885,7 +2063,7 @@ const file_synclet_internalapi_executor_v1_executor_proto_rawDesc = "" +
 	" NAMESPACE_DEFINITION_UNSPECIFIED\x10\x00\x12\x1f\n" +
 	"\x1bNAMESPACE_DEFINITION_SOURCE\x10\x01\x12$\n" +
 	" NAMESPACE_DEFINITION_DESTINATION\x10\x02\x12\x1f\n" +
-	"\x1bNAMESPACE_DEFINITION_CUSTOM\x10\x032\xa3\x0e\n" +
+	"\x1bNAMESPACE_DEFINITION_CUSTOM\x10\x032\xb0\x0f\n" +
 	"\x0fExecutorService\x12r\n" +
 	"\tHeartbeat\x121.synclet.internalapi.executor.v1.HeartbeatRequest\x1a2.synclet.internalapi.executor.v1.HeartbeatResponse\x12\x81\x01\n" +
 	"\x0eMarkJobRunning\x126.synclet.internalapi.executor.v1.MarkJobRunningRequest\x1a7.synclet.internalapi.executor.v1.MarkJobRunningResponse\x12x\n" +
@@ -1900,7 +2078,8 @@ const file_synclet_internalapi_executor_v1_executor_proto_rawDesc = "" +
 	"\x19ReportConnectorTaskResult\x12A.synclet.internalapi.executor.v1.ReportConnectorTaskResultRequest\x1aB.synclet.internalapi.executor.v1.ReportConnectorTaskResultResponse\x12{\n" +
 	"\fIsTaskActive\x124.synclet.internalapi.executor.v1.IsTaskActiveRequest\x1a5.synclet.internalapi.executor.v1.IsTaskActiveResponse\x12l\n" +
 	"\aFailJob\x12/.synclet.internalapi.executor.v1.FailJobRequest\x1a0.synclet.internalapi.executor.v1.FailJobResponse\x12~\n" +
-	"\rSetK8sJobName\x125.synclet.internalapi.executor.v1.SetK8sJobNameRequest\x1a6.synclet.internalapi.executor.v1.SetK8sJobNameResponseB\xa7\x02\n" +
+	"\rSetK8sJobName\x125.synclet.internalapi.executor.v1.SetK8sJobNameRequest\x1a6.synclet.internalapi.executor.v1.SetK8sJobNameResponse\x12\x8a\x01\n" +
+	"\x11ExecutorHeartbeat\x129.synclet.internalapi.executor.v1.ExecutorHeartbeatRequest\x1a:.synclet.internalapi.executor.v1.ExecutorHeartbeatResponseB\xa7\x02\n" +
 	"#com.synclet.internalapi.executor.v1B\rExecutorProtoP\x01ZRgithub.com/synclet-io/synclet/gen/proto/synclet/internalapi/executor/v1;executorv1\xa2\x02\x03SIE\xaa\x02\x1fSynclet.Internalapi.Executor.V1\xca\x02\x1fSynclet\\Internalapi\\Executor\\V1\xe2\x02+Synclet\\Internalapi\\Executor\\V1\\GPBMetadata\xea\x02\"Synclet::Internalapi::Executor::V1b\x06proto3"
 
 var (
@@ -1916,7 +2095,7 @@ func file_synclet_internalapi_executor_v1_executor_proto_rawDescGZIP() []byte {
 }
 
 var file_synclet_internalapi_executor_v1_executor_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_synclet_internalapi_executor_v1_executor_proto_msgTypes = make([]protoimpl.MessageInfo, 28)
+var file_synclet_internalapi_executor_v1_executor_proto_msgTypes = make([]protoimpl.MessageInfo, 31)
 var file_synclet_internalapi_executor_v1_executor_proto_goTypes = []any{
 	(ConnectorType)(0),                        // 0: synclet.internalapi.executor.v1.ConnectorType
 	(JobType)(0),                              // 1: synclet.internalapi.executor.v1.JobType
@@ -1949,48 +2128,58 @@ var file_synclet_internalapi_executor_v1_executor_proto_goTypes = []any{
 	(*FailJobResponse)(nil),                   // 28: synclet.internalapi.executor.v1.FailJobResponse
 	(*SetK8SJobNameRequest)(nil),              // 29: synclet.internalapi.executor.v1.SetK8sJobNameRequest
 	(*SetK8SJobNameResponse)(nil),             // 30: synclet.internalapi.executor.v1.SetK8sJobNameResponse
-	(v1.StateType)(0),                         // 31: synclet.protocol.v1.StateType
-	(v11.ConnectorTaskType)(0),                // 32: synclet.publicapi.pipeline.v1.ConnectorTaskType
+	(*ExecutorCapabilities)(nil),              // 31: synclet.internalapi.executor.v1.ExecutorCapabilities
+	(*ExecutorHeartbeatRequest)(nil),          // 32: synclet.internalapi.executor.v1.ExecutorHeartbeatRequest
+	(*ExecutorHeartbeatResponse)(nil),         // 33: synclet.internalapi.executor.v1.ExecutorHeartbeatResponse
+	(v1.StateType)(0),                         // 34: synclet.protocol.v1.StateType
+	(v11.ConnectorTaskType)(0),                // 35: synclet.publicapi.pipeline.v1.ConnectorTaskType
+	(v11.ExecutorType)(0),                     // 36: synclet.publicapi.pipeline.v1.ExecutorType
+	(*v11.ExecutorResourceDefaults)(nil),      // 37: synclet.publicapi.pipeline.v1.ExecutorResourceDefaults
 }
 var file_synclet_internalapi_executor_v1_executor_proto_depIdxs = []int32{
-	31, // 0: synclet.internalapi.executor.v1.ReportStateRequest.state_type:type_name -> synclet.protocol.v1.StateType
+	34, // 0: synclet.internalapi.executor.v1.ReportStateRequest.state_type:type_name -> synclet.protocol.v1.StateType
 	0,  // 1: synclet.internalapi.executor.v1.ReportConfigUpdateRequest.connector_type:type_name -> synclet.internalapi.executor.v1.ConnectorType
 	1,  // 2: synclet.internalapi.executor.v1.ClaimJobResponse.job_type:type_name -> synclet.internalapi.executor.v1.JobType
 	2,  // 3: synclet.internalapi.executor.v1.ClaimJobResponse.namespace_definition:type_name -> synclet.internalapi.executor.v1.NamespaceDefinition
-	32, // 4: synclet.internalapi.executor.v1.ClaimConnectorTaskResponse.task_type:type_name -> synclet.publicapi.pipeline.v1.ConnectorTaskType
-	3,  // 5: synclet.internalapi.executor.v1.ExecutorService.Heartbeat:input_type -> synclet.internalapi.executor.v1.HeartbeatRequest
-	5,  // 6: synclet.internalapi.executor.v1.ExecutorService.MarkJobRunning:input_type -> synclet.internalapi.executor.v1.MarkJobRunningRequest
-	7,  // 7: synclet.internalapi.executor.v1.ExecutorService.ReportState:input_type -> synclet.internalapi.executor.v1.ReportStateRequest
-	9,  // 8: synclet.internalapi.executor.v1.ExecutorService.ReportCompletion:input_type -> synclet.internalapi.executor.v1.ReportCompletionRequest
-	11, // 9: synclet.internalapi.executor.v1.ExecutorService.ReportConfigUpdate:input_type -> synclet.internalapi.executor.v1.ReportConfigUpdateRequest
-	13, // 10: synclet.internalapi.executor.v1.ExecutorService.ReportLog:input_type -> synclet.internalapi.executor.v1.ReportLogRequest
-	15, // 11: synclet.internalapi.executor.v1.ExecutorService.ClaimJob:input_type -> synclet.internalapi.executor.v1.ClaimJobRequest
-	17, // 12: synclet.internalapi.executor.v1.ExecutorService.UpdateJobStatus:input_type -> synclet.internalapi.executor.v1.UpdateJobStatusRequest
-	19, // 13: synclet.internalapi.executor.v1.ExecutorService.IsJobActive:input_type -> synclet.internalapi.executor.v1.IsJobActiveRequest
-	21, // 14: synclet.internalapi.executor.v1.ExecutorService.ClaimConnectorTask:input_type -> synclet.internalapi.executor.v1.ClaimConnectorTaskRequest
-	23, // 15: synclet.internalapi.executor.v1.ExecutorService.ReportConnectorTaskResult:input_type -> synclet.internalapi.executor.v1.ReportConnectorTaskResultRequest
-	25, // 16: synclet.internalapi.executor.v1.ExecutorService.IsTaskActive:input_type -> synclet.internalapi.executor.v1.IsTaskActiveRequest
-	27, // 17: synclet.internalapi.executor.v1.ExecutorService.FailJob:input_type -> synclet.internalapi.executor.v1.FailJobRequest
-	29, // 18: synclet.internalapi.executor.v1.ExecutorService.SetK8sJobName:input_type -> synclet.internalapi.executor.v1.SetK8sJobNameRequest
-	4,  // 19: synclet.internalapi.executor.v1.ExecutorService.Heartbeat:output_type -> synclet.internalapi.executor.v1.HeartbeatResponse
-	6,  // 20: synclet.internalapi.executor.v1.ExecutorService.MarkJobRunning:output_type -> synclet.internalapi.executor.v1.MarkJobRunningResponse
-	8,  // 21: synclet.internalapi.executor.v1.ExecutorService.ReportState:output_type -> synclet.internalapi.executor.v1.ReportStateResponse
-	10, // 22: synclet.internalapi.executor.v1.ExecutorService.ReportCompletion:output_type -> synclet.internalapi.executor.v1.ReportCompletionResponse
-	12, // 23: synclet.internalapi.executor.v1.ExecutorService.ReportConfigUpdate:output_type -> synclet.internalapi.executor.v1.ReportConfigUpdateResponse
-	14, // 24: synclet.internalapi.executor.v1.ExecutorService.ReportLog:output_type -> synclet.internalapi.executor.v1.ReportLogResponse
-	16, // 25: synclet.internalapi.executor.v1.ExecutorService.ClaimJob:output_type -> synclet.internalapi.executor.v1.ClaimJobResponse
-	18, // 26: synclet.internalapi.executor.v1.ExecutorService.UpdateJobStatus:output_type -> synclet.internalapi.executor.v1.UpdateJobStatusResponse
-	20, // 27: synclet.internalapi.executor.v1.ExecutorService.IsJobActive:output_type -> synclet.internalapi.executor.v1.IsJobActiveResponse
-	22, // 28: synclet.internalapi.executor.v1.ExecutorService.ClaimConnectorTask:output_type -> synclet.internalapi.executor.v1.ClaimConnectorTaskResponse
-	24, // 29: synclet.internalapi.executor.v1.ExecutorService.ReportConnectorTaskResult:output_type -> synclet.internalapi.executor.v1.ReportConnectorTaskResultResponse
-	26, // 30: synclet.internalapi.executor.v1.ExecutorService.IsTaskActive:output_type -> synclet.internalapi.executor.v1.IsTaskActiveResponse
-	28, // 31: synclet.internalapi.executor.v1.ExecutorService.FailJob:output_type -> synclet.internalapi.executor.v1.FailJobResponse
-	30, // 32: synclet.internalapi.executor.v1.ExecutorService.SetK8sJobName:output_type -> synclet.internalapi.executor.v1.SetK8sJobNameResponse
-	19, // [19:33] is the sub-list for method output_type
-	5,  // [5:19] is the sub-list for method input_type
-	5,  // [5:5] is the sub-list for extension type_name
-	5,  // [5:5] is the sub-list for extension extendee
-	0,  // [0:5] is the sub-list for field type_name
+	35, // 4: synclet.internalapi.executor.v1.ClaimConnectorTaskResponse.task_type:type_name -> synclet.publicapi.pipeline.v1.ConnectorTaskType
+	36, // 5: synclet.internalapi.executor.v1.ExecutorHeartbeatRequest.executor_type:type_name -> synclet.publicapi.pipeline.v1.ExecutorType
+	31, // 6: synclet.internalapi.executor.v1.ExecutorHeartbeatRequest.capabilities:type_name -> synclet.internalapi.executor.v1.ExecutorCapabilities
+	37, // 7: synclet.internalapi.executor.v1.ExecutorHeartbeatRequest.resource_defaults:type_name -> synclet.publicapi.pipeline.v1.ExecutorResourceDefaults
+	3,  // 8: synclet.internalapi.executor.v1.ExecutorService.Heartbeat:input_type -> synclet.internalapi.executor.v1.HeartbeatRequest
+	5,  // 9: synclet.internalapi.executor.v1.ExecutorService.MarkJobRunning:input_type -> synclet.internalapi.executor.v1.MarkJobRunningRequest
+	7,  // 10: synclet.internalapi.executor.v1.ExecutorService.ReportState:input_type -> synclet.internalapi.executor.v1.ReportStateRequest
+	9,  // 11: synclet.internalapi.executor.v1.ExecutorService.ReportCompletion:input_type -> synclet.internalapi.executor.v1.ReportCompletionRequest
+	11, // 12: synclet.internalapi.executor.v1.ExecutorService.ReportConfigUpdate:input_type -> synclet.internalapi.executor.v1.ReportConfigUpdateRequest
+	13, // 13: synclet.internalapi.executor.v1.ExecutorService.ReportLog:input_type -> synclet.internalapi.executor.v1.ReportLogRequest
+	15, // 14: synclet.internalapi.executor.v1.ExecutorService.ClaimJob:input_type -> synclet.internalapi.executor.v1.ClaimJobRequest
+	17, // 15: synclet.internalapi.executor.v1.ExecutorService.UpdateJobStatus:input_type -> synclet.internalapi.executor.v1.UpdateJobStatusRequest
+	19, // 16: synclet.internalapi.executor.v1.ExecutorService.IsJobActive:input_type -> synclet.internalapi.executor.v1.IsJobActiveRequest
+	21, // 17: synclet.internalapi.executor.v1.ExecutorService.ClaimConnectorTask:input_type -> synclet.internalapi.executor.v1.ClaimConnectorTaskRequest
+	23, // 18: synclet.internalapi.executor.v1.ExecutorService.ReportConnectorTaskResult:input_type -> synclet.internalapi.executor.v1.ReportConnectorTaskResultRequest
+	25, // 19: synclet.internalapi.executor.v1.ExecutorService.IsTaskActive:input_type -> synclet.internalapi.executor.v1.IsTaskActiveRequest
+	27, // 20: synclet.internalapi.executor.v1.ExecutorService.FailJob:input_type -> synclet.internalapi.executor.v1.FailJobRequest
+	29, // 21: synclet.internalapi.executor.v1.ExecutorService.SetK8sJobName:input_type -> synclet.internalapi.executor.v1.SetK8sJobNameRequest
+	32, // 22: synclet.internalapi.executor.v1.ExecutorService.ExecutorHeartbeat:input_type -> synclet.internalapi.executor.v1.ExecutorHeartbeatRequest
+	4,  // 23: synclet.internalapi.executor.v1.ExecutorService.Heartbeat:output_type -> synclet.internalapi.executor.v1.HeartbeatResponse
+	6,  // 24: synclet.internalapi.executor.v1.ExecutorService.MarkJobRunning:output_type -> synclet.internalapi.executor.v1.MarkJobRunningResponse
+	8,  // 25: synclet.internalapi.executor.v1.ExecutorService.ReportState:output_type -> synclet.internalapi.executor.v1.ReportStateResponse
+	10, // 26: synclet.internalapi.executor.v1.ExecutorService.ReportCompletion:output_type -> synclet.internalapi.executor.v1.ReportCompletionResponse
+	12, // 27: synclet.internalapi.executor.v1.ExecutorService.ReportConfigUpdate:output_type -> synclet.internalapi.executor.v1.ReportConfigUpdateResponse
+	14, // 28: synclet.internalapi.executor.v1.ExecutorService.ReportLog:output_type -> synclet.internalapi.executor.v1.ReportLogResponse
+	16, // 29: synclet.internalapi.executor.v1.ExecutorService.ClaimJob:output_type -> synclet.internalapi.executor.v1.ClaimJobResponse
+	18, // 30: synclet.internalapi.executor.v1.ExecutorService.UpdateJobStatus:output_type -> synclet.internalapi.executor.v1.UpdateJobStatusResponse
+	20, // 31: synclet.internalapi.executor.v1.ExecutorService.IsJobActive:output_type -> synclet.internalapi.executor.v1.IsJobActiveResponse
+	22, // 32: synclet.internalapi.executor.v1.ExecutorService.ClaimConnectorTask:output_type -> synclet.internalapi.executor.v1.ClaimConnectorTaskResponse
+	24, // 33: synclet.internalapi.executor.v1.ExecutorService.ReportConnectorTaskResult:output_type -> synclet.internalapi.executor.v1.ReportConnectorTaskResultResponse
+	26, // 34: synclet.internalapi.executor.v1.ExecutorService.IsTaskActive:output_type -> synclet.internalapi.executor.v1.IsTaskActiveResponse
+	28, // 35: synclet.internalapi.executor.v1.ExecutorService.FailJob:output_type -> synclet.internalapi.executor.v1.FailJobResponse
+	30, // 36: synclet.internalapi.executor.v1.ExecutorService.SetK8sJobName:output_type -> synclet.internalapi.executor.v1.SetK8sJobNameResponse
+	33, // 37: synclet.internalapi.executor.v1.ExecutorService.ExecutorHeartbeat:output_type -> synclet.internalapi.executor.v1.ExecutorHeartbeatResponse
+	23, // [23:38] is the sub-list for method output_type
+	8,  // [8:23] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_synclet_internalapi_executor_v1_executor_proto_init() }
@@ -2004,7 +2193,7 @@ func file_synclet_internalapi_executor_v1_executor_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_synclet_internalapi_executor_v1_executor_proto_rawDesc), len(file_synclet_internalapi_executor_v1_executor_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   28,
+			NumMessages:   31,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

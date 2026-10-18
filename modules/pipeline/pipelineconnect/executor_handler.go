@@ -36,6 +36,7 @@ type ExecutorHandler struct {
 	reportTaskResult   *pipelinetasks.ReportTaskResult
 	isTaskActive       *pipelinejobs.IsTaskActive
 	setK8sJobName      *pipelinejobs.SetK8sJobName
+	registerExecutor   *pipelinejobs.RegisterExecutor
 	logger             *logging.Logger
 }
 
@@ -54,6 +55,7 @@ func NewExecutorHandler(
 	reportTaskResult *pipelinetasks.ReportTaskResult,
 	isTaskActive *pipelinejobs.IsTaskActive,
 	setK8sJobName *pipelinejobs.SetK8sJobName,
+	registerExecutor *pipelinejobs.RegisterExecutor,
 	logger *logging.Logger,
 ) *ExecutorHandler {
 	return &ExecutorHandler{
@@ -70,6 +72,7 @@ func NewExecutorHandler(
 		reportTaskResult:   reportTaskResult,
 		isTaskActive:       isTaskActive,
 		setK8sJobName:      setK8sJobName,
+		registerExecutor:   registerExecutor,
 		logger:             logger.Named("executor-handler"),
 	}
 }
@@ -430,4 +433,32 @@ func (h *ExecutorHandler) SetK8SJobName(ctx context.Context, req *connect.Reques
 	}
 
 	return connect.NewResponse(&executorv1.SetK8SJobNameResponse{}), nil
+}
+
+// ExecutorHeartbeat records the executor in the executor registry.
+func (h *ExecutorHandler) ExecutorHeartbeat(ctx context.Context, req *connect.Request[executorv1.ExecutorHeartbeatRequest]) (*connect.Response[executorv1.ExecutorHeartbeatResponse], error) {
+	if req.Msg.GetExecutorId() == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("executor_id is required"))
+	}
+
+	executorType, ok := protoExecutorTypeToDomain(req.Msg.GetExecutorType())
+	if !ok {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown executor_type %s", req.Msg.GetExecutorType()))
+	}
+
+	if err := h.registerExecutor.Execute(ctx, pipelinejobs.RegisterExecutorParams{
+		InstanceID:       req.Msg.GetExecutorId(),
+		Type:             executorType,
+		Version:          req.Msg.GetVersion(),
+		Capacity:         int(req.Msg.GetCapacity()),
+		Capabilities:     pipelineservice.ExecutorCapabilities{NativeDestinations: req.Msg.GetCapabilities().GetNativeDestinations()},
+		ResourceDefaults: protoExecutorResourceDefaultsToDomain(req.Msg.GetResourceDefaults()),
+	}); err != nil {
+		h.logger.WithError(err).Error(ctx, "executor: registration failed",
+			"executor_id", req.Msg.GetExecutorId())
+
+		return nil, mapError(err)
+	}
+
+	return connect.NewResponse(&executorv1.ExecutorHeartbeatResponse{}), nil
 }

@@ -1655,6 +1655,152 @@ func convertStreamGenerationFromJsonModel(src *jsonStreamGeneration) (*pipelines
 	return result, nil
 }
 
+type jsonExecutor struct {
+	ID               uuid.UUID                    `json:"id"`
+	InstanceID       string                       `json:"instance_id"`
+	Type             string                       `json:"type"`
+	Version          string                       `json:"version"`
+	Capacity         int                          `json:"capacity"`
+	Capabilities     jsonExecutorCapabilities     `json:"capabilities"`
+	ResourceDefaults jsonExecutorResourceDefaults `json:"resource_defaults"`
+	FirstSeenAt      time.Time                    `json:"first_seen_at"`
+	LastSeenAt       time.Time                    `json:"last_seen_at"`
+}
+
+func (e *jsonExecutor) Scan(value any) error {
+	return json.Unmarshal(value.([]byte), e)
+}
+
+func (e jsonExecutor) Value() (driver.Value, error) {
+	return json.Marshal(e)
+}
+
+func convertExecutorToJsonModel(src *pipelineservice.Executor) (*jsonExecutor, error) {
+	result := &jsonExecutor{}
+	result.ID = src.ID
+	result.InstanceID = src.InstanceID
+	tmp2, err := convertExecutorTypeToDB(src.Type)
+	if err != nil {
+		return nil, err
+	}
+	result.Type = tmp2
+	result.Version = src.Version
+	result.Capacity = src.Capacity
+	tmp5, err := convertExecutorCapabilitiesToJsonModel(toPtr(src.Capabilities))
+	if err != nil {
+		return nil, errors.Wrap(err, "convert ExecutorCapabilities to db")
+	}
+	result.Capabilities = *tmp5
+	tmp6, err := convertExecutorResourceDefaultsToJsonModel(toPtr(src.ResourceDefaults))
+	if err != nil {
+		return nil, errors.Wrap(err, "convert ExecutorResourceDefaults to db")
+	}
+	result.ResourceDefaults = *tmp6
+	result.FirstSeenAt = (src.FirstSeenAt).UTC()
+	result.LastSeenAt = (src.LastSeenAt).UTC()
+	return result, nil
+}
+
+func convertExecutorFromJsonModel(src *jsonExecutor) (*pipelineservice.Executor, error) {
+	result := &pipelineservice.Executor{}
+	result.ID = src.ID
+	result.InstanceID = src.InstanceID
+	tmp11, err := convertExecutorTypeFromDB(src.Type)
+	if err != nil {
+		return nil, err
+	}
+	result.Type = tmp11
+	result.Version = src.Version
+	result.Capacity = src.Capacity
+	tmp14, err := convertExecutorCapabilitiesFromJsonModel(toPtr(src.Capabilities))
+	if err != nil {
+		return nil, err
+	}
+
+	result.Capabilities = fromPtr(tmp14)
+	tmp15, err := convertExecutorResourceDefaultsFromJsonModel(toPtr(src.ResourceDefaults))
+	if err != nil {
+		return nil, err
+	}
+
+	result.ResourceDefaults = fromPtr(tmp15)
+	result.FirstSeenAt = src.FirstSeenAt
+	result.LastSeenAt = src.LastSeenAt
+	return result, nil
+}
+
+type jsonExecutorCapabilities struct {
+	NativeDestinations stringSliceValue `json:"native_destinations"`
+}
+
+func (e *jsonExecutorCapabilities) Scan(value any) error {
+	return json.Unmarshal(value.([]byte), e)
+}
+
+func (e jsonExecutorCapabilities) Value() (driver.Value, error) {
+	return json.Marshal(e)
+}
+
+func convertExecutorCapabilitiesToJsonModel(src *pipelineservice.ExecutorCapabilities) (*jsonExecutorCapabilities, error) {
+	result := &jsonExecutorCapabilities{}
+	tmp := make(stringSliceValue, 0, len(src.NativeDestinations))
+	for _, el := range src.NativeDestinations {
+		tmp = append(tmp, el)
+	}
+	result.NativeDestinations = tmp
+	return result, nil
+}
+
+func convertExecutorCapabilitiesFromJsonModel(src *jsonExecutorCapabilities) (*pipelineservice.ExecutorCapabilities, error) {
+	result := &pipelineservice.ExecutorCapabilities{}
+	tmp2 := make([]string, 0, len(src.NativeDestinations))
+	for _, el := range src.NativeDestinations {
+
+		tmp2 = append(tmp2, el)
+	}
+	result.NativeDestinations = tmp2
+	return result, nil
+}
+
+type jsonExecutorResourceDefaults struct {
+	CPURequest            string `json:"cpu_request"`
+	CPULimit              string `json:"cpu_limit"`
+	MemoryRequest         string `json:"memory_request"`
+	MemoryLimit           string `json:"memory_limit"`
+	CPUExecutorDefault    bool   `json:"cpu_executor_default"`
+	MemoryExecutorDefault bool   `json:"memory_executor_default"`
+}
+
+func (e *jsonExecutorResourceDefaults) Scan(value any) error {
+	return json.Unmarshal(value.([]byte), e)
+}
+
+func (e jsonExecutorResourceDefaults) Value() (driver.Value, error) {
+	return json.Marshal(e)
+}
+
+func convertExecutorResourceDefaultsToJsonModel(src *pipelineservice.ExecutorResourceDefaults) (*jsonExecutorResourceDefaults, error) {
+	result := &jsonExecutorResourceDefaults{}
+	result.CPURequest = src.CPURequest
+	result.CPULimit = src.CPULimit
+	result.MemoryRequest = src.MemoryRequest
+	result.MemoryLimit = src.MemoryLimit
+	result.CPUExecutorDefault = src.CPUExecutorDefault
+	result.MemoryExecutorDefault = src.MemoryExecutorDefault
+	return result, nil
+}
+
+func convertExecutorResourceDefaultsFromJsonModel(src *jsonExecutorResourceDefaults) (*pipelineservice.ExecutorResourceDefaults, error) {
+	result := &pipelineservice.ExecutorResourceDefaults{}
+	result.CPURequest = src.CPURequest
+	result.CPULimit = src.CPULimit
+	result.MemoryRequest = src.MemoryRequest
+	result.MemoryLimit = src.MemoryLimit
+	result.CPUExecutorDefault = src.CPUExecutorDefault
+	result.MemoryExecutorDefault = src.MemoryExecutorDefault
+	return result, nil
+}
+
 type jsonPipelineEvent struct {
 	EventType string                 `json:"event_type"`
 	Data      *jsonPipelineEventData `json:"data"`

@@ -52,6 +52,10 @@ service ExecutorService {
 
   // Kubernetes executor records the Job it launched for a sync
   rpc SetK8sJobName(SetK8sJobNameRequest) returns (SetK8sJobNameResponse);
+
+  // ExecutorHeartbeat registers the executor in the control plane's registry.
+  // Every executor sends it periodically, idle or not.
+  rpc ExecutorHeartbeat(ExecutorHeartbeatRequest) returns (ExecutorHeartbeatResponse);
 }
 
 message HeartbeatRequest {
@@ -210,3 +214,21 @@ message SetK8sJobNameRequest {
 }
 
 message SetK8sJobNameResponse {}
+
+// ExecutorCapabilities lists what an executor can run beyond Docker images.
+message ExecutorCapabilities {
+  repeated string native_destinations = 1;
+}
+
+message ExecutorHeartbeatRequest {
+  // Owner id of the executor, unique per instance.
+  string executor_id = 1;
+  synclet.publicapi.pipeline.v1.ExecutorType executor_type = 2;
+  string version = 3;
+  // Concurrent syncs; 0 means unbounded.
+  int32 capacity = 4;
+  ExecutorCapabilities capabilities = 5;
+  synclet.publicapi.pipeline.v1.ExecutorResourceDefaults resource_defaults = 6;
+}
+
+message ExecutorHeartbeatResponse {}

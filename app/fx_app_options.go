@@ -95,7 +95,7 @@ func NewFxAppOptions(options *RunAppOptions) fx.Option {
 		dockerExecutorConfigModule(),
 
 		// An executor flag embeds that executor, backed by the use cases.
-		conditionalFxOptions(options.runsExecutor(), standaloneBackendModule, serverExecutorRuntimeModule),
+		conditionalFxOptions(options.runsExecutor(), standaloneBackendModule, serverExecutorRuntimeModule, executorRegistrationConfigModule),
 		conditionalFxOptions(options.DockerExecutor, dockerExecutorModule),
 		conditionalFxOptions(options.K8sExecutor, k8sExecutorConfigModule, k8sExecutorModule, serverK8sPodAPITokenModule),
 

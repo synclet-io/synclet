@@ -75,6 +75,7 @@ const RESPONSES: Record<string, unknown> = {
     workspacesMode: 'WORKSPACES_MODE_MULTI',
     emailEnabled: true,
   },
+  'pipeline.v1.SourceService/ListExecutors': { executors: [] },
   'pipeline.v1.SourceService/ListSources': { sources: [source], total: 1 },
   'pipeline.v1.SourceService/GetSource': { source },
   'pipeline.v1.DestinationService/ListDestinations': { destinations: [destination], total: 1 },

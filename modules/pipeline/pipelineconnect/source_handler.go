@@ -16,6 +16,7 @@ import (
 	"github.com/synclet-io/synclet/gen/proto/synclet/publicapi/pipeline/v1/pipelinev1connect"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinecatalog"
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinejobs"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinesecrets"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinesources"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinetasks"
@@ -35,6 +36,7 @@ type SourceHandler struct {
 	waitForTaskResult      *pipelinetasks.WaitForTaskResult
 	createDiscoverTask     *pipelinetasks.CreateDiscoverTask
 	getSourceCatalog       *pipelinecatalog.GetSourceCatalog
+	listExecutors          *pipelinejobs.ListExecutors
 	config                 SourceHandlerConfig
 	connectionCheckTimeout time.Duration
 }
@@ -50,6 +52,7 @@ func NewSourceHandler(
 	waitForTaskResult *pipelinetasks.WaitForTaskResult,
 	createDiscoverTask *pipelinetasks.CreateDiscoverTask,
 	getSourceCatalog *pipelinecatalog.GetSourceCatalog,
+	listExecutors *pipelinejobs.ListExecutors,
 	config SourceHandlerConfig,
 	svcCfg pipelineservice.Config,
 ) *SourceHandler {
@@ -63,6 +66,7 @@ func NewSourceHandler(
 		waitForTaskResult:      waitForTaskResult,
 		createDiscoverTask:     createDiscoverTask,
 		getSourceCatalog:       getSourceCatalog,
+		listExecutors:          listExecutors,
 		config:                 config,
 		connectionCheckTimeout: svcCfg.ConnectionCheckTimeout,
 	}

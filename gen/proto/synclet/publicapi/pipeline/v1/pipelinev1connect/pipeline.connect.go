@@ -70,6 +70,9 @@ const (
 	// SourceServiceGetRuntimeDefaultsProcedure is the fully-qualified name of the SourceService's
 	// GetRuntimeDefaults RPC.
 	SourceServiceGetRuntimeDefaultsProcedure = "/synclet.publicapi.pipeline.v1.SourceService/GetRuntimeDefaults"
+	// SourceServiceListExecutorsProcedure is the fully-qualified name of the SourceService's
+	// ListExecutors RPC.
+	SourceServiceListExecutorsProcedure = "/synclet.publicapi.pipeline.v1.SourceService/ListExecutors"
 	// DestinationServiceCreateDestinationProcedure is the fully-qualified name of the
 	// DestinationService's CreateDestination RPC.
 	DestinationServiceCreateDestinationProcedure = "/synclet.publicapi.pipeline.v1.DestinationService/CreateDestination"
@@ -175,6 +178,9 @@ type SourceServiceClient interface {
 	GetSourceCatalog(context.Context, *connect.Request[v1.GetSourceCatalogRequest]) (*connect.Response[v1.GetSourceCatalogResponse], error)
 	GetSystemInfo(context.Context, *connect.Request[v1.GetSystemInfoRequest]) (*connect.Response[v1.GetSystemInfoResponse], error)
 	GetRuntimeDefaults(context.Context, *connect.Request[v1.GetRuntimeDefaultsRequest]) (*connect.Response[v1.GetRuntimeDefaultsResponse], error)
+	// ListExecutors returns the executors that reported to the control plane
+	// within the silence timeout.
+	ListExecutors(context.Context, *connect.Request[v1.ListExecutorsRequest]) (*connect.Response[v1.ListExecutorsResponse], error)
 }
 
 // NewSourceServiceClient constructs a client for the synclet.publicapi.pipeline.v1.SourceService
@@ -248,6 +254,12 @@ func NewSourceServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(sourceServiceMethods.ByName("GetRuntimeDefaults")),
 			connect.WithClientOptions(opts...),
 		),
+		listExecutors: connect.NewClient[v1.ListExecutorsRequest, v1.ListExecutorsResponse](
+			httpClient,
+			baseURL+SourceServiceListExecutorsProcedure,
+			connect.WithSchema(sourceServiceMethods.ByName("ListExecutors")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -263,6 +275,7 @@ type sourceServiceClient struct {
 	getSourceCatalog     *connect.Client[v1.GetSourceCatalogRequest, v1.GetSourceCatalogResponse]
 	getSystemInfo        *connect.Client[v1.GetSystemInfoRequest, v1.GetSystemInfoResponse]
 	getRuntimeDefaults   *connect.Client[v1.GetRuntimeDefaultsRequest, v1.GetRuntimeDefaultsResponse]
+	listExecutors        *connect.Client[v1.ListExecutorsRequest, v1.ListExecutorsResponse]
 }
 
 // CreateSource calls synclet.publicapi.pipeline.v1.SourceService.CreateSource.
@@ -315,6 +328,11 @@ func (c *sourceServiceClient) GetRuntimeDefaults(ctx context.Context, req *conne
 	return c.getRuntimeDefaults.CallUnary(ctx, req)
 }
 
+// ListExecutors calls synclet.publicapi.pipeline.v1.SourceService.ListExecutors.
+func (c *sourceServiceClient) ListExecutors(ctx context.Context, req *connect.Request[v1.ListExecutorsRequest]) (*connect.Response[v1.ListExecutorsResponse], error) {
+	return c.listExecutors.CallUnary(ctx, req)
+}
+
 // SourceServiceHandler is an implementation of the synclet.publicapi.pipeline.v1.SourceService
 // service.
 type SourceServiceHandler interface {
@@ -328,6 +346,9 @@ type SourceServiceHandler interface {
 	GetSourceCatalog(context.Context, *connect.Request[v1.GetSourceCatalogRequest]) (*connect.Response[v1.GetSourceCatalogResponse], error)
 	GetSystemInfo(context.Context, *connect.Request[v1.GetSystemInfoRequest]) (*connect.Response[v1.GetSystemInfoResponse], error)
 	GetRuntimeDefaults(context.Context, *connect.Request[v1.GetRuntimeDefaultsRequest]) (*connect.Response[v1.GetRuntimeDefaultsResponse], error)
+	// ListExecutors returns the executors that reported to the control plane
+	// within the silence timeout.
+	ListExecutors(context.Context, *connect.Request[v1.ListExecutorsRequest]) (*connect.Response[v1.ListExecutorsResponse], error)
 }
 
 // NewSourceServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -397,6 +418,12 @@ func NewSourceServiceHandler(svc SourceServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(sourceServiceMethods.ByName("GetRuntimeDefaults")),
 		connect.WithHandlerOptions(opts...),
 	)
+	sourceServiceListExecutorsHandler := connect.NewUnaryHandler(
+		SourceServiceListExecutorsProcedure,
+		svc.ListExecutors,
+		connect.WithSchema(sourceServiceMethods.ByName("ListExecutors")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/synclet.publicapi.pipeline.v1.SourceService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case SourceServiceCreateSourceProcedure:
@@ -419,6 +446,8 @@ func NewSourceServiceHandler(svc SourceServiceHandler, opts ...connect.HandlerOp
 			sourceServiceGetSystemInfoHandler.ServeHTTP(w, r)
 		case SourceServiceGetRuntimeDefaultsProcedure:
 			sourceServiceGetRuntimeDefaultsHandler.ServeHTTP(w, r)
+		case SourceServiceListExecutorsProcedure:
+			sourceServiceListExecutorsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -466,6 +495,10 @@ func (UnimplementedSourceServiceHandler) GetSystemInfo(context.Context, *connect
 
 func (UnimplementedSourceServiceHandler) GetRuntimeDefaults(context.Context, *connect.Request[v1.GetRuntimeDefaultsRequest]) (*connect.Response[v1.GetRuntimeDefaultsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("synclet.publicapi.pipeline.v1.SourceService.GetRuntimeDefaults is not implemented"))
+}
+
+func (UnimplementedSourceServiceHandler) ListExecutors(context.Context, *connect.Request[v1.ListExecutorsRequest]) (*connect.Response[v1.ListExecutorsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("synclet.publicapi.pipeline.v1.SourceService.ListExecutors is not implemented"))
 }
 
 // DestinationServiceClient is a client for the synclet.publicapi.pipeline.v1.DestinationService

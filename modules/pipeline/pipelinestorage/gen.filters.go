@@ -930,6 +930,61 @@ func buildStreamGenerationFilterExpr(filter *pipelineservice.StreamGenerationFil
 		}),
 	)
 }
+func buildExecutorFilterExpr(filter *pipelineservice.ExecutorFilter, options ...func(*filterOptions)) (clause.Expression, error) {
+	if filter == nil {
+		return nil, nil
+	}
+
+	opts := &filterOptions{}
+	for _, opt := range options {
+		opt(opts)
+	}
+
+	return dbutil.BuildFilterExpression(
+		dbutil.ColumnFilter[uuid.UUID]{
+			Column: opts.columnPrefix + "id",
+			Filter: filter.ID,
+		},
+		dbutil.ColumnFilter[string]{
+			Column: opts.columnPrefix + "instance_id",
+			Filter: filter.InstanceID,
+		},
+		dbutil.MappedColumnFilter[pipelineservice.ExecutorType, string]{
+			Column: opts.columnPrefix + "type",
+			Filter: filter.Type,
+			Mapper: convertExecutorTypeToDB,
+		},
+		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
+			if filter.Or == nil {
+				return nil, nil
+			}
+			exprs := make([]clause.Expression, 0, len(filter.Or))
+			for _, orFilter := range filter.Or {
+				expr, err := buildExecutorFilterExpr(orFilter)
+				if err != nil {
+					return nil, err
+				}
+				exprs = append(exprs, expr)
+			}
+			return clause.Or(exprs...), nil
+		}),
+		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
+			if filter.And == nil {
+				return nil, nil
+			}
+			exprs := make([]clause.Expression, 0, len(filter.And))
+			for _, andFilter := range filter.And {
+				expr, err := buildExecutorFilterExpr(andFilter)
+				if err != nil {
+					return nil, err
+				}
+				exprs = append(exprs, expr)
+			}
+			return clause.And(exprs...), nil
+		}),
+	)
+}
+
 func buildPipelineEventFilterExpr(filter *pipelineservice.PipelineEventFilter, options ...func(*filterOptions)) (clause.Expression, error) {
 	if filter == nil {
 		return nil, nil

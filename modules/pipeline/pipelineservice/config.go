@@ -18,6 +18,9 @@ type Config struct {
 	StatsRollupDailyLookback    time.Duration
 	RegistryFetchTimeout        time.Duration
 	HeartbeatTimeout            time.Duration
+	// ExecutorSilenceTimeout is how long an executor stays listed after its
+	// last registration heartbeat.
+	ExecutorSilenceTimeout time.Duration
 	// LogArchiveEnabled moves the logs of finished jobs from Postgres to the LogArchive.
 	LogArchiveEnabled bool
 	// LogArchiveBackend names the configured LogArchive backend.

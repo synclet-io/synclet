@@ -87,6 +87,8 @@ func k8sExecutorModule() fx.Option {
 			func(backend pipelineexec.ExecutorBackend) pipelineexeck8s.ResourceChecker { return backend },
 			fx.Private,
 		),
+		fx.Provide(newK8sExecutorInfo),
+		executorRegistrationModule(),
 
 		pnpjobber.Module(newK8sTaskWorkerJob),
 		pnpjobber.Module(newK8sSyncWorkerJob),

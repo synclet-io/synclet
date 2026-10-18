@@ -25,6 +25,7 @@ const tabs = computed<Tab[]>(() => {
     { name: 'Notifications', to: { name: 'settings-notifications' } },
     { name: 'Webhooks', to: { name: 'settings-webhooks' } },
     { name: 'Audit log', to: { name: 'settings-audit' } },
+    { name: 'System', to: { name: 'settings-system' } },
     { name: 'API Keys', to: { name: 'settings-api-keys' } },
     { name: 'Account', to: { name: 'settings-account' } },
   ]

@@ -1046,6 +1046,75 @@ func (a dbStreamGeneration) TableName() string {
 	return "pipeline.stream_generations"
 }
 
+type dbExecutor struct {
+	ID               uuid.UUID                    `gorm:"column:id"`
+	InstanceID       string                       `gorm:"column:instance_id;type:text"`
+	Type             string                       `gorm:"column:type;type:text"`
+	Version          string                       `gorm:"column:version;type:text"`
+	Capacity         int                          `gorm:"column:capacity"`
+	Capabilities     jsonExecutorCapabilities     `gorm:"column:capabilities"`
+	ResourceDefaults jsonExecutorResourceDefaults `gorm:"column:resource_defaults"`
+	FirstSeenAt      time.Time                    `gorm:"column:first_seen_at"`
+	LastSeenAt       time.Time                    `gorm:"column:last_seen_at"`
+}
+
+func convertExecutorToDB(src *pipelineservice.Executor) (*dbExecutor, error) {
+	result := &dbExecutor{}
+	result.ID = src.ID
+	result.InstanceID = src.InstanceID
+	tmp2, err := convertExecutorTypeToDB(src.Type)
+	if err != nil {
+		return nil, err
+	}
+	result.Type = tmp2
+	result.Version = src.Version
+	result.Capacity = src.Capacity
+	tmp5, err := convertExecutorCapabilitiesToJsonModel(toPtr(src.Capabilities))
+	if err != nil {
+		return nil, errors.Wrap(err, "convert ExecutorCapabilities to db")
+	}
+	result.Capabilities = *tmp5
+	tmp6, err := convertExecutorResourceDefaultsToJsonModel(toPtr(src.ResourceDefaults))
+	if err != nil {
+		return nil, errors.Wrap(err, "convert ExecutorResourceDefaults to db")
+	}
+	result.ResourceDefaults = *tmp6
+	result.FirstSeenAt = (src.FirstSeenAt).UTC()
+	result.LastSeenAt = (src.LastSeenAt).UTC()
+	return result, nil
+}
+
+func convertExecutorFromDB(src *dbExecutor) (*pipelineservice.Executor, error) {
+	result := &pipelineservice.Executor{}
+	result.ID = src.ID
+	result.InstanceID = src.InstanceID
+	tmp11, err := convertExecutorTypeFromDB(src.Type)
+	if err != nil {
+		return nil, err
+	}
+	result.Type = tmp11
+	result.Version = src.Version
+	result.Capacity = src.Capacity
+	tmp14, err := convertExecutorCapabilitiesFromJsonModel(toPtr(src.Capabilities))
+	if err != nil {
+		return nil, err
+	}
+
+	result.Capabilities = fromPtr(tmp14)
+	tmp15, err := convertExecutorResourceDefaultsFromJsonModel(toPtr(src.ResourceDefaults))
+	if err != nil {
+		return nil, err
+	}
+
+	result.ResourceDefaults = fromPtr(tmp15)
+	result.FirstSeenAt = src.FirstSeenAt
+	result.LastSeenAt = src.LastSeenAt
+	return result, nil
+}
+func (a dbExecutor) TableName() string {
+	return "pipeline.executors"
+}
+
 type dbPipelineEvent struct {
 	EventType string                 `gorm:"column:event_type;type:text"`
 	Data      *jsonPipelineEventData `gorm:"column:data"`

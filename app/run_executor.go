@@ -103,6 +103,7 @@ func executorBaseModule() fx.Option {
 		processModule(),
 		internalHTTPServerModule(true, healthcheckModule(false, false)),
 		rpcBackendModule(),
+		executorRegistrationConfigModule(),
 		pipelineMetricsModule(pipelinemetrics.NewMetricsCollector),
 		fx.Provide(
 			configutil.NewPrefixedConfigProvider[executorRuntimeConfig]("PIPELINE_"),

@@ -89,6 +89,7 @@ export const systemKeys = {
   all: ['system'] as const,
   info: () => [...systemKeys.all, 'info'] as const,
   runtimeDefaults: () => [...systemKeys.all, 'runtimeDefaults'] as const,
+  executors: () => [...systemKeys.all, 'executors'] as const,
 } as const
 
 export const apiKeyKeys = {

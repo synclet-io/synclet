@@ -587,6 +587,35 @@ func (s SyncStatus) String() string {
 	return names[indexes[s-1]:indexes[s]]
 }
 
+type ExecutorType byte
+
+const (
+	ExecutorTypeDocker ExecutorType = iota + 1
+	ExecutorTypeK8s
+)
+
+// user code 'ExecutorType methods'
+// end user code 'ExecutorType methods'
+func (e ExecutorType) IsValid() bool {
+	return e > 0 && e < 3
+}
+func (e ExecutorType) IsDocker() bool {
+	return e == ExecutorTypeDocker
+}
+func (e ExecutorType) IsK8s() bool {
+	return e == ExecutorTypeK8s
+}
+func (e ExecutorType) String() string {
+	const names = "DockerK8s"
+
+	var indexes = [...]int32{0, 6, 9}
+	if e < 1 || e > 2 {
+		return "ExecutorType(" + strconv.FormatInt(int64(e), 10) + ")"
+	}
+
+	return names[indexes[e-1]:indexes[e]]
+}
+
 type PipelineEventType byte
 
 const (

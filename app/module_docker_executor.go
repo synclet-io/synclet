@@ -89,6 +89,8 @@ func dockerExecutorModule() fx.Option {
 			newStartupCleanupFunc,
 			fx.Private,
 		),
+		fx.Provide(newDockerExecutorInfo),
+		executorRegistrationModule(),
 		dockerStartupCleanupModule(),
 		pnpjobber.Module(newDockerCleanerJob),
 		pnpjobber.Module(newDockerSyncWorkerJob),

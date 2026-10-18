@@ -1,17 +1,10 @@
 <script setup lang="ts">
-import type { ExecutorKind } from '@entities/system'
-import { useRuntimeDefaults } from '@entities/system'
+import { executorKindLabels, useRuntimeDefaults } from '@entities/system'
 import { getErrorMessage } from '@shared/lib/errorUtils'
 import { SAlert, SButton, SCard, SSkeleton } from '@shared/ui'
 import { computed } from 'vue'
 
 const runtimeDefaults = useRuntimeDefaults()
-
-const executorLabels: Record<ExecutorKind, string> = {
-  docker: 'Docker',
-  k8s: 'Kubernetes',
-  external: 'Separate executor process',
-}
 
 function formatSeconds(total: number): string {
   if (total <= 0)
@@ -27,23 +20,32 @@ const rows = computed(() => {
   if (!rd)
     return []
   const notSet = 'Not set'
-  const resource = (value: string, executorDefault: boolean) =>
-    !value ? notSet : executorDefault ? `${value} (Kubernetes executor default)` : value
   return [
-    { label: 'Executor', value: executorLabels[rd.executor] },
-    { label: 'CPU request', value: resource(rd.cpuRequest, rd.cpuExecutorDefault) },
-    { label: 'CPU limit', value: resource(rd.cpuLimit, rd.cpuExecutorDefault) },
-    { label: 'Memory request', value: resource(rd.memoryRequest, rd.memoryExecutorDefault) },
-    { label: 'Memory limit', value: resource(rd.memoryLimit, rd.memoryExecutorDefault) },
+    { label: 'CPU request', value: rd.cpuRequest || notSet },
+    { label: 'CPU limit', value: rd.cpuLimit || notSet },
+    { label: 'Memory request', value: rd.memoryRequest || notSet },
+    { label: 'Memory limit', value: rd.memoryLimit || notSet },
     { label: 'Service account', value: rd.serviceAccountName || notSet },
     { label: 'Max concurrent jobs', value: rd.maxConcurrentJobs > 0 ? String(rd.maxConcurrentJobs) : 'Unlimited' },
-    ...(rd.executor === 'docker'
-      ? [{ label: 'Docker executor concurrent syncs', value: rd.dockerMaxConcurrentJobs > 0 ? String(rd.dockerMaxConcurrentJobs) : 'Unlimited' }]
-      : []),
     { label: 'Idle timeout', value: formatSeconds(rd.idleTimeoutSeconds) },
     { label: 'Job log archive', value: rd.logArchiveBackend || 'none' },
+    ...rd.executors.flatMap((executor) => {
+      const name = executorKindLabels[executor.type]
+      const res = executor.resourceDefaults
+      const resource = (value: string, executorDefault: boolean) =>
+        !value ? notSet : executorDefault ? `${value} (executor default)` : value
+      return [
+        { label: `${name} · Capacity`, value: executor.capacity > 0 ? String(executor.capacity) : 'Unlimited' },
+        { label: `${name} · CPU request`, value: resource(res.cpuRequest, res.cpuExecutorDefault) },
+        { label: `${name} · CPU limit`, value: resource(res.cpuLimit, res.cpuExecutorDefault) },
+        { label: `${name} · Memory request`, value: resource(res.memoryRequest, res.memoryExecutorDefault) },
+        { label: `${name} · Memory limit`, value: resource(res.memoryLimit, res.memoryExecutorDefault) },
+      ]
+    }),
   ]
 })
+
+const noExecutors = computed(() => runtimeDefaults.data.value?.executors.length === 0)
 </script>
 
 <template>
@@ -72,5 +74,8 @@ const rows = computed(() => {
         </dd>
       </div>
     </dl>
+    <p v-if="noExecutors" class="mt-3 text-sm text-text-secondary">
+      No executor has reported yet
+    </p>
   </SCard>
 </template>

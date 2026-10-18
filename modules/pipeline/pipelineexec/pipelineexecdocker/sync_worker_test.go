@@ -56,6 +56,10 @@ func (m *mockBackend) SetK8sJobName(_ context.Context, _ uuid.UUID, _ string) er
 	return nil
 }
 
+func (m *mockBackend) ExecutorHeartbeat(_ context.Context, _ pipelineexec.ExecutorInfo) error {
+	return nil
+}
+
 func (m *mockBackend) Heartbeat(_ context.Context, _ uuid.UUID, _, _ int64) (*pipelineexec.HeartbeatResult, error) {
 	if m.heartbeatResult != nil {
 		return m.heartbeatResult, m.heartbeatErr

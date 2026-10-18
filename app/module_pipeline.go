@@ -101,6 +101,7 @@ type pipelineConfig struct {
 	ConnectorTaskPendingTimeout time.Duration            `env:"CONNECTOR_TASK_PENDING_TIMEOUT" envDefault:"1m"`
 	DefaultMaxAttempts          int                      `env:"DEFAULT_MAX_ATTEMPTS" envDefault:"3"`
 	HeartbeatTimeout            time.Duration            `env:"HEARTBEAT_TIMEOUT" envDefault:"30s"`
+	ExecutorSilenceTimeout      time.Duration            `env:"EXECUTOR_SILENCE_TIMEOUT" envDefault:"60s"`
 	ConnectionCheckTimeout      time.Duration            `env:"CONNECTION_CHECK_TIMEOUT" envDefault:"2m"`
 	ConnectorTaskPollInterval   time.Duration            `env:"CONNECTOR_TASK_POLL_INTERVAL" envDefault:"500ms"`
 	EventEmitTimeout            time.Duration            `env:"EVENT_EMIT_TIMEOUT" envDefault:"30s"`
@@ -209,49 +210,26 @@ func pipelineMetricsCollectorAdapter(c *pipelinemetrics.MetricsCollector) promet
 type pipelineSourceHandlerConfigParams struct {
 	fx.In
 
-	Options   *RunAppOptions
 	AuthCfg   *authConfig
 	WsCfg     *workspaceConfig
 	NotifyCfg *notifyConfig
 	Cfg       *pipelineConfig
-	DockerCfg *dockerExecutorConfig
-	K8sCfg    *k8sExecutorConfig `optional:"true"`
 }
 
 func newPipelineSourceHandlerConfig(params pipelineSourceHandlerConfigParams) pipelineconnect.SourceHandlerConfig {
-	executor := pipelineconnect.ExecutorNone
-	dockerMaxConcurrentJobs := 0
-	k8sDefaultCPU, k8sDefaultMemory := "", ""
-
-	switch {
-	case params.Options.DockerExecutor:
-		executor = pipelineconnect.ExecutorDocker
-		dockerMaxConcurrentJobs = params.DockerCfg.MaxConcurrentJobs
-	case params.Options.K8sExecutor:
-		executor = pipelineconnect.ExecutorK8s
-
-		if params.K8sCfg != nil {
-			k8sDefaultCPU, k8sDefaultMemory = params.K8sCfg.DefaultCPU, params.K8sCfg.DefaultMemory
-		}
-	}
-
 	return pipelineconnect.SourceHandlerConfig{
 		RegistrationEnabled: params.AuthCfg.RegistrationEnabled,
 		SingleWorkspaceMode: WorkspaceModeSingle == params.WsCfg.Mode,
 		EmailEnabled:        params.NotifyCfg.SMTP.Host != "",
 		RuntimeDefaults: pipelineconnect.RuntimeDefaultsInfo{
-			Executor:                executor,
-			CPURequest:              params.Cfg.Runtime.CPURequest,
-			CPULimit:                params.Cfg.Runtime.CPULimit,
-			MemoryRequest:           params.Cfg.Runtime.MemoryRequest,
-			MemoryLimit:             params.Cfg.Runtime.MemoryLimit,
-			ServiceAccountName:      params.Cfg.Runtime.ServiceAccountName,
-			MaxConcurrentJobs:       params.Cfg.MaxConcurrentJobs,
-			IdleTimeout:             params.Cfg.IdleTimeout,
-			LogArchiveBackend:       params.Cfg.LogArchive.Backend,
-			DockerMaxConcurrentJobs: dockerMaxConcurrentJobs,
-			K8sDefaultCPU:           k8sDefaultCPU,
-			K8sDefaultMemory:        k8sDefaultMemory,
+			CPURequest:         params.Cfg.Runtime.CPURequest,
+			CPULimit:           params.Cfg.Runtime.CPULimit,
+			MemoryRequest:      params.Cfg.Runtime.MemoryRequest,
+			MemoryLimit:        params.Cfg.Runtime.MemoryLimit,
+			ServiceAccountName: params.Cfg.Runtime.ServiceAccountName,
+			MaxConcurrentJobs:  params.Cfg.MaxConcurrentJobs,
+			IdleTimeout:        params.Cfg.IdleTimeout,
+			LogArchiveBackend:  params.Cfg.LogArchive.Backend,
 		},
 	}
 }
@@ -276,6 +254,7 @@ func newPipelineServiceConfig(cfg *pipelineConfig) pipelineservice.Config {
 		StatsRollupDailyLookback:    cfg.StatsRollupDailyLookback,
 		RegistryFetchTimeout:        cfg.RegistryFetchTimeout,
 		HeartbeatTimeout:            cfg.HeartbeatTimeout,
+		ExecutorSilenceTimeout:      cfg.ExecutorSilenceTimeout,
 		LogArchiveEnabled:           cfg.LogArchive.Backend != logArchiveBackendNone,
 		LogArchiveBackend:           cfg.LogArchive.Backend,
 		MaxLogLinesPerAttempt:       cfg.MaxLogLinesPerAttempt,

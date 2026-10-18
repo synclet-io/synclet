@@ -195,6 +195,11 @@ export const router = createRouter({
               meta: { requiresAdmin: true },
             },
             {
+              path: 'system',
+              name: 'settings-system',
+              component: () => import('@pages/settings/SystemPage.vue'),
+            },
+            {
               path: 'api-keys',
               name: 'settings-api-keys',
               component: () => import('@pages/settings/APIKeysPage.vue'),

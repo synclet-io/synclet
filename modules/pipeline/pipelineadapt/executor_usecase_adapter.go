@@ -35,6 +35,7 @@ type UseCaseExecutorBackend struct {
 	reportTaskResult   *pipelinetasks.ReportTaskResult
 	isTaskActive       *pipelinejobs.IsTaskActive
 	setK8sJobName      *pipelinejobs.SetK8sJobName
+	registerExecutor   *pipelinejobs.RegisterExecutor
 }
 
 // NewUseCaseExecutorBackend creates a new UseCaseExecutorBackend.
@@ -53,6 +54,7 @@ func NewUseCaseExecutorBackend(
 	reportTaskResult *pipelinetasks.ReportTaskResult,
 	isTaskActive *pipelinejobs.IsTaskActive,
 	setK8sJobName *pipelinejobs.SetK8sJobName,
+	registerExecutor *pipelinejobs.RegisterExecutor,
 ) *UseCaseExecutorBackend {
 	return &UseCaseExecutorBackend{
 		claimJobBundle:     claimJobBundle,
@@ -69,6 +71,7 @@ func NewUseCaseExecutorBackend(
 		reportTaskResult:   reportTaskResult,
 		isTaskActive:       isTaskActive,
 		setK8sJobName:      setK8sJobName,
+		registerExecutor:   registerExecutor,
 	}
 }
 
@@ -267,5 +270,17 @@ func (a *UseCaseExecutorBackend) SetK8sJobName(ctx context.Context, jobID uuid.U
 	return a.setK8sJobName.Execute(ctx, pipelinejobs.SetK8sJobNameParams{
 		ID:         jobID,
 		K8sJobName: name,
+	})
+}
+
+// ExecutorHeartbeat registers the in-process executor in the executor registry.
+func (a *UseCaseExecutorBackend) ExecutorHeartbeat(ctx context.Context, info pipelineexec.ExecutorInfo) error {
+	return a.registerExecutor.Execute(ctx, pipelinejobs.RegisterExecutorParams{
+		InstanceID:       info.ID,
+		Type:             info.Type,
+		Version:          info.Version,
+		Capacity:         info.Capacity,
+		Capabilities:     info.Capabilities,
+		ResourceDefaults: info.ResourceDefaults,
 	})
 }

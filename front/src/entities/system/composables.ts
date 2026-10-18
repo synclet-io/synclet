@@ -18,6 +18,15 @@ export function useRuntimeDefaults() {
     queryKey: systemKeys.runtimeDefaults(),
     queryFn: () => systemApi.getRuntimeDefaults(),
     enabled: computed(() => auth.isAuthenticated.value && !!auth.currentWorkspaceId.value),
-    staleTime: Infinity,
+  })
+}
+
+export function useExecutors() {
+  const auth = useAuth()
+  return useQuery({
+    queryKey: systemKeys.executors(),
+    queryFn: () => systemApi.listExecutors(),
+    enabled: computed(() => auth.isAuthenticated.value && !!auth.currentWorkspaceId.value),
+    refetchInterval: 15_000,
   })
 }

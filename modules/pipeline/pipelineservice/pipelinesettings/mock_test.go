@@ -39,6 +39,7 @@ func (m *mockStorage) WorkspaceSettings() pipelineservice.WorkspaceSettingsStora
 }
 func (m *mockStorage) ConnectorTasks() pipelineservice.ConnectorTasksStorage       { return nil }
 func (m *mockStorage) StreamGenerations() pipelineservice.StreamGenerationsStorage { return nil }
+func (m *mockStorage) Executors() pipelineservice.ExecutorsStorage                 { return nil }
 func (m *mockStorage) PipelineEvents() pipelineservice.PipelineEventsOutbox        { return nil }
 func (m *mockStorage) IdempotencyKeys() idempotency.Storage                        { return nil }
 func (m *mockStorage) ExecuteInTransaction(ctx context.Context, cb func(ctx context.Context, tx pipelineservice.Storage) error) error {

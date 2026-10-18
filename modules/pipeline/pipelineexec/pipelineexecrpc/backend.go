@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"math"
 	"net/http"
 	"time"
 
@@ -478,6 +479,42 @@ func airbyteStateTypeToProto(t protocol.AirbyteStateType) protocolv1.StateType {
 		return protocolv1.StateType_STATE_TYPE_LEGACY
 	default:
 		return protocolv1.StateType_STATE_TYPE_STREAM
+	}
+}
+
+// ExecutorHeartbeat calls the ExecutorHeartbeat RPC with retry.
+func (a *Backend) ExecutorHeartbeat(ctx context.Context, info pipelineexec.ExecutorInfo) error {
+	return a.sendWithRetry(ctx, "ExecutorHeartbeat", func(ctx context.Context) error {
+		_, err := a.client.ExecutorHeartbeat(ctx, connect.NewRequest(&executorv1.ExecutorHeartbeatRequest{
+			ExecutorId:   info.ID,
+			ExecutorType: executorTypeToProto(info.Type),
+			Version:      info.Version,
+			Capacity:     int32(min(info.Capacity, math.MaxInt32)), //nolint:gosec // clamped above
+			Capabilities: &executorv1.ExecutorCapabilities{
+				NativeDestinations: info.Capabilities.NativeDestinations,
+			},
+			ResourceDefaults: &pipelinev1.ExecutorResourceDefaults{
+				CpuRequest:            info.ResourceDefaults.CPURequest,
+				CpuLimit:              info.ResourceDefaults.CPULimit,
+				MemoryRequest:         info.ResourceDefaults.MemoryRequest,
+				MemoryLimit:           info.ResourceDefaults.MemoryLimit,
+				CpuExecutorDefault:    info.ResourceDefaults.CPUExecutorDefault,
+				MemoryExecutorDefault: info.ResourceDefaults.MemoryExecutorDefault,
+			},
+		}))
+
+		return err
+	})
+}
+
+func executorTypeToProto(t pipelineservice.ExecutorType) pipelinev1.ExecutorType {
+	switch t {
+	case pipelineservice.ExecutorTypeDocker:
+		return pipelinev1.ExecutorType_EXECUTOR_TYPE_DOCKER
+	case pipelineservice.ExecutorTypeK8s:
+		return pipelinev1.ExecutorType_EXECUTOR_TYPE_K8S
+	default:
+		return pipelinev1.ExecutorType_EXECUTOR_TYPE_UNSPECIFIED
 	}
 }
 

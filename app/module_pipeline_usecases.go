@@ -119,6 +119,8 @@ func pipelineUseCasesModule() fx.Option {
 			pipelinejobs.NewMarkJobRunning,
 			pipelinejobs.NewFailStaleJobs,
 			pipelinejobs.NewSetK8sJobName,
+			pipelinejobs.NewRegisterExecutor,
+			pipelinejobs.NewListExecutors,
 			pipelinejobs.NewTriggerSync,
 			pipelinejobs.NewCancelJobForWorkspace,
 			pipelinejobs.NewGetJobWithAttempts,

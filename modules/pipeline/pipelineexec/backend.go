@@ -77,6 +77,18 @@ type ReportConnectorTaskResultParams struct {
 	Result       []byte // JSON-encoded result
 }
 
+// ExecutorInfo describes an executor instance to the executor registry.
+type ExecutorInfo struct {
+	// ID is the executor's owner id, unique per instance.
+	ID      string
+	Type    pipelineservice.ExecutorType
+	Version string
+	// Capacity is the number of concurrent syncs; 0 means unbounded.
+	Capacity         int
+	Capabilities     pipelineservice.ExecutorCapabilities
+	ResourceDefaults pipelineservice.ExecutorResourceDefaults
+}
+
 // SyncReporter is the part of the executor API a running sync reports
 // through: confirmed state, connector config updates and log lines.
 type SyncReporter interface {
@@ -108,4 +120,7 @@ type ExecutorBackend interface {
 
 	// ReportConnectorTaskResult reports the result of a connector task (D-18/D-19).
 	ReportConnectorTaskResult(ctx context.Context, params ReportConnectorTaskResultParams) error
+
+	// ExecutorHeartbeat registers the executor in the executor registry.
+	ExecutorHeartbeat(ctx context.Context, info ExecutorInfo) error
 }

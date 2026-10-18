@@ -74,6 +74,9 @@ const (
 	// ExecutorServiceSetK8SJobNameProcedure is the fully-qualified name of the ExecutorService's
 	// SetK8sJobName RPC.
 	ExecutorServiceSetK8SJobNameProcedure = "/synclet.internalapi.executor.v1.ExecutorService/SetK8sJobName"
+	// ExecutorServiceExecutorHeartbeatProcedure is the fully-qualified name of the ExecutorService's
+	// ExecutorHeartbeat RPC.
+	ExecutorServiceExecutorHeartbeatProcedure = "/synclet.internalapi.executor.v1.ExecutorService/ExecutorHeartbeat"
 )
 
 // ExecutorServiceClient is a client for the synclet.internalapi.executor.v1.ExecutorService
@@ -98,6 +101,9 @@ type ExecutorServiceClient interface {
 	FailJob(context.Context, *connect.Request[v1.FailJobRequest]) (*connect.Response[v1.FailJobResponse], error)
 	// Kubernetes executor records the Job it launched for a sync
 	SetK8SJobName(context.Context, *connect.Request[v1.SetK8SJobNameRequest]) (*connect.Response[v1.SetK8SJobNameResponse], error)
+	// ExecutorHeartbeat registers the executor in the control plane's registry.
+	// Every executor sends it periodically, idle or not.
+	ExecutorHeartbeat(context.Context, *connect.Request[v1.ExecutorHeartbeatRequest]) (*connect.Response[v1.ExecutorHeartbeatResponse], error)
 }
 
 // NewExecutorServiceClient constructs a client for the
@@ -196,6 +202,12 @@ func NewExecutorServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(executorServiceMethods.ByName("SetK8sJobName")),
 			connect.WithClientOptions(opts...),
 		),
+		executorHeartbeat: connect.NewClient[v1.ExecutorHeartbeatRequest, v1.ExecutorHeartbeatResponse](
+			httpClient,
+			baseURL+ExecutorServiceExecutorHeartbeatProcedure,
+			connect.WithSchema(executorServiceMethods.ByName("ExecutorHeartbeat")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -215,6 +227,7 @@ type executorServiceClient struct {
 	isTaskActive              *connect.Client[v1.IsTaskActiveRequest, v1.IsTaskActiveResponse]
 	failJob                   *connect.Client[v1.FailJobRequest, v1.FailJobResponse]
 	setK8SJobName             *connect.Client[v1.SetK8SJobNameRequest, v1.SetK8SJobNameResponse]
+	executorHeartbeat         *connect.Client[v1.ExecutorHeartbeatRequest, v1.ExecutorHeartbeatResponse]
 }
 
 // Heartbeat calls synclet.internalapi.executor.v1.ExecutorService.Heartbeat.
@@ -288,6 +301,11 @@ func (c *executorServiceClient) SetK8SJobName(ctx context.Context, req *connect.
 	return c.setK8SJobName.CallUnary(ctx, req)
 }
 
+// ExecutorHeartbeat calls synclet.internalapi.executor.v1.ExecutorService.ExecutorHeartbeat.
+func (c *executorServiceClient) ExecutorHeartbeat(ctx context.Context, req *connect.Request[v1.ExecutorHeartbeatRequest]) (*connect.Response[v1.ExecutorHeartbeatResponse], error) {
+	return c.executorHeartbeat.CallUnary(ctx, req)
+}
+
 // ExecutorServiceHandler is an implementation of the
 // synclet.internalapi.executor.v1.ExecutorService service.
 type ExecutorServiceHandler interface {
@@ -310,6 +328,9 @@ type ExecutorServiceHandler interface {
 	FailJob(context.Context, *connect.Request[v1.FailJobRequest]) (*connect.Response[v1.FailJobResponse], error)
 	// Kubernetes executor records the Job it launched for a sync
 	SetK8SJobName(context.Context, *connect.Request[v1.SetK8SJobNameRequest]) (*connect.Response[v1.SetK8SJobNameResponse], error)
+	// ExecutorHeartbeat registers the executor in the control plane's registry.
+	// Every executor sends it periodically, idle or not.
+	ExecutorHeartbeat(context.Context, *connect.Request[v1.ExecutorHeartbeatRequest]) (*connect.Response[v1.ExecutorHeartbeatResponse], error)
 }
 
 // NewExecutorServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -403,6 +424,12 @@ func NewExecutorServiceHandler(svc ExecutorServiceHandler, opts ...connect.Handl
 		connect.WithSchema(executorServiceMethods.ByName("SetK8sJobName")),
 		connect.WithHandlerOptions(opts...),
 	)
+	executorServiceExecutorHeartbeatHandler := connect.NewUnaryHandler(
+		ExecutorServiceExecutorHeartbeatProcedure,
+		svc.ExecutorHeartbeat,
+		connect.WithSchema(executorServiceMethods.ByName("ExecutorHeartbeat")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/synclet.internalapi.executor.v1.ExecutorService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ExecutorServiceHeartbeatProcedure:
@@ -433,6 +460,8 @@ func NewExecutorServiceHandler(svc ExecutorServiceHandler, opts ...connect.Handl
 			executorServiceFailJobHandler.ServeHTTP(w, r)
 		case ExecutorServiceSetK8SJobNameProcedure:
 			executorServiceSetK8SJobNameHandler.ServeHTTP(w, r)
+		case ExecutorServiceExecutorHeartbeatProcedure:
+			executorServiceExecutorHeartbeatHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -496,4 +525,8 @@ func (UnimplementedExecutorServiceHandler) FailJob(context.Context, *connect.Req
 
 func (UnimplementedExecutorServiceHandler) SetK8SJobName(context.Context, *connect.Request[v1.SetK8SJobNameRequest]) (*connect.Response[v1.SetK8SJobNameResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("synclet.internalapi.executor.v1.ExecutorService.SetK8sJobName is not implemented"))
+}
+
+func (UnimplementedExecutorServiceHandler) ExecutorHeartbeat(context.Context, *connect.Request[v1.ExecutorHeartbeatRequest]) (*connect.Response[v1.ExecutorHeartbeatResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("synclet.internalapi.executor.v1.ExecutorService.ExecutorHeartbeat is not implemented"))
 }

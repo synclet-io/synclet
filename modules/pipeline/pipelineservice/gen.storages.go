@@ -31,6 +31,7 @@ type Storage interface {
 	WorkspaceSettings() WorkspaceSettingsStorage
 	ConnectorTasks() ConnectorTasksStorage
 	StreamGenerations() StreamGenerationsStorage
+	Executors() ExecutorsStorage
 	PipelineEvents() PipelineEventsOutbox
 	IdempotencyKeys() idempotency.Storage
 	ExecuteInTransaction(ctx context.Context, cb func(ctx context.Context, tx Storage) error) error
@@ -126,4 +127,15 @@ type StreamGenerationsStorage interface {
 
 // user code 'StreamGeneration definitions'
 // end user code 'StreamGeneration definitions'
+type ExecutorsStorage interface {
+	dbutil.EntityStorage[Executor, ExecutorFilter]
+	// user code 'Executor metods'
+	// Upsert inserts the executor, or updates the row of its InstanceID
+	// keeping its ID and FirstSeenAt.
+	Upsert(ctx context.Context, executor *Executor) error
+	// end user code 'Executor metods'
+}
+
+// user code 'Executor definitions'
+// end user code 'Executor definitions'
 type PipelineEventsOutbox txoutbox.Outbox[PipelineEvent]

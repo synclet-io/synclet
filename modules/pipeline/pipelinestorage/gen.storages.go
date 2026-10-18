@@ -75,6 +75,10 @@ func (s Storages) ConnectorTasks() pipelinesvc.ConnectorTasksStorage {
 func (s Storages) StreamGenerations() pipelinesvc.StreamGenerationsStorage {
 	return NewStreamGenerationsStorage(s.db, s.logger)
 }
+func (s Storages) Executors() pipelinesvc.ExecutorsStorage {
+	return NewExecutorsStorage(s.db, s.logger)
+}
+
 func (s Storages) PipelineEvents() pipelinesvc.PipelineEventsOutbox {
 	return NewPipelineEventsOutbox(s.db, s.processors)
 }
@@ -564,6 +568,42 @@ func NewStreamGenerationsStorage(db *gorm.DB, logger *logging.Logger) pipelinesv
 		// end user code 'StreamGeneration custom metods'
 	}
 }
+
+type ExecutorsStorage struct {
+	dbutil.GormEntityStorage[pipelinesvc.Executor, dbExecutor, pipelinesvc.ExecutorFilter]
+}
+
+// user code 'Executor custom methods'
+// end user code 'Executor custom methods'
+func NewExecutorsStorage(db *gorm.DB, logger *logging.Logger) pipelinesvc.ExecutorsStorage {
+	return &ExecutorsStorage{
+		GormEntityStorage: dbutil.GormEntityStorage[pipelinesvc.Executor, dbExecutor, pipelinesvc.ExecutorFilter]{
+			Logger:            logger,
+			DB:                db,
+			DBErrorsWrapper:   wrapExecutorQueryError,
+			ConvertToInternal: convertExecutorToDB,
+			ConvertToExternal: convertExecutorFromDB,
+			BuildFilterExpression: func(filter *pipelinesvc.ExecutorFilter) (clause.Expression, error) {
+				return buildExecutorFilterExpr(filter)
+			},
+			FieldMapping: map[any]clause.Column{
+				pipelinesvc.ExecutorFieldID:               {Name: "id"},
+				pipelinesvc.ExecutorFieldInstanceID:       {Name: "instance_id"},
+				pipelinesvc.ExecutorFieldType:             {Name: "type"},
+				pipelinesvc.ExecutorFieldVersion:          {Name: "version"},
+				pipelinesvc.ExecutorFieldCapacity:         {Name: "capacity"},
+				pipelinesvc.ExecutorFieldCapabilities:     {Name: "capabilities"},
+				pipelinesvc.ExecutorFieldResourceDefaults: {Name: "resource_defaults"},
+				pipelinesvc.ExecutorFieldFirstSeenAt:      {Name: "first_seen_at"},
+				pipelinesvc.ExecutorFieldLastSeenAt:       {Name: "last_seen_at"},
+			},
+			LockScope: "pipeline.Executors",
+		},
+		// user code 'Executor custom metods'
+		// end user code 'Executor custom metods'
+	}
+}
+
 func NewPipelineEventsOutbox(db *gorm.DB, processors []txoutbox.MessageProcessor) pipelinesvc.PipelineEventsOutbox {
 	return txoutbox.GormStorage[pipelinesvc.PipelineEvent]{
 		DB:                db,

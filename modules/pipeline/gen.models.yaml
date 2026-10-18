@@ -119,6 +119,13 @@ types:
         stringer: true
         is: true
 
+    - name: ExecutorType
+      values: [ Docker, K8s ]
+      helpers:
+        is_valid: true
+        stringer: true
+        is: true
+
   one_ofs:
     - name: ConnectorTaskPayload
       values:
@@ -444,3 +451,32 @@ types:
         - { name: StreamName, type: string, primary_key: true, filterable: true }
         - { name: GenerationID, type: int64 }
         - { name: UpdatedAt, type: timestamp }
+
+    - name: Executor
+      table_name: pipeline.executors
+      has_custom_db_methods: true
+      fields:
+        - { name: ID, type: uuid, filterable: true }
+        - { name: InstanceID, type: string, filterable: true }
+        - { name: Type, type: ExecutorType, filterable: true }
+        - { name: Version, type: string }
+        - { name: Capacity, type: int }
+        - { name: Capabilities, type: ExecutorCapabilities }
+        - { name: ResourceDefaults, type: ExecutorResourceDefaults }
+        - { name: FirstSeenAt, type: timestamp }
+        - { name: LastSeenAt, type: timestamp }
+
+    - name: ExecutorCapabilities
+      do_not_persists: true
+      fields:
+        - { name: NativeDestinations, type: "[]string" }
+
+    - name: ExecutorResourceDefaults
+      do_not_persists: true
+      fields:
+        - { name: CPURequest, type: string }
+        - { name: CPULimit, type: string }
+        - { name: MemoryRequest, type: string }
+        - { name: MemoryLimit, type: string }
+        - { name: CPUExecutorDefault, type: bool }
+        - { name: MemoryExecutorDefault, type: bool }

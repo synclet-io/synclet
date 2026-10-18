@@ -55,3 +55,50 @@ func domainTaskTypeToProto(t pipelineservice.ConnectorTaskType) pipelinev1.Conne
 		return pipelinev1.ConnectorTaskType_CONNECTOR_TASK_TYPE_UNSPECIFIED
 	}
 }
+
+// protoExecutorTypeToDomain converts a proto ExecutorType to the domain enum;
+// ok is false for an unspecified or unknown type.
+func protoExecutorTypeToDomain(t pipelinev1.ExecutorType) (pipelineservice.ExecutorType, bool) {
+	switch t {
+	case pipelinev1.ExecutorType_EXECUTOR_TYPE_DOCKER:
+		return pipelineservice.ExecutorTypeDocker, true
+	case pipelinev1.ExecutorType_EXECUTOR_TYPE_K8S:
+		return pipelineservice.ExecutorTypeK8s, true
+	default:
+		return 0, false
+	}
+}
+
+// domainExecutorTypeToProto converts a domain ExecutorType to the proto enum.
+func domainExecutorTypeToProto(t pipelineservice.ExecutorType) pipelinev1.ExecutorType {
+	switch t {
+	case pipelineservice.ExecutorTypeDocker:
+		return pipelinev1.ExecutorType_EXECUTOR_TYPE_DOCKER
+	case pipelineservice.ExecutorTypeK8s:
+		return pipelinev1.ExecutorType_EXECUTOR_TYPE_K8S
+	default:
+		return pipelinev1.ExecutorType_EXECUTOR_TYPE_UNSPECIFIED
+	}
+}
+
+func protoExecutorResourceDefaultsToDomain(defaults *pipelinev1.ExecutorResourceDefaults) pipelineservice.ExecutorResourceDefaults {
+	return pipelineservice.ExecutorResourceDefaults{
+		CPURequest:            defaults.GetCpuRequest(),
+		CPULimit:              defaults.GetCpuLimit(),
+		MemoryRequest:         defaults.GetMemoryRequest(),
+		MemoryLimit:           defaults.GetMemoryLimit(),
+		CPUExecutorDefault:    defaults.GetCpuExecutorDefault(),
+		MemoryExecutorDefault: defaults.GetMemoryExecutorDefault(),
+	}
+}
+
+func domainExecutorResourceDefaultsToProto(defaults pipelineservice.ExecutorResourceDefaults) *pipelinev1.ExecutorResourceDefaults {
+	return &pipelinev1.ExecutorResourceDefaults{
+		CpuRequest:            defaults.CPURequest,
+		CpuLimit:              defaults.CPULimit,
+		MemoryRequest:         defaults.MemoryRequest,
+		MemoryLimit:           defaults.MemoryLimit,
+		CpuExecutorDefault:    defaults.CPUExecutorDefault,
+		MemoryExecutorDefault: defaults.MemoryExecutorDefault,
+	}
+}

@@ -1,72 +1,71 @@
 package app
 
 import (
-	"strings"
 	"testing"
 
-	"github.com/go-pnp/go-pnp/pkg/optionutil"
+	"github.com/go-pnp/go-pnp/config/configutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/fx"
 
-	"github.com/synclet-io/synclet/modules/pipeline/pipelineconnect"
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineexec"
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
+	"github.com/synclet-io/synclet/pkg/buildinfo"
 )
 
-func buildSourceHandlerConfig(t *testing.T, opts []RunOption) pipelineconnect.SourceHandlerConfig {
+// buildExecutorInfo resolves the ExecutorInfo of newInfo from the
+// environment, with configs providing the executor's own configuration.
+func buildExecutorInfo(t *testing.T, configs fx.Option, newInfo any) pipelineexec.ExecutorInfo {
 	t.Helper()
 
-	options := optionutil.ApplyOptions(serverDefaultOptions(), opts...)
-
-	var cfg pipelineconnect.SourceHandlerConfig
+	var info pipelineexec.ExecutorInfo
 
 	app := fx.New(
 		fx.NopLogger,
-		fx.Supply(options),
-		authConfigModule(),
-		workspaceConfigModule(),
-		notifyConfigModule(),
-		pipelineConfigModule(),
-		dockerExecutorConfigModule(),
-		conditionalFxOptions(options.K8sExecutor, k8sExecutorConfigModule),
-		fx.Populate(&cfg),
+		configs,
+		fx.Provide(configutil.NewPrefixedConfigProvider[executorRuntimeConfig]("PIPELINE_")),
+		fx.Provide(newInfo),
+		fx.Populate(&info),
 	)
 	require.NoError(t, app.Err())
 
-	return cfg
+	return info
 }
 
-func TestSourceHandlerConfig_K8sExecutorWiring(t *testing.T) {
-	t.Setenv("AUTH_JWT_SECRET", strings.Repeat("x", 32))
+func TestDockerExecutorInfo(t *testing.T) {
+	t.Setenv("DOCKER_EXECUTOR_OWNER_ID", "docker-0")
+	t.Setenv("PIPELINE_RUNTIME_CPU_LIMIT", "2")
+	unsetEnv(t, "DOCKER_EXECUTOR_MAX_CONCURRENT_JOBS", "PIPELINE_RUNTIME_CPU_REQUEST", "PIPELINE_RUNTIME_MEMORY_REQUEST", "PIPELINE_RUNTIME_MEMORY_LIMIT")
+
+	info := buildExecutorInfo(t, fx.Provide(configutil.NewPrefixedConfigProvider[dockerExecutorConfig]("DOCKER_EXECUTOR_")), newDockerExecutorInfo)
+
+	assert.Equal(t, pipelineexec.ExecutorInfo{
+		ID:               "docker-0",
+		Type:             pipelineservice.ExecutorTypeDocker,
+		Version:          buildinfo.Version(),
+		Capacity:         5,
+		ResourceDefaults: pipelineservice.ExecutorResourceDefaults{CPULimit: "2"},
+	}, info)
+}
+
+func TestK8sExecutorInfo(t *testing.T) {
+	t.Setenv("K8S_EXECUTOR_OWNER_ID", "synclet-executor-0")
 	t.Setenv("K8S_EXECUTOR_DEFAULT_CPU", "750m")
 	t.Setenv("K8S_EXECUTOR_DEFAULT_MEMORY", "3Gi")
-	unsetEnv(t, "KUBERNETES_SERVICE_HOST")
+	t.Setenv("PIPELINE_RUNTIME_MEMORY_LIMIT", "1Gi")
+	unsetEnv(t, "KUBERNETES_SERVICE_HOST", "PIPELINE_RUNTIME_CPU_REQUEST", "PIPELINE_RUNTIME_CPU_LIMIT", "PIPELINE_RUNTIME_MEMORY_REQUEST")
 
-	for name, tc := range map[string]struct {
-		opts        []RunOption
-		executor    pipelineconnect.Executor
-		cpu, memory string
-	}{
-		"docker executor": {
-			opts:     []RunOption{WithDockerExecutor()},
-			executor: pipelineconnect.ExecutorDocker,
-		},
-		"k8s executor": {
-			opts:     []RunOption{WithK8sExecutor()},
-			executor: pipelineconnect.ExecutorK8s,
-			cpu:      "750m",
-			memory:   "3Gi",
-		},
-		"distributed api server": {
-			opts:     ServerCommandOptions(false),
-			executor: pipelineconnect.ExecutorNone,
-		},
-	} {
-		t.Run(name, func(t *testing.T) {
-			defaults := buildSourceHandlerConfig(t, tc.opts).RuntimeDefaults
+	info := buildExecutorInfo(t, k8sExecutorConfigModule(), newK8sExecutorInfo)
 
-			assert.Equal(t, tc.executor, defaults.Executor)
-			assert.Equal(t, tc.cpu, defaults.K8sDefaultCPU)
-			assert.Equal(t, tc.memory, defaults.K8sDefaultMemory)
-		})
-	}
+	assert.Equal(t, pipelineexec.ExecutorInfo{
+		ID:      "synclet-executor-0",
+		Type:    pipelineservice.ExecutorTypeK8s,
+		Version: buildinfo.Version(),
+		ResourceDefaults: pipelineservice.ExecutorResourceDefaults{
+			CPURequest:         "750m",
+			CPULimit:           "750m",
+			CPUExecutorDefault: true,
+			MemoryLimit:        "1Gi",
+		},
+	}, info)
 }

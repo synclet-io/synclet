@@ -68,8 +68,7 @@ enum WorkspacesMode {
   WORKSPACES_MODE_MULTI = 2;
 }
 
-// Executor that runs syncs in this server process. UNSPECIFIED when syncs run
-// in a separate executor process.
+// Kind of executor that runs syncs and connector tasks.
 enum ExecutorType {
   EXECUTOR_TYPE_UNSPECIFIED = 0;
   EXECUTOR_TYPE_DOCKER = 1;
@@ -105,6 +104,11 @@ service SourceService {
   }
   rpc GetSystemInfo(GetSystemInfoRequest) returns (GetSystemInfoResponse) {}
   rpc GetRuntimeDefaults(GetRuntimeDefaultsRequest) returns (GetRuntimeDefaultsResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
+  }
+  // ListExecutors returns the executors that reported to the control plane
+  // within the silence timeout.
+  rpc ListExecutors(ListExecutorsRequest) returns (ListExecutorsResponse) {
     option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
   }
 }
@@ -329,7 +333,8 @@ message GetRuntimeDefaultsResponse {
 // Global runtime settings applied when a source or destination has no
 // runtime config of its own. Empty resource strings mean no default is set.
 message RuntimeDefaults {
-  ExecutorType executor = 1;
+  reserved 1, 10, 11, 12;
+  reserved "executor", "docker_max_concurrent_jobs", "cpu_executor_default", "memory_executor_default";
   string cpu_request = 2;
   string cpu_limit = 3;
   string memory_request = 4;
@@ -339,14 +344,52 @@ message RuntimeDefaults {
   int64 idle_timeout_seconds = 8;
   // Job log archive backend: none, filesystem, s3 or gcs.
   string log_archive_backend = 9;
-  // Concurrent sync limit of the Docker executor; 0 for other executors.
-  int32 docker_max_concurrent_jobs = 10;
-  // cpu_request and cpu_limit are the Kubernetes executor's fallback, applied
-  // because no runtime CPU default is set.
-  bool cpu_executor_default = 11;
-  // memory_request and memory_limit are the Kubernetes executor's fallback,
-  // applied because no runtime memory default is set.
-  bool memory_executor_default = 12;
+  // One entry per executor type with a live executor, from its most recently
+  // seen instance.
+  repeated ExecutorTypeDefaults executors = 13;
+}
+
+// Resources an executor gives a sync container with no runtime config of
+// its own.
+message ExecutorResourceDefaults {
+  string cpu_request = 1;
+  string cpu_limit = 2;
+  string memory_request = 3;
+  string memory_limit = 4;
+  // The CPU values are the executor's own fallback, applied because no
+  // runtime CPU default is set.
+  bool cpu_executor_default = 5;
+  // The memory values are the executor's own fallback, applied because no
+  // runtime memory default is set.
+  bool memory_executor_default = 6;
+}
+
+message ExecutorTypeDefaults {
+  ExecutorType type = 1;
+  // Concurrent syncs of one executor instance; 0 means unbounded.
+  int32 capacity = 2;
+  ExecutorResourceDefaults resource_defaults = 3;
+}
+
+// An executor known to the control plane.
+message ExecutorInstance {
+  // Owner id of the executor, unique per instance.
+  string id = 1;
+  ExecutorType type = 2;
+  string version = 3;
+  // Concurrent syncs; 0 means unbounded.
+  int32 capacity = 4;
+  // Native destination connectors the executor runs in-process.
+  repeated string native_destinations = 5;
+  ExecutorResourceDefaults resource_defaults = 6;
+  google.protobuf.Timestamp first_seen_at = 7;
+  google.protobuf.Timestamp last_seen_at = 8;
+}
+
+message ListExecutorsRequest {}
+
+message ListExecutorsResponse {
+  repeated ExecutorInstance executors = 1;
 }
 
 // ==================== Destination Messages ====================
