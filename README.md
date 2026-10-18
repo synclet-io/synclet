@@ -7,11 +7,11 @@
 
 # Synclet
 
-Data synchronization platform built on the Airbyte connector protocol. Connect any source to any destination with automatic schema detection, incremental sync, and real-time monitoring.
+Run Airbyte connectors without Airbyte: one Go binary, one PostgreSQL. Synclet is a self-hosted control plane for connectors that implement the Airbyte Protocol, with schema discovery, incremental sync and monitoring.
 
 ## Features
 
-- **Airbyte Protocol Compatible** -- Use any Airbyte source/destination connector
+- **Airbyte Protocol connectors** -- Runs source and destination images that implement the Airbyte Protocol; see [Tested with](#tested-with) for the pairs and versions tested
 - **Multiple Execution Modes** -- Docker, Kubernetes, or CLI
 - **Stream Configuration** -- Field selection, namespace rewriting, primary key overrides
 - **Secrets Management** -- AES-256-GCM encrypted configuration storage
@@ -410,7 +410,23 @@ Synclet's own Go connectors, built on [synclet-go-sdk](https://github.com/syncle
 | MySQL | Source | [`source-mysql`](https://github.com/synclet-io/connectors/tree/main/connectors/source-mysql) |
 | BigQuery | Destination | [`destination-bigquery`](https://github.com/synclet-io/connectors/tree/main/connectors/destination-bigquery) |
 
-Native connectors implement the same Airbyte protocol and can be used interchangeably with their Docker-based counterparts.
+Native connectors implement the same Airbyte Protocol and can be used interchangeably with their Docker-based counterparts.
+
+## Tested with
+
+These pairs were run end to end through Synclet 0.6.0 (`main` at `1b02969`) on 2026-10-18: Docker executor, PostgreSQL 16, two runs per pair so the second run starts from the saved state. A connector that is not listed here may work; it has not been tested.
+
+| Source | Destination | Streams and mode | Result |
+|---|---|---|---|
+| `airbyte/source-faker:6.2.38` | `airbyte/destination-postgres:3.0.23` | `users`, incremental, append | Passed: 100 records; the second run read 0 new records |
+| `airbyte/source-postgres:3.8.7` | `airbyte/destination-postgres:3.0.23` | `public.cities`, incremental on `id`, append | Passed: 250 records; the second run re-read the row at the cursor |
+| `airbyte/source-faker:6.2.38` | `airbyte/destination-postgres:3.0.23` | `users`, full refresh, overwrite | First run passed; the repeat run left the table empty (known issue) |
+
+The matrix is produced by [`tests/e2e/tested_with_test.go`](tests/e2e/tested_with_test.go), an opt-in end-to-end test. To regenerate it, run `task e2e:tested-with` with `E2E_DATABASE_URL` pointing at a PostgreSQL that connector containers can reach through `TESTED_WITH_PG_HOST` (default `host.docker.internal`); the test logs one `TESTED-WITH` line per run.
+
+Known issues and the pairs that fail are listed on the [Connectors](https://synclet-io.github.io/synclet-site/docs/concepts/connectors/#tested-with) page. CI runs the end-to-end suite with Synclet's own protocol test connectors.
+
+Connector images keep their own licenses: most Airbyte connectors are under ELv2 since 2025-07-22 and 51 remain MIT. See [Connector licenses](https://synclet-io.github.io/synclet-site/docs/reference/connector-licenses/).
 
 ## API
 
@@ -485,6 +501,12 @@ Every command accepts `--dotenv <file>` (repeatable) to load environment files f
 
 `server` and `jobs` start through `app.RunServer` and `app.RunJobs`, one fx graph with the database; `docker-executor` and `k8s-executor` start through `app.RunDockerExecutor` and `app.RunK8sExecutor`, whose graphs hold no database connection, storage or use cases and reach the server only through the executor API (`EXECUTOR_API_URL`, `EXECUTOR_API_TOKEN`); control-plane variables such as `DB_DSN` are dropped from an executor's environment with a warning. `TestExecutorGraph` (`app`) and `TestExecutorDependencies` (`modules/pipeline/pipelineexec`) guard that boundary.
 
+## Roadmap
+
+See [ROADMAP.md](ROADMAP.md).
+
 ## License
 
-See LICENSE
+Synclet is MIT licensed, see [LICENSE](LICENSE). Connectors are separate images with their own licenses, see [Connector licenses](https://synclet-io.github.io/synclet-site/docs/reference/connector-licenses/).
+
+Airbyte is a trademark of Airbyte, Inc. Synclet is not affiliated with, endorsed by or sponsored by Airbyte, Inc.

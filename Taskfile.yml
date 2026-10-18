@@ -117,6 +117,13 @@ tasks:
     cmds:
       - go test -tags e2e -v -timeout 5m -run "TestE2E.*/docker" ./tests/e2e/...
 
+  e2e:tested-with:
+    desc: Run real connector images end to end for the "Tested with" matrix (pulls large images; E2E_DATABASE_URL must be reachable from connector containers)
+    cmds:
+      - go test -tags e2e -v -timeout 40m -run "TestTestedWith" ./tests/e2e/...
+    env:
+      TESTED_WITH: "1"
+
 
   e2e:k8s:
     desc: Run K8s mode e2e tests
