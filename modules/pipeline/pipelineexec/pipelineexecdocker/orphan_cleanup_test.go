@@ -56,6 +56,7 @@ func newTestOrphanCleaner(runner *mockRunner, checker OrphanJobChecker) *OrphanC
 		checker:     checker,
 		ownerID:     "self",
 		gracePeriod: 15 * time.Minute,
+		stopTimeout: time.Second,
 		logger:      logger.Named("test"),
 	}
 }
@@ -178,4 +179,67 @@ func TestCleanup_OnlyOwnContainers(t *testing.T) {
 			assert.Contains(t, runner.filters[0], OwnerLabel+"=self")
 		})
 	}
+}
+
+type slowStopRunner struct {
+	mockRunner
+	slowID string
+	slow   bool
+}
+
+func (m *slowStopRunner) Stop(ctx context.Context, containerID string) error {
+	if m.slow && containerID == m.slowID {
+		<-ctx.Done()
+
+		return ctx.Err()
+	}
+
+	return m.mockRunner.Stop(ctx, containerID)
+}
+
+func (m *slowStopRunner) Remove(ctx context.Context, containerID string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
+	return m.mockRunner.Remove(ctx, containerID)
+}
+
+func TestCleanupAll_SlowStopIsLeftForIntervalCleanup(t *testing.T) {
+	created := time.Now().Add(-30 * time.Minute).Unix()
+	runner := &slowStopRunner{
+		slowID: "slow-container",
+		slow:   true,
+		mockRunner: mockRunner{containers: []container.Summary{
+			{ID: "slow-container", Created: created, Labels: map[string]string{"synclet.io/managed": "true", OwnerLabel: "self", "synclet.io/job-id": "job-1"}},
+			{ID: "fast-container", Created: created, Labels: map[string]string{"synclet.io/managed": "true", OwnerLabel: "self", "synclet.io/job-id": "job-2"}},
+		}},
+	}
+	checker := &mockJobChecker{activeJobs: map[string]bool{}}
+	cleaner := &OrphanCleaner{
+		runner:      runner,
+		checker:     checker,
+		ownerID:     "self",
+		gracePeriod: 15 * time.Minute,
+		stopTimeout: 50 * time.Millisecond,
+		logger:      (*logging.Logger)(nil).Named("test"),
+	}
+
+	done := make(chan error, 1)
+	go func() { done <- cleaner.CleanupAll(context.Background()) }()
+
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(2 * time.Second):
+		t.Fatal("CleanupAll blocked on a container that does not stop")
+	}
+
+	assert.Equal(t, []string{"fast-container"}, runner.removed)
+
+	runner.slow = false
+	runner.containers = runner.containers[:1]
+
+	require.NoError(t, cleaner.Cleanup(context.Background()))
+	assert.Equal(t, []string{"fast-container", "slow-container"}, runner.removed)
 }

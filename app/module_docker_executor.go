@@ -86,26 +86,57 @@ func dockerExecutorModule() fx.Option {
 			newDockerSyncExecutor,
 			newDockerSyncWorker,
 			newDockerTaskWorker,
+			newStartupCleanupFunc,
 			fx.Private,
 		),
-		fx.Invoke(invokeDockerCleanerStartup),
+		dockerStartupCleanupModule(),
 		pnpjobber.Module(newDockerCleanerJob),
 		pnpjobber.Module(newDockerSyncWorkerJob),
 		pnpjobber.Module(newDockerTaskWorkerJob),
 	)
 }
 
-func invokeDockerCleanerStartup(lc fx.Lifecycle, cleaner *pipelineexecdocker.OrphanCleaner, logger *logging.Logger) {
-	lc.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
-			if err := cleaner.CleanupAll(ctx); err != nil {
+// startupCleanupFunc removes the orphaned containers a previous run left behind.
+type startupCleanupFunc func(ctx context.Context) error
+
+func newStartupCleanupFunc(cleaner *pipelineexecdocker.OrphanCleaner) startupCleanupFunc {
+	return cleaner.CleanupAll
+}
+
+// dockerStartupCleanupModule runs the startup cleanup once as a jobber job, so
+// it starts after the app has started and is cancelled when the app stops.
+func dockerStartupCleanupModule() fx.Option {
+	return pnpjobber.Module(newDockerStartupCleanupJob)
+}
+
+func newDockerStartupCleanupJob(cleanup startupCleanupFunc, logger *logging.Logger) jobber.Job {
+	return onceJob{
+		name: "docker_startup_cleanup",
+		job: func(ctx context.Context) error {
+			if err := cleanup(ctx); err != nil {
 				logger.WithError(err).Error(ctx, "startup: docker cleanup failed")
 			}
 
 			return nil
 		},
-	})
+	}
 }
+
+// onceJob is a jobber.Job that handles once, right after its runner starts.
+type onceJob struct {
+	name string
+	job  func(ctx context.Context) error
+}
+
+func (j onceJob) Name() string { return j.name }
+
+func (j onceJob) Init(context.Context) error { return nil }
+
+func (j onceJob) Handle(ctx context.Context) error { return j.job(ctx) }
+
+func (j onceJob) Timer() *time.Timer { return time.NewTimer(0) }
+
+func (j onceJob) ResetTimer(*time.Timer) {}
 
 func newDockerCleanerJob(cfg *dockerExecutorConfig, cleaner *pipelineexecdocker.OrphanCleaner, logger *logging.Logger) jobber.Job {
 	return jobber.NewIntervalJob(jobber.IntervalJobParams{

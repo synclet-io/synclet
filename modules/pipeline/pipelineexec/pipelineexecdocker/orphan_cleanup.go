@@ -30,6 +30,7 @@ type OrphanCleaner struct {
 	checker     OrphanJobChecker
 	ownerID     string
 	gracePeriod time.Duration
+	stopTimeout time.Duration
 	logger      *logging.Logger
 }
 
@@ -40,6 +41,7 @@ func NewOrphanCleaner(runner *ContainerRunner, checker OrphanJobChecker, logger 
 		checker:     checker,
 		ownerID:     runner.OwnerID(),
 		gracePeriod: 15 * time.Minute,
+		stopTimeout: 30 * time.Second,
 		logger:      logger.Named("orphan-cleanup"),
 	}
 }
@@ -140,7 +142,13 @@ func (oc *OrphanCleaner) CleanupAll(ctx context.Context) error {
 		jobID := ctr.Labels["synclet.io/job-id"]
 		if jobID == "" {
 			oc.logger.WithField("container_id", ctr.ID[:12]).Warn(ctx, "startup cleanup: managed container without job-id label")
-			_ = oc.stopAndRemove(ctx, ctr.ID)
+
+			if err := oc.stopAndRemove(ctx, ctr.ID); err != nil {
+				oc.logger.WithError(err).WithField("container_id", ctr.ID[:12]).Error(ctx, "startup cleanup: failed to remove container, the interval cleanup retries it")
+
+				continue
+			}
+
 			cleaned++
 
 			continue
@@ -154,8 +162,15 @@ func (oc *OrphanCleaner) CleanupAll(ctx context.Context) error {
 		}
 
 		if !active {
-			oc.logger.WithFields(map[string]interface{}{"container_id": ctr.ID[:12], "job_id": jobID}).Info(ctx, "startup cleanup: removing orphaned container")
-			_ = oc.stopAndRemove(ctx, ctr.ID)
+			logger := oc.logger.WithFields(map[string]interface{}{"container_id": ctr.ID[:12], "job_id": jobID})
+			logger.Info(ctx, "startup cleanup: removing orphaned container")
+
+			if err := oc.stopAndRemove(ctx, ctr.ID); err != nil {
+				logger.WithError(err).Error(ctx, "startup cleanup: failed to remove container, the interval cleanup retries it")
+
+				continue
+			}
+
 			cleaned++
 		}
 	}
@@ -171,9 +186,16 @@ func (oc *OrphanCleaner) ownsContainer(ctr container.Summary) bool {
 	return ctr.Labels[OwnerLabel] == oc.ownerID
 }
 
+// stopAndRemove stops and removes a container within stopTimeout. A container
+// left behind when the limit passes stays labelled and is picked up by the
+// next cleanup run.
 func (oc *OrphanCleaner) stopAndRemove(ctx context.Context, containerID string) error {
-	// Stop with default timeout (these are already orphaned).
-	_ = oc.runner.Stop(ctx, containerID)
+	ctx, cancel := context.WithTimeout(ctx, oc.stopTimeout)
+	defer cancel()
+
+	if err := oc.runner.Stop(ctx, containerID); err != nil && ctx.Err() != nil {
+		return fmt.Errorf("stopping container within %s: %w", oc.stopTimeout, err)
+	}
 
 	return oc.runner.Remove(ctx, containerID)
 }
