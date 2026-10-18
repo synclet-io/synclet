@@ -29,7 +29,9 @@ type manifest struct {
 		Name string `yaml:"name"`
 	} `yaml:"subjects"`
 	Spec struct {
-		Template struct {
+		ServiceName string `yaml:"serviceName"`
+		ClusterIP   string `yaml:"clusterIP"`
+		Template    struct {
 			Spec struct {
 				ServiceAccountName string      `yaml:"serviceAccountName"`
 				InitContainers     []container `yaml:"initContainers"`
@@ -44,6 +46,11 @@ type container struct {
 	Env  []struct {
 		Name string `yaml:"name"`
 	} `yaml:"env"`
+	EnvFrom []struct {
+		ConfigMapRef *struct {
+			Name string `yaml:"name"`
+		} `yaml:"configMapRef"`
+	} `yaml:"envFrom"`
 	LivenessProbe  *probe `yaml:"livenessProbe"`
 	ReadinessProbe *probe `yaml:"readinessProbe"`
 }
@@ -153,7 +160,7 @@ func TestChart_DistributedExecutorServiceAccount(t *testing.T) {
 	)
 
 	assert.ElementsMatch(t, []string{"t-synclet", "t-synclet-executor"}, docs.names("ServiceAccount"))
-	assert.Equal(t, "t-synclet-executor", docs.get(t, "Deployment", "t-synclet-executor").Spec.Template.Spec.ServiceAccountName)
+	assert.Equal(t, "t-synclet-executor", docs.get(t, "StatefulSet", "t-synclet-executor").Spec.Template.Spec.ServiceAccountName)
 	assert.Equal(t, "t-synclet", docs.get(t, "Deployment", "t-synclet-server").Spec.Template.Spec.ServiceAccountName)
 	assert.Equal(t, []string{"t-synclet-connector-runner"}, docs.bindingsOf("t-synclet-executor"))
 	assert.Equal(t,
@@ -170,7 +177,7 @@ func TestChart_ExecutorExistingServiceAccount(t *testing.T) {
 	)
 
 	assert.Equal(t, []string{"t-synclet"}, docs.names("ServiceAccount"))
-	assert.Equal(t, "byo-executor", docs.get(t, "Deployment", "t-synclet-executor").Spec.Template.Spec.ServiceAccountName)
+	assert.Equal(t, "byo-executor", docs.get(t, "StatefulSet", "t-synclet-executor").Spec.Template.Spec.ServiceAccountName)
 	assert.Equal(t, []string{"t-synclet-connector-runner"}, docs.bindingsOf("byo-executor"))
 }
 
@@ -239,26 +246,28 @@ func TestChart_ServerProbeOverrides(t *testing.T) {
 
 func TestChart_DistributedPodsWaitForDatabase(t *testing.T) {
 	inits := func(r rendered, name string) []string {
-		containers := r.get(t, "Deployment", name).Spec.Template.Spec.InitContainers
-
-		names := make([]string, 0, len(containers))
-		for _, c := range containers {
-			names = append(names, c.Name)
-		}
-
-		return names
+		return initNames(r.get(t, "Deployment", name))
 	}
 
 	r := renderChart(t, "--set", "mode=distributed")
 	assert.Equal(t, []string{"wait-postgres", "migrate"}, inits(r, "t-synclet-server"))
 	assert.Equal(t, []string{"wait-postgres", "migrate"}, inits(r, "t-synclet-jobs"))
-	assert.Equal(t, []string{"wait-postgres"}, inits(r, "t-synclet-executor"))
 
 	r = renderChart(t, "--set", "mode=distributed", "--set", "postgresql.enabled=false",
 		"--set", "externalDatabase.host=db", "--set", "externalDatabase.password=x")
 	assert.Equal(t, []string{"migrate"}, inits(r, "t-synclet-server"))
 	assert.Equal(t, []string{"migrate"}, inits(r, "t-synclet-jobs"))
-	assert.Empty(t, inits(r, "t-synclet-executor"))
+}
+
+func initNames(m manifest) []string {
+	containers := m.Spec.Template.Spec.InitContainers
+
+	names := make([]string, 0, len(containers))
+	for _, c := range containers {
+		names = append(names, c.Name)
+	}
+
+	return names
 }
 
 func TestChart_ExecutorGetsOnlyExecutorSecrets(t *testing.T) {
@@ -273,10 +282,71 @@ func TestChart_ExecutorGetsOnlyExecutorSecrets(t *testing.T) {
 
 	r := renderChart(t, "--set", "mode=distributed")
 
-	assert.Equal(t, []string{"EXECUTOR_API_TOKEN"}, envNames(r.get(t, "Deployment", "t-synclet-executor").container(t, "executor")))
+	assert.Equal(t, []string{"EXECUTOR_API_TOKEN"}, envNames(r.get(t, "StatefulSet", "t-synclet-executor").container(t, "executor")))
 
 	server := envNames(r.get(t, "Deployment", "t-synclet-server").container(t, "synclet"))
 	assert.Contains(t, server, "DB_DSN")
 	assert.Contains(t, server, "PIPELINE_EXECUTOR_API_TOKEN")
 	assert.NotContains(t, server, "EXECUTOR_API_TOKEN")
+}
+
+func TestChart_ExecutorStatefulSet(t *testing.T) {
+	r := renderChart(t, "--set", "mode=distributed")
+
+	assert.NotContains(t, r.names("Deployment"), "t-synclet-executor")
+
+	executor := r.get(t, "StatefulSet", "t-synclet-executor")
+	assert.Equal(t, "t-synclet-executor", executor.Spec.ServiceName)
+	assert.Empty(t, initNames(executor), "the executor reaches the control plane through its API, not Postgres")
+
+	assert.Equal(t, "None", r.get(t, "Service", "t-synclet-executor").Spec.ClusterIP)
+
+	var configMaps []string
+
+	for _, from := range executor.container(t, "executor").EnvFrom {
+		if from.ConfigMapRef != nil {
+			configMaps = append(configMaps, from.ConfigMapRef.Name)
+		}
+	}
+
+	assert.Equal(t, []string{"t-synclet-executor"}, configMaps)
+
+	cm := r.get(t, "ConfigMap", "t-synclet-executor").Data
+	assert.Equal(t, "http://t-synclet-internal.synclet.svc.cluster.local:8081", cm["EXECUTOR_API_URL"])
+	assert.Equal(t, "http://t-synclet-internal.synclet.svc.cluster.local:8081", cm["K8S_EXECUTOR_SERVER_ADDR"])
+	assert.Contains(t, cm, "K8S_EXECUTOR_SYNCLET_IMAGE")
+	assert.Contains(t, cm, "PIPELINE_IDLE_TIMEOUT")
+
+	for key := range cm {
+		assert.NotRegexp(t, `^(DB_|AUTH_|WORKSPACE_|NOTIFY_|PUBLIC_HTTP_|RATE_LIMIT_|DOCKER_EXECUTOR_|PIPELINE_JOB_|PIPELINE_LOG_|PIPELINE_CONNECTOR_)`, key, "control-plane setting in the executor ConfigMap")
+	}
+
+	r = renderChart(t)
+	assert.NotContains(t, r.names("StatefulSet"), "t-synclet-executor")
+	assert.NotContains(t, r.names("ConfigMap"), "t-synclet-executor")
+	assert.NotContains(t, r.names("Service"), "t-synclet-executor")
+}
+
+func TestChart_K8sOwnerID(t *testing.T) {
+	_, set := renderChart(t, "--set", "mode=distributed").get(t, "ConfigMap", "t-synclet-executor").Data["K8S_EXECUTOR_OWNER_ID"]
+	assert.False(t, set, "the executor defaults to its pod name")
+
+	cm := renderChart(t, "--set", "mode=distributed", "--set", "k8s.ownerId=blue").get(t, "ConfigMap", "t-synclet-executor")
+	assert.Equal(t, "blue", cm.Data["K8S_EXECUTOR_OWNER_ID"])
+
+	assert.Equal(t, "t-synclet", renderChart(t).get(t, "ConfigMap", "t-synclet").Data["K8S_EXECUTOR_OWNER_ID"])
+	assert.Equal(t, "blue", renderChart(t, "--set", "k8s.ownerId=blue").get(t, "ConfigMap", "t-synclet").Data["K8S_EXECUTOR_OWNER_ID"])
+}
+
+func TestChart_ExecutorStrategyRenamed(t *testing.T) {
+	if _, err := exec.LookPath("helm"); err != nil {
+		t.Skip("helm binary not found")
+	}
+
+	cmd := exec.CommandContext(t.Context(), "helm", "template", "t", "synclet", "--namespace", "synclet",
+		"--set", "mode=distributed", "--set", "executor.strategy.rollingUpdate.maxSurge=1")
+
+	out, err := cmd.CombinedOutput()
+	require.Error(t, err, "render must fail while executor.strategy is set")
+	assert.Contains(t, string(out), "executor.strategy was renamed to executor.updateStrategy")
 }

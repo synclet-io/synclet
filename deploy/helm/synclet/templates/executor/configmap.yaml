@@ -1,0 +1,19 @@
+{{- if and (eq .Values.mode "distributed") .Values.executor.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "synclet.fullname" . }}-executor
+  labels:
+    {{- include "synclet.executor.labels" . | nindent 4 }}
+data:
+  ENVIRONMENT: {{ .Values.environment | quote }}
+  LOG_LEVEL: {{ .Values.logLevel | quote }}
+  INTERNAL_HTTP_SERVER_ADDR: {{ printf "0.0.0.0:%v" .Values.server.containerPorts.internal | quote }}
+  EXECUTOR_API_URL: {{ include "synclet.internalServerAddr" . | quote }}
+  PIPELINE_IDLE_TIMEOUT: {{ .Values.pipeline.idleTimeout | quote }}
+  {{- with include "synclet.pipelineRuntimeEnv" . }}{{ . | trim | nindent 2 }}{{ end }}
+  {{- include "synclet.k8sExecutorEnv" . | nindent 2 }}
+  {{- with .Values.k8s.ownerId }}
+  K8S_EXECUTOR_OWNER_ID: {{ . | quote }}
+  {{- end }}
+{{- end }}

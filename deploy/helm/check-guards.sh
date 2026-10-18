@@ -42,6 +42,10 @@ expect_fail() {
 
 expect_ok "default values"
 
+expect_fail "executor.strategy after the rename" \
+  "executor.strategy was renamed to executor.updateStrategy" \
+  --set mode=distributed --set executor.strategy.rollingUpdate.maxSurge=1
+
 expect_fail "ingress and gateway without publicUrl" \
   "server.ingress.enabled and server.gateway.enabled are both true: set server.publicUrl to the URL users reach Synclet at" \
   --set server.ingress.enabled=true --set server.ingress.hostname=synclet.example.com \

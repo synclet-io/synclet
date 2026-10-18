@@ -632,3 +632,41 @@ advisory lock. Call with (dict "ctx" $ "securityContext" .Values.<component>.con
     - name: tmp
       mountPath: /tmp
 {{- end }}
+
+{{/*
+Default runtime resources and service account of connector pods, read by the
+server and the Kubernetes executor.
+*/}}
+{{- define "synclet.pipelineRuntimeEnv" -}}
+{{- if .Values.pipeline.resources.cpuRequest }}
+PIPELINE_RUNTIME_CPU_REQUEST: {{ .Values.pipeline.resources.cpuRequest | quote }}
+{{- end }}
+{{- if .Values.pipeline.resources.cpuLimit }}
+PIPELINE_RUNTIME_CPU_LIMIT: {{ .Values.pipeline.resources.cpuLimit | quote }}
+{{- end }}
+{{- if .Values.pipeline.resources.memoryRequest }}
+PIPELINE_RUNTIME_MEMORY_REQUEST: {{ .Values.pipeline.resources.memoryRequest | quote }}
+{{- end }}
+{{- if .Values.pipeline.resources.memoryLimit }}
+PIPELINE_RUNTIME_MEMORY_LIMIT: {{ .Values.pipeline.resources.memoryLimit | quote }}
+{{- end }}
+{{- with include "synclet.pipeline.serviceAccountName" . }}
+PIPELINE_RUNTIME_SERVICE_ACCOUNT_NAME: {{ . | quote }}
+{{- end }}
+{{- end }}
+
+{{/*
+Settings of the Kubernetes executor, apart from its owner id.
+*/}}
+{{- define "synclet.k8sExecutorEnv" -}}
+K8S_EXECUTOR_NAMESPACE: {{ .Values.k8s.namespace | quote }}
+K8S_EXECUTOR_SYNCLET_IMAGE: {{ include "synclet.image" . | quote }}
+K8S_EXECUTOR_SERVER_ADDR: {{ include "synclet.internalServerAddr" . | quote }}
+K8S_EXECUTOR_DEFAULT_MEMORY: {{ .Values.k8s.defaultMemory | quote }}
+K8S_EXECUTOR_DEFAULT_CPU: {{ .Values.k8s.defaultCPU | quote }}
+K8S_EXECUTOR_JOB_WORKER_INTERVAL: {{ .Values.pipeline.workerInterval | quote }}
+K8S_EXECUTOR_JOB_RESOURCE_CLEANUP_INTERVAL: {{ .Values.pipeline.resourceCleanupInterval | quote }}
+{{- if .Values.k8s.imagePullSecret }}
+K8S_EXECUTOR_IMAGE_PULL_SECRET: {{ .Values.k8s.imagePullSecret | quote }}
+{{- end }}
+{{- end }}

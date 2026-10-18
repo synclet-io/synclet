@@ -1,15 +1,19 @@
+{{- if .Values.executor.strategy }}
+{{- fail "executor.strategy was renamed to executor.updateStrategy: the executor is a StatefulSet now, whose updateStrategy takes type RollingUpdate or OnDelete (no maxSurge)" }}
+{{- end }}
 {{- if and (eq .Values.mode "distributed") .Values.executor.enabled }}
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: {{ include "synclet.fullname" . }}-executor
   labels:
     {{- include "synclet.executor.labels" . | nindent 4 }}
 spec:
+  serviceName: {{ include "synclet.fullname" . }}-executor
   replicas: {{ .Values.executor.replicaCount }}
   revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
-  {{- with .Values.executor.strategy }}
-  strategy:
+  {{- with .Values.executor.updateStrategy }}
+  updateStrategy:
     {{- toYaml . | nindent 4 }}
   {{- end }}
   selector:
@@ -18,7 +22,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/config: {{ include (print $.Template.BasePath "/executor/configmap.yaml") . | sha256sum }}
         checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
         {{- with .Values.executor.podAnnotations }}
         {{- toYaml . | nindent 8 }}
@@ -41,18 +45,18 @@ spec:
         runAsUser: {{ .Values.executor.podSecurityContext.runAsUser }}
         fsGroup: {{ .Values.executor.podSecurityContext.fsGroup }}
       {{- end }}
-      {{- if .Values.postgresql.enabled }}
-      initContainers:
-        {{- include "synclet.waitPostgresInitContainer" (dict "ctx" $ "securityContext" .Values.executor.containerSecurityContext) | nindent 8 }}
-      {{- end }}
       containers:
         - name: executor
           image: {{ include "synclet.image" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command: ["synclet", "k8s-executor"]
+          ports:
+            - name: internal
+              containerPort: {{ .Values.server.containerPorts.internal }}
+              protocol: TCP
           envFrom:
             - configMapRef:
-                name: {{ include "synclet.fullname" . }}
+                name: {{ include "synclet.fullname" . }}-executor
             {{- with .Values.executor.extraEnvFrom }}
             {{- toYaml . | nindent 12 }}
             {{- end }}

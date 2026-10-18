@@ -1,0 +1,17 @@
+{{- if and (eq .Values.mode "distributed") .Values.executor.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "synclet.fullname" . }}-executor
+  labels:
+    {{- include "synclet.executor.labels" . | nindent 4 }}
+spec:
+  clusterIP: None
+  ports:
+    - port: {{ .Values.server.containerPorts.internal }}
+      targetPort: internal
+      protocol: TCP
+      name: internal
+  selector:
+    {{- include "synclet.executor.selectorLabels" . | nindent 4 }}
+{{- end }}

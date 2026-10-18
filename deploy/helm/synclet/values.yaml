@@ -181,14 +181,20 @@ jobs:
 
 ## @section Executor parameters (distributed mode only)
 ## Set enabled: false if you run the executor outside the chart (e.g. external deployment).
+## The executor runs as a StatefulSet behind a headless Service: each pod keeps its name
+## (<fullname>-executor-0, -1, ...) across restarts, and that name is its owner id unless
+## k8s.ownerId is set. Pods update one at a time, highest ordinal first; after a scale-down
+## the Jobs a removed ordinal left behind wait until a pod with that ordinal runs again.
+## Upgrading from a chart that ran the executor as a Deployment: delete the old Deployment
+## first (`kubectl delete deployment <fullname>-executor`), then run helm upgrade.
+## executor.strategy was renamed to executor.updateStrategy (StatefulSet update strategy:
+## type RollingUpdate or OnDelete, no maxSurge); a values file that still sets
+## executor.strategy fails to render.
 executor:
   enabled: true
   replicaCount: 1
-  strategy:
+  updateStrategy:
     type: RollingUpdate
-    rollingUpdate:
-      maxSurge: 1
-      maxUnavailable: 0
   resources:
     requests:
       cpu: 100m
@@ -241,6 +247,12 @@ executor:
 ## Consider applying ResourceQuota and LimitRange to restrict connector resource usage.
 k8s:
   namespace: ""
+  ## Owner label the Kubernetes executor stamps on its Jobs and Secrets; it reconciles and
+  ## removes only those carrying it. Empty uses the pod name of each executor replica
+  ## (distributed mode) or the release fullname (standalone mode). Executors sharing one
+  ## namespace, such as two releases, need distinct values; a set value is shared by all
+  ## executor replicas.
+  ownerId: ""
   defaultMemory: 2Gi
   defaultCPU: "1"
   imagePullSecret: ""

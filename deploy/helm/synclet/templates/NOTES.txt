@@ -5,7 +5,16 @@ Mode: {{ .Values.mode }}
 {{- if eq .Values.mode "standalone" }}
   Server is running in standalone mode (API + Jobs + Executor in a single pod).
 {{- else }}
-  Running in distributed mode with separate server, jobs, and executor deployments.
+  Running in distributed mode: server and jobs Deployments and an executor StatefulSet.
+{{- if .Values.executor.enabled }}
+
+UPGRADE NOTE (breaking): the executor runs as the StatefulSet {{ $fullname }}-executor.
+  Charts before this one ran it as a Deployment of the same name, which helm upgrade
+  cannot convert. When upgrading from such a release, delete the old Deployment first:
+    kubectl delete deployment {{ $fullname }}-executor -n {{ .Release.Namespace }}
+  then run helm upgrade again. The value executor.strategy was renamed to
+  executor.updateStrategy (type RollingUpdate or OnDelete, no maxSurge).
+{{- end }}
 {{- end }}
 
 To get the application URL:
