@@ -25,7 +25,7 @@ Run Airbyte connectors without Airbyte: one Go binary, one PostgreSQL. Synclet i
 - **Dashboard & Stats** -- Connection health, sync timeline, records/bytes metrics
 - **Config Import/Export** -- YAML-based workspace backup and restore
 - **Dark Mode** -- System-aware theme switching
-- **Native Connectors** -- Go-native high-performance connectors alongside Docker-based Airbyte connectors
+- **Synclet connectors** -- MIT source and destination connectors written in Go on synclet-go-sdk, in [synclet-io/connectors](https://github.com/synclet-io/connectors); see [Writing your own connector](#writing-your-own-connector)
 
 ## Screenshots
 
@@ -419,6 +419,15 @@ Synclet uses the Airbyte connector protocol. Connectors are Docker images that i
 2. Browse and select connectors from the repository
 3. Configure source/destination instances with connection parameters
 4. Create connections between sources and destinations
+
+### Writing your own connector
+
+A connector is a Go program on [synclet-go-sdk](https://github.com/synclet-io/synclet-go-sdk), shipped as a Docker image that speaks the Airbyte Protocol. Two guides take you from an empty directory to a released image:
+
+- [Writing a connector](https://synclet-io.github.io/synclet-site/docs/connector-development/writing-a-connector/): spec, check, discover, read, state and the conformance suite, with source-postgres as the example
+- [Publishing a connector](https://synclet-io.github.io/synclet-site/docs/connector-development/publishing-a-connector/): the release tag, the GHCR image, the registry, and the template for your own connectors repository
+
+Show what you built in [Show and tell](https://github.com/synclet-io/synclet/discussions/categories/show-and-tell).
 
 ## Native Connectors
 
