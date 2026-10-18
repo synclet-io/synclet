@@ -1,0 +1,4 @@
+[
+  {"type": "STREAM", "stream": {"stream_descriptor": {"name": "users", "namespace": "public"}, "stream_state": {"cursor": 150}}},
+  {"type": "STREAM", "stream": {"stream_descriptor": {"name": "orders"}, "stream_state": {"cursor": 7}}}
+]

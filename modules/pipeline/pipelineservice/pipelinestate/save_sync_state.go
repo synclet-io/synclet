@@ -30,9 +30,13 @@ func NewSaveSyncState(storage pipelineservice.Storage) *SaveSyncState {
 }
 
 // Execute saves state based on the message type:
-// - STREAM: merges the per-stream state into the existing blob array
-// - GLOBAL: replaces the entire blob (global messages are always complete)
-// - LEGACY: replaces the entire blob
+//   - STREAM: merges the per-stream state into the existing blob array, which
+//     then holds STREAM entries only. A GLOBAL entry in the blob is turned into
+//     one STREAM entry per element of its stream_states and its shared_state is
+//     dropped; a LEGACY entry is dropped. STREAM entries already in the blob
+//     override the seeded ones, and the incoming message overrides both.
+//   - GLOBAL: replaces the entire blob (global messages are always complete)
+//   - LEGACY: replaces the entire blob
 func (uc *SaveSyncState) Execute(ctx context.Context, params SaveSyncStateParams) error {
 	if params.StateMessage == nil {
 		return nil
@@ -101,37 +105,48 @@ func (uc *SaveSyncState) Execute(ctx context.Context, params SaveSyncStateParams
 	return nil
 }
 
-// mergeStreamState merges a STREAM state message into the existing blob array.
-// It finds a matching stream by (namespace, name) and replaces its state,
-// or appends a new entry if no match exists.
+// mergeStreamState merges a STREAM state message into the existing blob array
+// and returns an array of STREAM entries only, one per (namespace, name).
 func mergeStreamState(blobJSON string, msg *protocol.AirbyteStateMessage) (string, error) {
-	var states []*protocol.AirbyteStateMessage
+	var existing []*protocol.AirbyteStateMessage
 	if blobJSON != "" && blobJSON != "[]" {
-		if err := json.Unmarshal([]byte(blobJSON), &states); err != nil {
-			// If existing blob is not a valid array (e.g., state type changed), reset.
-			states = nil
+		if err := json.Unmarshal([]byte(blobJSON), &existing); err != nil {
+			existing = nil
 		}
 	}
 
-	// Find matching stream descriptor.
-	targetName := msg.Stream.StreamDescriptor.Name
-	targetNS := msg.Stream.StreamDescriptor.Namespace
-	found := false
+	var states []*protocol.AirbyteStateMessage
 
-	for i, s := range states {
-		if s.Type == protocol.StateTypeStream && s.Stream != nil &&
-			s.Stream.StreamDescriptor.Name == targetName &&
-			s.Stream.StreamDescriptor.Namespace == targetNS {
-			states[i] = msg
-			found = true
+	upsert := func(entry *protocol.AirbyteStateMessage) {
+		desc := entry.Stream.StreamDescriptor
+		for i, s := range states {
+			if s.Stream.StreamDescriptor == desc {
+				states[i] = entry
 
-			break
+				return
+			}
+		}
+
+		states = append(states, entry)
+	}
+
+	for _, entry := range existing {
+		switch protocol.NormalizeStateType(entry.Type) {
+		case protocol.StateTypeStream:
+			if entry.Stream != nil {
+				entry.Type = protocol.StateTypeStream
+				upsert(entry)
+			}
+		case protocol.StateTypeGlobal:
+			if entry.Global != nil {
+				for _, streamState := range entry.Global.StreamStates {
+					upsert(&protocol.AirbyteStateMessage{Type: protocol.StateTypeStream, Stream: &streamState})
+				}
+			}
 		}
 	}
 
-	if !found {
-		states = append(states, msg)
-	}
+	upsert(msg)
 
 	data, err := json.Marshal(states)
 	if err != nil {

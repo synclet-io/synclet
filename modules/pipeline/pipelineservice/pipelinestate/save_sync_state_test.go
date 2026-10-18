@@ -3,6 +3,7 @@ package pipelinestate_test
 import (
 	"context"
 	"encoding/json"
+	"os"
 	"testing"
 
 	"github.com/go-pnp/go-pnp/pkg/optionutil"
@@ -340,4 +341,112 @@ func TestStateFormat(t *testing.T) {
 		assert.Contains(t, streamObj, "stream_descriptor")
 		assert.Contains(t, streamObj, "stream_state")
 	}
+}
+
+func TestSaveStreamStateAfterGlobal(t *testing.T) {
+	store := newMockStorage()
+	saveState := pipelinestate.NewSaveSyncState(store)
+	connID := uuid.New()
+	ctx := context.Background()
+
+	require.NoError(t, saveState.Execute(ctx, pipelinestate.SaveSyncStateParams{
+		ConnectionID: connID,
+		StateMessage: &protocol.AirbyteStateMessage{
+			Type: protocol.StateTypeGlobal,
+			Global: &protocol.AirbyteGlobalState{
+				SharedState: json.RawMessage(`{"lsn":"0/16B3748"}`),
+				StreamStates: []protocol.AirbyteStreamState{
+					{StreamDescriptor: protocol.StreamDescriptor{Name: "users", Namespace: "public"}, StreamState: json.RawMessage(`{"cursor":100}`)},
+					{StreamDescriptor: protocol.StreamDescriptor{Name: "orders"}, StreamState: json.RawMessage(`{"cursor":7}`)},
+				},
+			},
+		},
+	}))
+
+	require.NoError(t, saveState.Execute(ctx, pipelinestate.SaveSyncStateParams{
+		ConnectionID: connID,
+		StateMessage: &protocol.AirbyteStateMessage{
+			Type: protocol.StateTypeStream,
+			Stream: &protocol.AirbyteStreamState{
+				StreamDescriptor: protocol.StreamDescriptor{Name: "users", Namespace: "public"},
+				StreamState:      json.RawMessage(`{"cursor":150}`),
+			},
+		},
+	}))
+
+	assert.Equal(t, "stream", store.connStates.states[connID].StateType)
+
+	got, err := pipelinestate.NewGetSyncState(store).Execute(ctx, pipelinestate.GetSyncStateParams{ConnectionID: connID})
+	require.NoError(t, err)
+
+	want, err := os.ReadFile("testdata/stream_after_global_state.json")
+	require.NoError(t, err)
+	assert.JSONEq(t, string(want), string(got))
+}
+
+func TestSaveStreamStateAfterLegacy(t *testing.T) {
+	store := newMockStorage()
+	saveState := pipelinestate.NewSaveSyncState(store)
+	connID := uuid.New()
+	ctx := context.Background()
+
+	require.NoError(t, saveState.Execute(ctx, pipelinestate.SaveSyncStateParams{
+		ConnectionID: connID,
+		StateMessage: &protocol.AirbyteStateMessage{
+			Type: protocol.StateTypeLegacy,
+			Data: json.RawMessage(`{"users":{"cursor":100}}`),
+		},
+	}))
+
+	require.NoError(t, saveState.Execute(ctx, pipelinestate.SaveSyncStateParams{
+		ConnectionID: connID,
+		StateMessage: &protocol.AirbyteStateMessage{
+			Type: protocol.StateTypeStream,
+			Stream: &protocol.AirbyteStreamState{
+				StreamDescriptor: protocol.StreamDescriptor{Name: "users"},
+				StreamState:      json.RawMessage(`{"cursor":150}`),
+			},
+		},
+	}))
+
+	state := store.connStates.states[connID]
+	assert.Equal(t, "stream", state.StateType)
+	assert.JSONEq(t,
+		`[{"type":"stream","stream":{"stream_descriptor":{"name":"users"},"stream_state":{"cursor":150}}}]`,
+		state.StateBlob,
+	)
+}
+
+func TestSaveStreamStateRepairsMixedBlob(t *testing.T) {
+	store := newMockStorage()
+	saveState := pipelinestate.NewSaveSyncState(store)
+	connID := uuid.New()
+
+	store.connStates.states[connID] = &pipelineservice.ConnectionState{
+		ConnectionID: connID,
+		StateType:    "stream",
+		StateBlob: `[
+			{"type":"global","global":{"shared_state":{"lsn":"0/16B3748"},"stream_states":[
+				{"stream_descriptor":{"name":"users"},"stream_state":{"cursor":100}},
+				{"stream_descriptor":{"name":"orders"},"stream_state":{"cursor":7}}
+			]}},
+			{"type":"stream","stream":{"stream_descriptor":{"name":"users"},"stream_state":{"cursor":120}}}
+		]`,
+	}
+
+	require.NoError(t, saveState.Execute(context.Background(), pipelinestate.SaveSyncStateParams{
+		ConnectionID: connID,
+		StateMessage: &protocol.AirbyteStateMessage{
+			Type: protocol.StateTypeStream,
+			Stream: &protocol.AirbyteStreamState{
+				StreamDescriptor: protocol.StreamDescriptor{Name: "orders"},
+				StreamState:      json.RawMessage(`{"cursor":9}`),
+			},
+		},
+	}))
+
+	assert.JSONEq(t, `[
+		{"type":"stream","stream":{"stream_descriptor":{"name":"users"},"stream_state":{"cursor":120}}},
+		{"type":"stream","stream":{"stream_descriptor":{"name":"orders"},"stream_state":{"cursor":9}}}
+	]`, store.connStates.states[connID].StateBlob)
 }
