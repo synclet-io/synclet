@@ -35,6 +35,9 @@ jobs:
         run: go tool cover -func=coverage.out | tail -1
       - name: Enforce per-package coverage minimums
         run: ./scripts/coverage-gate.sh scripts/coverage-thresholds.txt coverage.out
+      - name: Test e2e test connector module
+        working-directory: tests/e2e/testconnector
+        run: go test ./... -count=1
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
         with:

@@ -27,7 +27,7 @@ type testSource struct{}
 
 func (s *testSource) Spec(context.Context) (*airbyte.ConnectorSpecification, error) {
 	return &airbyte.ConnectorSpecification{
-		DocumentationURL:    "https://github.com/saturn4er/synclet",
+		DocumentationURL:    "https://github.com/synclet-io/synclet",
 		SupportsIncremental: true,
 		ConnectionSpecification: airbyte.ConnectionSpecification{
 			Title:       "Test Source",

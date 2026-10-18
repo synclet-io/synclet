@@ -21,7 +21,7 @@ type testDestination struct{}
 
 func (d *testDestination) Spec(context.Context) (*airbyte.ConnectorSpecification, error) {
 	return &airbyte.ConnectorSpecification{
-		DocumentationURL: "https://github.com/saturn4er/synclet",
+		DocumentationURL: "https://github.com/synclet-io/synclet",
 		SupportedDestinationSyncModes: []airbyte.DestinationSyncMode{
 			airbyte.DestinationSyncModeAppend,
 			airbyte.DestinationSyncModeOverwrite,
