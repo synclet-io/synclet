@@ -26,7 +26,6 @@ import (
 // returns while the webhook endpoint is still hanging and has not been called.
 func TestReportCompletion_NotBlockedBySlowWebhook(t *testing.T) {
 	transport := newBlockingTransport()
-	useTransport(t, transport)
 
 	workspaceID := uuid.New()
 	startedAt := time.Now().Add(-time.Minute)
@@ -64,13 +63,13 @@ func TestReportCompletion_NotBlockedBySlowWebhook(t *testing.T) {
 
 	handler := notifyeventhandle.NewJobEventHandler(
 		logger,
-		notifyservice.NewDeliverWebhook(newNotifyStore(&notifyservice.Webhook{
+		notifyservice.NewDeliverWebhookWithClient(newNotifyStore(&notifyservice.Webhook{
 			ID:          uuid.New(),
 			WorkspaceID: workspaceID,
 			URL:         "http://203.0.113.10/hooks/sync",
 			Events:      `["sync.completed"]`,
 			Enabled:     true,
-		}), nil, notifyservice.Config{WebhookHTTPTimeout: 5 * time.Second, WebhookMaxRetries: 1}),
+		}), nil, notifyservice.Config{WebhookHTTPTimeout: 5 * time.Second, WebhookMaxRetries: 1}, &http.Client{Transport: transport}),
 		notifyservice.NewDeliverNotification(newNotifyStore(nil), nil, logger),
 		noJobInfo{},
 	)
@@ -137,18 +136,4 @@ func TestReportCompletion_NotBlockedBySlowWebhook(t *testing.T) {
 	assert.Equal(t, "sync.completed", delivered.Event)
 	assert.Equal(t, job.ID.String(), delivered.JobID)
 	assert.Equal(t, workspaceID.String(), delivered.WorkspaceID)
-}
-
-// useTransport routes every request of a client without its own transport,
-// such as the one notifyservice.NewDeliverWebhook builds, through transport
-// for the duration of the test.
-func useTransport(t *testing.T, transport http.RoundTripper) {
-	t.Helper()
-
-	previous := http.DefaultTransport
-	http.DefaultTransport = transport
-
-	t.Cleanup(func() {
-		http.DefaultTransport = previous
-	})
 }

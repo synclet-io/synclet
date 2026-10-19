@@ -55,13 +55,6 @@ func ValidateWebhookURL(rawURL string) error {
 	return nil
 }
 
-// ValidateWebhookURLAtDelivery re-validates a webhook URL at delivery time to prevent
-// DNS rebinding attacks. The URL was validated at creation time, but DNS records may
-// have changed since then. Call this before actually sending the webhook payload.
-func ValidateWebhookURLAtDelivery(rawURL string) error {
-	return ValidateWebhookURL(rawURL)
-}
-
 // isBlockedIP returns true for loopback, private, link-local, and unspecified IPs.
 func isBlockedIP(ip net.IP) bool {
 	return ip.IsLoopback() ||

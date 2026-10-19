@@ -32,15 +32,20 @@ type DeliverWebhook struct {
 	httpClient *http.Client
 }
 
-// NewDeliverWebhook creates a new DeliverWebhook use case.
+// NewDeliverWebhook creates a new DeliverWebhook use case whose client connects
+// only to public addresses.
 func NewDeliverWebhook(storage Storage, secrets SecretsProvider, cfg Config) *DeliverWebhook {
+	return NewDeliverWebhookWithClient(storage, secrets, cfg, connectutil.NewWebhookHTTPClient(cfg.WebhookHTTPTimeout))
+}
+
+// NewDeliverWebhookWithClient creates a DeliverWebhook use case that sends
+// requests through httpClient.
+func NewDeliverWebhookWithClient(storage Storage, secrets SecretsProvider, cfg Config, httpClient *http.Client) *DeliverWebhook {
 	return &DeliverWebhook{
-		storage: storage,
-		secrets: secrets,
-		cfg:     cfg,
-		httpClient: &http.Client{
-			Timeout: cfg.WebhookHTTPTimeout,
-		},
+		storage:    storage,
+		secrets:    secrets,
+		cfg:        cfg,
+		httpClient: httpClient,
 	}
 }
 
@@ -65,8 +70,8 @@ func (uc *DeliverWebhook) Execute(ctx context.Context, params DeliverWebhookPara
 			continue
 		}
 
-		// Re-validate URL at delivery time to prevent DNS rebinding attacks.
-		if err := connectutil.ValidateWebhookURLAtDelivery(webhook.URL); err != nil {
+		// Skip webhooks whose URL no longer passes validation.
+		if err := connectutil.ValidateWebhookURL(webhook.URL); err != nil {
 			continue
 		}
 

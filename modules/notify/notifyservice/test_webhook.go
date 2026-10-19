@@ -44,7 +44,7 @@ func NewTestWebhook(storage Storage, secrets SecretsProvider, cfg Config, audit 
 	return &TestWebhook{
 		storage:    storage,
 		secrets:    secrets,
-		httpClient: &http.Client{Timeout: cfg.WebhookHTTPTimeout},
+		httpClient: connectutil.NewWebhookHTTPClient(cfg.WebhookHTTPTimeout),
 		audit:      audit,
 	}
 }
@@ -60,7 +60,7 @@ func (uc *TestWebhook) Execute(ctx context.Context, params TestWebhookParams) (T
 		return TestWebhookResult{}, fmt.Errorf("loading webhook: %w", err)
 	}
 
-	if err := connectutil.ValidateWebhookURLAtDelivery(webhook.URL); err != nil {
+	if err := connectutil.ValidateWebhookURL(webhook.URL); err != nil {
 		return TestWebhookResult{}, fmt.Errorf("validating url: %w", err)
 	}
 
