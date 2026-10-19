@@ -321,6 +321,8 @@ executor:
 | `EXECUTOR_API_TOKEN` | Token distributed executors present to the internal server | empty |
 | `WATERMILL_TRANSPORT` | Event bus transport | `sql` |
 
+Outgoing webhooks and Slack notifications connect only to public addresses. Synclet checks every connection, redirects included, and refuses loopback, private, link-local and unspecified IPs. These requests also ignore `HTTP_PROXY`, `HTTPS_PROXY` and `NO_PROXY` and always connect directly, because the address check can't be applied through a proxy. A webhook or Slack URL that only works through an egress proxy, or that points to a private network, can't be delivered.
+
 ### Authentication
 
 Users sign in with email and password, or with an OIDC provider when `AUTH_OIDC_PROVIDERS` is set.
