@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/synclet-io/synclet/pkg/connectutil"
 	"github.com/synclet-io/synclet/pkg/secretutil"
 )
 
@@ -16,13 +17,18 @@ type SlackChannel struct {
 	httpClient *http.Client
 }
 
-// NewSlackChannel creates a new SlackChannel deliverer.
+// NewSlackChannel creates a new SlackChannel deliverer whose client connects
+// only to public addresses.
 func NewSlackChannel(secrets SecretsProvider, cfg Config) *SlackChannel {
+	return NewSlackChannelWithClient(secrets, connectutil.NewWebhookHTTPClient(cfg.WebhookHTTPTimeout))
+}
+
+// NewSlackChannelWithClient creates a SlackChannel deliverer that sends
+// requests through httpClient.
+func NewSlackChannelWithClient(secrets SecretsProvider, httpClient *http.Client) *SlackChannel {
 	return &SlackChannel{
-		secrets: secrets,
-		httpClient: &http.Client{
-			Timeout: cfg.WebhookHTTPTimeout,
-		},
+		secrets:    secrets,
+		httpClient: httpClient,
 	}
 }
 

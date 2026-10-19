@@ -12,6 +12,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/synclet-io/synclet/pkg/connectutil"
 )
 
 // noopSecretsProvider is a test double that passes through values unchanged.
@@ -40,7 +42,7 @@ func TestSlackChannel_Deliver_SendsCorrectPayload(t *testing.T) {
 	}))
 	defer server.Close()
 
-	slack := NewSlackChannel(&noopSecretsProvider{}, Config{WebhookHTTPTimeout: 10 * time.Second})
+	slack := NewSlackChannelWithClient(&noopSecretsProvider{}, server.Client())
 	channel := &NotificationChannel{
 		ID:          uuid.New(),
 		WorkspaceID: uuid.New(),
@@ -76,7 +78,7 @@ func TestSlackChannel_Deliver_ReturnsErrorOnNon2xx(t *testing.T) {
 	}))
 	defer server.Close()
 
-	slack := NewSlackChannel(&noopSecretsProvider{}, Config{WebhookHTTPTimeout: 10 * time.Second})
+	slack := NewSlackChannelWithClient(&noopSecretsProvider{}, server.Client())
 	channel := &NotificationChannel{
 		ID:          uuid.New(),
 		ChannelType: ChannelTypeSlack,
@@ -99,6 +101,23 @@ func TestSlackChannel_Deliver_ReturnsErrorWhenWebhookURLMissing(t *testing.T) {
 	err := slack.Deliver(context.Background(), channel, WebhookEvent{Event: "sync.failed"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "webhook_url")
+}
+
+func TestSlackChannel_Deliver_RefusesInternalAddress(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	slack := NewSlackChannel(&noopSecretsProvider{}, Config{WebhookHTTPTimeout: 10 * time.Second})
+	channel := &NotificationChannel{
+		ID:          uuid.New(),
+		ChannelType: ChannelTypeSlack,
+		Config:      mustJSON(map[string]string{"webhook_url": server.URL}),
+	}
+
+	err := slack.Deliver(context.Background(), channel, WebhookEvent{Event: "sync.failed"})
+	require.ErrorIs(t, err, connectutil.ErrWebhookAddressBlocked)
 }
 
 func mustJSON(v interface{}) string {
