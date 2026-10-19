@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.7.0](https://github.com/synclet-io/synclet/compare/synclet-v0.6.0...synclet-v0.7.0) (2026-10-19)
+
+
+### Features
+
+* **executor:** K8s executor owns its Jobs through an owner label ([9c7d430](https://github.com/synclet-io/synclet/commit/9c7d4307e1ab99763bdbfb5a980efa4aade280ab))
+* **executor:** persistent /local root on the host for file-writing destinations ([39b87f8](https://github.com/synclet-io/synclet/commit/39b87f8f46b195b673086e1c7f2fa8ff8d1f8efc))
+* **helm:** executor pods start in parallel ([ffcac0c](https://github.com/synclet-io/synclet/commit/ffcac0c2ccfd677ca1e77670bea66f3402d4e221))
+* **helm:** executor runs as a StatefulSet with a headless Service and its own ConfigMap ([d5916ae](https://github.com/synclet-io/synclet/commit/d5916ae5586ee95e7f44506c179d0fab888d05b2))
+* **pipeline:** executor registry, executors report themselves and settings show the fleet ([d150b4e](https://github.com/synclet-io/synclet/commit/d150b4ee07e1a626195145949b7ca3b5c9ecdff1))
+
+
+### Bug Fixes
+
+* **executor:** connector containers get a writable /local ([a0bb0b2](https://github.com/synclet-io/synclet/commit/a0bb0b2d08208a9e7584ccce753a566c7631cf9c))
+* **executor:** connector pods get no Kubernetes API token unless a service account is chosen ([5c0c072](https://github.com/synclet-io/synclet/commit/5c0c0721ee7498bb57f03ec81922e55cb4b0959b))
+* **executor:** Docker sync exit codes reach ClassifyExitCode through the completion report ([678dd2b](https://github.com/synclet-io/synclet/commit/678dd2b63874cf01ec772c45138806570b99391c))
+* **executor:** K8s pod failures carry connector exit codes ([812e80b](https://github.com/synclet-io/synclet/commit/812e80b5276bcbbab7d6e9cec338fcba3851cbdc))
+* **executor:** startup orphan cleanup runs after start with a bounded stop ([fd7797c](https://github.com/synclet-io/synclet/commit/fd7797c8a19366000a3faeb30ff8b111b0dad7e0))
+* **pipeline:** estimate traces stay out of the destination ([596fa61](https://github.com/synclet-io/synclet/commit/596fa6199a83e78ff45a3fadd18b34db13fcb618))
+* **pipeline:** full-refresh streams get no saved state ([b7d946b](https://github.com/synclet-io/synclet/commit/b7d946b7f6fa20ad285de197025b66b1167606fa))
+* **pipeline:** router fills sourceStats on states that lack it ([1ca1564](https://github.com/synclet-io/synclet/commit/1ca156406b093e6110be44d6f15c02c164e165e7))
+* **pipeline:** stats rollups read one bucket size, so totals are no longer doubled ([dc30264](https://github.com/synclet-io/synclet/commit/dc302645eb1d5febfaf466335c5754d18ea8e288))
+* wizard cards, connection health, field counts, audit actor email and the first-sync step ([be0df29](https://github.com/synclet-io/synclet/commit/be0df29c81a37d3b25887e37c4eeaeab1e1e9fec))
+
 ## [0.6.0](https://github.com/synclet-io/synclet/compare/synclet-v0.5.1...synclet-v0.6.0) (2026-10-18)
 
 
