@@ -23,6 +23,7 @@ type manifest struct {
 	Metadata struct {
 		Name        string            `yaml:"name"`
 		Namespace   string            `yaml:"namespace"`
+		Labels      map[string]string `yaml:"labels"`
 		Annotations map[string]string `yaml:"annotations"`
 	} `yaml:"metadata"`
 	Data    map[string]string `yaml:"data"`
@@ -39,7 +40,15 @@ type manifest struct {
 		ServiceName         string `yaml:"serviceName"`
 		PodManagementPolicy string `yaml:"podManagementPolicy"`
 		ClusterIP           string `yaml:"clusterIP"`
-		Template            struct {
+		Selector            struct {
+			MatchLabels map[string]string `yaml:"matchLabels"`
+		} `yaml:"selector"`
+		Ports []struct {
+			Name       string `yaml:"name"`
+			TargetPort any    `yaml:"targetPort"`
+		} `yaml:"ports"`
+		Endpoints []map[string]string `yaml:"endpoints"`
+		Template  struct {
 			Spec struct {
 				ServiceAccountName string      `yaml:"serviceAccountName"`
 				InitContainers     []container `yaml:"initContainers"`
@@ -419,6 +428,50 @@ func TestChart_ExecutorStatefulSet(t *testing.T) {
 	assert.NotContains(t, r.names("StatefulSet"), "t-synclet-executor")
 	assert.NotContains(t, r.names("ConfigMap"), "t-synclet-executor")
 	assert.NotContains(t, r.names("Service"), "t-synclet-executor")
+}
+
+func selects(selector, labels map[string]string) bool {
+	for k, v := range selector {
+		if labels[k] != v {
+			return false
+		}
+	}
+
+	return len(selector) > 0
+}
+
+func TestChart_ExecutorServiceMonitor(t *testing.T) {
+	r := renderChart(t, "--set", "mode=distributed",
+		"--set", "executor.serviceMonitor.enabled=true",
+		"--set", "executor.serviceMonitor.interval=15s",
+		"--set", "executor.serviceMonitor.labels.release=prometheus")
+
+	svc := r.get(t, "Service", "t-synclet-executor-metrics")
+	assert.Empty(t, svc.Spec.ClusterIP, "the metrics Service gets a cluster IP")
+	require.Len(t, svc.Spec.Ports, 1)
+	assert.Equal(t, "internal", svc.Spec.Ports[0].Name)
+	assert.Equal(t, "internal", svc.Spec.Ports[0].TargetPort)
+
+	sm := r.get(t, "ServiceMonitor", "t-synclet-executor")
+	assert.Equal(t, "prometheus", sm.Metadata.Labels["release"])
+	assert.Equal(t, "executor", sm.Metadata.Labels["app.kubernetes.io/component"])
+	assert.Equal(t, []map[string]string{{
+		"port": "internal", "path": "/metrics", "interval": "15s", "scrapeTimeout": "10s",
+	}}, sm.Spec.Endpoints)
+
+	assert.True(t, selects(sm.Spec.Selector.MatchLabels, svc.Metadata.Labels), "ServiceMonitor selects the metrics Service")
+	assert.False(t, selects(sm.Spec.Selector.MatchLabels, r.get(t, "Service", "t-synclet-executor").Metadata.Labels),
+		"ServiceMonitor skips the headless Service, which would scrape every pod twice")
+	assert.False(t, selects(sm.Spec.Selector.MatchLabels, r.get(t, "Service", "t-synclet-internal").Metadata.Labels))
+
+	for _, args := range [][]string{
+		{"--set", "mode=distributed"},
+		{"--set", "executor.serviceMonitor.enabled=true"},
+	} {
+		r = renderChart(t, args...)
+		assert.NotContains(t, r.names("Service"), "t-synclet-executor-metrics", args)
+		assert.NotContains(t, r.names("ServiceMonitor"), "t-synclet-executor", args)
+	}
 }
 
 func TestChart_K8sOwnerID(t *testing.T) {

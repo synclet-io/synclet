@@ -226,6 +226,15 @@ executor:
     port: 8081
     initialDelaySeconds: 5
     periodSeconds: 10
+  # distributed mode: a metrics Service and a Prometheus Operator ServiceMonitor for the executor pods
+  serviceMonitor:
+    enabled: false
+    port: internal
+    interval: 30s
+    scrapeTimeout: 10s
+    path: /metrics
+    labels: {}          # extra labels on the ServiceMonitor resource
+    annotations: {}
   extraEnvFrom: []      # additional envFrom entries (configMapRef, secretRef)
   podAnnotations: {}
   priorityClassName: ""

@@ -1,0 +1,29 @@
+{{- $sm := dig "serviceMonitor" (dict) .Values.executor }}
+{{- if and (eq .Values.mode "distributed") .Values.executor.enabled (dig "enabled" false $sm) }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "synclet.fullname" . }}-executor
+  labels:
+    {{- include "synclet.executor.labels" . | nindent 4 }}
+    {{- with dig "labels" (dict) $sm }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with dig "annotations" (dict) $sm }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+  selector:
+    matchLabels:
+      {{- include "synclet.executor.selectorLabels" . | nindent 6 }}
+      synclet.io/metrics: "true"
+  endpoints:
+    - port: {{ dig "port" "internal" $sm }}
+      path: {{ dig "path" "/metrics" $sm }}
+      interval: {{ dig "interval" "30s" $sm }}
+      scrapeTimeout: {{ dig "scrapeTimeout" "10s" $sm }}
+{{- end }}

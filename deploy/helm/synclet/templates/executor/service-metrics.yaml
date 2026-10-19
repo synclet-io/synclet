@@ -1,0 +1,19 @@
+{{- $sm := dig "serviceMonitor" (dict) .Values.executor }}
+{{- if and (eq .Values.mode "distributed") .Values.executor.enabled (dig "enabled" false $sm) }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "synclet.fullname" . }}-executor-metrics
+  labels:
+    {{- include "synclet.executor.labels" . | nindent 4 }}
+    synclet.io/metrics: "true"
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.server.containerPorts.internal }}
+      targetPort: internal
+      protocol: TCP
+      name: internal
+  selector:
+    {{- include "synclet.executor.selectorLabels" . | nindent 4 }}
+{{- end }}
