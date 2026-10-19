@@ -1,5 +1,9 @@
 {{- $sm := dig "serviceMonitor" (dict) .Values.executor }}
 {{- if and (eq .Values.mode "distributed") .Values.executor.enabled (dig "enabled" false $sm) }}
+{{- $port := dig "port" "internal" $sm }}
+{{- if ne $port "internal" }}
+{{- fail (printf "executor.serviceMonitor.port must name a port the Service exposes (internal), got %q" $port) }}
+{{- end }}
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
@@ -22,7 +26,7 @@ spec:
       {{- include "synclet.executor.selectorLabels" . | nindent 6 }}
       synclet.io/metrics: "true"
   endpoints:
-    - port: {{ dig "port" "internal" $sm }}
+    - port: {{ $port }}
       path: {{ dig "path" "/metrics" $sm }}
       interval: {{ dig "interval" "30s" $sm }}
       scrapeTimeout: {{ dig "scrapeTimeout" "10s" $sm }}

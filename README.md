@@ -257,7 +257,7 @@ server:
 
 #### Metrics (Helm)
 
-With the Prometheus Operator, the chart creates the `ServiceMonitor`s. `server.serviceMonitor.enabled` scrapes the server's `/metrics` on the internal Service port; in distributed mode `executor.serviceMonitor.enabled` adds a metrics Service and a `ServiceMonitor` for the executor pods. Both take `interval`, `scrapeTimeout`, `path`, `port`, and `labels` to match your Prometheus selector:
+With the Prometheus Operator, the chart creates the `ServiceMonitor`s. `server.serviceMonitor.enabled` scrapes the server's `/metrics` on the internal Service port; in distributed mode `executor.serviceMonitor.enabled` adds a metrics Service and a `ServiceMonitor` for the executor pods. Both take `interval`, `scrapeTimeout`, `path`, `port` (only `internal`, the port the Service exposes), `labels` to match your Prometheus selector, and `annotations`:
 
 ```yaml
 server:

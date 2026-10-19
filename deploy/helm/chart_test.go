@@ -467,10 +467,30 @@ func TestChart_ExecutorServiceMonitor(t *testing.T) {
 	for _, args := range [][]string{
 		{"--set", "mode=distributed"},
 		{"--set", "executor.serviceMonitor.enabled=true"},
+		{"--set", "mode=distributed", "--set", "executor.enabled=false", "--set", "executor.serviceMonitor.enabled=true"},
 	} {
 		r = renderChart(t, args...)
 		assert.NotContains(t, r.names("Service"), "t-synclet-executor-metrics", args)
 		assert.NotContains(t, r.names("ServiceMonitor"), "t-synclet-executor", args)
+	}
+}
+
+func TestChart_ServiceMonitorUnknownPort(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		args []string
+		msg  string
+	}{
+		{"server", []string{"--set", "server.serviceMonitor.enabled=true", "--set", "server.serviceMonitor.port=metrics"},
+			`server.serviceMonitor.port must name a port the Service exposes (internal), got "metrics"`},
+		{"executor", []string{"--set", "mode=distributed", "--set", "executor.serviceMonitor.enabled=true", "--set", "executor.serviceMonitor.port=metrics"},
+			`executor.serviceMonitor.port must name a port the Service exposes (internal), got "metrics"`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			out, err := helmTemplate(t, tc.args...).CombinedOutput()
+			require.Error(t, err, "render must fail on a port the Service does not expose")
+			assert.Contains(t, string(out), tc.msg)
+		})
 	}
 }
 

@@ -1,4 +1,8 @@
 {{- if .Values.server.serviceMonitor.enabled }}
+{{- $port := dig "port" "internal" .Values.server.serviceMonitor }}
+{{- if ne $port "internal" }}
+{{- fail (printf "server.serviceMonitor.port must name a port the Service exposes (internal), got %q" $port) }}
+{{- end }}
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
@@ -20,7 +24,7 @@ spec:
     matchLabels:
       {{- include "synclet.server.selectorLabels" . | nindent 6 }}
   endpoints:
-    - port: {{ .Values.server.serviceMonitor.port }}
+    - port: {{ $port }}
       path: {{ .Values.server.serviceMonitor.path }}
       interval: {{ .Values.server.serviceMonitor.interval }}
       scrapeTimeout: {{ .Values.server.serviceMonitor.scrapeTimeout }}
