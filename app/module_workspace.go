@@ -53,7 +53,7 @@ func workspaceModule(options *RunAppOptions) fx.Option {
 		workspaceConfigModule(),
 		workspaceDependenciesModule(),
 		workspaceUseCasesModule(),
-		conditionalFxOptions(options.RunJobs, func() fx.Option {
+		conditionalFxOptions(options.RunPublicHTTPServer, func() fx.Option {
 			return fx.Invoke(invokeWorkspaceBootstrap)
 		}),
 	)

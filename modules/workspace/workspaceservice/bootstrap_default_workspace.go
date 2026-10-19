@@ -11,7 +11,8 @@ import (
 )
 
 // BootstrapDefaultWorkspace creates the default workspace if none exists.
-// Idempotent: no-op when a workspace with slug "default" already exists.
+// Idempotent: no-op when a workspace with slug "default" already exists,
+// including one another process creates concurrently.
 type BootstrapDefaultWorkspace struct {
 	storage Storage
 }
@@ -49,7 +50,20 @@ func (uc *BootstrapDefaultWorkspace) Execute(ctx context.Context) (*Workspace, e
 
 	created, err := uc.storage.Workspaces().Create(ctx, workspace)
 	if err != nil {
-		return nil, fmt.Errorf("creating default workspace: %w", err)
+		var alreadyExists AlreadyExistsError
+		if !errors.As(err, &alreadyExists) {
+			return nil, fmt.Errorf("creating default workspace: %w", err)
+		}
+
+		// Another process created it between the lookup and the insert.
+		existing, err := uc.storage.Workspaces().First(ctx, &WorkspaceFilter{
+			Slug: filter.Equals("default"),
+		})
+		if err != nil {
+			return nil, fmt.Errorf("reading default workspace created concurrently: %w", err)
+		}
+
+		return existing, nil
 	}
 
 	if err := uc.storage.WorkspaceEvents().Send(ctx, &WorkspaceEvent{

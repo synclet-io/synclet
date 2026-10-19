@@ -4,7 +4,9 @@ import (
 	"context"
 	"testing"
 
+	"github.com/go-pnp/go-pnp/pkg/optionutil"
 	"github.com/google/uuid"
+	dbutil "github.com/saturn4er/boilerplate-go/lib/dbutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -37,4 +39,41 @@ func TestBootstrapDefaultWorkspace_IdempotentWhenExisting(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, all, 1, "no extra workspace must be created")
 	assert.Empty(t, store.events, "no event when bootstrap is a no-op")
+}
+
+// staleWorkspacesStorage reports no workspace from First, as a process does
+// that looked up the default workspace before another process created it.
+type staleWorkspacesStorage struct {
+	WorkspacesStorage
+}
+
+func (staleWorkspacesStorage) First(context.Context, *WorkspaceFilter, ...optionutil.Option[dbutil.SelectOptions]) (*Workspace, error) {
+	return nil, ErrWorkspaceNotFound
+}
+
+type staleStorage struct {
+	*fakeStorage
+	stale bool
+}
+
+func (s *staleStorage) Workspaces() WorkspacesStorage {
+	if s.stale {
+		s.stale = false
+
+		return staleWorkspacesStorage{s.fakeStorage.Workspaces()}
+	}
+
+	return s.fakeStorage.Workspaces()
+}
+
+func TestBootstrapDefaultWorkspace_LosesCreateRace(t *testing.T) {
+	ctx := context.Background()
+	wsID := uuid.New()
+	store := newFakeStorage()
+	store.seedWorkspace(&Workspace{ID: wsID, Name: "Default", Slug: "default"})
+
+	got, err := NewBootstrapDefaultWorkspace(&staleStorage{fakeStorage: store, stale: true}).Execute(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, wsID, got.ID)
+	assert.Empty(t, store.events, "the process that lost the race publishes no workspace.created")
 }
