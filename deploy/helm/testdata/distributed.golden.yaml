@@ -1,0 +1,936 @@
+---
+# Source: synclet/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: synclet-CHART_VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: "APP_VERSION"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+---
+# Source: synclet/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: t-synclet-executor
+  labels:
+    helm.sh/chart: synclet-CHART_VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: "APP_VERSION"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: executor
+---
+# Source: synclet/templates/secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: t-synclet-secrets
+  labels:
+    helm.sh/chart: synclet-CHART_VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: "APP_VERSION"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+type: Opaque
+stringData:
+  jwt-secret: "golden-jwt-secret"
+  encryption-key: "golden-encryption-key"
+  internal-api-secret: "golden-internal-api-secret"
+  postgres-password: "golden-postgres-password"
+  db-dsn: "postgres://synclet:golden-postgres-password@t-synclet-postgres:5432/synclet?sslmode=disable"
+---
+# Source: synclet/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: synclet-CHART_VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: "APP_VERSION"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+data:
+  ENVIRONMENT: "production"
+  LOG_LEVEL: "info"
+  PUBLIC_HTTP_SERVER_ADDR: "0.0.0.0:8080"
+  PUBLIC_HTTP_SERVER_CORS_ALLOW_ALL_ORIGINS: "false"
+  INTERNAL_HTTP_SERVER_ADDR: "0.0.0.0:8081"
+  ## Auth
+  AUTH_REGISTRATION_ENABLED: "true"
+  AUTH_SECURE_COOKIES: "true"
+  AUTH_ACCESS_TOKEN_TTL: "15m"
+  AUTH_REFRESH_TOKEN_TTL: "168h"
+  AUTH_OIDC_STATE_TTL: "10m"
+  AUTH_MIN_PASSWORD_LENGTH: "8"
+  RATE_LIMIT_TRUSTED_PROXIES: ""
+  ## Workspace
+  WORKSPACE_MODE: "single"
+  ## Frontend & invites
+  WORKSPACE_FRONTEND_URL: "http://synclet.local"
+  WORKSPACE_INVITE_TTL: "168h"
+  ## SMTP (non-secret)
+  ## Notify: webhook settings
+  NOTIFY_WEBHOOK_HTTP_TIMEOUT: "10s"
+  NOTIFY_WEBHOOK_MAX_RETRIES: "3"
+  ## Pipeline: worker & scheduling
+  PIPELINE_JOB_SCHEDULER_INTERVAL: "30s"
+  PIPELINE_JOB_WATCHDOG_INTERVAL: "10s"
+  ## Docker executor: sync limits
+  DOCKER_EXECUTOR_MAX_SYNC_DURATION: "24h"
+  DOCKER_EXECUTOR_MAX_CONCURRENT_JOBS: "10"
+  PIPELINE_IDLE_TIMEOUT: "10m"
+  ## Pipeline: connector tasks
+  PIPELINE_CONNECTOR_TASK_RETENTION: "24h"
+  PIPELINE_CONNECTOR_TASK_RUNNING_TIMEOUT: "5m"
+  PIPELINE_CONNECTOR_TASK_PENDING_TIMEOUT: "1m"
+  PIPELINE_DEFAULT_MAX_ATTEMPTS: "3"
+  DOCKER_EXECUTOR_HEARTBEAT_INTERVAL: "5s"
+  PIPELINE_CONNECTION_CHECK_TIMEOUT: "2m"
+  PIPELINE_CONNECTOR_TASK_POLL_INTERVAL: "500ms"
+  PIPELINE_EVENT_EMIT_TIMEOUT: "30s"
+  PIPELINE_STATS_ROLLUP_HOURLY_LOOKBACK: "2h"
+  PIPELINE_STATS_ROLLUP_DAILY_LOOKBACK: "48h"
+  PIPELINE_REGISTRY_FETCH_TIMEOUT: "60s"
+  ## Pipeline: job logs
+  PIPELINE_LOG_MAX_LINES_PER_ATTEMPT: "100000"
+  PIPELINE_LOG_ARCHIVE_BACKEND: "none"
+  ## Pipeline: default K8s resources for connector pods
+  ## OIDC (non-secret fields)
+  ## Executor (distributed mode: jobs need the executor URL)
+  EXECUTOR_API_URL: "http://t-synclet-internal.synclet.svc.cluster.local:8081"
+  ## Kubernetes
+  K8S_EXECUTOR_NAMESPACE: ""
+  K8S_EXECUTOR_SYNCLET_IMAGE: "ghcr.io/synclet-io/synclet:APP_VERSION"
+  K8S_EXECUTOR_SERVER_ADDR: "http://t-synclet-internal.synclet.svc.cluster.local:8081"
+  K8S_EXECUTOR_DEFAULT_MEMORY: "2Gi"
+  K8S_EXECUTOR_DEFAULT_CPU: "1"
+  K8S_EXECUTOR_JOB_WORKER_INTERVAL: "5s"
+  K8S_EXECUTOR_JOB_RESOURCE_CLEANUP_INTERVAL: "5m"
+---
+# Source: synclet/templates/executor/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: t-synclet-executor
+  labels:
+    helm.sh/chart: synclet-CHART_VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: "APP_VERSION"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: executor
+data:
+  ENVIRONMENT: "production"
+  LOG_LEVEL: "info"
+  INTERNAL_HTTP_SERVER_ADDR: "0.0.0.0:8081"
+  EXECUTOR_API_URL: "http://t-synclet-internal.synclet.svc.cluster.local:8081"
+  PIPELINE_IDLE_TIMEOUT: "10m"
+  K8S_EXECUTOR_NAMESPACE: ""
+  K8S_EXECUTOR_SYNCLET_IMAGE: "ghcr.io/synclet-io/synclet:APP_VERSION"
+  K8S_EXECUTOR_SERVER_ADDR: "http://t-synclet-internal.synclet.svc.cluster.local:8081"
+  K8S_EXECUTOR_DEFAULT_MEMORY: "2Gi"
+  K8S_EXECUTOR_DEFAULT_CPU: "1"
+  K8S_EXECUTOR_JOB_WORKER_INTERVAL: "5s"
+  K8S_EXECUTOR_JOB_RESOURCE_CLEANUP_INTERVAL: "5m"
+---
+# Source: synclet/templates/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: t-synclet-connector-runner
+  namespace: 
+  labels:
+    helm.sh/chart: synclet-CHART_VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: "APP_VERSION"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+rules:
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["create", "delete", "get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods", "pods/log"]
+    verbs: ["get", "list", "watch", "delete"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["create", "delete", "get", "list", "update"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["create", "delete", "get", "list"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create"]
+---
+# Source: synclet/templates/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: t-synclet-connector-runner
+  namespace: 
+  labels:
+    helm.sh/chart: synclet-CHART_VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: "APP_VERSION"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: t-synclet-connector-runner
+subjects:
+  - kind: ServiceAccount
+    name: t-synclet
+    namespace: synclet
+---
+# Source: synclet/templates/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: t-synclet-executor-connector-runner
+  namespace: 
+  labels:
+    helm.sh/chart: synclet-CHART_VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: "APP_VERSION"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: executor
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: t-synclet-connector-runner
+subjects:
+  - kind: ServiceAccount
+    name: t-synclet-executor
+    namespace: synclet
+---
+# Source: synclet/templates/executor/service-headless.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: t-synclet-executor
+  labels:
+    helm.sh/chart: synclet-CHART_VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: "APP_VERSION"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: executor
+spec:
+  clusterIP: None
+  ports:
+    - port: 8081
+      targetPort: internal
+      protocol: TCP
+      name: internal
+  selector:
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/component: executor
+---
+# Source: synclet/templates/postgres/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: t-synclet-postgres
+  labels:
+    helm.sh/chart: synclet-CHART_VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: "APP_VERSION"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: postgres
+spec:
+  type: ClusterIP
+  ports:
+    - port: 5432
+      targetPort: postgres
+      protocol: TCP
+      name: postgres
+  selector:
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/component: postgres
+---
+# Source: synclet/templates/postgres/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: t-synclet-postgres-headless
+  labels:
+    helm.sh/chart: synclet-CHART_VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: "APP_VERSION"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: postgres
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - port: 5432
+      targetPort: postgres
+      protocol: TCP
+      name: postgres
+  selector:
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/component: postgres
+---
+# Source: synclet/templates/server/service-internal.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: t-synclet-internal
+  labels:
+    helm.sh/chart: synclet-CHART_VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: "APP_VERSION"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8081
+      targetPort: internal
+      protocol: TCP
+      name: internal
+  selector:
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/component: server
+---
+# Source: synclet/templates/server/service-public.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: synclet-CHART_VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: "APP_VERSION"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: public
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/component: server
+---
+# Source: synclet/templates/jobs/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: t-synclet-jobs
+  labels:
+    helm.sh/chart: synclet-CHART_VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: "APP_VERSION"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: jobs
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: synclet
+      app.kubernetes.io/instance: t
+      app.kubernetes.io/component: jobs
+  template:
+    metadata:
+      annotations:
+        checksum/config: SHA256
+        checksum/secret: SHA256
+      labels:
+        app.kubernetes.io/name: synclet
+        app.kubernetes.io/instance: t
+        app.kubernetes.io/component: jobs
+    spec:
+      serviceAccountName: t-synclet
+      terminationGracePeriodSeconds: 120
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        fsGroup: 65534
+      initContainers:
+        - name: wait-postgres
+          image: docker.io/library/postgres:16
+          imagePullPolicy: IfNotPresent
+          command: ["sh", "-c", "until pg_isready -h t-synclet-postgres -p 5432 -U synclet; do echo 'waiting for postgres...'; sleep 2; done"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+        - name: migrate
+          image: ghcr.io/synclet-io/synclet:APP_VERSION
+          imagePullPolicy: IfNotPresent
+          command: ["synclet", "migrate", "up"]
+          envFrom:
+            - configMapRef:
+                name: t-synclet
+          env:
+            - name: AUTH_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  
+                  name: t-synclet-secrets
+                  key: jwt-secret
+            - name: SECRET_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  
+                  name: t-synclet-secrets
+                  key: encryption-key
+            - name: PIPELINE_EXECUTOR_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  
+                  name: t-synclet-secrets
+                  key: internal-api-secret
+            - name: DB_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: t-synclet-secrets
+                  key: db-dsn
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      containers:
+        - name: jobs
+          image: ghcr.io/synclet-io/synclet:APP_VERSION
+          imagePullPolicy: IfNotPresent
+          command: ["synclet", "jobs"]
+          ports:
+            - name: internal
+              containerPort: 8081
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: t-synclet
+          env:
+            - name: AUTH_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  
+                  name: t-synclet-secrets
+                  key: jwt-secret
+            - name: SECRET_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  
+                  name: t-synclet-secrets
+                  key: encryption-key
+            - name: PIPELINE_EXECUTOR_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  
+                  name: t-synclet-secrets
+                  key: internal-api-secret
+            - name: DB_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: t-synclet-secrets
+                  key: db-dsn
+          livenessProbe:
+            httpGet:
+              path: /live
+              port: internal
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: internal
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 256Mi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
+---
+# Source: synclet/templates/server/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: t-synclet-server
+  labels:
+    helm.sh/chart: synclet-CHART_VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: "APP_VERSION"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: synclet
+      app.kubernetes.io/instance: t
+      app.kubernetes.io/component: server
+  template:
+    metadata:
+      annotations:
+        checksum/config: SHA256
+        checksum/secret: SHA256
+      labels:
+        app.kubernetes.io/name: synclet
+        app.kubernetes.io/instance: t
+        app.kubernetes.io/component: server
+    spec:
+      serviceAccountName: t-synclet
+      terminationGracePeriodSeconds: 120
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        fsGroup: 65534
+      initContainers:
+        - name: wait-postgres
+          image: docker.io/library/postgres:16
+          imagePullPolicy: IfNotPresent
+          command: ["sh", "-c", "until pg_isready -h t-synclet-postgres -p 5432 -U synclet; do echo 'waiting for postgres...'; sleep 2; done"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+        - name: migrate
+          image: ghcr.io/synclet-io/synclet:APP_VERSION
+          imagePullPolicy: IfNotPresent
+          command: ["synclet", "migrate", "up"]
+          envFrom:
+            - configMapRef:
+                name: t-synclet
+          env:
+            - name: AUTH_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  
+                  name: t-synclet-secrets
+                  key: jwt-secret
+            - name: SECRET_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  
+                  name: t-synclet-secrets
+                  key: encryption-key
+            - name: PIPELINE_EXECUTOR_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  
+                  name: t-synclet-secrets
+                  key: internal-api-secret
+            - name: DB_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: t-synclet-secrets
+                  key: db-dsn
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      containers:
+        - name: synclet
+          image: ghcr.io/synclet-io/synclet:APP_VERSION
+          imagePullPolicy: IfNotPresent
+          command: ["synclet", "server"]
+          ports:
+            - name: public
+              containerPort: 8080
+              protocol: TCP
+            - name: internal
+              containerPort: 8081
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: t-synclet
+          env:
+            - name: AUTH_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  
+                  name: t-synclet-secrets
+                  key: jwt-secret
+            - name: SECRET_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  
+                  name: t-synclet-secrets
+                  key: encryption-key
+            - name: PIPELINE_EXECUTOR_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  
+                  name: t-synclet-secrets
+                  key: internal-api-secret
+            - name: DB_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: t-synclet-secrets
+                  key: db-dsn
+          startupProbe:
+            httpGet:
+              path: /live
+              port: internal
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: internal
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /live
+              port: internal
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sh", "-c", "sleep 5"]
+          resources:
+            limits:
+              cpu: "2"
+              memory: 1Gi
+            requests:
+              cpu: 250m
+              memory: 512Mi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
+---
+# Source: synclet/templates/executor/statefulset.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: t-synclet-executor
+  labels:
+    helm.sh/chart: synclet-CHART_VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: "APP_VERSION"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: executor
+spec:
+  serviceName: t-synclet-executor
+  podManagementPolicy: Parallel
+  replicas: 1
+  revisionHistoryLimit: 3
+  updateStrategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: synclet
+      app.kubernetes.io/instance: t
+      app.kubernetes.io/component: executor
+  template:
+    metadata:
+      annotations:
+        checksum/config: SHA256
+        checksum/secret: SHA256
+      labels:
+        app.kubernetes.io/name: synclet
+        app.kubernetes.io/instance: t
+        app.kubernetes.io/component: executor
+    spec:
+      serviceAccountName: t-synclet-executor
+      terminationGracePeriodSeconds: 120
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        fsGroup: 65534
+      containers:
+        - name: executor
+          image: ghcr.io/synclet-io/synclet:APP_VERSION
+          imagePullPolicy: IfNotPresent
+          command: ["synclet", "k8s-executor"]
+          ports:
+            - name: internal
+              containerPort: 8081
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: t-synclet-executor
+          env:
+            - name: EXECUTOR_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  
+                  name: t-synclet-secrets
+                  key: internal-api-secret
+          livenessProbe:
+            httpGet:
+              path: /live
+              port: 8081
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8081
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            limits:
+              cpu: "1"
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 256Mi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
+---
+# Source: synclet/templates/postgres/statefulset.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: t-synclet-postgres
+  labels:
+    helm.sh/chart: synclet-CHART_VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: "APP_VERSION"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: postgres
+spec:
+  serviceName: t-synclet-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: synclet
+      app.kubernetes.io/instance: t
+      app.kubernetes.io/component: postgres
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: synclet
+        app.kubernetes.io/instance: t
+        app.kubernetes.io/component: postgres
+    spec:
+      securityContext:
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+      containers:
+        - name: postgres
+          image: docker.io/library/postgres:16
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - containerPort: 5432
+              protocol: TCP
+              name: postgres
+          env:
+            - name: POSTGRES_USER
+              value: synclet
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: t-synclet-secrets
+                  key: postgres-password
+            - name: POSTGRES_DB
+              value: synclet
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          startupProbe:
+            exec:
+              command: ["pg_isready", "-U", "synclet", "-d", "synclet"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "synclet", "-d", "synclet"]
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "synclet", "-d", "synclet"]
+            periodSeconds: 10
+          resources:
+            limits:
+              cpu: "1"
+              memory: 1Gi
+            requests:
+              cpu: 250m
+              memory: 512Mi
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 10Gi
+---
+# Source: synclet/templates/server/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: synclet-CHART_VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: "APP_VERSION"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: synclet.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet
+                port:
+                  number: 80
+---
+# Source: synclet/templates/tests/test-connection.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: t-synclet-test-connection
+  labels:
+    helm.sh/chart: synclet-CHART_VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: "APP_VERSION"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+  annotations:
+    "helm.sh/hook": test
+spec:
+  restartPolicy: Never
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+    fsGroup: 65534
+  containers:
+    - name: wget
+      image: busybox:1.36
+      command: ["wget", "--spider", "--timeout=5", "http://t-synclet:80/health"]
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: ["ALL"]

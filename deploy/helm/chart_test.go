@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
@@ -489,7 +490,7 @@ func TestChart_GatewayParentRefNameRequired(t *testing.T) {
 }
 
 // goldenSecrets pins the values the chart otherwise generates at random, so the
-// default render is stable.
+// golden renders are stable.
 var goldenSecrets = []string{
 	"--set", "auth.jwtSecret=golden-jwt-secret",
 	"--set", "encryption.key=golden-encryption-key",
@@ -501,11 +502,43 @@ var goldenSecrets = []string{
 // manifests that carry the chart version.
 var checksumAnnotation = regexp.MustCompile(`(checksum/[a-z]+): [0-9a-f]{64}`)
 
-// TestChart_DefaultsGolden compares the whole default render with
-// testdata/defaults.golden.yaml. The chart version, appVersion and checksum
-// annotations are replaced with placeholders so release bumps leave the golden
-// untouched. Run with -update to rewrite it after an intended template change.
-func TestChart_DefaultsGolden(t *testing.T) {
+// documentSeparator matches a YAML document separator line.
+var documentSeparator = regexp.MustCompile(`(?m)^---[ \t]*$`)
+
+// normalizeManifests rewrites a multi-document render canonically: every
+// non-empty document, trimmed of surrounding whitespace, follows its own "---"
+// line. Helm 3 and helm 4 differ in the blank lines around separators, so the
+// golden files compare equal under both.
+func normalizeManifests(manifests string) string {
+	var out strings.Builder
+
+	for _, doc := range documentSeparator.Split(manifests, -1) {
+		doc = strings.TrimSpace(doc)
+		if doc == "" {
+			continue
+		}
+
+		out.WriteString("---\n")
+		out.WriteString(doc)
+		out.WriteString("\n")
+	}
+
+	return out.String()
+}
+
+func TestNormalizeManifests(t *testing.T) {
+	helm3 := "---\n# Source: a.yaml\nkind: A\n---\n# Source: b.yaml\nkind: B\n"
+	helm4 := "---\n# Source: a.yaml\nkind: A\n\n---\n# Source: b.yaml\nkind: B\n\n"
+
+	assert.Equal(t, helm3, normalizeManifests(helm3))
+	assert.Equal(t, helm3, normalizeManifests(helm4))
+}
+
+// TestChart_Golden compares whole renders with the files in testdata. The
+// chart version, appVersion and checksum annotations are replaced with
+// placeholders so release bumps leave the goldens untouched. Run with -update
+// to rewrite them after an intended template change.
+func TestChart_Golden(t *testing.T) {
 	var chart struct {
 		Version    string `yaml:"version"`
 		AppVersion string `yaml:"appVersion"`
@@ -515,19 +548,35 @@ func TestChart_DefaultsGolden(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, yaml.Unmarshal(chartYAML, &chart))
 
-	got := strings.NewReplacer(
+	placeholders := strings.NewReplacer(
 		"synclet-"+chart.Version, "synclet-CHART_VERSION",
 		chart.AppVersion, "APP_VERSION",
-	).Replace(string(renderRaw(t, goldenSecrets...)))
-	got = checksumAnnotation.ReplaceAllString(got, "$1: SHA256")
+	)
 
-	const golden = "testdata/defaults.golden.yaml"
+	for _, tc := range []struct {
+		name string
+		args []string
+	}{
+		{name: "defaults"},
+		{name: "distributed", args: []string{
+			"--set", "mode=distributed",
+			"--set", "executor.livenessProbe.enabled=true",
+			"--set", "executor.readinessProbe.enabled=true",
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := placeholders.Replace(string(renderRaw(t, append(slices.Clone(goldenSecrets), tc.args...)...)))
+			got = normalizeManifests(checksumAnnotation.ReplaceAllString(got, "$1: SHA256"))
 
-	if *update {
-		require.NoError(t, os.WriteFile(golden, []byte(got), 0o600))
+			golden := filepath.Join("testdata", tc.name+".golden.yaml")
+
+			if *update {
+				require.NoError(t, os.WriteFile(golden, []byte(got), 0o600))
+			}
+
+			want, err := os.ReadFile(golden) //nolint:gosec // path built from the fixed test case names
+			require.NoError(t, err, "run go test ./deploy/helm/ -run TestChart_Golden -update to create it")
+			assert.Equal(t, string(want), got, "render differs from %s; rerun with -update if the change is intended", golden)
+		})
 	}
-
-	want, err := os.ReadFile(golden)
-	require.NoError(t, err, "run go test ./deploy/helm/ -run TestChart_DefaultsGolden -update to create it")
-	assert.Equal(t, string(want), got, "default render differs from %s; rerun with -update if the change is intended", golden)
 }
