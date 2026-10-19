@@ -2,6 +2,7 @@ package mapper
 
 import (
 	"encoding/json"
+	"os"
 	"strings"
 	"testing"
 
@@ -181,5 +182,33 @@ func TestCoalesceRuntime(t *testing.T) {
 		require.NoError(t, err, rec)
 		require.Equal(t, want[0], out["pair"], rec)
 		require.Equal(t, want[1], out["three"], rec)
+	}
+}
+
+// TestEditorFunctions compiles the example of every function the front-end
+// expression editor completes, so the editor offers only what the engine defines.
+func TestEditorFunctions(t *testing.T) {
+	t.Parallel()
+
+	raw, err := os.ReadFile("../../front/src/features/stream-config/transform/cel/functions.json")
+	require.NoError(t, err)
+
+	var functions []struct {
+		Name    string `json:"name"`
+		Example string `json:"example"`
+	}
+	require.NoError(t, json.Unmarshal(raw, &functions))
+	require.NotEmpty(t, functions)
+
+	schema := json.RawMessage(`{"type":"object","properties":{"s":{"type":"string"},"opt":{"type":["null","string"]},"n":{"type":"number"}}}`)
+
+	for _, fn := range functions {
+		require.Contains(t, fn.Example, fn.Name+"(", "example of %s does not call it", fn.Name)
+
+		stepJSON, err := json.Marshal([]map[string]map[string]string{{"set": {"out": fn.Example}}})
+		require.NoError(t, err)
+
+		_, res := Compile(Input{Schema: schema, Steps: steps(t, string(stepJSON))})
+		require.Empty(t, res.Errors, "%s: %s", fn.Name, fn.Example)
 	}
 }

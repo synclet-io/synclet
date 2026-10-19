@@ -4,6 +4,7 @@ import type { StepDraft } from './model'
 export interface Column {
   name: string
   type: string
+  fields?: Column[]
 }
 
 export type ColumnMark = 'new' | 'renamed' | 'retyped' | 'dropped'
@@ -57,7 +58,13 @@ export function schemaType(prop: unknown): string {
 
 export function schemaColumns(schema: Record<string, unknown>): Column[] {
   const props = (schema?.properties ?? {}) as Record<string, unknown>
-  return Object.entries(props).map(([name, prop]) => ({ name, type: schemaType(prop) }))
+  return Object.entries(props).map(([name, prop]) => {
+    const col: Column = { name, type: schemaType(prop) }
+    const nested = (prop as { properties?: unknown } | undefined)?.properties
+    if (nested && typeof nested === 'object')
+      col.fields = schemaColumns(prop as Record<string, unknown>)
+    return col
+  })
 }
 
 export function isCdcStream(columns: Column[]): boolean {
@@ -75,6 +82,7 @@ export function expressionFields(expr: string): string[] {
 
 interface ColState {
   type: string
+  fields?: Column[]
   source?: string
   written: boolean
   retyped: boolean
@@ -88,7 +96,7 @@ class Walker {
 
   constructor(input: Column[]) {
     for (const c of input)
-      this.cols.set(c.name, { type: c.type, source: c.name, written: false, retyped: false })
+      this.cols.set(c.name, { type: c.type, fields: c.fields, source: c.name, written: false, retyped: false })
   }
 
   fail(step: number, field: string, message: string) {
@@ -96,7 +104,7 @@ class Walker {
   }
 
   snapshot(): Column[] {
-    return Array.from(this.cols, ([name, c]) => ({ name, type: c.type }))
+    return Array.from(this.cols, ([name, c]) => (c.fields ? { name, type: c.type, fields: c.fields } : { name, type: c.type }))
   }
 
   ref(idx: number, field: string): boolean {
@@ -136,6 +144,7 @@ class Walker {
       existing.retyped = existing.retyped || (existing.source !== undefined && type !== 'any' && type !== existing.type)
       if (type !== 'any')
         existing.type = type
+      existing.fields = undefined
       existing.written = true
     }
     this.renamed.delete(field)

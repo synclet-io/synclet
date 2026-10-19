@@ -4,6 +4,7 @@ import type { CastOptions as CastSpec, StepDraft, StepEntry } from './model'
 import { Plus, X } from 'lucide-vue-next'
 import { computed, useId } from 'vue'
 import CastOptions from './CastOptions.vue'
+import CelInput from './CelInput.vue'
 import { CAST_TARGETS, newEntry } from './model'
 import { fieldClass, labelClass } from './styles'
 
@@ -72,13 +73,15 @@ function value(e: Event): string {
     <template v-if="step.kind === 'filter'">
       <label class="block">
         <span :class="labelClass">Keep records where</span>
-        <textarea
+        <CelInput
           data-testid="filter-expr"
-          rows="2"
-          class="block w-full px-2.5 py-1.5 border border-border rounded-md text-sm font-mono bg-surface text-heading placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-y"
-          :value="step.filter ?? ''"
+          class="w-full"
+          multiline
+          :model-value="step.filter ?? ''"
+          :columns="columns"
           placeholder="r.status != 'test'"
-          @input="update({ filter: value($event) })"
+          aria-label="Keep records where"
+          @update:model-value="update({ filter: $event })"
         />
       </label>
       <p v-if="resultTypes['']" data-testid="result-type" class="text-xs text-text-muted font-mono">
@@ -134,14 +137,15 @@ function value(e: Event): string {
 
           <template v-else-if="step.kind === 'set'">
             <span class="text-text-muted text-sm" aria-hidden="true">=</span>
-            <input
+            <CelInput
               data-testid="entry-expr"
-              class="flex-[2] min-w-[10rem] font-mono" :class="[fieldClass]"
-              :value="entry.expr ?? ''"
+              class="flex-[2] min-w-[10rem]"
+              :model-value="entry.expr ?? ''"
+              :columns="columns"
               placeholder="'USD' or r.amount * 100.0"
               aria-label="Expression"
-              @input="updateEntry(i, { expr: value($event) })"
-            >
+              @update:model-value="updateEntry(i, { expr: $event })"
+            />
             <span v-if="resultTypes[entry.field]" data-testid="result-type" class="text-xs text-text-muted font-mono">
               → {{ resultTypes[entry.field] }}
             </span>
@@ -190,7 +194,7 @@ function value(e: Event): string {
             <span v-if="resultTypes[entry.field]" data-testid="result-type" class="font-mono text-text-muted">→ {{ resultTypes[entry.field] }}</span>
           </summary>
           <div class="pt-2">
-            <CastOptions :spec="entry.cast ?? { to: 'string' }" @update="updateEntry(i, { cast: $event })" />
+            <CastOptions :spec="entry.cast ?? { to: 'string' }" :columns="columns" @update="updateEntry(i, { cast: $event })" />
           </div>
         </details>
       </div>

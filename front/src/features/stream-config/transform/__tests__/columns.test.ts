@@ -39,6 +39,49 @@ describe('schemaColumns', () => {
       { name: 'raw', type: 'any' },
     ])
   })
+
+  it('reads nested object properties as fields', () => {
+    expect(schemaColumns({
+      properties: {
+        address: {
+          type: ['null', 'object'],
+          properties: {
+            city: { type: 'string' },
+            geo: { type: 'object', properties: { lat: { type: 'number' } } },
+          },
+        },
+      },
+    })).toStrictEqual([
+      {
+        name: 'address',
+        type: 'object',
+        fields: [
+          { name: 'city', type: 'string' },
+          { name: 'geo', type: 'object', fields: [{ name: 'lat', type: 'number' }] },
+        ],
+      },
+    ])
+  })
+})
+
+describe('walkColumns nested fields', () => {
+  const nested: Column[] = [
+    { name: 'id', type: 'integer' },
+    { name: 'address', type: 'object', fields: [{ name: 'city', type: 'string' }] },
+  ]
+
+  it('keeps nested fields through a rename', () => {
+    const result = walk([{ rename: { address: 'addr' } }, { filter: 'true' }], { columns: nested })
+    expect(result.stepInputs[0].find(c => c.name === 'address')?.fields).toEqual([{ name: 'city', type: 'string' }])
+    expect(result.stepInputs[1].find(c => c.name === 'addr')?.fields).toEqual([{ name: 'city', type: 'string' }])
+  })
+
+  it('drops nested fields when a set or a cast writes the column', () => {
+    const set = walk([{ set: { address: '\'x\'' } }, { filter: 'true' }], { columns: nested })
+    expect(set.stepInputs[1].find(c => c.name === 'address')?.fields).toBeUndefined()
+    const cast = walk([{ cast: { address: 'string' } }, { filter: 'true' }], { columns: nested })
+    expect(cast.stepInputs[1].find(c => c.name === 'address')?.fields).toBeUndefined()
+  })
 })
 
 describe('walkColumns', () => {

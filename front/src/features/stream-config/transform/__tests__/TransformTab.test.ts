@@ -3,7 +3,9 @@ import type { MapperKind } from '../model'
 import { validateMappers } from '@entities/connection'
 import { mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { nextTick } from 'vue'
 import TransformTab from '../TransformTab.vue'
+import { setCel } from './celInput'
 
 vi.mock('@entities/connection', () => ({
   validateMappers: vi.fn(async () => ({
@@ -101,11 +103,13 @@ describe('transformTab', () => {
     await card(wrapper, 1).get('input[data-testid="entry-field"]').setValue('amount')
     await card(wrapper, 1).get('select[data-testid="entry-cast-to"]').setValue('number')
     await card(wrapper, 2).get('input[data-testid="entry-field"]').setValue('currency')
-    await card(wrapper, 2).get('input[data-testid="entry-expr"]').setValue('\'USD\'')
+    setCel(card(wrapper, 2).get('[data-testid="entry-expr"]'), '\'USD\'')
+    await nextTick()
     await card(wrapper, 3).get('input[data-testid="entry-field"]').setValue('email')
     await card(wrapper, 4).get('input[data-testid="entry-field"]').setValue('card')
     await card(wrapper, 4).get('input[data-testid="mask-keep-last"]').setValue('4')
-    await card(wrapper, 5).get('textarea[data-testid="filter-expr"]').setValue('r.status != \'test\'')
+    setCel(card(wrapper, 5).get('[data-testid="filter-expr"]'), 'r.status != \'test\'')
+    await nextTick()
     await card(wrapper, 5).get('select[data-testid="step-on-error"]').setValue('skip')
 
     expect(lastMappers(wrapper)).toEqual([

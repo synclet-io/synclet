@@ -1,0 +1,20 @@
+[
+  { "name": "lowerAscii", "method": true, "signature": "string.lowerAscii() -> string", "detail": "Lowercases ASCII letters", "example": "r.s.lowerAscii()" },
+  { "name": "upperAscii", "method": true, "signature": "string.upperAscii() -> string", "detail": "Uppercases ASCII letters", "example": "r.s.upperAscii()" },
+  { "name": "trim", "method": true, "signature": "string.trim() -> string", "detail": "Removes leading and trailing whitespace", "example": "r.s.trim()" },
+  { "name": "substring", "method": true, "signature": "string.substring(start[, end]) -> string", "detail": "Characters from start up to end", "example": "r.s.substring(0, 1)" },
+  { "name": "split", "method": true, "signature": "string.split(separator[, limit]) -> list(string)", "detail": "Splits into a list of strings", "example": "r.s.split(',')" },
+  { "name": "replace", "method": true, "signature": "string.replace(old, new[, limit]) -> string", "detail": "Replaces occurrences of old with new", "example": "r.s.replace('a', 'b')" },
+  { "name": "matches", "method": true, "signature": "string.matches(regex) -> bool", "detail": "Whether the string matches an RE2 regular expression", "example": "r.s.matches('^[a-z]+$')" },
+  { "name": "int", "signature": "int(value) -> int", "detail": "Converts to an integer", "example": "int('42')" },
+  { "name": "double", "signature": "double(value) -> double", "detail": "Converts to a floating-point number", "example": "double('4.2')" },
+  { "name": "string", "signature": "string(value) -> string", "detail": "Converts to a string", "example": "string(r.n)" },
+  { "name": "timestamp", "signature": "timestamp(rfc3339) -> timestamp", "detail": "Parses an RFC 3339 timestamp", "example": "timestamp('2026-01-01T00:00:00Z')" },
+  { "name": "duration", "signature": "duration(text) -> duration", "detail": "Parses a duration such as '1h30m'", "example": "timestamp('2026-01-01T00:00:00Z') + duration('1h')" },
+  { "name": "has", "signature": "has(r.field) -> bool", "detail": "Whether the record has the field", "example": "has(r.opt)" },
+  { "name": "coalesce", "signature": "coalesce(a, b, ...) -> T", "detail": "The first argument that is present and not null", "example": "coalesce(r.opt, 'none')" },
+  { "name": "now", "signature": "now() -> timestamp", "detail": "The current time in UTC", "example": "now()" },
+  { "name": "sha256", "signature": "sha256(string) -> string", "detail": "Hex-encoded SHA-256 of the string", "example": "sha256(r.s)" },
+  { "name": "parseTimestamp", "signature": "parseTimestamp(value, format[, tz]) -> timestamp", "detail": "Parses a timestamp in a format such as 'dd.MM.yyyy HH:mm' or 'unix'", "example": "parseTimestamp('02.01.2026 10:00', 'dd.MM.yyyy HH:mm', 'Europe/Kyiv')" },
+  { "name": "parseNumber", "signature": "parseNumber(value, decimalSeparator) -> double", "detail": "Parses a number with the given decimal separator", "example": "parseNumber('1.234,5', ',')" }
+]

@@ -1,10 +1,13 @@
 <script setup lang="ts">
+import type { Column } from './columns'
 import type { CastOptions } from './model'
 import { computed, useId } from 'vue'
+import CelInput from './CelInput.vue'
 import { inputClass, labelClass } from './styles'
 
 const props = defineProps<{
   spec: CastOptions
+  columns: Column[]
 }>()
 
 const emit = defineEmits<{
@@ -158,13 +161,15 @@ function parseList(text: string): string[] {
     </label>
     <label class="block">
       <span :class="labelClass">Source expression</span>
-      <input
+      <CelInput
         data-testid="cast-source"
-        class="font-mono" :class="[inputClass]"
-        :value="spec.source ?? ''"
+        class="w-full"
+        :model-value="spec.source ?? ''"
+        :columns="columns"
         placeholder="the field itself"
-        @input="set({ source: ($event.target as HTMLInputElement).value })"
-      >
+        aria-label="Source expression"
+        @update:model-value="set({ source: $event })"
+      />
     </label>
   </div>
 </template>
