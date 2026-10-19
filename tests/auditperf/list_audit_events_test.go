@@ -94,7 +94,7 @@ func TestListAuditEventsP95(t *testing.T) {
 		{ActorID: &actors[2], Action: &action, Offset: pageSize},
 	}
 
-	users := auditadapt.NewUserDirectory(authservice.NewGetUserByID(authStorage), authservice.NewFindExistingUserIDs(authStorage))
+	users := auditadapt.NewUserDirectory(authservice.NewGetUserByID(authStorage), authservice.NewFindExistingUserIDs(authstorage.NewUserIDStorage(db)))
 	list := auditservice.NewListAuditEvents(auditstorage.NewEventPageStorage(db), users)
 	durations := make([]time.Duration, 0, runs)
 

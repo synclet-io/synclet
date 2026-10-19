@@ -5,17 +5,16 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/saturn4er/boilerplate-go/lib/filter"
 )
 
 // FindExistingUserIDs returns which of the given user ids have an account, with one query.
 type FindExistingUserIDs struct {
-	storage Storage
+	users UserIDStorage
 }
 
 // NewFindExistingUserIDs creates a new FindExistingUserIDs use case.
-func NewFindExistingUserIDs(storage Storage) *FindExistingUserIDs {
-	return &FindExistingUserIDs{storage: storage}
+func NewFindExistingUserIDs(users UserIDStorage) *FindExistingUserIDs {
+	return &FindExistingUserIDs{users: users}
 }
 
 // Execute returns the subset of ids that belong to existing users.
@@ -24,14 +23,9 @@ func (uc *FindExistingUserIDs) Execute(ctx context.Context, ids []uuid.UUID) ([]
 		return nil, nil
 	}
 
-	users, err := uc.storage.Users().Find(ctx, &UserFilter{ID: filter.In(ids...)})
+	existing, err := uc.users.ExistingUserIDs(ctx, ids)
 	if err != nil {
-		return nil, fmt.Errorf("finding users: %w", err)
-	}
-
-	existing := make([]uuid.UUID, 0, len(users))
-	for _, user := range users {
-		existing = append(existing, user.ID)
+		return nil, fmt.Errorf("finding existing users: %w", err)
 	}
 
 	return existing, nil

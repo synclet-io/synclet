@@ -73,6 +73,7 @@ func authConfigModule() fx.Option {
 func authDependenciesModule() fx.Option {
 	return fx.Provide(
 		fx.Annotate(authstorage.NewStorages, fx.As(new(authservice.Storage))),
+		fx.Annotate(authstorage.NewUserIDStorage, fx.As(new(authservice.UserIDStorage))),
 		fx.Annotate(authadapt.NewWorkspaceAutoAssigner, fx.As(new(authservice.WorkspaceAutoAssigner))),
 		fx.Annotate(authadapt.NewAuditRecorder, fx.As(new(authservice.AuditRecorder))),
 		fx.Annotate(authadapt.NewWorkspaceMembershipLister, fx.As(new(authservice.WorkspaceMembershipLister))),
