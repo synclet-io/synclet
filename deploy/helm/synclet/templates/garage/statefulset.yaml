@@ -1,4 +1,4 @@
-{{- if .Values.logArchive.garage.enabled }}
+{{- if include "synclet.garage.enabled" . }}
 {{- $garage := .Values.logArchive.garage }}
 {{- $secretName := include "synclet.garage.secretName" . }}
 apiVersion: apps/v1

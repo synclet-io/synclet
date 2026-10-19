@@ -12,12 +12,12 @@ data:
   INTERNAL_HTTP_SERVER_ADDR: {{ printf "0.0.0.0:%v" .Values.server.containerPorts.internal | quote }}
   ## Auth
   AUTH_REGISTRATION_ENABLED: {{ .Values.auth.registrationEnabled | quote }}
-  AUTH_SECURE_COOKIES: {{ .Values.auth.secureCookies | quote }}
-  AUTH_ACCESS_TOKEN_TTL: {{ .Values.auth.accessTokenTTL | quote }}
-  AUTH_REFRESH_TOKEN_TTL: {{ .Values.auth.refreshTokenTTL | quote }}
-  AUTH_OIDC_STATE_TTL: {{ .Values.auth.oidcStateTTL | quote }}
-  AUTH_MIN_PASSWORD_LENGTH: {{ .Values.auth.minPasswordLength | quote }}
-  RATE_LIMIT_TRUSTED_PROXIES: {{ join "," .Values.rateLimit.trustedProxies | quote }}
+  AUTH_SECURE_COOKIES: {{ dig "secureCookies" true .Values.auth | quote }}
+  AUTH_ACCESS_TOKEN_TTL: {{ dig "accessTokenTTL" "15m" .Values.auth | quote }}
+  AUTH_REFRESH_TOKEN_TTL: {{ dig "refreshTokenTTL" "168h" .Values.auth | quote }}
+  AUTH_OIDC_STATE_TTL: {{ dig "oidcStateTTL" "10m" .Values.auth | quote }}
+  AUTH_MIN_PASSWORD_LENGTH: {{ dig "minPasswordLength" 8 .Values.auth | quote }}
+  RATE_LIMIT_TRUSTED_PROXIES: {{ join "," (dig "trustedProxies" list (.Values.rateLimit | default dict)) | quote }}
   ## Workspace
   WORKSPACE_MODE: {{ .Values.workspaces.mode | quote }}
   ## Frontend & invites
@@ -32,8 +32,8 @@ data:
   NOTIFY_SMTP_FROM: {{ .Values.smtp.from | quote }}
   {{- end }}
   ## Notify: webhook settings
-  NOTIFY_WEBHOOK_HTTP_TIMEOUT: {{ .Values.notify.webhookHTTPTimeout | quote }}
-  NOTIFY_WEBHOOK_MAX_RETRIES: {{ .Values.notify.webhookMaxRetries | quote }}
+  NOTIFY_WEBHOOK_HTTP_TIMEOUT: {{ dig "webhookHTTPTimeout" "10s" (.Values.notify | default dict) | quote }}
+  NOTIFY_WEBHOOK_MAX_RETRIES: {{ dig "webhookMaxRetries" 3 (.Values.notify | default dict) | quote }}
   ## Pipeline: worker & scheduling
   PIPELINE_JOB_SCHEDULER_INTERVAL: {{ .Values.pipeline.schedulerInterval | quote }}
   PIPELINE_JOB_WATCHDOG_INTERVAL: {{ .Values.pipeline.watchdogInterval | quote }}
@@ -46,31 +46,31 @@ data:
   PIPELINE_IDLE_TIMEOUT: {{ .Values.pipeline.idleTimeout | quote }}
   ## Pipeline: connector tasks
   PIPELINE_CONNECTOR_TASK_RETENTION: {{ .Values.pipeline.connectorTaskRetention | quote }}
-  PIPELINE_CONNECTOR_TASK_RUNNING_TIMEOUT: {{ .Values.pipeline.connectorTaskRunningTimeout | quote }}
-  PIPELINE_CONNECTOR_TASK_PENDING_TIMEOUT: {{ .Values.pipeline.connectorTaskPendingTimeout | quote }}
-  PIPELINE_DEFAULT_MAX_ATTEMPTS: {{ .Values.pipeline.defaultMaxAttempts | quote }}
-  DOCKER_EXECUTOR_HEARTBEAT_INTERVAL: {{ .Values.pipeline.heartbeatInterval | quote }}
-  PIPELINE_CONNECTION_CHECK_TIMEOUT: {{ .Values.pipeline.connectionCheckTimeout | quote }}
-  PIPELINE_CONNECTOR_TASK_POLL_INTERVAL: {{ .Values.pipeline.connectorTaskPollInterval | quote }}
-  PIPELINE_EVENT_EMIT_TIMEOUT: {{ .Values.pipeline.eventEmitTimeout | quote }}
-  PIPELINE_STATS_ROLLUP_HOURLY_LOOKBACK: {{ .Values.pipeline.statsRollupHourlyLookback | quote }}
-  PIPELINE_STATS_ROLLUP_DAILY_LOOKBACK: {{ .Values.pipeline.statsRollupDailyLookback | quote }}
-  PIPELINE_REGISTRY_FETCH_TIMEOUT: {{ .Values.pipeline.registryFetchTimeout | quote }}
+  PIPELINE_CONNECTOR_TASK_RUNNING_TIMEOUT: {{ .Values.pipeline.connectorTaskRunningTimeout | default .Values.pipeline.connectorTaskTimeout | default "5m" | quote }}
+  PIPELINE_CONNECTOR_TASK_PENDING_TIMEOUT: {{ dig "connectorTaskPendingTimeout" "1m" .Values.pipeline | quote }}
+  PIPELINE_DEFAULT_MAX_ATTEMPTS: {{ dig "defaultMaxAttempts" 3 .Values.pipeline | quote }}
+  DOCKER_EXECUTOR_HEARTBEAT_INTERVAL: {{ dig "heartbeatInterval" "5s" .Values.pipeline | quote }}
+  PIPELINE_CONNECTION_CHECK_TIMEOUT: {{ dig "connectionCheckTimeout" "2m" .Values.pipeline | quote }}
+  PIPELINE_CONNECTOR_TASK_POLL_INTERVAL: {{ dig "connectorTaskPollInterval" "500ms" .Values.pipeline | quote }}
+  PIPELINE_EVENT_EMIT_TIMEOUT: {{ dig "eventEmitTimeout" "30s" .Values.pipeline | quote }}
+  PIPELINE_STATS_ROLLUP_HOURLY_LOOKBACK: {{ dig "statsRollupHourlyLookback" "2h" .Values.pipeline | quote }}
+  PIPELINE_STATS_ROLLUP_DAILY_LOOKBACK: {{ dig "statsRollupDailyLookback" "48h" .Values.pipeline | quote }}
+  PIPELINE_REGISTRY_FETCH_TIMEOUT: {{ dig "registryFetchTimeout" "60s" .Values.pipeline | quote }}
   ## Pipeline: job logs
-  PIPELINE_LOG_MAX_LINES_PER_ATTEMPT: {{ .Values.pipeline.logMaxLinesPerAttempt | quote }}
+  PIPELINE_LOG_MAX_LINES_PER_ATTEMPT: {{ dig "logMaxLinesPerAttempt" 100000 .Values.pipeline | quote }}
   PIPELINE_LOG_ARCHIVE_BACKEND: {{ include "synclet.logArchive.backend" . | quote }}
-  {{- if eq .Values.logArchive.backend "filesystem" }}
+  {{- if eq (include "synclet.logArchive.configuredBackend" .) "filesystem" }}
   {{- if not .Values.logArchive.persistence.existingClaim }}
   {{- fail "logArchive.backend=filesystem needs logArchive.persistence.existingClaim (a ReadWriteMany PVC shared by the server and jobs pods)" }}
   {{- end }}
   PIPELINE_LOG_ARCHIVE_DIR: {{ .Values.logArchive.dir | quote }}
   {{- end }}
-  {{- if .Values.logArchive.garage.enabled }}
+  {{- if include "synclet.garage.enabled" . }}
   PIPELINE_LOG_ARCHIVE_S3_ENDPOINT: {{ printf "http://%s:%d" (include "synclet.garage.fullname" .) (int .Values.logArchive.garage.service.s3Port) | quote }}
   PIPELINE_LOG_ARCHIVE_S3_REGION: {{ include "synclet.garage.region" . | quote }}
   PIPELINE_LOG_ARCHIVE_S3_BUCKET: {{ .Values.logArchive.garage.bucket | quote }}
   PIPELINE_LOG_ARCHIVE_S3_USE_PATH_STYLE: "true"
-  {{- else if eq .Values.logArchive.backend "s3" }}
+  {{- else if eq (include "synclet.logArchive.configuredBackend" .) "s3" }}
   {{- if not .Values.logArchive.s3.bucket }}
   {{- fail "logArchive.backend=s3 needs logArchive.s3.bucket" }}
   {{- end }}
@@ -80,7 +80,7 @@ data:
   PIPELINE_LOG_ARCHIVE_S3_PREFIX: {{ .Values.logArchive.s3.prefix | quote }}
   PIPELINE_LOG_ARCHIVE_S3_USE_PATH_STYLE: {{ .Values.logArchive.s3.usePathStyle | quote }}
   {{- end }}
-  {{- if eq .Values.logArchive.backend "gcs" }}
+  {{- if eq (include "synclet.logArchive.configuredBackend" .) "gcs" }}
   {{- if not .Values.logArchive.gcs.bucket }}
   {{- fail "logArchive.backend=gcs needs logArchive.gcs.bucket" }}
   {{- end }}

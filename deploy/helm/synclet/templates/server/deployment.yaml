@@ -75,8 +75,8 @@ spec:
           {{- if .Values.server.startupProbe.enabled }}
           startupProbe:
             httpGet:
-              path: {{ .Values.server.startupProbe.path }}
-              port: {{ .Values.server.startupProbe.port }}
+              path: {{ include "synclet.server.probePath" (list .Values.server.startupProbe "/live") }}
+              port: {{ .Values.server.startupProbe.port | default "internal" }}
             initialDelaySeconds: {{ .Values.server.startupProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.server.startupProbe.periodSeconds }}
             failureThreshold: {{ .Values.server.startupProbe.failureThreshold }}
@@ -84,16 +84,16 @@ spec:
           {{- if .Values.server.readinessProbe.enabled }}
           readinessProbe:
             httpGet:
-              path: {{ .Values.server.readinessProbe.path }}
-              port: {{ .Values.server.readinessProbe.port }}
+              path: {{ include "synclet.server.probePath" (list .Values.server.readinessProbe "/ready") }}
+              port: {{ .Values.server.readinessProbe.port | default "internal" }}
             initialDelaySeconds: {{ .Values.server.readinessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.server.readinessProbe.periodSeconds }}
           {{- end }}
           {{- if .Values.server.livenessProbe.enabled }}
           livenessProbe:
             httpGet:
-              path: {{ .Values.server.livenessProbe.path }}
-              port: {{ .Values.server.livenessProbe.port }}
+              path: {{ include "synclet.server.probePath" (list .Values.server.livenessProbe "/live") }}
+              port: {{ .Values.server.livenessProbe.port | default "internal" }}
             initialDelaySeconds: {{ .Values.server.livenessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.server.livenessProbe.periodSeconds }}
           {{- end }}

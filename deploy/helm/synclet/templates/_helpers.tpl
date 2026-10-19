@@ -59,6 +59,20 @@ app.kubernetes.io/component: server
 app.kubernetes.io/component: server
 {{- end }}
 
+{{/*
+Server probe path from (list probe fallback). A probe without a port comes from
+a release before 0.2.0, whose default path /health the server no longer serves:
+it takes the fallback.
+*/}}
+{{- define "synclet.server.probePath" -}}
+{{- $probe := index . 0 -}}
+{{- if and (not $probe.port) (eq ($probe.path | default "/health") "/health") -}}
+{{- index . 1 -}}
+{{- else -}}
+{{- $probe.path -}}
+{{- end -}}
+{{- end }}
+
 {{/* ---- Jobs ---- */}}
 {{- define "synclet.jobs.labels" -}}
 {{ include "synclet.labels" . }}
@@ -107,7 +121,8 @@ ServiceAccount name.
 Whether the executor deployment runs under an account of its own.
 */}}
 {{- define "synclet.executor.ownServiceAccount" -}}
-{{- if and (eq .Values.mode "distributed") .Values.executor.enabled (or .Values.executor.serviceAccount.create .Values.executor.serviceAccount.name) }}true{{- end }}
+{{- $sa := .Values.executor.serviceAccount | default (dict "create" true) }}
+{{- if and (eq .Values.mode "distributed") .Values.executor.enabled (or $sa.create $sa.name) }}true{{- end }}
 {{- end }}
 
 {{/*
@@ -115,10 +130,11 @@ ServiceAccount name of the executor deployment: its own account when one is
 created or named, else the chart's.
 */}}
 {{- define "synclet.executor.serviceAccountName" -}}
-{{- if .Values.executor.serviceAccount.create }}
-{{- default (printf "%s-executor" (include "synclet.fullname" .)) .Values.executor.serviceAccount.name }}
-{{- else if .Values.executor.serviceAccount.name }}
-{{- .Values.executor.serviceAccount.name }}
+{{- $sa := .Values.executor.serviceAccount | default (dict "create" true) }}
+{{- if $sa.create }}
+{{- default (printf "%s-executor" (include "synclet.fullname" .)) $sa.name }}
+{{- else if $sa.name }}
+{{- $sa.name }}
 {{- else }}
 {{- include "synclet.serviceAccountName" . }}
 {{- end }}
@@ -129,10 +145,11 @@ Default ServiceAccount name of connector pods; empty means the k8s.namespace
 default account.
 */}}
 {{- define "synclet.pipeline.serviceAccountName" -}}
-{{- if .Values.pipeline.serviceAccount.create }}
-{{- default (printf "%s-connector" (include "synclet.fullname" .)) .Values.pipeline.serviceAccount.name }}
+{{- $sa := .Values.pipeline.serviceAccount | default dict }}
+{{- if $sa.create }}
+{{- default (printf "%s-connector" (include "synclet.fullname" .)) $sa.name }}
 {{- else }}
-{{- .Values.pipeline.serviceAccount.name | default .Values.pipeline.resources.serviceAccountName }}
+{{- $sa.name | default .Values.pipeline.resources.serviceAccountName }}
 {{- end }}
 {{- end }}
 
@@ -247,7 +264,7 @@ Empty when neither is enabled or the HTTPRoute has no hostnames.
 */}}
 {{- define "synclet.publicURL" -}}
 {{- $ingress := .Values.server.ingress -}}
-{{- $gateway := .Values.server.gateway -}}
+{{- $gateway := .Values.server.gateway | default dict -}}
 {{- if .Values.server.publicUrl -}}
 {{- .Values.server.publicUrl | trimSuffix "/" -}}
 {{- else if and $ingress.enabled $gateway.enabled -}}
@@ -285,7 +302,7 @@ SMTP password (inline value only; empty = no password).
 "true" when the chart-managed Secret holds the log archive S3 keys, else empty.
 */}}
 {{- define "synclet.logArchive.chartManagedS3Keys" -}}
-{{- if and (eq .Values.logArchive.backend "s3") .Values.logArchive.s3.accessKeyID (not .Values.logArchive.s3.existingSecret) -}}
+{{- if and (eq (include "synclet.logArchive.configuredBackend" .) "s3") .Values.logArchive.s3.accessKeyID (not .Values.logArchive.s3.existingSecret) -}}
 true
 {{- end -}}
 {{- end }}
@@ -299,11 +316,11 @@ filesystem backend's PVC and the GCS service account key.
 {{- end }}
 
 {{- define "synclet.logArchive.volumeMount" -}}
-{{- if and (eq .Values.logArchive.backend "filesystem") .Values.logArchive.persistence.existingClaim }}
+{{- if and (eq (include "synclet.logArchive.configuredBackend" .) "filesystem") .Values.logArchive.persistence.existingClaim }}
 - name: log-archive
   mountPath: {{ .Values.logArchive.dir }}
 {{- end }}
-{{- if and (eq .Values.logArchive.backend "gcs") .Values.logArchive.gcs.credentialsSecret }}
+{{- if and (eq (include "synclet.logArchive.configuredBackend" .) "gcs") .Values.logArchive.gcs.credentialsSecret }}
 - name: log-archive-gcs-key
   mountPath: {{ include "synclet.logArchive.gcsKeyDir" . }}
   readOnly: true
@@ -311,12 +328,12 @@ filesystem backend's PVC and the GCS service account key.
 {{- end }}
 
 {{- define "synclet.logArchive.volume" -}}
-{{- if and (eq .Values.logArchive.backend "filesystem") .Values.logArchive.persistence.existingClaim }}
+{{- if and (eq (include "synclet.logArchive.configuredBackend" .) "filesystem") .Values.logArchive.persistence.existingClaim }}
 - name: log-archive
   persistentVolumeClaim:
     claimName: {{ .Values.logArchive.persistence.existingClaim }}
 {{- end }}
-{{- if and (eq .Values.logArchive.backend "gcs") .Values.logArchive.gcs.credentialsSecret }}
+{{- if and (eq (include "synclet.logArchive.configuredBackend" .) "gcs") .Values.logArchive.gcs.credentialsSecret }}
 - name: log-archive-gcs-key
   secret:
     secretName: {{ .Values.logArchive.gcs.credentialsSecret }}
@@ -327,23 +344,41 @@ filesystem backend's PVC and the GCS service account key.
 {{- end }}
 
 {{- define "synclet.logArchive.env" -}}
-{{- if and (eq .Values.logArchive.backend "gcs") .Values.logArchive.gcs.credentialsSecret }}
+{{- if and (eq (include "synclet.logArchive.configuredBackend" .) "gcs") .Values.logArchive.gcs.credentialsSecret }}
 - name: PIPELINE_LOG_ARCHIVE_GCS_CREDENTIALS_FILE
   value: {{ printf "%s/key.json" (include "synclet.logArchive.gcsKeyDir" .) | quote }}
 {{- end }}
 {{- end }}
 
 {{/*
+logArchive.backend as set; none when the values have no logArchive (a release
+older than the log archive, upgraded with --reuse-values).
+*/}}
+{{- define "synclet.logArchive.configuredBackend" -}}
+{{- dig "backend" "none" (.Values.logArchive | default dict) -}}
+{{- end }}
+
+{{/*
+"true" when the bundled Garage is enabled, else empty.
+*/}}
+{{- define "synclet.garage.enabled" -}}
+{{- if dig "garage" "enabled" false (.Values.logArchive | default dict) -}}
+true
+{{- end -}}
+{{- end }}
+
+{{/*
 Log archive backend Synclet runs with: s3 when the bundled Garage is enabled.
 */}}
 {{- define "synclet.logArchive.backend" -}}
-{{- if .Values.logArchive.garage.enabled -}}
-{{- if ne .Values.logArchive.backend "none" -}}
-{{- fail (printf "logArchive.garage.enabled selects the s3 backend and wires it to Garage; leave logArchive.backend at none (got %q)" .Values.logArchive.backend) -}}
+{{- $backend := include "synclet.logArchive.configuredBackend" . -}}
+{{- if include "synclet.garage.enabled" . -}}
+{{- if ne $backend "none" -}}
+{{- fail (printf "logArchive.garage.enabled selects the s3 backend and wires it to Garage; leave logArchive.backend at none (got %q)" $backend) -}}
 {{- end -}}
 s3
 {{- else -}}
-{{- .Values.logArchive.backend -}}
+{{- $backend -}}
 {{- end -}}
 {{- end }}
 
@@ -532,7 +567,7 @@ Secret env vars of the control-plane deployments (server and jobs).
       key: oidc-{{ .slug }}-client-secret
       {{- end }}
 {{- end }}
-{{- if .Values.logArchive.garage.enabled }}
+{{- if include "synclet.garage.enabled" . }}
 - name: PIPELINE_LOG_ARCHIVE_S3_ACCESS_KEY_ID
   valueFrom:
     secretKeyRef:
@@ -543,7 +578,7 @@ Secret env vars of the control-plane deployments (server and jobs).
     secretKeyRef:
       name: {{ include "synclet.garage.secretName" . }}
       key: secret-access-key
-{{- else if eq .Values.logArchive.backend "s3" }}
+{{- else if eq (include "synclet.logArchive.configuredBackend" .) "s3" }}
 {{- if or .Values.logArchive.s3.existingSecret .Values.logArchive.s3.accessKeyID }}
 - name: PIPELINE_LOG_ARCHIVE_S3_ACCESS_KEY_ID
   valueFrom:
@@ -665,7 +700,7 @@ K8S_EXECUTOR_SERVER_ADDR: {{ include "synclet.internalServerAddr" . | quote }}
 K8S_EXECUTOR_DEFAULT_MEMORY: {{ .Values.k8s.defaultMemory | quote }}
 K8S_EXECUTOR_DEFAULT_CPU: {{ .Values.k8s.defaultCPU | quote }}
 K8S_EXECUTOR_JOB_WORKER_INTERVAL: {{ .Values.pipeline.workerInterval | quote }}
-K8S_EXECUTOR_JOB_RESOURCE_CLEANUP_INTERVAL: {{ .Values.pipeline.resourceCleanupInterval | quote }}
+K8S_EXECUTOR_JOB_RESOURCE_CLEANUP_INTERVAL: {{ .Values.pipeline.resourceCleanupInterval | default .Values.pipeline.orphanCleanupInterval | default "5m" | quote }}
 {{- if .Values.k8s.imagePullSecret }}
 K8S_EXECUTOR_IMAGE_PULL_SECRET: {{ .Values.k8s.imagePullSecret | quote }}
 {{- end }}

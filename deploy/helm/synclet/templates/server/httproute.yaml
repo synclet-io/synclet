@@ -1,4 +1,4 @@
-{{- if .Values.server.gateway.enabled }}
+{{- if dig "gateway" "enabled" false .Values.server }}
 {{- if not .Values.server.gateway.parentRefs }}
 {{- fail "server.gateway.enabled needs server.gateway.parentRefs (the Gateway the HTTPRoute attaches to)" }}
 {{- end }}
