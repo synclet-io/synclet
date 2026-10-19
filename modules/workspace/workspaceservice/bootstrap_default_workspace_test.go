@@ -2,6 +2,8 @@ package workspaceservice
 
 import (
 	"context"
+	"errors"
+	"slices"
 	"testing"
 
 	"github.com/go-pnp/go-pnp/pkg/optionutil"
@@ -76,4 +78,46 @@ func TestBootstrapDefaultWorkspace_LosesCreateRace(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, wsID, got.ID)
 	assert.Empty(t, store.events, "the process that lost the race publishes no workspace.created")
+}
+
+var errSendFailed = errors.New("send failed")
+
+type failingEventsOutbox struct{}
+
+func (failingEventsOutbox) Send(context.Context, *WorkspaceEvent) error { return errSendFailed }
+
+// rollbackStorage discards the workspaces written in a transaction whose
+// callback fails, and fails every outbox send.
+type rollbackStorage struct {
+	*fakeStorage
+}
+
+func (s *rollbackStorage) WorkspaceEvents() WorkspaceEventsOutbox { return failingEventsOutbox{} }
+
+func (s *rollbackStorage) ExecuteInTransaction(ctx context.Context, cb func(ctx context.Context, tx Storage) error) error {
+	s.mu.Lock()
+	snapshot := slices.Clone(s.workspaces)
+	s.mu.Unlock()
+
+	if err := cb(ctx, s); err != nil {
+		s.mu.Lock()
+		s.workspaces = snapshot
+		s.mu.Unlock()
+
+		return err
+	}
+
+	return nil
+}
+
+func TestBootstrapDefaultWorkspace_SendFailureLeavesNoWorkspace(t *testing.T) {
+	ctx := context.Background()
+	store := newFakeStorage()
+
+	_, err := NewBootstrapDefaultWorkspace(&rollbackStorage{fakeStorage: store}).Execute(ctx)
+	require.ErrorIs(t, err, errSendFailed)
+
+	all, err := store.Workspaces().Find(ctx, &WorkspaceFilter{})
+	require.NoError(t, err)
+	assert.Empty(t, all, "a workspace without its workspace.created event must not be left behind")
 }

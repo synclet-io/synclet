@@ -23,8 +23,9 @@ func NewBootstrapDefaultWorkspace(storage Storage) *BootstrapDefaultWorkspace {
 }
 
 // Execute creates the "Default" workspace with slug "default" if it does not
-// exist, and publishes a workspace.created event so subscribers (e.g. the
-// default-registries seeder) treat it like any other newly created workspace.
+// exist, and publishes a workspace.created event in the same transaction so
+// subscribers (e.g. the default-registries seeder) treat it like any other
+// newly created workspace.
 func (uc *BootstrapDefaultWorkspace) Execute(ctx context.Context) (*Workspace, error) {
 	existing, err := uc.storage.Workspaces().First(ctx, &WorkspaceFilter{
 		Slug: filter.Equals("default"),
@@ -48,14 +49,30 @@ func (uc *BootstrapDefaultWorkspace) Execute(ctx context.Context) (*Workspace, e
 		UpdatedAt: now,
 	}
 
-	created, err := uc.storage.Workspaces().Create(ctx, workspace)
-	if err != nil {
-		var alreadyExists AlreadyExistsError
-		if !errors.As(err, &alreadyExists) {
-			return nil, fmt.Errorf("creating default workspace: %w", err)
+	var created *Workspace
+
+	err = uc.storage.ExecuteInTransaction(ctx, func(ctx context.Context, tx Storage) error {
+		var err error
+
+		created, err = tx.Workspaces().Create(ctx, workspace)
+		if err != nil {
+			return fmt.Errorf("creating default workspace: %w", err)
 		}
 
-		// Another process created it between the lookup and the insert.
+		if err := tx.WorkspaceEvents().Send(ctx, &WorkspaceEvent{
+			EventType: WorkspaceEventTypeCreated,
+			Data:      &WorkspaceCreatedEventData{Workspace: created},
+		}); err != nil {
+			return fmt.Errorf("publishing workspace.created event: %w", err)
+		}
+
+		return nil
+	})
+
+	var alreadyExists AlreadyExistsError
+	if errors.As(err, &alreadyExists) {
+		// Another process created it between the lookup and the insert; the
+		// failed insert aborted the transaction, so read it back outside it.
 		existing, err := uc.storage.Workspaces().First(ctx, &WorkspaceFilter{
 			Slug: filter.Equals("default"),
 		})
@@ -66,11 +83,8 @@ func (uc *BootstrapDefaultWorkspace) Execute(ctx context.Context) (*Workspace, e
 		return existing, nil
 	}
 
-	if err := uc.storage.WorkspaceEvents().Send(ctx, &WorkspaceEvent{
-		EventType: WorkspaceEventTypeCreated,
-		Data:      &WorkspaceCreatedEventData{Workspace: created},
-	}); err != nil {
-		return nil, fmt.Errorf("publishing workspace.created event: %w", err)
+	if err != nil {
+		return nil, err
 	}
 
 	return created, nil

@@ -9,6 +9,7 @@ import (
 	"github.com/go-pnp/go-pnp/pkg/optionutil"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/stdlib"
+	"github.com/saturn4er/boilerplate-go/lib/dbutil"
 	"github.com/saturn4er/boilerplate-go/lib/filter"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,6 +18,7 @@ import (
 	"gorm.io/gorm"
 	gormlogger "gorm.io/gorm/logger"
 
+	"github.com/synclet-io/synclet/modules/workspace/workspaceevent"
 	"github.com/synclet-io/synclet/modules/workspace/workspaceservice"
 	"github.com/synclet-io/synclet/pkg/migrations"
 )
@@ -63,6 +65,26 @@ func TestWorkspaceBootstrap(t *testing.T) {
 		}, roles)
 	})
 
+	t.Run("a bootstrap that loses the insert race reads the existing workspace", func(t *testing.T) {
+		t.Setenv("WORKSPACE_MODE", "single")
+
+		db := startWorkspaceModule(t, dsn)
+		storage := newWorkspaceStorage(db, nil)
+
+		winner, err := storage.Workspaces().First(t.Context(), &workspaceservice.WorkspaceFilter{
+			Slug: filter.Equals("default"),
+		})
+		require.NoError(t, err)
+
+		got, err := workspaceservice.NewBootstrapDefaultWorkspace(&staleLookupStorage{Storage: storage, stale: true}).Execute(t.Context())
+		require.NoError(t, err)
+		assert.Equal(t, winner.ID, got.ID)
+
+		var messages int64
+		require.NoError(t, db.Table("tx_outbox.messages").Where("topic = ?", workspaceevent.WorkspaceEventTopic).Count(&messages).Error)
+		assert.Equal(t, int64(1), messages, "the process that lost the race writes no second workspace.created")
+	})
+
 	t.Run("multi mode creates no workspace", func(t *testing.T) {
 		t.Setenv("WORKSPACE_MODE", "multi")
 
@@ -72,6 +94,31 @@ func TestWorkspaceBootstrap(t *testing.T) {
 		require.NoError(t, err)
 		assert.Zero(t, count)
 	})
+}
+
+// staleLookupStorage misses the default workspace on its first lookup, as a
+// process does that looked it up before another process created it.
+type staleLookupStorage struct {
+	workspaceservice.Storage
+	stale bool
+}
+
+func (s *staleLookupStorage) Workspaces() workspaceservice.WorkspacesStorage {
+	if s.stale {
+		s.stale = false
+
+		return staleWorkspaces{s.Storage.Workspaces()}
+	}
+
+	return s.Storage.Workspaces()
+}
+
+type staleWorkspaces struct {
+	workspaceservice.WorkspacesStorage
+}
+
+func (staleWorkspaces) First(context.Context, *workspaceservice.WorkspaceFilter, ...optionutil.Option[dbutil.SelectOptions]) (*workspaceservice.Workspace, error) {
+	return nil, workspaceservice.ErrWorkspaceNotFound
 }
 
 // startWorkspaceModule applies every module's migrations to a scratch database and starts the workspace
