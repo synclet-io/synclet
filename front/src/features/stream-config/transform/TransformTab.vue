@@ -11,6 +11,7 @@ import { addStep, fromStepJson, MAPPER_KINDS, MAPPER_LABELS, moveStep, removeSte
 import StepCard from './StepCard.vue'
 import TestPanel from './TestPanel.vue'
 import { useMapperValidation } from './useMapperValidation'
+import { useStepDrag } from './useStepDrag'
 
 const props = defineProps<{
   stream: StreamRow
@@ -127,15 +128,11 @@ function onAdd(item: DropdownItem) {
   commit(addStep(steps.value, item.value as MapperKind))
 }
 
-const dragFrom = ref<number | null>(null)
-
-function onDrop(to: number) {
-  const from = dragFrom.value
-  dragFrom.value = null
-  if (from === null || from === to)
-    return
-  commit(moveStep(steps.value, from, to - from))
-}
+const stepList = ref<HTMLElement | null>(null)
+const drag = useStepDrag({
+  list: stepList,
+  onDrop: (from, to) => commit(moveStep(steps.value, from, to - from)),
+})
 </script>
 
 <template>
@@ -194,21 +191,41 @@ function onDrop(to: number) {
         No steps. Records go to the destination as the source sends them.
       </p>
 
-      <StepCard
-        v-for="(step, i) in steps"
-        :key="step.id"
-        :step="step"
-        :index="i"
-        :count="steps.length"
-        :columns="walk.stepInputs[i] ?? []"
-        :issues="issuesFor(i)"
-        :result-types="validation.types.value[i] ?? {}"
-        @update="commit(updateStep(steps, i, $event))"
-        @move="commit(moveStep(steps, i, $event))"
-        @remove="commit(removeStep(steps, i))"
-        @dragstart="dragFrom = i"
-        @drop="onDrop(i)"
-      />
+      <div
+        v-if="steps.length > 0"
+        ref="stepList"
+        data-testid="step-list"
+        class="relative space-y-2"
+        :class="drag.dragging.value === null ? '' : 'select-none cursor-grabbing'"
+      >
+        <div
+          v-if="drag.placeholder.value"
+          data-testid="drop-placeholder"
+          aria-hidden="true"
+          class="absolute left-0 right-0 rounded-lg border-2 border-dashed border-primary bg-primary-light"
+          :style="{ top: `${drag.placeholder.value.top}px`, height: `${drag.placeholder.value.height}px` }"
+        />
+        <div
+          v-for="(step, i) in steps"
+          :key="step.id"
+          data-testid="step-slot"
+          :style="drag.styleFor(i)"
+        >
+          <StepCard
+            :step="step"
+            :index="i"
+            :count="steps.length"
+            :columns="walk.stepInputs[i] ?? []"
+            :issues="issuesFor(i)"
+            :result-types="validation.types.value[i] ?? {}"
+            :dragging="drag.dragging.value === i"
+            @update="commit(updateStep(steps, i, $event))"
+            @move="commit(moveStep(steps, i, $event))"
+            @remove="commit(removeStep(steps, i))"
+            @grab="drag.start(i, $event)"
+          />
+        </div>
+      </div>
 
       <p v-if="validation.requestError.value" class="text-xs text-danger">
         Could not check the expressions: {{ validation.requestError.value }}

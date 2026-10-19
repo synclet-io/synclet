@@ -12,15 +12,22 @@ defineProps<{
   columns: Column[]
   issues: TransformIssue[]
   resultTypes: Record<string, string>
+  dragging?: boolean
 }>()
 
 const emit = defineEmits<{
   update: [step: StepDraft]
   move: [delta: number]
   remove: []
-  dragstart: []
-  drop: []
+  grab: [event: PointerEvent]
 }>()
+
+function onGrab(e: PointerEvent) {
+  if (e.button !== 0)
+    return
+  e.preventDefault()
+  emit('grab', e)
+}
 
 const iconButton = 'p-1 rounded text-text-muted hover:text-heading hover:bg-surface-hover disabled:opacity-30 disabled:pointer-events-none'
 </script>
@@ -30,20 +37,24 @@ const iconButton = 'p-1 rounded text-text-muted hover:text-heading hover:bg-surf
     data-testid="step-card"
     :data-kind="step.kind"
     class="rounded-lg border bg-surface p-3 space-y-2"
-    :class="issues.some(i => i.severity === 'error') ? 'border-danger/60' : 'border-border'"
-    @dragover.prevent
-    @drop.prevent="emit('drop')"
+    :class="[
+      issues.some(i => i.severity === 'error') ? 'border-danger/60' : 'border-border',
+      dragging ? 'shadow-lg ring-1 ring-primary' : '',
+    ]"
   >
     <header class="flex items-center gap-2">
-      <span
-        draggable="true"
-        class="cursor-grab text-text-muted hover:text-heading"
+      <button
+        type="button"
+        data-testid="step-drag"
+        tabindex="-1"
+        aria-label="Drag to reorder"
         title="Drag to reorder"
-        aria-hidden="true"
-        @dragstart="emit('dragstart')"
+        class="-m-1 p-1 rounded cursor-grab touch-none text-text-muted hover:text-heading"
+        :class="dragging ? 'cursor-grabbing' : ''"
+        @pointerdown="onGrab"
       >
         <GripVertical class="w-4 h-4" />
-      </span>
+      </button>
       <span class="text-xs font-semibold text-text-muted tabular-nums">{{ index + 1 }}</span>
       <span class="text-sm font-semibold text-heading">{{ MAPPER_LABELS[step.kind] }}</span>
       <div class="ml-auto flex items-center gap-0.5">

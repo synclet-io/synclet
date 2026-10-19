@@ -82,6 +82,49 @@ function card(wrapper: Wrapper, index: number) {
   return wrapper.findAll('[data-testid="step-card"]')[index]
 }
 
+const CARD_H = 100
+const CARD_GAP = 8
+const PITCH = CARD_H + CARD_GAP
+
+function rect(top: number, height: number): DOMRect {
+  return { top, bottom: top + height, left: 0, right: 400, height, width: 400, x: 0, y: top, toJSON: () => ({}) } as DOMRect
+}
+
+function layoutSteps(wrapper: Wrapper) {
+  const slots = wrapper.findAll('[data-testid="step-slot"]')
+  wrapper.get('[data-testid="step-list"]').element.getBoundingClientRect = () => rect(0, slots.length * PITCH - CARD_GAP)
+  slots.forEach((s, i) => {
+    s.element.getBoundingClientRect = () => rect(i * PITCH, CARD_H)
+  })
+}
+
+function pointer(type: string, clientY: number, clientX = 100) {
+  window.dispatchEvent(new PointerEvent(type, { clientX, clientY, button: 0, bubbles: true }))
+}
+
+async function grab(wrapper: Wrapper, index: number) {
+  layoutSteps(wrapper)
+  await card(wrapper, index).get('[data-testid="step-drag"]').trigger('pointerdown', { button: 0, clientX: 100, clientY: index * PITCH + CARD_H / 2 })
+}
+
+async function moveTo(wrapper: Wrapper, clientY: number, clientX = 100) {
+  pointer('pointermove', clientY, clientX)
+  await wrapper.vm.$nextTick()
+}
+
+async function release(wrapper: Wrapper, clientY: number, clientX = 100) {
+  pointer('pointerup', clientY, clientX)
+  await wrapper.vm.$nextTick()
+}
+
+function slotStyle(wrapper: Wrapper, index: number) {
+  return wrapper.findAll('[data-testid="step-slot"]')[index].attributes('style') ?? ''
+}
+
+function cardOrder(wrapper: Wrapper) {
+  return wrapper.findAll('[data-testid="step-card"]').map(c => [c.get('header .tabular-nums').text(), c.attributes('data-kind')])
+}
+
 describe('transformTab', () => {
   beforeEach(() => {
     vi.useFakeTimers()
@@ -144,6 +187,96 @@ describe('transformTab', () => {
     await card(wrapper, 0).get('[data-testid="step-remove"]').trigger('click')
     expect(lastMappers(wrapper)).toEqual([{ hash: ['email'] }, { rename: { cust_id: 'customer_id' } }])
     expect(wrapper.findAll('[data-testid="step-card"]')).toHaveLength(2)
+  })
+
+  it('shows the slot a dragged step will land in while the other cards move aside', async () => {
+    const wrapper = mountTab(row({ mappers: [{ hash: ['email'] }, { filter: 'true' }, { rename: { cust_id: 'customer_id' } }] }))
+    await grab(wrapper, 0)
+    await moveTo(wrapper, CARD_H / 2 + 2 * PITCH + 10)
+
+    const placeholder = wrapper.get('[data-testid="drop-placeholder"]')
+    expect(placeholder.attributes('style')).toContain(`top: ${2 * PITCH}px`)
+    expect(placeholder.attributes('style')).toContain(`height: ${CARD_H}px`)
+    expect(slotStyle(wrapper, 0)).toContain(`translateY(${2 * PITCH + 10}px)`)
+    expect(slotStyle(wrapper, 1)).toContain(`translateY(-${PITCH}px)`)
+    expect(slotStyle(wrapper, 2)).toContain(`translateY(-${PITCH}px)`)
+    expect(wrapper.findAll('[data-testid="step-card"]')).toHaveLength(3)
+    expect(card(wrapper, 0).classes()).toContain('ring-primary')
+    expect(wrapper.emitted('update:stream')).toBeUndefined()
+  })
+
+  it('drops a dragged step into the last slot', async () => {
+    const wrapper = mountTab(row({ mappers: [{ hash: ['email'] }, { filter: 'true' }, { rename: { cust_id: 'customer_id' } }] }))
+    await grab(wrapper, 0)
+    await moveTo(wrapper, CARD_H / 2 + 2 * PITCH + 10)
+    await release(wrapper, CARD_H / 2 + 2 * PITCH + 10)
+
+    expect(lastMappers(wrapper)).toEqual([{ filter: 'true' }, { rename: { cust_id: 'customer_id' } }, { hash: ['email'] }])
+    expect(cardOrder(wrapper)).toEqual([['1', 'filter'], ['2', 'rename'], ['3', 'hash']])
+    expect(wrapper.find('[data-testid="drop-placeholder"]').exists()).toBe(false)
+    expect(slotStyle(wrapper, 0)).toBe('')
+  })
+
+  it('drops a dragged step into the first slot and the columns and checks follow', async () => {
+    const wrapper = mountTab(row({ mappers: [{ filter: 'true' }, { hash: ['email'] }, { rename: { email: 'contact' } }] }))
+    expect(card(wrapper, 1).findAll('[data-testid="step-issue"]')).toHaveLength(0)
+
+    await grab(wrapper, 2)
+    await moveTo(wrapper, 2 * PITCH + CARD_H / 2 - 2 * PITCH - 10)
+    await release(wrapper, 10)
+
+    expect(lastMappers(wrapper)).toEqual([{ rename: { email: 'contact' } }, { filter: 'true' }, { hash: ['email'] }])
+    expect(cardOrder(wrapper)).toEqual([['1', 'rename'], ['2', 'filter'], ['3', 'hash']])
+    const outputs = wrapper.findAll('[data-testid="output-column"] .font-mono.text-heading').map(c => c.text())
+    expect(outputs).toContain('contact')
+    expect(outputs).not.toContain('email')
+    expect(card(wrapper, 2).findAll('[data-testid="step-issue"]').map(i => i.attributes('data-severity'))).toContain('error')
+  })
+
+  it('leaves the order unchanged on Escape or a drop outside the list', async () => {
+    const wrapper = mountTab(row({ mappers: [{ hash: ['email'] }, { filter: 'true' }, { rename: { cust_id: 'customer_id' } }] }))
+    await grab(wrapper, 0)
+    await moveTo(wrapper, CARD_H / 2 + 2 * PITCH + 10)
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    await wrapper.vm.$nextTick()
+    expect(wrapper.find('[data-testid="drop-placeholder"]').exists()).toBe(false)
+    expect(slotStyle(wrapper, 0)).toBe('')
+    await release(wrapper, CARD_H / 2 + 2 * PITCH + 10)
+    expect(wrapper.emitted('update:stream')).toBeUndefined()
+
+    await grab(wrapper, 0)
+    await moveTo(wrapper, CARD_H / 2 + 2 * PITCH + 10)
+    await moveTo(wrapper, 3 * PITCH + 200)
+    expect(wrapper.find('[data-testid="drop-placeholder"]').exists()).toBe(false)
+    await release(wrapper, 3 * PITCH + 200)
+    expect(wrapper.emitted('update:stream')).toBeUndefined()
+    expect(wrapper.find('[data-testid="drop-placeholder"]').exists()).toBe(false)
+    expect(cardOrder(wrapper)).toEqual([['1', 'hash'], ['2', 'filter'], ['3', 'rename']])
+  })
+
+  it('drops into the shown slot when the pointer drifts sideways off the list', async () => {
+    const wrapper = mountTab(row({ mappers: [{ hash: ['email'] }, { filter: 'true' }, { rename: { cust_id: 'customer_id' } }] }))
+    await grab(wrapper, 0)
+    await moveTo(wrapper, CARD_H / 2 + 2 * PITCH + 10, 1000)
+    expect(wrapper.get('[data-testid="drop-placeholder"]').attributes('style')).toContain(`top: ${2 * PITCH}px`)
+    await release(wrapper, CARD_H / 2 + 2 * PITCH + 10, 1000)
+
+    expect(lastMappers(wrapper)).toEqual([{ filter: 'true' }, { rename: { cust_id: 'customer_id' } }, { hash: ['email'] }])
+  })
+
+  it('starts a drag from the handle only', async () => {
+    const wrapper = mountTab(row({ mappers: [{ rename: { cust_id: 'customer_id' } }, { filter: 'true' }] }))
+    layoutSteps(wrapper)
+    await card(wrapper, 0).get('input[data-testid="entry-field"]').trigger('pointerdown', { button: 0, clientY: 50 })
+    expect(wrapper.find('[data-testid="drop-placeholder"]').exists()).toBe(false)
+
+    expect(card(wrapper, 0).get('[data-testid="step-drag"]').attributes('tabindex')).toBe('-1')
+    await card(wrapper, 0).get('[data-testid="step-drag"]').trigger('pointerdown', { button: 2, clientY: 50 })
+    expect(wrapper.find('[data-testid="drop-placeholder"]').exists()).toBe(false)
+
+    await card(wrapper, 0).get('[data-testid="step-drag"]').trigger('pointerdown', { button: 0, clientY: 50 })
+    expect(wrapper.find('[data-testid="drop-placeholder"]').exists()).toBe(true)
+    await release(wrapper, 50)
   })
 
   it('flags a rename onto an existing field on its card without calling the server', async () => {
