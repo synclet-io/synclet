@@ -98,6 +98,8 @@ function mapManagedConnector(proto: ProtoManagedConnectorInfo): ManagedConnector
     connectorType: mapConnectorType(proto.connectorType),
     repositoryId: proto.repositoryId || null,
     updateInfo: mapUpdateInfo(proto),
+    starred: proto.starred,
+    used: proto.used,
   }
 }
 
@@ -180,4 +182,12 @@ export async function batchUpdateConnectors(connectorIds: string[]): Promise<{ u
     updatedCount: res.updatedCount,
     updatedConnectors: (res.updatedConnectors || []).map(mapManagedConnector),
   }
+}
+
+export async function starManagedConnector(id: string): Promise<void> {
+  await registryClient.starManagedConnector({ id })
+}
+
+export async function unstarManagedConnector(id: string): Promise<void> {
+  await registryClient.unstarManagedConnector({ id })
 }

@@ -3,9 +3,10 @@ import type { ExternalDocumentationUrl, ManagedConnector } from '@entities/conne
 import type { InstanceKind } from './instanceKind'
 import { useConnectorSpec, useManagedConnectors } from '@entities/connector'
 import { useConnectorTaskResult } from '@entities/connector-task'
+import { ConnectorStarToggle } from '@features/connector-star'
 import { getErrorMessage } from '@shared/lib/errorUtils'
 import { PageHeader, SAlert, SButton, SCard, SConfirmDialog, SEmptyState, SInput, SSkeleton } from '@shared/ui'
-import { ExternalLink, PackageOpen } from 'lucide-vue-next'
+import { ExternalLink, PackageOpen, Star } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
 import { onBeforeRouteLeave, useRouter } from 'vue-router'
 import InstanceConfigField from './InstanceConfigField.vue'
@@ -25,6 +26,7 @@ const name = ref('')
 const config = useConfigEditor()
 const error = ref('')
 const search = ref('')
+const starredOnly = ref(false)
 const created = ref(false)
 const resolveLeave = ref<((leave: boolean) => void) | null>(null)
 
@@ -151,10 +153,22 @@ async function handleTestConnection() {
 }
 
 const filteredConnectors = computed(() => {
-  if (!search.value)
-    return connectors.value
   const q = search.value.toLowerCase()
-  return connectors.value.filter(c => c.name.toLowerCase().includes(q))
+  return connectors.value
+    .filter(c => !q || c.name.toLowerCase().includes(q))
+    .filter(c => !starredOnly.value || c.starred)
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+})
+
+const connectorSections = computed(() => {
+  const used = filteredConnectors.value.filter(c => c.used)
+  const other = filteredConnectors.value.filter(c => !c.used)
+  if (used.length === 0)
+    return [{ key: 'all', title: '', items: other }]
+  return [
+    { key: 'used', title: 'Used in this workspace', items: used },
+    { key: 'other', title: 'Other connectors', items: other },
+  ].filter(s => s.items.length > 0)
 })
 </script>
 
@@ -183,27 +197,49 @@ const filteredConnectors = computed(() => {
       </SButton>
     </SEmptyState>
     <template v-else>
-      <SInput v-model="search" :placeholder="`Search ${meta.noun} connectors...`" class="mb-4" />
-      <p v-if="filteredConnectors.length === 0" class="text-sm text-text-muted py-8 text-center">
-        No {{ meta.noun }} connectors match "{{ search }}".
-      </p>
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-        <button
-          v-for="c in filteredConnectors" :key="c.id" class="text-left bg-surface rounded-xl border border-border p-4 hover:border-primary hover:shadow-raised transition-all duration-200"
-          @click="selectConnector(c)"
+      <div class="flex items-center gap-3 mb-4">
+        <SInput v-model="search" :placeholder="`Search ${meta.noun} connectors...`" class="flex-1" />
+        <SButton
+          variant="secondary"
+          :class="starredOnly ? 'ring-2 ring-primary/50 border-primary' : ''"
+          :aria-pressed="starredOnly"
+          @click="starredOnly = !starredOnly"
         >
-          <div class="flex items-center gap-3">
-            <div>
+          <Star class="w-4 h-4" :fill="starredOnly ? 'currentColor' : 'none'" />
+          Starred
+        </SButton>
+      </div>
+      <p v-if="filteredConnectors.length === 0" class="text-sm text-text-muted py-8 text-center">
+        <template v-if="starredOnly && !search">
+          No starred {{ meta.noun }} connectors yet.
+        </template>
+        <template v-else>
+          No {{ starredOnly ? 'starred ' : '' }}{{ meta.noun }} connectors match "{{ search }}".
+        </template>
+      </p>
+      <section v-for="section in connectorSections" :key="section.key" data-testid="connector-section" class="mb-6">
+        <h2 v-if="section.title" class="text-xs font-semibold uppercase tracking-wide text-text-muted mb-2">
+          {{ section.title }}
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div
+            v-for="c in section.items"
+            :key="c.id"
+            data-testid="connector-card"
+            class="flex items-start gap-2 bg-surface rounded-xl border border-border p-4 hover:border-primary hover:shadow-raised transition-all duration-200"
+          >
+            <button class="flex-1 min-w-0 text-left" @click="selectConnector(c)">
               <h3 class="text-sm font-semibold text-heading">
                 {{ c.name }}
               </h3>
-              <p class="text-xs text-text-muted mt-0.5">
+              <p class="text-xs text-text-muted mt-0.5 truncate">
                 {{ c.dockerImage }}:{{ c.dockerTag }}
               </p>
-            </div>
+            </button>
+            <ConnectorStarToggle :connector="c" class="-mt-1 -mr-1 shrink-0" />
           </div>
-        </button>
-      </div>
+        </div>
+      </section>
     </template>
   </div>
 

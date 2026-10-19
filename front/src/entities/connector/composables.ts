@@ -1,4 +1,5 @@
 import type { MaybeRef, Ref } from 'vue'
+import type { ManagedConnector } from './types'
 import { useAuth } from '@entities/auth'
 import { connectorKeys } from '@shared/lib/queryKeys'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
@@ -75,6 +76,28 @@ export function useBatchUpdateConnectors() {
   const { currentWorkspaceId } = useAuth()
   return useMutation({
     mutationFn: (connectorIds: string[]) => connectorApi.batchUpdateConnectors(connectorIds),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: connectorKeys.all(currentWorkspaceId.value ?? '') }) },
+  })
+}
+
+export function useSetConnectorStar() {
+  const qc = useQueryClient()
+  const { currentWorkspaceId } = useAuth()
+  const managedKey = () => [...connectorKeys.all(currentWorkspaceId.value ?? ''), 'managed']
+  return useMutation({
+    mutationFn: ({ id, starred }: { id: string, starred: boolean }) =>
+      starred ? connectorApi.starManagedConnector(id) : connectorApi.unstarManagedConnector(id),
+    onMutate: async ({ id, starred }) => {
+      await qc.cancelQueries({ queryKey: managedKey() })
+      const previous = qc.getQueriesData<ManagedConnector[]>({ queryKey: managedKey() })
+      qc.setQueriesData<ManagedConnector[]>({ queryKey: managedKey() }, list =>
+        list?.map(c => (c.id === id ? { ...c, starred } : c)))
+      return { previous }
+    },
+    onError: (_err, _vars, context) => {
+      for (const [key, data] of context?.previous ?? [])
+        qc.setQueryData(key, data)
+    },
     onSuccess: () => { qc.invalidateQueries({ queryKey: connectorKeys.all(currentWorkspaceId.value ?? '') }) },
   })
 }

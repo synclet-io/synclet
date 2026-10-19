@@ -4,6 +4,7 @@ import type { Repository } from '@entities/repository'
 import type { Column, Tab } from '@shared/ui'
 import { useAddConnector, useBatchUpdateConnectors, useManagedConnectors, useUpdateManagedConnector } from '@entities/connector'
 import { useAddRepository, useDeleteRepository, useRepositories, useSyncRepository } from '@entities/repository'
+import { ConnectorStarToggle } from '@features/connector-star'
 import { BreakingChangeDialog } from '@features/connector-update'
 import { getErrorMessage } from '@shared/lib/errorUtils'
 import { formatRelativeTime } from '@shared/lib/format'
@@ -65,6 +66,7 @@ const pagedManaged = computed(() => {
 })
 
 const columns: Column[] = [
+  { key: 'star', label: '', width: '48px' },
   { key: 'name', label: 'Name' },
   { key: 'dockerImage', label: 'Docker Image' },
   { key: 'dockerTag', label: 'Tag', width: '100px' },
@@ -507,6 +509,9 @@ async function handleSyncRepo(repo: Repository) {
     </SEmptyState>
 
     <STable v-else :columns="columns" :data="pagedManaged">
+      <template #cell-star="{ row }">
+        <ConnectorStarToggle :connector="row" />
+      </template>
       <template #cell-name="{ row }">
         <span class="font-medium text-heading">{{ row.name }}</span>
       </template>

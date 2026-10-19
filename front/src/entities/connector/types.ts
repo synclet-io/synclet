@@ -44,6 +44,8 @@ export interface ManagedConnector {
   connectorType: ConnectorType
   repositoryId?: string | null
   updateInfo?: UpdateInfo | null
+  starred: boolean
+  used: boolean
 }
 
 export type ExternalDocumentationType

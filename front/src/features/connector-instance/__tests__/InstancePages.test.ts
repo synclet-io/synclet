@@ -44,6 +44,7 @@ const global = {
   stubs: {
     RouterLink: { props: ['to'], template: '<a :data-to="JSON.stringify(to)"><slot /></a>' },
     JsonSchemaForm: true,
+    ConnectorStarToggle: true,
   },
 }
 
