@@ -43,18 +43,17 @@ func (m *mockStorage) RepositoryConnectors() pipelineservice.RepositoryConnector
 	return m.repoConnectors
 }
 
-func (m *mockStorage) Sources() pipelineservice.SourcesStorage {
-	return &fakeSources{}
-}
-
-func (m *mockStorage) Destinations() pipelineservice.DestinationsStorage {
-	return &fakeDestinations{}
-}
-
 // mockManagedConnectorsStorage provides in-memory managed connector storage.
 type mockManagedConnectorsStorage struct {
 	pipelineservice.ManagedConnectorsStorage
 	connectors map[uuid.UUID]*pipelineservice.ManagedConnector
+	usedCalls  int
+}
+
+func (m *mockManagedConnectorsStorage) UsedManagedConnectorIDs(_ context.Context, _ uuid.UUID, _ []uuid.UUID) ([]uuid.UUID, error) {
+	m.usedCalls++
+
+	return nil, nil
 }
 
 func (m *mockManagedConnectorsStorage) First(_ context.Context, f *pipelineservice.ManagedConnectorFilter, _ ...optionutil.Option[dbutil.SelectOptions]) (*pipelineservice.ManagedConnector, error) {

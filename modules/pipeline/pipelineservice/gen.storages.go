@@ -37,7 +37,16 @@ type Storage interface {
 	ExecuteInTransaction(ctx context.Context, cb func(ctx context.Context, tx Storage) error) error
 	WithAdvisoryLock(ctx context.Context, scope string, lockID int64) error
 }
-type ManagedConnectorsStorage dbutil.EntityStorage[ManagedConnector, ManagedConnectorFilter]
+type ManagedConnectorsStorage interface {
+	dbutil.EntityStorage[ManagedConnector, ManagedConnectorFilter]
+	// user code 'ManagedConnector metods'
+	// UsedManagedConnectorIDs returns those of ids that a source or destination of the workspace is built on.
+	UsedManagedConnectorIDs(ctx context.Context, workspaceID uuid.UUID, ids []uuid.UUID) ([]uuid.UUID, error)
+	// end user code 'ManagedConnector metods'
+}
+
+// user code 'ManagedConnector definitions'
+// end user code 'ManagedConnector definitions'
 type RepositoriesStorage dbutil.EntityStorage[Repository, RepositoryFilter]
 type RepositoryConnectorsStorage dbutil.EntityStorage[RepositoryConnector, RepositoryConnectorFilter]
 type SourcesStorage dbutil.EntityStorage[Source, SourceFilter]

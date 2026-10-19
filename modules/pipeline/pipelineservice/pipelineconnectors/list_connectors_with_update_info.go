@@ -222,28 +222,13 @@ func usedConnectorIDs(ctx context.Context, storage pipelineservice.Storage, work
 		ids[i] = connector.ID
 	}
 
-	sources, err := storage.Sources().Find(ctx, &pipelineservice.SourceFilter{
-		WorkspaceID:        filter.Equals(workspaceID),
-		ManagedConnectorID: filter.In(ids...),
-	})
+	usedIDs, err := storage.ManagedConnectors().UsedManagedConnectorIDs(ctx, workspaceID, ids)
 	if err != nil {
-		return nil, fmt.Errorf("listing sources: %w", err)
+		return nil, fmt.Errorf("finding used managed connectors: %w", err)
 	}
 
-	for _, source := range sources {
-		used[source.ManagedConnectorID] = struct{}{}
-	}
-
-	destinations, err := storage.Destinations().Find(ctx, &pipelineservice.DestinationFilter{
-		WorkspaceID:        filter.Equals(workspaceID),
-		ManagedConnectorID: filter.In(ids...),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("listing destinations: %w", err)
-	}
-
-	for _, destination := range destinations {
-		used[destination.ManagedConnectorID] = struct{}{}
+	for _, id := range usedIDs {
+		used[id] = struct{}{}
 	}
 
 	return used, nil

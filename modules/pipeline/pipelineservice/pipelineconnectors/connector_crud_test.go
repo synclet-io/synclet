@@ -102,10 +102,6 @@ func (f *fakeSources) Count(_ context.Context, _ *pipelineservice.SourceFilter) 
 	return f.count, f.err
 }
 
-func (f *fakeSources) Find(_ context.Context, _ *pipelineservice.SourceFilter, _ ...optionutil.Option[dbutil.SelectOptions]) ([]*pipelineservice.Source, error) {
-	return nil, f.err
-}
-
 type fakeDestinations struct {
 	pipelineservice.DestinationsStorage
 	count int
@@ -114,10 +110,6 @@ type fakeDestinations struct {
 
 func (f *fakeDestinations) Count(_ context.Context, _ *pipelineservice.DestinationFilter) (int, error) {
 	return f.count, f.err
-}
-
-func (f *fakeDestinations) Find(_ context.Context, _ *pipelineservice.DestinationFilter, _ ...optionutil.Option[dbutil.SelectOptions]) ([]*pipelineservice.Destination, error) {
-	return nil, f.err
 }
 
 // fakeConnectorTasks stores tasks in memory; complete, when set, moves a task to its final state on creation.

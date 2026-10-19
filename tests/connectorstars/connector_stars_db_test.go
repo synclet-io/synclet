@@ -183,3 +183,42 @@ func TestStarIsWorkspaceWide(t *testing.T) {
 	assert.Equal(t, starredID, audit.events[1].ResourceID)
 	assert.Equal(t, "connector", audit.events[1].ResourceType)
 }
+
+// TestUsedManagedConnectorIDs asserts that the storage returns, once each, the
+// asked IDs that a source or destination of the workspace is built on.
+func TestUsedManagedConnectorIDs(t *testing.T) {
+	f := setup(t)
+	workspaceID, otherWorkspaceID := uuid.New(), uuid.New()
+
+	bySource := f.connector(t, workspaceID, "source")
+	byBoth := f.connector(t, workspaceID, "destination")
+	unused := f.connector(t, workspaceID, "source")
+	usedElsewhere := f.connector(t, workspaceID, "source")
+	notAsked := f.connector(t, workspaceID, "source")
+
+	f.source(t, workspaceID, bySource)
+	f.source(t, workspaceID, bySource)
+	f.source(t, workspaceID, byBoth)
+	f.destination(t, workspaceID, byBoth)
+	f.source(t, otherWorkspaceID, usedElsewhere)
+	f.source(t, workspaceID, notAsked)
+
+	got, err := f.storage.ManagedConnectors().UsedManagedConnectorIDs(context.Background(), workspaceID,
+		[]uuid.UUID{bySource, byBoth, unused, usedElsewhere})
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []uuid.UUID{bySource, byBoth}, got)
+}
+
+// TestUsedManagedConnectorIDsSkipsQueryForNoIDs asserts that an empty ID list
+// returns nothing without reaching the database: a cancelled context would
+// fail any query.
+func TestUsedManagedConnectorIDsSkipsQueryForNoIDs(t *testing.T) {
+	f := setup(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	got, err := f.storage.ManagedConnectors().UsedManagedConnectorIDs(ctx, uuid.New(), nil)
+	require.NoError(t, err)
+	assert.Empty(t, got)
+}

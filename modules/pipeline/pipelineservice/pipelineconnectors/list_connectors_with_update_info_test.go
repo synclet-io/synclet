@@ -218,3 +218,34 @@ func TestGetConnectorWithUpdateInfo(t *testing.T) {
 	assert.True(t, result.UpdateInfo.HasUpdate)
 	assert.Equal(t, "0.2.0", result.UpdateInfo.AvailableVersion)
 }
+
+func TestListConnectorsWithUpdateInfo_NoConnectorsSkipsUsedQuery(t *testing.T) {
+	store := newMockStorage()
+	useCase := pipelineconnectors.NewListConnectorsWithUpdateInfo(store)
+
+	result, err := useCase.Execute(context.Background(), pipelineconnectors.ListConnectorsWithUpdateInfoParams{
+		WorkspaceID: uuid.New(),
+	})
+
+	require.NoError(t, err)
+	assert.Empty(t, result)
+	assert.Zero(t, store.managedConnectors.usedCalls)
+}
+
+func TestListConnectorsWithUpdateInfo_AsksUsedOnce(t *testing.T) {
+	store := newMockStorage()
+	useCase := pipelineconnectors.NewListConnectorsWithUpdateInfo(store)
+
+	workspaceID := uuid.New()
+	for range 3 {
+		id := uuid.New()
+		store.managedConnectors.connectors[id] = &pipelineservice.ManagedConnector{ID: id, WorkspaceID: workspaceID, Spec: "{}"}
+	}
+
+	_, err := useCase.Execute(context.Background(), pipelineconnectors.ListConnectorsWithUpdateInfoParams{
+		WorkspaceID: workspaceID,
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, 1, store.managedConnectors.usedCalls)
+}

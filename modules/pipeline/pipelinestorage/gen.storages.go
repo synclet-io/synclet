@@ -114,30 +114,40 @@ func NewStorages(db *gorm.DB, logger *logging.Logger, processors []txoutbox.Mess
 	return &Storages{db: db, logger: logger, processors: processors}
 }
 
+type ManagedConnectorsStorage struct {
+	dbutil.GormEntityStorage[pipelinesvc.ManagedConnector, dbManagedConnector, pipelinesvc.ManagedConnectorFilter]
+}
+
+// user code 'ManagedConnector custom methods'
+// end user code 'ManagedConnector custom methods'
 func NewManagedConnectorsStorage(db *gorm.DB, logger *logging.Logger) pipelinesvc.ManagedConnectorsStorage {
-	return dbutil.GormEntityStorage[pipelinesvc.ManagedConnector, dbManagedConnector, pipelinesvc.ManagedConnectorFilter]{
-		Logger:            logger,
-		DB:                db,
-		DBErrorsWrapper:   wrapManagedConnectorQueryError,
-		ConvertToInternal: convertManagedConnectorToDB,
-		ConvertToExternal: convertManagedConnectorFromDB,
-		BuildFilterExpression: func(filter *pipelinesvc.ManagedConnectorFilter) (clause.Expression, error) {
-			return buildManagedConnectorFilterExpr(filter)
+	return &ManagedConnectorsStorage{
+		GormEntityStorage: dbutil.GormEntityStorage[pipelinesvc.ManagedConnector, dbManagedConnector, pipelinesvc.ManagedConnectorFilter]{
+			Logger:            logger,
+			DB:                db,
+			DBErrorsWrapper:   wrapManagedConnectorQueryError,
+			ConvertToInternal: convertManagedConnectorToDB,
+			ConvertToExternal: convertManagedConnectorFromDB,
+			BuildFilterExpression: func(filter *pipelinesvc.ManagedConnectorFilter) (clause.Expression, error) {
+				return buildManagedConnectorFilterExpr(filter)
+			},
+			FieldMapping: map[any]clause.Column{
+				pipelinesvc.ManagedConnectorFieldID:            {Name: "id"},
+				pipelinesvc.ManagedConnectorFieldWorkspaceID:   {Name: "workspace_id"},
+				pipelinesvc.ManagedConnectorFieldDockerImage:   {Name: "docker_image"},
+				pipelinesvc.ManagedConnectorFieldDockerTag:     {Name: "docker_tag"},
+				pipelinesvc.ManagedConnectorFieldName:          {Name: "name"},
+				pipelinesvc.ManagedConnectorFieldConnectorType: {Name: "connector_type"},
+				pipelinesvc.ManagedConnectorFieldSpec:          {Name: "spec"},
+				pipelinesvc.ManagedConnectorFieldCreatedAt:     {Name: "created_at"},
+				pipelinesvc.ManagedConnectorFieldUpdatedAt:     {Name: "updated_at"},
+				pipelinesvc.ManagedConnectorFieldRepositoryID:  {Name: "repository_id"},
+				pipelinesvc.ManagedConnectorFieldStarred:       {Name: "starred"},
+			},
+			LockScope: "pipeline.ManagedConnectors",
 		},
-		FieldMapping: map[any]clause.Column{
-			pipelinesvc.ManagedConnectorFieldID:            {Name: "id"},
-			pipelinesvc.ManagedConnectorFieldWorkspaceID:   {Name: "workspace_id"},
-			pipelinesvc.ManagedConnectorFieldDockerImage:   {Name: "docker_image"},
-			pipelinesvc.ManagedConnectorFieldDockerTag:     {Name: "docker_tag"},
-			pipelinesvc.ManagedConnectorFieldName:          {Name: "name"},
-			pipelinesvc.ManagedConnectorFieldConnectorType: {Name: "connector_type"},
-			pipelinesvc.ManagedConnectorFieldSpec:          {Name: "spec"},
-			pipelinesvc.ManagedConnectorFieldCreatedAt:     {Name: "created_at"},
-			pipelinesvc.ManagedConnectorFieldUpdatedAt:     {Name: "updated_at"},
-			pipelinesvc.ManagedConnectorFieldRepositoryID:  {Name: "repository_id"},
-			pipelinesvc.ManagedConnectorFieldStarred:       {Name: "starred"},
-		},
-		LockScope: "pipeline.ManagedConnectors",
+		// user code 'ManagedConnector custom metods'
+		// end user code 'ManagedConnector custom metods'
 	}
 }
 

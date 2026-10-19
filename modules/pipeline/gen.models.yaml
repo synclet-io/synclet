@@ -141,6 +141,7 @@ types:
   models:
     - name: ManagedConnector
       table_name: pipeline.managed_connectors
+      has_custom_db_methods: true
       fields:
         - { name: ID, type: uuid, filterable: true }
         - { name: WorkspaceID, type: uuid, filterable: true }
