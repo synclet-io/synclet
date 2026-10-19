@@ -323,9 +323,10 @@ func jobToProto(job *pipelineservice.Job, attempts []*pipelineservice.JobAttempt
 			var stats pipelineservice.SyncStats
 			if err := json.Unmarshal([]byte(attempt.SyncStatsJSON), &stats); err == nil {
 				protoAttempt.SyncStats = &pipelinev1.SyncStats{
-					RecordsRead: stats.RecordsRead,
-					BytesSynced: stats.BytesSynced,
-					DurationMs:  stats.Duration.Milliseconds(),
+					RecordsRead:     stats.RecordsRead,
+					RecordsFiltered: stats.RecordsFiltered,
+					BytesSynced:     stats.BytesSynced,
+					DurationMs:      stats.Duration.Milliseconds(),
 				}
 			}
 		}

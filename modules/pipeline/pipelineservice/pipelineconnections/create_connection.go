@@ -2,6 +2,7 @@ package pipelineconnections
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
 	"time"
 
@@ -94,6 +95,7 @@ func (uc *CreateConnection) Execute(ctx context.Context, params CreateConnection
 		WorkspaceID:           params.WorkspaceID,
 		Name:                  params.Name,
 		Status:                status,
+		MapperSalt:            rand.Text(),
 		SourceID:              params.SourceID,
 		DestinationID:         params.DestinationID,
 		Schedule:              schedule,

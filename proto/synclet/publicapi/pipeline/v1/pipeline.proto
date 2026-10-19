@@ -757,6 +757,7 @@ message SyncStats {
   int64 records_read = 1;
   int64 bytes_synced = 3;
   int64 duration_ms = 4;
+  int64 records_filtered = 5;
 }
 
 message TriggerSyncRequest {

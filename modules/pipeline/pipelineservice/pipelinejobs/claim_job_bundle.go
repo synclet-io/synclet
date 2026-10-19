@@ -34,6 +34,7 @@ type ClaimJobBundleResult struct {
 	NamespaceDefinition   pipelineservice.NamespaceDefinition
 	CustomNamespaceFormat string
 	StreamPrefix          string
+	MapperSalt            []byte
 	MaxAttempts           int
 }
 
@@ -214,6 +215,7 @@ func (uc *ClaimJobBundle) loadBundle(ctx context.Context, job *pipelineservice.J
 		NamespaceDefinition:   conn.NamespaceDefinition,
 		CustomNamespaceFormat: derefStringPtr(conn.CustomNamespaceFormat),
 		StreamPrefix:          derefStringPtr(conn.StreamPrefix),
+		MapperSalt:            []byte(conn.MapperSalt),
 		MaxAttempts:           conn.MaxAttempts,
 	}
 

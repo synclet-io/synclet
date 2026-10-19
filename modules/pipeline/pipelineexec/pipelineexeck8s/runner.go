@@ -49,6 +49,8 @@ type SyncOptions struct {
 	DestConfig    []byte
 	SourceCatalog []byte // JSON configured catalog for source (original namespaces)
 	DestCatalog   []byte // JSON configured catalog for destination (namespace-rewritten)
+	RouterCatalog []byte // JSON configured catalog with mappers (original namespaces), read by the coordinator
+	MapperSalt    []byte // Hash salt of the connection's mappers
 	State         []byte
 
 	// Namespace/prefix rewriting settings for the coordinator's message router.
@@ -78,6 +80,14 @@ type SyncOptions struct {
 // APITokenSecretKey is the key in per-job Secrets that holds the internal API
 // token; the coordinator reads it from <secrets-dir>/<APITokenSecretKey>.
 const APITokenSecretKey = "api-token"
+
+// RouterCatalogSecretKey and MapperSaltSecretKey are the keys in per-job
+// Secrets that hold the configured catalog with mappers and the connection's
+// mapper salt; the coordinator reads them from <secrets-dir>/<key>.
+const (
+	RouterCatalogSecretKey = "router-catalog"
+	MapperSaltSecretKey    = "mapper-salt"
+)
 
 // localVolumeName is the pod volume mounted read-write at /local in the
 // connector containers, where Airbyte connectors write their files: the
@@ -202,6 +212,14 @@ func (r *SyncRunner) LaunchSync(ctx context.Context, opts SyncOptions) (string, 
 	}
 	if opts.SourceCatalog != nil {
 		secretData["source-catalog"] = opts.SourceCatalog
+	}
+
+	if opts.RouterCatalog != nil {
+		secretData[RouterCatalogSecretKey] = opts.RouterCatalog
+	}
+
+	if len(opts.MapperSalt) > 0 {
+		secretData[MapperSaltSecretKey] = opts.MapperSalt
 	}
 
 	if opts.DestCatalog != nil {

@@ -11,6 +11,7 @@ import (
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineexec"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
 	pkgcontainer "github.com/synclet-io/synclet/pkg/container"
+	"github.com/synclet-io/synclet/pkg/mapper"
 )
 
 // dockerVolumesToMounts converts user-defined docker volumes into bind mounts.
@@ -75,6 +76,15 @@ func NewDockerSyncExecutor(params DockerSyncExecutorParams) *DockerSyncExecutor 
 // called once both the source and destination containers have started.
 func (e *DockerSyncExecutor) Execute(ctx context.Context, bundle *pipelineexec.SyncBundle, onStarted func()) (*pipelineservice.SyncStats, error) {
 	catalog := bundle.ConfiguredCatalog
+
+	transformer, err := pipelineexec.NewRecordTransformer(catalog, bundle.MapperSalt, mapper.SyncInfo{
+		StartedAt:  time.Now().UTC(),
+		JobID:      bundle.Job.ID.String(),
+		Connection: bundle.ConnectionID.String(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("compiling stream mappers: %w", err)
+	}
 
 	// Labels for container tracking and orphan cleanup.
 	labels := map[string]string{
@@ -158,9 +168,6 @@ func (e *DockerSyncExecutor) Execute(ctx context.Context, bundle *pipelineexec.S
 	stopLogFlush := handler.StartLogFlush(ctx)
 	defer stopLogFlush()
 
-	// Wrap source output to filter record data by selected fields.
-	filteredSource := pipelineexec.NewFilteringReader(sourceStdout, catalog)
-
 	// Create namespace rewriter from the ORIGINAL source catalog (before namespace rewriting).
 	// This maps source namespace/stream names to destination namespace/stream names in RECORD
 	// and STATE messages before they are forwarded to the destination connector.
@@ -169,10 +176,11 @@ func (e *DockerSyncExecutor) Execute(ctx context.Context, bundle *pipelineexec.S
 	// Route messages using the shared router.
 	redactor := pipelineexec.NewRedactor(bundle.SourceConfig, bundle.DestConfig)
 
-	routeStats, routeErr := pipelineexec.Run(ctx, filteredSource, srcPipeWriter, destStdout, pipelineexec.RedactHandler(handler, redactor), pipelineexec.RunConfig{
+	routeStats, routeErr := pipelineexec.Run(ctx, sourceStdout, srcPipeWriter, destStdout, pipelineexec.RedactHandler(handler, redactor), pipelineexec.RunConfig{
 		IdleTimeout: e.idleTimeout,
 		Rewriter:    rewriter,
 		Catalog:     catalog,
+		Transformer: transformer,
 		// SourceSucceeded stays unset: the source reader ends with EOF only after the container exited 0.
 	}, e.logger.Named("message-router"))
 
@@ -180,6 +188,7 @@ func (e *DockerSyncExecutor) Execute(ctx context.Context, bundle *pipelineexec.S
 	stats := &pipelineservice.SyncStats{}
 	if routeStats != nil {
 		stats.RecordsRead = routeStats.RecordsRead
+		stats.RecordsFiltered = routeStats.RecordsFiltered
 		stats.BytesSynced = routeStats.BytesSynced
 		stats.Duration = routeStats.Duration
 	}

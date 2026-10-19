@@ -153,6 +153,7 @@ func (w *DockerSyncWorker) executeJob(ctx context.Context, result *pipelineexec.
 		NamespaceDefinition:   result.NamespaceDefinition,
 		CustomNamespaceFormat: pipelineexec.NilIfEmpty(result.CustomNamespaceFormat),
 		StreamPrefix:          pipelineexec.NilIfEmpty(result.StreamPrefix),
+		MapperSalt:            result.MapperSalt,
 	}
 
 	// Apply max sync duration via context.WithTimeout.
@@ -197,6 +198,7 @@ func (w *DockerSyncWorker) executeJob(ctx context.Context, result *pipelineexec.
 
 	if stats != nil {
 		completion.RecordsRead = stats.RecordsRead
+		completion.RecordsFiltered = stats.RecordsFiltered
 		completion.BytesSynced = stats.BytesSynced
 		completion.DurationMs = stats.Duration.Milliseconds()
 	}

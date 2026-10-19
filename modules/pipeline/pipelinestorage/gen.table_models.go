@@ -359,6 +359,7 @@ type dbConnection struct {
 	Name                  string     `gorm:"column:name;type:text"`
 	Status                string     `gorm:"column:status;type:text"`
 	StatusReason          *string    `gorm:"column:status_reason;type:text"`
+	MapperSalt            string     `gorm:"column:mapper_salt;type:text"`
 	SourceID              uuid.UUID  `gorm:"column:source_id"`
 	DestinationID         uuid.UUID  `gorm:"column:destination_id"`
 	Schedule              *string    `gorm:"column:schedule;type:text"`
@@ -387,6 +388,7 @@ func convertConnectionToDB(src *pipelineservice.Connection) (*dbConnection, erro
 	} else {
 		result.StatusReason = toPtr(fromPtr(src.StatusReason))
 	}
+	result.MapperSalt = src.MapperSalt
 	result.SourceID = src.SourceID
 	result.DestinationID = src.DestinationID
 	if src.Schedule == nil {
@@ -394,17 +396,17 @@ func convertConnectionToDB(src *pipelineservice.Connection) (*dbConnection, erro
 	} else {
 		result.Schedule = toPtr(fromPtr(src.Schedule))
 	}
-	tmp10, err := convertSchemaChangePolicyToDB(src.SchemaChangePolicy)
+	tmp11, err := convertSchemaChangePolicyToDB(src.SchemaChangePolicy)
 	if err != nil {
 		return nil, err
 	}
-	result.SchemaChangePolicy = tmp10
+	result.SchemaChangePolicy = tmp11
 	result.MaxAttempts = src.MaxAttempts
-	tmp12, err := convertNamespaceDefinitionToDB(src.NamespaceDefinition)
+	tmp13, err := convertNamespaceDefinitionToDB(src.NamespaceDefinition)
 	if err != nil {
 		return nil, err
 	}
-	result.NamespaceDefinition = tmp12
+	result.NamespaceDefinition = tmp13
 	if src.CustomNamespaceFormat == nil {
 		result.CustomNamespaceFormat = nil
 	} else {
@@ -430,16 +432,17 @@ func convertConnectionFromDB(src *dbConnection) (*pipelineservice.Connection, er
 	result.ID = src.ID
 	result.WorkspaceID = src.WorkspaceID
 	result.Name = src.Name
-	tmp24, err := convertConnectionStatusFromDB(src.Status)
+	tmp25, err := convertConnectionStatusFromDB(src.Status)
 	if err != nil {
 		return nil, err
 	}
-	result.Status = tmp24
+	result.Status = tmp25
 	if src.StatusReason == nil {
 		result.StatusReason = nil
 	} else {
 		result.StatusReason = toPtr(fromPtr(src.StatusReason))
 	}
+	result.MapperSalt = src.MapperSalt
 	result.SourceID = src.SourceID
 	result.DestinationID = src.DestinationID
 	if src.Schedule == nil {
@@ -447,17 +450,17 @@ func convertConnectionFromDB(src *dbConnection) (*pipelineservice.Connection, er
 	} else {
 		result.Schedule = toPtr(fromPtr(src.Schedule))
 	}
-	tmp31, err := convertSchemaChangePolicyFromDB(src.SchemaChangePolicy)
+	tmp33, err := convertSchemaChangePolicyFromDB(src.SchemaChangePolicy)
 	if err != nil {
 		return nil, err
 	}
-	result.SchemaChangePolicy = tmp31
+	result.SchemaChangePolicy = tmp33
 	result.MaxAttempts = src.MaxAttempts
-	tmp33, err := convertNamespaceDefinitionFromDB(src.NamespaceDefinition)
+	tmp35, err := convertNamespaceDefinitionFromDB(src.NamespaceDefinition)
 	if err != nil {
 		return nil, err
 	}
-	result.NamespaceDefinition = tmp33
+	result.NamespaceDefinition = tmp35
 	if src.CustomNamespaceFormat == nil {
 		result.CustomNamespaceFormat = nil
 	} else {

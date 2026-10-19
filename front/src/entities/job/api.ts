@@ -43,6 +43,7 @@ function mapSyncStats(proto: ProtoSyncStats | undefined): SyncStats | undefined 
     return undefined
   return {
     recordsRead: Number(proto.recordsRead),
+    recordsFiltered: Number(proto.recordsFiltered),
     bytesSynced: Number(proto.bytesSynced),
     durationMs: Number(proto.durationMs),
   }

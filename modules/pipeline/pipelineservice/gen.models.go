@@ -1235,6 +1235,7 @@ const (
 	ConnectionFieldName
 	ConnectionFieldStatus
 	ConnectionFieldStatusReason
+	ConnectionFieldMapperSalt
 	ConnectionFieldSourceID
 	ConnectionFieldDestinationID
 	ConnectionFieldSchedule
@@ -1266,6 +1267,7 @@ type Connection struct {
 	Name                  string
 	Status                ConnectionStatus
 	StatusReason          *string
+	MapperSalt            string
 	SourceID              uuid.UUID
 	DestinationID         uuid.UUID
 	Schedule              *string
@@ -1293,6 +1295,7 @@ func (c *Connection) Copy() Connection {
 		tmp = (*c.StatusReason)
 		result.StatusReason = &tmp
 	}
+	result.MapperSalt = c.MapperSalt
 	result.SourceID = c.SourceID
 	result.DestinationID = c.DestinationID
 	if c.Schedule != nil {
@@ -1349,6 +1352,9 @@ func (c *Connection) Equals(to *Connection) bool {
 		if (*c.StatusReason) != (*to.StatusReason) {
 			return false
 		}
+	}
+	if c.MapperSalt != to.MapperSalt {
+		return false
 	}
 	if c.SourceID != to.SourceID {
 		return false

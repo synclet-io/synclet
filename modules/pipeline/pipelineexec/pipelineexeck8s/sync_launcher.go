@@ -82,6 +82,8 @@ func (a *K8sSyncLauncherAdapter) LaunchSyncJob(ctx context.Context, opts K8sSync
 		DestConfig:    opts.DestConfig,
 		SourceCatalog: opts.SourceCatalog,
 		DestCatalog:   opts.DestCatalog,
+		RouterCatalog: opts.RouterCatalog,
+		MapperSalt:    opts.MapperSalt,
 		State:         opts.State,
 
 		NamespaceDefinition:   opts.NamespaceDefinition,

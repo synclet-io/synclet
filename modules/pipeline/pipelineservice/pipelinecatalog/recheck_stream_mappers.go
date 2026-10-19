@@ -105,7 +105,7 @@ func brokenMappersReason(streams []protocol.ConfiguredAirbyteStream, discovered 
 			continue
 		}
 
-		_, result, err := pipelineservice.CompileStreamMappers(stream, available.JSONSchema)
+		_, result, err := pipelineservice.CompileStreamMappers(stream, available.JSONSchema, nil)
 		if err != nil {
 			return fmt.Sprintf("stream %q: %v", key, err)
 		}

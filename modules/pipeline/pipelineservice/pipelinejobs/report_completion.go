@@ -15,13 +15,14 @@ import (
 
 // ReportCompletionParams holds parameters for reporting job completion from orchestrator.
 type ReportCompletionParams struct {
-	JobID        uuid.UUID
-	ConnectionID uuid.UUID
-	Success      bool
-	ErrorMessage string
-	RecordsRead  int64
-	BytesSynced  int64
-	DurationMs   int64
+	JobID           uuid.UUID
+	ConnectionID    uuid.UUID
+	Success         bool
+	ErrorMessage    string
+	RecordsRead     int64
+	RecordsFiltered int64
+	BytesSynced     int64
+	DurationMs      int64
 	// SourceExitCode and DestExitCode are the connectors' exit codes; 0 means
 	// a clean exit or none reported.
 	SourceExitCode int
@@ -65,9 +66,10 @@ func (uc *ReportCompletion) Wait() {
 // the background.
 func (uc *ReportCompletion) Execute(ctx context.Context, params ReportCompletionParams) error {
 	stats := &pipelineservice.SyncStats{
-		RecordsRead: params.RecordsRead,
-		BytesSynced: params.BytesSynced,
-		Duration:    time.Duration(params.DurationMs) * time.Millisecond,
+		RecordsRead:     params.RecordsRead,
+		RecordsFiltered: params.RecordsFiltered,
+		BytesSynced:     params.BytesSynced,
+		Duration:        time.Duration(params.DurationMs) * time.Millisecond,
 	}
 
 	var syncErr error

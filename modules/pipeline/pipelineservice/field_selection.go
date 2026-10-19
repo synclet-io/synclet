@@ -149,7 +149,7 @@ func BuildDestinationCatalog(catalog *protocol.ConfiguredAirbyteCatalog) (*proto
 		dest.Streams[i].Mappers = nil
 
 		if HasMappers(&stream) {
-			_, result, err := CompileStreamMappers(&stream, stream.Stream.JSONSchema)
+			_, result, err := CompileStreamMappers(&stream, stream.Stream.JSONSchema, nil)
 			if err != nil {
 				return nil, fmt.Errorf("stream %q: %w", stream.Stream.Name, err)
 			}

@@ -236,7 +236,7 @@ func streamsByKey(streams []protocol.AirbyteStream) map[string]protocol.AirbyteS
 // validateStreamMappers compiles the stream's mappers against its schema and
 // returns a validation error naming each failing step.
 func validateStreamMappers(key string, stream *protocol.ConfiguredAirbyteStream) error {
-	_, result, err := pipelineservice.CompileStreamMappers(stream, stream.Stream.JSONSchema)
+	_, result, err := pipelineservice.CompileStreamMappers(stream, stream.Stream.JSONSchema, nil)
 	if err != nil {
 		return streamValidationError("invalid mappers for stream %q: %v", key, err)
 	}

@@ -161,15 +161,16 @@ func (h *ExecutorHandler) ReportCompletion(ctx context.Context, req *connect.Req
 	}
 
 	if err := h.reportCompletion.Execute(ctx, pipelinejobs.ReportCompletionParams{
-		JobID:          jobID,
-		ConnectionID:   connectionID,
-		Success:        req.Msg.GetSuccess(),
-		ErrorMessage:   req.Msg.GetErrorMessage(),
-		RecordsRead:    req.Msg.GetRecordsRead(),
-		BytesSynced:    req.Msg.GetBytesSynced(),
-		DurationMs:     req.Msg.GetDurationMs(),
-		SourceExitCode: int(req.Msg.GetSourceExitCode()),
-		DestExitCode:   int(req.Msg.GetDestExitCode()),
+		JobID:           jobID,
+		ConnectionID:    connectionID,
+		Success:         req.Msg.GetSuccess(),
+		ErrorMessage:    req.Msg.GetErrorMessage(),
+		RecordsRead:     req.Msg.GetRecordsRead(),
+		RecordsFiltered: req.Msg.GetRecordsFiltered(),
+		BytesSynced:     req.Msg.GetBytesSynced(),
+		DurationMs:      req.Msg.GetDurationMs(),
+		SourceExitCode:  int(req.Msg.GetSourceExitCode()),
+		DestExitCode:    int(req.Msg.GetDestExitCode()),
 	}); err != nil {
 		h.logger.WithError(err).Error(ctx, "executor: completion failed",
 			"job_id", req.Msg.GetJobId())
@@ -253,6 +254,7 @@ func (h *ExecutorHandler) ClaimJob(ctx context.Context, req *connect.Request[exe
 		NamespaceDefinition:   domainNamespaceDefToProto(result.NamespaceDefinition),
 		CustomNamespaceFormat: result.CustomNamespaceFormat,
 		StreamPrefix:          result.StreamPrefix,
+		MapperSalt:            result.MapperSalt,
 		MaxAttempts:           int32(result.MaxAttempts),
 		SourceRuntimeConfig:   result.SourceRuntimeConfig,
 		DestRuntimeConfig:     result.DestRuntimeConfig,
@@ -275,13 +277,14 @@ func (h *ExecutorHandler) UpdateJobStatus(ctx context.Context, req *connect.Requ
 	}
 
 	if err := h.reportCompletion.Execute(ctx, pipelinejobs.ReportCompletionParams{
-		JobID:        jobID,
-		ConnectionID: job.ConnectionID,
-		Success:      req.Msg.GetSuccess(),
-		ErrorMessage: req.Msg.GetErrorMessage(),
-		RecordsRead:  req.Msg.GetRecordsRead(),
-		BytesSynced:  req.Msg.GetBytesSynced(),
-		DurationMs:   req.Msg.GetDurationMs(),
+		JobID:           jobID,
+		ConnectionID:    job.ConnectionID,
+		Success:         req.Msg.GetSuccess(),
+		ErrorMessage:    req.Msg.GetErrorMessage(),
+		RecordsRead:     req.Msg.GetRecordsRead(),
+		RecordsFiltered: req.Msg.GetRecordsFiltered(),
+		BytesSynced:     req.Msg.GetBytesSynced(),
+		DurationMs:      req.Msg.GetDurationMs(),
 	}); err != nil {
 		h.logger.WithError(err).Error(ctx, "executor: update job status failed",
 			"job_id", req.Msg.GetJobId())

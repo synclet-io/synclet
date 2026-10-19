@@ -279,6 +279,7 @@ func NewConnectionsStorage(db *gorm.DB, logger *logging.Logger) pipelinesvc.Conn
 				pipelinesvc.ConnectionFieldName:                  {Name: "name"},
 				pipelinesvc.ConnectionFieldStatus:                {Name: "status"},
 				pipelinesvc.ConnectionFieldStatusReason:          {Name: "status_reason"},
+				pipelinesvc.ConnectionFieldMapperSalt:            {Name: "mapper_salt"},
 				pipelinesvc.ConnectionFieldSourceID:              {Name: "source_id"},
 				pipelinesvc.ConnectionFieldDestinationID:         {Name: "destination_id"},
 				pipelinesvc.ConnectionFieldSchedule:              {Name: "schedule"},

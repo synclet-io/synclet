@@ -16,6 +16,7 @@ import (
 type RunConfig struct {
 	IdleTimeout time.Duration      // Kill if no RECORD for this duration. 0 = disabled.
 	Rewriter    *NamespaceRewriter // Rewrite namespace/prefix on messages to the destination and restore source names on confirmed STATE. nil = no rewriting.
+	Transformer *RecordTransformer // Run stream mappers and field selection on RECORDs before they are counted and forwarded. nil = records pass unchanged.
 
 	// Catalog is the source's configured catalog. After the source succeeds,
 	// every stream in it without a COMPLETE or INCOMPLETE status from the
@@ -27,26 +28,31 @@ type RunConfig struct {
 	SourceSucceeded func() bool
 }
 
-// Stats holds the final statistics from a routing session.
+// Stats holds the final statistics from a routing session. RecordsRead counts
+// the RECORDs the source emitted, RecordsFiltered those a mapper dropped, and
+// BytesSynced the data of the RECORDs forwarded to the destination.
 type Stats struct {
-	RecordsRead int64
-	BytesSynced int64
-	Duration    time.Duration
+	RecordsRead     int64
+	RecordsFiltered int64
+	BytesSynced     int64
+	Duration        time.Duration
 }
 
-// internalStats tracks counters during routing. Source loop writes RecordsRead
-// and BytesSynced. No concurrent writes to the same field, so plain int64 is safe.
+// internalStats tracks counters during routing. Only the source loop writes
+// them, so plain int64 is safe.
 type internalStats struct {
-	startTime   time.Time
-	recordsRead int64
-	bytesSynced int64
+	startTime       time.Time
+	recordsRead     int64
+	recordsFiltered int64
+	bytesSynced     int64
 }
 
 func (s *internalStats) export() *Stats {
 	return &Stats{
-		RecordsRead: s.recordsRead,
-		BytesSynced: s.bytesSynced,
-		Duration:    time.Since(s.startTime),
+		RecordsRead:     s.recordsRead,
+		RecordsFiltered: s.recordsFiltered,
+		BytesSynced:     s.bytesSynced,
+		Duration:        time.Since(s.startTime),
 	}
 }
 
@@ -187,6 +193,20 @@ func routeSourceMessages(ctx context.Context, reader *protocol.MessageReader, wr
 			}
 
 			stats.recordsRead++
+
+			if cfg.Transformer != nil && msg.Record != nil {
+				keep, err := cfg.Transformer.Apply(msg.Record)
+				if err != nil {
+					return err
+				}
+
+				if !keep {
+					stats.recordsFiltered++
+
+					continue
+				}
+			}
+
 			if msg.Record != nil {
 				stats.bytesSynced += int64(len(msg.Record.Data))
 			}

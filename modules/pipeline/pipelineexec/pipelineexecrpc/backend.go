@@ -142,6 +142,7 @@ func (a *Backend) ClaimJob(ctx context.Context, workerID string) (*pipelineexec.
 			NamespaceDefinition:   protoNamespaceDefToDomain(resp.Msg.GetNamespaceDefinition()),
 			CustomNamespaceFormat: resp.Msg.GetCustomNamespaceFormat(),
 			StreamPrefix:          resp.Msg.GetStreamPrefix(),
+			MapperSalt:            resp.Msg.GetMapperSalt(),
 			MaxAttempts:           int(resp.Msg.GetMaxAttempts()),
 		}
 
@@ -158,12 +159,13 @@ func (a *Backend) ClaimJob(ctx context.Context, workerID string) (*pipelineexec.
 func (a *Backend) UpdateJobStatus(ctx context.Context, params pipelineexec.UpdateJobStatusParams) error {
 	return a.sendWithRetry(ctx, "UpdateJobStatus", func(ctx context.Context) error {
 		_, err := a.client.UpdateJobStatus(ctx, connect.NewRequest(&executorv1.UpdateJobStatusRequest{
-			JobId:        params.JobID.String(),
-			Success:      params.Success,
-			ErrorMessage: params.ErrorMessage,
-			RecordsRead:  params.RecordsRead,
-			BytesSynced:  params.BytesSynced,
-			DurationMs:   params.DurationMs,
+			JobId:           params.JobID.String(),
+			Success:         params.Success,
+			ErrorMessage:    params.ErrorMessage,
+			RecordsRead:     params.RecordsRead,
+			RecordsFiltered: params.RecordsFiltered,
+			BytesSynced:     params.BytesSynced,
+			DurationMs:      params.DurationMs,
 		}))
 
 		return err
@@ -228,15 +230,16 @@ func (a *Backend) ReportState(ctx context.Context, connectionID, jobID uuid.UUID
 func (a *Backend) ReportCompletion(ctx context.Context, params pipelineexec.ReportCompletionParams) error {
 	return a.sendWithRetry(ctx, "ReportCompletion", func(ctx context.Context) error {
 		_, err := a.client.ReportCompletion(ctx, connect.NewRequest(&executorv1.ReportCompletionRequest{
-			JobId:          params.JobID.String(),
-			ConnectionId:   params.ConnectionID.String(),
-			Success:        params.Success,
-			ErrorMessage:   params.ErrorMessage,
-			RecordsRead:    params.RecordsRead,
-			BytesSynced:    params.BytesSynced,
-			DurationMs:     params.DurationMs,
-			SourceExitCode: int32(params.SourceExitCode), //nolint:gosec // exit codes fit in int32
-			DestExitCode:   int32(params.DestExitCode),   //nolint:gosec // exit codes fit in int32
+			JobId:           params.JobID.String(),
+			ConnectionId:    params.ConnectionID.String(),
+			Success:         params.Success,
+			ErrorMessage:    params.ErrorMessage,
+			RecordsRead:     params.RecordsRead,
+			RecordsFiltered: params.RecordsFiltered,
+			BytesSynced:     params.BytesSynced,
+			DurationMs:      params.DurationMs,
+			SourceExitCode:  int32(params.SourceExitCode), //nolint:gosec // exit codes fit in int32
+			DestExitCode:    int32(params.DestExitCode),   //nolint:gosec // exit codes fit in int32
 		}))
 
 		return err

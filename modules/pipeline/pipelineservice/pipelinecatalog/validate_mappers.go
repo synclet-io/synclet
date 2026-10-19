@@ -74,7 +74,7 @@ func (uc *ValidateMappers) Execute(ctx context.Context, params ValidateMappersPa
 		stream.SelectedFields = pipelineservice.ForceIncludeFields(stream.SelectedFields, stream.CursorField, stream.PrimaryKey)
 	}
 
-	chain, compiled, err := pipelineservice.CompileStreamMappers(&stream, available.JSONSchema)
+	chain, compiled, err := pipelineservice.CompileStreamMappers(&stream, available.JSONSchema, nil)
 	if err != nil {
 		return &ValidateMappersResult{ //nolint:nilerr // undecodable mappers are a result issue, not a call failure
 			Errors: []mapper.Issue{{Step: mapper.SelectionStep, Message: err.Error()}},

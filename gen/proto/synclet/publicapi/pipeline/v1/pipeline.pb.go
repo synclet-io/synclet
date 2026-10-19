@@ -5505,12 +5505,13 @@ func (x *JobAttempt) GetSyncStats() *SyncStats {
 }
 
 type SyncStats struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	RecordsRead   int64                  `protobuf:"varint,1,opt,name=records_read,json=recordsRead,proto3" json:"records_read,omitempty"`
-	BytesSynced   int64                  `protobuf:"varint,3,opt,name=bytes_synced,json=bytesSynced,proto3" json:"bytes_synced,omitempty"`
-	DurationMs    int64                  `protobuf:"varint,4,opt,name=duration_ms,json=durationMs,proto3" json:"duration_ms,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	RecordsRead     int64                  `protobuf:"varint,1,opt,name=records_read,json=recordsRead,proto3" json:"records_read,omitempty"`
+	BytesSynced     int64                  `protobuf:"varint,3,opt,name=bytes_synced,json=bytesSynced,proto3" json:"bytes_synced,omitempty"`
+	DurationMs      int64                  `protobuf:"varint,4,opt,name=duration_ms,json=durationMs,proto3" json:"duration_ms,omitempty"`
+	RecordsFiltered int64                  `protobuf:"varint,5,opt,name=records_filtered,json=recordsFiltered,proto3" json:"records_filtered,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *SyncStats) Reset() {
@@ -5560,6 +5561,13 @@ func (x *SyncStats) GetBytesSynced() int64 {
 func (x *SyncStats) GetDurationMs() int64 {
 	if x != nil {
 		return x.DurationMs
+	}
+	return 0
+}
+
+func (x *SyncStats) GetRecordsFiltered() int64 {
+	if x != nil {
+		return x.RecordsFiltered
 	}
 	return 0
 }
@@ -7340,12 +7348,13 @@ const file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDesc = "" +
 	"\fcompleted_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\vcompletedAt\x12\x14\n" +
 	"\x05error\x18\x05 \x01(\tR\x05error\x12G\n" +
 	"\n" +
-	"sync_stats\x18\x06 \x01(\v2(.synclet.publicapi.pipeline.v1.SyncStatsR\tsyncStats\"r\n" +
+	"sync_stats\x18\x06 \x01(\v2(.synclet.publicapi.pipeline.v1.SyncStatsR\tsyncStats\"\x9d\x01\n" +
 	"\tSyncStats\x12!\n" +
 	"\frecords_read\x18\x01 \x01(\x03R\vrecordsRead\x12!\n" +
 	"\fbytes_synced\x18\x03 \x01(\x03R\vbytesSynced\x12\x1f\n" +
 	"\vduration_ms\x18\x04 \x01(\x03R\n" +
-	"durationMs\"9\n" +
+	"durationMs\x12)\n" +
+	"\x10records_filtered\x18\x05 \x01(\x03R\x0frecordsFiltered\"9\n" +
 	"\x12TriggerSyncRequest\x12#\n" +
 	"\rconnection_id\x18\x01 \x01(\tR\fconnectionId\"K\n" +
 	"\x13TriggerSyncResponse\x124\n" +

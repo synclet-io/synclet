@@ -27,6 +27,7 @@ export interface JobAttempt {
 
 export interface SyncStats {
   recordsRead: number
+  recordsFiltered: number
   bytesSynced: number
   durationMs: number
 }

@@ -219,6 +219,9 @@ function parseLogTimestamp(line: string): number | null {
           <div class="text-heading font-semibold">
             {{ latestAttempt?.syncStats?.recordsRead?.toLocaleString() ?? '-' }}
           </div>
+          <div v-if="(latestAttempt?.syncStats?.recordsFiltered ?? 0) > 0" class="text-sm text-text-muted mt-1">
+            Filtered out: {{ latestAttempt?.syncStats?.recordsFiltered.toLocaleString() }}
+          </div>
         </SCard>
         <SCard>
           <div class="text-sm text-text-muted mb-1">

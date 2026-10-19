@@ -706,6 +706,7 @@ type jsonConnection struct {
 	Name                  string     `json:"name"`
 	Status                string     `json:"status"`
 	StatusReason          *string    `json:"status_reason"`
+	MapperSalt            string     `json:"mapper_salt"`
 	SourceID              uuid.UUID  `json:"source_id"`
 	DestinationID         uuid.UUID  `json:"destination_id"`
 	Schedule              *string    `json:"schedule"`
@@ -742,6 +743,7 @@ func convertConnectionToJsonModel(src *pipelineservice.Connection) (*jsonConnect
 	} else {
 		result.StatusReason = toPtr(fromPtr(src.StatusReason))
 	}
+	result.MapperSalt = src.MapperSalt
 	result.SourceID = src.SourceID
 	result.DestinationID = src.DestinationID
 	if src.Schedule == nil {
@@ -749,17 +751,17 @@ func convertConnectionToJsonModel(src *pipelineservice.Connection) (*jsonConnect
 	} else {
 		result.Schedule = toPtr(fromPtr(src.Schedule))
 	}
-	tmp10, err := convertSchemaChangePolicyToDB(src.SchemaChangePolicy)
+	tmp11, err := convertSchemaChangePolicyToDB(src.SchemaChangePolicy)
 	if err != nil {
 		return nil, err
 	}
-	result.SchemaChangePolicy = tmp10
+	result.SchemaChangePolicy = tmp11
 	result.MaxAttempts = src.MaxAttempts
-	tmp12, err := convertNamespaceDefinitionToDB(src.NamespaceDefinition)
+	tmp13, err := convertNamespaceDefinitionToDB(src.NamespaceDefinition)
 	if err != nil {
 		return nil, err
 	}
-	result.NamespaceDefinition = tmp12
+	result.NamespaceDefinition = tmp13
 	if src.CustomNamespaceFormat == nil {
 		result.CustomNamespaceFormat = nil
 	} else {
@@ -785,16 +787,17 @@ func convertConnectionFromJsonModel(src *jsonConnection) (*pipelineservice.Conne
 	result.ID = src.ID
 	result.WorkspaceID = src.WorkspaceID
 	result.Name = src.Name
-	tmp24, err := convertConnectionStatusFromDB(src.Status)
+	tmp25, err := convertConnectionStatusFromDB(src.Status)
 	if err != nil {
 		return nil, err
 	}
-	result.Status = tmp24
+	result.Status = tmp25
 	if src.StatusReason == nil {
 		result.StatusReason = nil
 	} else {
 		result.StatusReason = toPtr(fromPtr(src.StatusReason))
 	}
+	result.MapperSalt = src.MapperSalt
 	result.SourceID = src.SourceID
 	result.DestinationID = src.DestinationID
 	if src.Schedule == nil {
@@ -802,17 +805,17 @@ func convertConnectionFromJsonModel(src *jsonConnection) (*pipelineservice.Conne
 	} else {
 		result.Schedule = toPtr(fromPtr(src.Schedule))
 	}
-	tmp31, err := convertSchemaChangePolicyFromDB(src.SchemaChangePolicy)
+	tmp33, err := convertSchemaChangePolicyFromDB(src.SchemaChangePolicy)
 	if err != nil {
 		return nil, err
 	}
-	result.SchemaChangePolicy = tmp31
+	result.SchemaChangePolicy = tmp33
 	result.MaxAttempts = src.MaxAttempts
-	tmp33, err := convertNamespaceDefinitionFromDB(src.NamespaceDefinition)
+	tmp35, err := convertNamespaceDefinitionFromDB(src.NamespaceDefinition)
 	if err != nil {
 		return nil, err
 	}
-	result.NamespaceDefinition = tmp33
+	result.NamespaceDefinition = tmp35
 	if src.CustomNamespaceFormat == nil {
 		result.CustomNamespaceFormat = nil
 	} else {

@@ -22,9 +22,10 @@ type ConnectorImageValidator interface {
 
 // SyncStats holds sync execution statistics.
 type SyncStats struct {
-	RecordsRead int64         `json:"records_read"`
-	BytesSynced int64         `json:"bytes_synced"`
-	Duration    time.Duration `json:"duration"`
+	RecordsRead     int64         `json:"records_read"`
+	RecordsFiltered int64         `json:"records_filtered"`
+	BytesSynced     int64         `json:"bytes_synced"`
+	Duration        time.Duration `json:"duration"`
 }
 
 // ConnectorSpecFetcher extracts a connector's spec by running its spec command.

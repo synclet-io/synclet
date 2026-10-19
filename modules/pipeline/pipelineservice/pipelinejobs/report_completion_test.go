@@ -2,6 +2,7 @@ package pipelinejobs
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/go-pnp/go-pnp/logging"
@@ -86,4 +87,21 @@ func TestReportCompletion_TransientExitIsRetried(t *testing.T) {
 	assert.Equal(t, 2, storage.job.Attempt)
 	require.NotNil(t, storage.job.FailureReason)
 	assert.Equal(t, "exit code 1", *storage.job.FailureReason)
+}
+
+func TestReportCompletion_StoresFilteredCount(t *testing.T) {
+	storage := newJobStateStorage(pipelineservice.JobStatusRunning)
+
+	reportFailure(t, storage, ReportCompletionParams{
+		Success:         true,
+		RecordsRead:     3,
+		RecordsFiltered: 1,
+	})
+
+	require.Len(t, storage.attempts, 1)
+
+	var stats pipelineservice.SyncStats
+	require.NoError(t, json.Unmarshal([]byte(storage.attempts[0].SyncStatsJSON), &stats))
+	assert.Equal(t, int64(3), stats.RecordsRead)
+	assert.Equal(t, int64(1), stats.RecordsFiltered)
 }

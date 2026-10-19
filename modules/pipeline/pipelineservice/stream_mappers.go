@@ -10,10 +10,11 @@ import (
 )
 
 // CompileStreamMappers compiles a configured stream's mappers against schema,
-// with the stream's selected fields, primary key and destination sync mode.
+// with the stream's selected fields, primary key and destination sync mode,
+// and with salt as the hash salt.
 // It returns an error when the mappers are not a JSON array of steps; compile
 // problems are in the result's Errors.
-func CompileStreamMappers(stream *protocol.ConfiguredAirbyteStream, schema json.RawMessage) (*mapper.Chain, *mapper.Result, error) {
+func CompileStreamMappers(stream *protocol.ConfiguredAirbyteStream, schema json.RawMessage, salt []byte) (*mapper.Chain, *mapper.Result, error) {
 	var steps []mapper.Step
 	if err := json.Unmarshal(stream.Mappers, &steps); err != nil {
 		return nil, nil, fmt.Errorf("decoding mappers: %w", err)
@@ -25,6 +26,7 @@ func CompileStreamMappers(stream *protocol.ConfiguredAirbyteStream, schema json.
 		SelectedFields:      stream.SelectedFields,
 		PrimaryKey:          stream.PrimaryKey,
 		DestinationSyncMode: stream.DestinationSyncMode,
+		Salt:                salt,
 	})
 
 	return chain, result, nil

@@ -1133,6 +1133,21 @@ func NewTableGenerators() table.GeneratorList {
 				}
 				return values
 			}
+			info.AddField("MapperSalt", "mapper_salt", db.Text)
+			info.FieldSortable()
+			formList.AddField("MapperSalt", "mapper_salt", db.Text, form.Text)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
 			info.AddField("SourceID", "source_id", db.UUID)
 			info.FieldSortable()
 			info.FieldFilterable(types.FilterType{

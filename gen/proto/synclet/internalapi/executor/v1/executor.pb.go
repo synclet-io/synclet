@@ -464,18 +464,19 @@ func (*ReportStateResponse) Descriptor() ([]byte, []int) {
 }
 
 type ReportCompletionRequest struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	JobId          string                 `protobuf:"bytes,1,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
-	ConnectionId   string                 `protobuf:"bytes,2,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty"`
-	Success        bool                   `protobuf:"varint,3,opt,name=success,proto3" json:"success,omitempty"`
-	ErrorMessage   string                 `protobuf:"bytes,4,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
-	RecordsRead    int64                  `protobuf:"varint,5,opt,name=records_read,json=recordsRead,proto3" json:"records_read,omitempty"`
-	BytesSynced    int64                  `protobuf:"varint,7,opt,name=bytes_synced,json=bytesSynced,proto3" json:"bytes_synced,omitempty"`
-	DurationMs     int64                  `protobuf:"varint,8,opt,name=duration_ms,json=durationMs,proto3" json:"duration_ms,omitempty"`
-	SourceExitCode int32                  `protobuf:"varint,9,opt,name=source_exit_code,json=sourceExitCode,proto3" json:"source_exit_code,omitempty"`
-	DestExitCode   int32                  `protobuf:"varint,10,opt,name=dest_exit_code,json=destExitCode,proto3" json:"dest_exit_code,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	JobId           string                 `protobuf:"bytes,1,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
+	ConnectionId    string                 `protobuf:"bytes,2,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty"`
+	Success         bool                   `protobuf:"varint,3,opt,name=success,proto3" json:"success,omitempty"`
+	ErrorMessage    string                 `protobuf:"bytes,4,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
+	RecordsRead     int64                  `protobuf:"varint,5,opt,name=records_read,json=recordsRead,proto3" json:"records_read,omitempty"`
+	BytesSynced     int64                  `protobuf:"varint,7,opt,name=bytes_synced,json=bytesSynced,proto3" json:"bytes_synced,omitempty"`
+	DurationMs      int64                  `protobuf:"varint,8,opt,name=duration_ms,json=durationMs,proto3" json:"duration_ms,omitempty"`
+	SourceExitCode  int32                  `protobuf:"varint,9,opt,name=source_exit_code,json=sourceExitCode,proto3" json:"source_exit_code,omitempty"`
+	DestExitCode    int32                  `protobuf:"varint,10,opt,name=dest_exit_code,json=destExitCode,proto3" json:"dest_exit_code,omitempty"`
+	RecordsFiltered int64                  `protobuf:"varint,11,opt,name=records_filtered,json=recordsFiltered,proto3" json:"records_filtered,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *ReportCompletionRequest) Reset() {
@@ -567,6 +568,13 @@ func (x *ReportCompletionRequest) GetSourceExitCode() int32 {
 func (x *ReportCompletionRequest) GetDestExitCode() int32 {
 	if x != nil {
 		return x.DestExitCode
+	}
+	return 0
+}
+
+func (x *ReportCompletionRequest) GetRecordsFiltered() int64 {
+	if x != nil {
+		return x.RecordsFiltered
 	}
 	return 0
 }
@@ -875,6 +883,7 @@ type ClaimJobResponse struct {
 	MaxAttempts           int32                  `protobuf:"varint,18,opt,name=max_attempts,json=maxAttempts,proto3" json:"max_attempts,omitempty"`
 	SourceRuntimeConfig   string                 `protobuf:"bytes,19,opt,name=source_runtime_config,json=sourceRuntimeConfig,proto3" json:"source_runtime_config,omitempty"`
 	DestRuntimeConfig     string                 `protobuf:"bytes,20,opt,name=dest_runtime_config,json=destRuntimeConfig,proto3" json:"dest_runtime_config,omitempty"`
+	MapperSalt            []byte                 `protobuf:"bytes,21,opt,name=mapper_salt,json=mapperSalt,proto3" json:"mapper_salt,omitempty"`
 	unknownFields         protoimpl.UnknownFields
 	sizeCache             protoimpl.SizeCache
 }
@@ -1049,17 +1058,25 @@ func (x *ClaimJobResponse) GetDestRuntimeConfig() string {
 	return ""
 }
 
+func (x *ClaimJobResponse) GetMapperSalt() []byte {
+	if x != nil {
+		return x.MapperSalt
+	}
+	return nil
+}
+
 // UpdateJobStatus: executor reports job completion/failure (D-03)
 type UpdateJobStatusRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	JobId         string                 `protobuf:"bytes,1,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
-	Success       bool                   `protobuf:"varint,2,opt,name=success,proto3" json:"success,omitempty"`
-	ErrorMessage  string                 `protobuf:"bytes,3,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
-	RecordsRead   int64                  `protobuf:"varint,4,opt,name=records_read,json=recordsRead,proto3" json:"records_read,omitempty"`
-	BytesSynced   int64                  `protobuf:"varint,5,opt,name=bytes_synced,json=bytesSynced,proto3" json:"bytes_synced,omitempty"`
-	DurationMs    int64                  `protobuf:"varint,6,opt,name=duration_ms,json=durationMs,proto3" json:"duration_ms,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	JobId           string                 `protobuf:"bytes,1,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
+	Success         bool                   `protobuf:"varint,2,opt,name=success,proto3" json:"success,omitempty"`
+	ErrorMessage    string                 `protobuf:"bytes,3,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
+	RecordsRead     int64                  `protobuf:"varint,4,opt,name=records_read,json=recordsRead,proto3" json:"records_read,omitempty"`
+	BytesSynced     int64                  `protobuf:"varint,5,opt,name=bytes_synced,json=bytesSynced,proto3" json:"bytes_synced,omitempty"`
+	DurationMs      int64                  `protobuf:"varint,6,opt,name=duration_ms,json=durationMs,proto3" json:"duration_ms,omitempty"`
+	RecordsFiltered int64                  `protobuf:"varint,7,opt,name=records_filtered,json=recordsFiltered,proto3" json:"records_filtered,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *UpdateJobStatusRequest) Reset() {
@@ -1130,6 +1147,13 @@ func (x *UpdateJobStatusRequest) GetBytesSynced() int64 {
 func (x *UpdateJobStatusRequest) GetDurationMs() int64 {
 	if x != nil {
 		return x.DurationMs
+	}
+	return 0
+}
+
+func (x *UpdateJobStatusRequest) GetRecordsFiltered() int64 {
+	if x != nil {
+		return x.RecordsFiltered
 	}
 	return 0
 }
@@ -1958,7 +1982,7 @@ const file_synclet_internalapi_executor_v1_executor_proto_rawDesc = "" +
 	"state_data\x18\x03 \x01(\fR\tstateData\x12=\n" +
 	"\n" +
 	"state_type\x18\x04 \x01(\x0e2\x1e.synclet.protocol.v1.StateTypeR\tstateType\"\x15\n" +
-	"\x13ReportStateResponse\"\xcb\x02\n" +
+	"\x13ReportStateResponse\"\xf6\x02\n" +
 	"\x17ReportCompletionRequest\x12\x15\n" +
 	"\x06job_id\x18\x01 \x01(\tR\x05jobId\x12#\n" +
 	"\rconnection_id\x18\x02 \x01(\tR\fconnectionId\x12\x18\n" +
@@ -1970,7 +1994,8 @@ const file_synclet_internalapi_executor_v1_executor_proto_rawDesc = "" +
 	"durationMs\x12(\n" +
 	"\x10source_exit_code\x18\t \x01(\x05R\x0esourceExitCode\x12$\n" +
 	"\x0edest_exit_code\x18\n" +
-	" \x01(\x05R\fdestExitCode\"\x1a\n" +
+	" \x01(\x05R\fdestExitCode\x12)\n" +
+	"\x10records_filtered\x18\v \x01(\x03R\x0frecordsFiltered\"\x1a\n" +
 	"\x18ReportCompletionResponse\"\xe9\x01\n" +
 	"\x19ReportConfigUpdateRequest\x12\x15\n" +
 	"\x06job_id\x18\x01 \x01(\tR\x05jobId\x12#\n" +
@@ -1984,7 +2009,7 @@ const file_synclet_internalapi_executor_v1_executor_proto_rawDesc = "" +
 	"\tlog_lines\x18\x02 \x03(\tR\blogLines\"\x13\n" +
 	"\x11ReportLogResponse\".\n" +
 	"\x0fClaimJobRequest\x12\x1b\n" +
-	"\tworker_id\x18\x01 \x01(\tR\bworkerId\"\xdd\x06\n" +
+	"\tworker_id\x18\x01 \x01(\tR\bworkerId\"\xfe\x06\n" +
 	"\x10ClaimJobResponse\x12\x17\n" +
 	"\ahas_job\x18\x01 \x01(\bR\x06hasJob\x12\x15\n" +
 	"\x06job_id\x18\x02 \x01(\tR\x05jobId\x12#\n" +
@@ -2009,7 +2034,9 @@ const file_synclet_internalapi_executor_v1_executor_proto_rawDesc = "" +
 	"\rstream_prefix\x18\x11 \x01(\tR\fstreamPrefix\x12!\n" +
 	"\fmax_attempts\x18\x12 \x01(\x05R\vmaxAttempts\x122\n" +
 	"\x15source_runtime_config\x18\x13 \x01(\tR\x13sourceRuntimeConfig\x12.\n" +
-	"\x13dest_runtime_config\x18\x14 \x01(\tR\x11destRuntimeConfig\"\xd5\x01\n" +
+	"\x13dest_runtime_config\x18\x14 \x01(\tR\x11destRuntimeConfig\x12\x1f\n" +
+	"\vmapper_salt\x18\x15 \x01(\fR\n" +
+	"mapperSalt\"\x80\x02\n" +
 	"\x16UpdateJobStatusRequest\x12\x15\n" +
 	"\x06job_id\x18\x01 \x01(\tR\x05jobId\x12\x18\n" +
 	"\asuccess\x18\x02 \x01(\bR\asuccess\x12#\n" +
@@ -2017,7 +2044,8 @@ const file_synclet_internalapi_executor_v1_executor_proto_rawDesc = "" +
 	"\frecords_read\x18\x04 \x01(\x03R\vrecordsRead\x12!\n" +
 	"\fbytes_synced\x18\x05 \x01(\x03R\vbytesSynced\x12\x1f\n" +
 	"\vduration_ms\x18\x06 \x01(\x03R\n" +
-	"durationMs\"\x19\n" +
+	"durationMs\x12)\n" +
+	"\x10records_filtered\x18\a \x01(\x03R\x0frecordsFiltered\"\x19\n" +
 	"\x17UpdateJobStatusResponse\"+\n" +
 	"\x12IsJobActiveRequest\x12\x15\n" +
 	"\x06job_id\x18\x01 \x01(\tR\x05jobId\"-\n" +

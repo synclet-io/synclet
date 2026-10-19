@@ -3,6 +3,7 @@ package coordinator
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -14,6 +15,7 @@ import (
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineexec"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineexec/pipelineexeck8s"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
+	"github.com/synclet-io/synclet/pkg/mapper"
 	"github.com/synclet-io/synclet/pkg/protocol"
 )
 
@@ -144,12 +146,13 @@ func Run(ctx context.Context, cfg Config) error {
 
 	// 7. Report completion via Reporter.
 	completionReq := &executorv1.ReportCompletionRequest{
-		Success:        err == nil && sourceExit == 0 && destExit == 0,
-		RecordsRead:    stats.RecordsRead,
-		BytesSynced:    stats.BytesSynced,
-		DurationMs:     stats.Duration.Milliseconds(),
-		SourceExitCode: sourceExit,
-		DestExitCode:   destExit,
+		Success:         err == nil && sourceExit == 0 && destExit == 0,
+		RecordsRead:     stats.RecordsRead,
+		RecordsFiltered: stats.RecordsFiltered,
+		BytesSynced:     stats.BytesSynced,
+		DurationMs:      stats.Duration.Milliseconds(),
+		SourceExitCode:  sourceExit,
+		DestExitCode:    destExit,
 	}
 
 	if err != nil {
@@ -196,6 +199,13 @@ func runPipeline(ctx context.Context, cfg Config, reporter *Reporter) (*pipeline
 
 	defer func() { _ = destStdout.Close() }()
 
+	transformer, err := loadRecordTransformer(cfg, time.Now().UTC())
+	if err != nil {
+		_ = destStdin.Close()
+
+		return nil, err
+	}
+
 	reporter.ReportRunning(ctx)
 
 	// Create K8s handler for side effects (state, config updates).
@@ -207,7 +217,10 @@ func runPipeline(ctx context.Context, cfg Config, reporter *Reporter) (*pipeline
 	})
 
 	// Route messages using the shared router.
-	return pipelineexec.Run(ctx, sourceStdout, destStdin, destStdout, pipelineexec.RedactHandler(handler, connectorConfigRedactor(cfg.SecretsDir)), routerConfig(cfg), nil)
+	routeCfg := routerConfig(cfg)
+	routeCfg.Transformer = transformer
+
+	return pipelineexec.Run(ctx, sourceStdout, destStdin, destStdout, pipelineexec.RedactHandler(handler, connectorConfigRedactor(cfg.SecretsDir)), routeCfg, nil)
 }
 
 // routerConfig gives the router the source catalog, a namespace rewriter when
@@ -252,6 +265,41 @@ func routerConfig(cfg Config) pipelineexec.RunConfig {
 	}
 
 	return routeCfg
+}
+
+// loadRecordTransformer builds the router's record transformer from the
+// configured catalog with mappers and the connection's mapper salt in the
+// secrets dir. Without a router catalog records pass unchanged.
+func loadRecordTransformer(cfg Config, startedAt time.Time) (*pipelineexec.RecordTransformer, error) {
+	catalogBytes, err := os.ReadFile(filepath.Join(cfg.SecretsDir, pipelineexeck8s.RouterCatalogSecretKey))
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, nil
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("reading router catalog: %w", err)
+	}
+
+	var catalog protocol.ConfiguredAirbyteCatalog
+	if err := json.Unmarshal(catalogBytes, &catalog); err != nil {
+		return nil, fmt.Errorf("decoding router catalog: %w", err)
+	}
+
+	salt, err := os.ReadFile(filepath.Join(cfg.SecretsDir, pipelineexeck8s.MapperSaltSecretKey))
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return nil, fmt.Errorf("reading mapper salt: %w", err)
+	}
+
+	transformer, err := pipelineexec.NewRecordTransformer(&catalog, salt, mapper.SyncInfo{
+		StartedAt:  startedAt,
+		JobID:      cfg.JobID,
+		Connection: cfg.ConnectionID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("compiling stream mappers: %w", err)
+	}
+
+	return transformer, nil
 }
 
 // heartbeatUntilCancelled sends heartbeats until ctx is done and calls onCancel

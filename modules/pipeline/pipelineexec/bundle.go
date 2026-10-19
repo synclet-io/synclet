@@ -28,4 +28,5 @@ type SyncBundle struct {
 	NamespaceDefinition   pipelineservice.NamespaceDefinition
 	CustomNamespaceFormat *string
 	StreamPrefix          *string
+	MapperSalt            []byte
 }

@@ -30,6 +30,8 @@ type K8sSyncJobOptions struct {
 	DestConfig        []byte // JSON config
 	SourceCatalog     []byte // JSON configured catalog (original namespaces)
 	DestCatalog       []byte // JSON configured catalog (namespace-rewritten)
+	RouterCatalog     []byte // JSON configured catalog with mappers (original namespaces)
+	MapperSalt        []byte
 	State             []byte // JSON state blob (may be nil)
 	RuntimeConfig     string // JSON runtime config for source resource limits
 	DestRuntimeConfig string // JSON runtime config for destination resource limits
@@ -127,6 +129,8 @@ func (w *K8sSyncWorker) Execute(ctx context.Context) error {
 		DestConfig:            result.DestConfig,
 		SourceCatalog:         sourceCatalogJSON,
 		DestCatalog:           destCatalogJSON,
+		RouterCatalog:         result.ConfiguredCatalog,
+		MapperSalt:            result.MapperSalt,
 		State:                 result.StateBlob,
 		RuntimeConfig:         result.SourceRuntimeConfig,
 		DestRuntimeConfig:     result.DestRuntimeConfig,

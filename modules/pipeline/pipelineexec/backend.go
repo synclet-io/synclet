@@ -16,23 +16,25 @@ type HeartbeatResult struct {
 
 // UpdateJobStatusParams holds parameters for reporting job completion/failure.
 type UpdateJobStatusParams struct {
-	JobID        uuid.UUID
-	Success      bool
-	ErrorMessage string
-	RecordsRead  int64
-	BytesSynced  int64
-	DurationMs   int64
+	JobID           uuid.UUID
+	Success         bool
+	ErrorMessage    string
+	RecordsRead     int64
+	RecordsFiltered int64
+	BytesSynced     int64
+	DurationMs      int64
 }
 
 // ReportCompletionParams holds parameters for reporting completion with stats.
 type ReportCompletionParams struct {
-	JobID        uuid.UUID
-	ConnectionID uuid.UUID
-	Success      bool
-	ErrorMessage string
-	RecordsRead  int64
-	BytesSynced  int64
-	DurationMs   int64
+	JobID           uuid.UUID
+	ConnectionID    uuid.UUID
+	Success         bool
+	ErrorMessage    string
+	RecordsRead     int64
+	RecordsFiltered int64
+	BytesSynced     int64
+	DurationMs      int64
 	// SourceExitCode and DestExitCode are the connectors' non-zero exit codes;
 	// 0 means a clean exit or none known.
 	SourceExitCode int
@@ -57,6 +59,7 @@ type ClaimJobResult struct {
 	NamespaceDefinition   pipelineservice.NamespaceDefinition
 	CustomNamespaceFormat string
 	StreamPrefix          string
+	MapperSalt            []byte
 	MaxAttempts           int
 }
 
