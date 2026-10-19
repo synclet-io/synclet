@@ -326,7 +326,7 @@ func TestLaunchSync_CreatesSecret(t *testing.T) {
 	catalog := []byte(`{"streams":[]}`)
 	state := []byte(`{"cursor":"2024-01-01"}`)
 
-	_, err := runner.LaunchSync(context.Background(), SyncOptions{
+	jobName, err := runner.LaunchSync(context.Background(), SyncOptions{
 		JobID:         "job-secret-1",
 		ConnectionID:  "conn-1",
 		SourceID:      "src-1",
@@ -342,9 +342,7 @@ func TestLaunchSync_CreatesSecret(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify Secret was created with expected data keys.
-	secretName := sanitizeK8sName("synclet-sync-" + "job-secret-1")
-	secret, err := client.CoreV1().Secrets("test-ns").Get(context.Background(), secretName, metav1.GetOptions{})
-	require.NoError(t, err)
+	secret := syncSecretOf(t, client, jobName)
 
 	assert.Equal(t, sourceConfig, secret.Data["source-config"])
 	assert.Equal(t, destConfig, secret.Data["dest-config"])
@@ -392,8 +390,9 @@ func TestLaunchSync_SecretVolume(t *testing.T) {
 	require.NotNil(t, secretVol, "sync-configs volume must exist")
 	require.NotNil(t, secretVol.Secret, "sync-configs must be a Secret volume")
 
-	secretName := sanitizeK8sName("synclet-sync-" + "job-vol-1")
-	assert.Equal(t, secretName, secretVol.Secret.SecretName)
+	secret, err := client.CoreV1().Secrets("test-ns").Get(context.Background(), secretVol.Secret.SecretName, metav1.GetOptions{})
+	require.NoError(t, err)
+	assert.Equal(t, "job-vol-1", secret.Labels["synclet.io/sync-job"])
 
 	// Verify orchestrator container has the volume mount.
 	orchContainer := podSpec.Containers[0]
@@ -507,9 +506,9 @@ func TestLaunchSync_CleansSecretOnFailure(t *testing.T) {
 	assert.Contains(t, err.Error(), "simulated job creation failure")
 
 	// Verify the Secret was cleaned up (should not exist).
-	secretName := sanitizeK8sName("synclet-sync-" + "job-fail-1")
-	_, err = client.CoreV1().Secrets("test-ns").Get(context.Background(), secretName, metav1.GetOptions{})
-	assert.Error(t, err, "Secret should have been deleted after job creation failure")
+	secrets, err := client.CoreV1().Secrets("test-ns").List(context.Background(), metav1.ListOptions{LabelSelector: "synclet.io/sync-job=job-fail-1"})
+	require.NoError(t, err)
+	assert.Empty(t, secrets.Items, "Secret should have been deleted after job creation failure")
 }
 
 func TestLaunchConnectorTask_CreatesSecret(t *testing.T) {
@@ -601,7 +600,7 @@ func TestLaunchSync_APITokenInSecret(t *testing.T) {
 	runner := newTestSyncRunner(client)
 	runner.config.APIToken = "internal-token"
 
-	_, err := runner.LaunchSync(context.Background(), SyncOptions{
+	jobName, err := runner.LaunchSync(context.Background(), SyncOptions{
 		JobID:        "job-token-1",
 		ConnectionID: "conn-1",
 		SourceImage:  "source:latest",
@@ -611,8 +610,7 @@ func TestLaunchSync_APITokenInSecret(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	secret, err := client.CoreV1().Secrets("test-ns").Get(context.Background(), sanitizeK8sName("synclet-sync-job-token-1"), metav1.GetOptions{})
-	require.NoError(t, err)
+	secret := syncSecretOf(t, client, jobName)
 	assert.Equal(t, []byte("internal-token"), secret.Data[APITokenSecretKey])
 }
 
@@ -744,5 +742,64 @@ func TestLaunch_StampsOwnerLabel(t *testing.T) {
 
 	for _, secret := range secrets.Items {
 		assert.Equal(t, testOwner, secret.Labels[pipelineexec.OwnerLabel], "secret %s", secret.Name)
+	}
+}
+
+func retrySyncOptions(jobID string, state []byte) SyncOptions {
+	return SyncOptions{
+		JobID:         jobID,
+		ConnectionID:  "conn-1",
+		SourceID:      "src-1",
+		DestinationID: "dest-1",
+		SourceImage:   "source:latest",
+		SourceConfig:  []byte(`{"host":"db"}`),
+		DestImage:     "dest:latest",
+		DestConfig:    []byte(`{"token":"abc"}`),
+		State:         state,
+	}
+}
+
+func syncSecretOf(t *testing.T, client *fake.Clientset, jobName string) *corev1.Secret {
+	t.Helper()
+
+	job, err := client.BatchV1().Jobs("test-ns").Get(context.Background(), jobName, metav1.GetOptions{})
+	require.NoError(t, err)
+
+	for _, v := range job.Spec.Template.Spec.Volumes {
+		if v.Name == "sync-configs" && v.Secret != nil {
+			secret, err := client.CoreV1().Secrets("test-ns").Get(context.Background(), v.Secret.SecretName, metav1.GetOptions{})
+			require.NoError(t, err)
+
+			return secret
+		}
+	}
+
+	require.FailNow(t, "job has no sync-configs secret volume", jobName)
+
+	return nil
+}
+
+func TestLaunchSync_EachAttemptGetsItsOwnSecret(t *testing.T) {
+	ctx := context.Background()
+	client := fake.NewSimpleClientset()
+	runner := newTestSyncRunner(client)
+
+	first, err := runner.LaunchSync(ctx, retrySyncOptions("job-retry-1", []byte(`{"cursor":"old"}`)))
+	require.NoError(t, err)
+
+	second, err := runner.LaunchSync(ctx, retrySyncOptions("job-retry-1", []byte(`{"cursor":"new"}`)))
+	require.NoError(t, err)
+	require.NotEqual(t, first, second)
+
+	firstSecret := syncSecretOf(t, client, first)
+	secondSecret := syncSecretOf(t, client, second)
+
+	assert.NotEqual(t, firstSecret.Name, secondSecret.Name)
+	assert.JSONEq(t, `{"cursor":"old"}`, string(firstSecret.Data["source-state"]), "a later attempt must not change the secret an earlier attempt mounts")
+	assert.JSONEq(t, `{"cursor":"new"}`, string(secondSecret.Data["source-state"]))
+
+	for _, secret := range []*corev1.Secret{firstSecret, secondSecret} {
+		assert.Equal(t, "job-retry-1", secret.Labels["synclet.io/sync-job"])
+		assert.Equal(t, testOwner, secret.Labels[pipelineexec.OwnerLabel])
 	}
 }

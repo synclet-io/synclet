@@ -52,6 +52,7 @@ type manifest struct {
 type rbacRule struct {
 	APIGroups       []string `yaml:"apiGroups"`
 	Resources       []string `yaml:"resources"`
+	Verbs           []string `yaml:"verbs"`
 	NonResourceURLs []string `yaml:"nonResourceURLs"`
 }
 
@@ -577,6 +578,83 @@ func TestChart_Golden(t *testing.T) {
 			want, err := os.ReadFile(golden) //nolint:gosec // path built from the fixed test case names
 			require.NoError(t, err, "run go test ./deploy/helm/ -run TestChart_Golden -update to create it")
 			assert.Equal(t, string(want), got, "render differs from %s; rerun with -update if the change is intended", golden)
+		})
+	}
+}
+
+const k8sExecutorDir = "../../modules/pipeline/pipelineexec/pipelineexeck8s"
+
+// k8sResourceCall matches a typed client call such as
+// client.CoreV1().Secrets(ns).Create(, capturing the resource accessor and the verb.
+var k8sResourceCall = regexp.MustCompile(`\.(Jobs|Pods|Secrets|ConfigMaps|Events)\([^()]*\)(\.\w+\()?`)
+
+// executorAPICalls returns the RBAC verbs the k8s executor code uses, keyed by
+// "apiGroup/resource". Every resource accessor must be followed directly by its
+// verb so that no call escapes the scan.
+func executorAPICalls(t *testing.T) map[string][]string {
+	t.Helper()
+
+	groups := map[string]string{"Jobs": "batch/jobs", "Pods": "/pods", "Secrets": "/secrets", "ConfigMaps": "/configmaps", "Events": "/events"}
+	used := map[string][]string{}
+
+	files, err := filepath.Glob(filepath.Join(k8sExecutorDir, "*.go"))
+	require.NoError(t, err)
+	require.NotEmpty(t, files)
+
+	for _, file := range files {
+		if strings.HasSuffix(file, "_test.go") {
+			continue
+		}
+
+		src, err := os.ReadFile(file) //nolint:gosec // paths come from a glob over the executor package
+		require.NoError(t, err)
+
+		for _, m := range k8sResourceCall.FindAllStringSubmatch(string(src), -1) {
+			require.NotEmpty(t, m[2], "%s: %s is not called directly; chain the verb so this test sees it", file, m[0])
+
+			resource, verb := groups[m[1]], strings.ToLower(strings.Trim(m[2], ".("))
+			if verb == "getlogs" {
+				resource, verb = "/pods/log", "get"
+			}
+
+			if !slices.Contains(used[resource], verb) {
+				used[resource] = append(used[resource], verb)
+			}
+		}
+	}
+
+	require.NotEmpty(t, used)
+
+	return used
+}
+
+func TestChart_ExecutorRoleGrantsVerbsTheCodeUses(t *testing.T) {
+	used := executorAPICalls(t)
+
+	modes := map[string][]string{
+		"standalone":  nil,
+		"distributed": {"--set", "mode=distributed"},
+	}
+
+	for name, args := range modes {
+		t.Run(name, func(t *testing.T) {
+			role := renderChart(t, args...).get(t, "Role", "t-synclet-connector-runner")
+
+			granted := map[string][]string{}
+
+			for _, rule := range role.Rules {
+				for _, group := range rule.APIGroups {
+					for _, resource := range rule.Resources {
+						granted[group+"/"+resource] = append(granted[group+"/"+resource], rule.Verbs...)
+					}
+				}
+			}
+
+			for resource, verbs := range used {
+				for _, verb := range verbs {
+					assert.Contains(t, granted[resource], verb, "Role grants no %q on %s", verb, resource)
+				}
+			}
 		})
 	}
 }

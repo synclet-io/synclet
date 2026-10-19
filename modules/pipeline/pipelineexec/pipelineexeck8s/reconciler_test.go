@@ -508,3 +508,26 @@ func TestReconciler_HandlesOnlyOwnJobs(t *testing.T) {
 		}
 	}
 }
+
+func TestReconciler_CleansEveryAttemptSecretOfFinishedJob(t *testing.T) {
+	ctx := context.Background()
+	client := fake.NewSimpleClientset()
+	runner := newTestSyncRunner(client)
+	runner.namespace = "default"
+
+	for _, state := range []string{`{"cursor":"a"}`, `{"cursor":"b"}`} {
+		_, err := runner.LaunchSync(ctx, retrySyncOptions(jobID1, []byte(state)))
+		require.NoError(t, err)
+	}
+
+	secrets, err := client.CoreV1().Secrets("default").List(ctx, metav1.ListOptions{LabelSelector: "synclet.io/sync-job=" + jobID1})
+	require.NoError(t, err)
+	require.Len(t, secrets.Items, 2, "each attempt has its own sync secret")
+
+	checker := &mockResourceChecker{activeJobs: map[string]bool{}}
+	newTestReconciler(client, checker).Reconcile(ctx, true)
+
+	secrets, err = client.CoreV1().Secrets("default").List(ctx, metav1.ListOptions{LabelSelector: "synclet.io/sync-job=" + jobID1})
+	require.NoError(t, err)
+	assert.Empty(t, secrets.Items, "every secret of a finished job should have been removed")
+}

@@ -192,7 +192,9 @@ func (r *SyncRunner) LaunchSync(ctx context.Context, opts SyncOptions) (string, 
 	// Create a K8s Secret with connector config data.
 	// Secrets keep sensitive credentials (passwords, API keys) out of CLI args
 	// which are visible in `kubectl describe pod` and K8s audit logs.
-	secretName := sanitizeK8sName("synclet-sync-" + opts.JobID)
+	// The Secret shares the name of its K8s Job, so every attempt mounts its own
+	// Secret and the synclet.io/sync-job label ties all of them to the job.
+	secretName := jobName
 
 	secretData := map[string][]byte{
 		"source-config": opts.SourceConfig,
