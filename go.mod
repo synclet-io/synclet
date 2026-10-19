@@ -33,6 +33,7 @@ require (
 	github.com/go-pnp/go-pnp/watermill/pnpwatermill v0.1.0
 	github.com/go-pnp/jobber v1.3.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
+	github.com/google/cel-go v0.28.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
 	github.com/jackc/pgx/v5 v5.9.1
@@ -83,6 +84,7 @@ require (
 	github.com/ThreeDotsLabs/watermill-googlecloud/v2 v2.0.0 // indirect
 	github.com/ThreeDotsLabs/watermill-redisstream v1.4.5 // indirect
 	github.com/ThreeDotsLabs/watermill-sql/v4 v4.1.3 // indirect
+	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.22 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.20.3 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.5.6 // indirect
