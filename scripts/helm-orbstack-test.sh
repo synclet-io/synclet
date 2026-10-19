@@ -8,9 +8,9 @@
 #   EXTRA_VALUES=<file> extra values file for the Synclet release
 #   CHART_PROBES=1      keep the chart's /live and /ready probes; by default they call
 #                       /health on the public port, which images up to 0.4.0 serve
-#   EG_VERSION          Envoy Gateway chart version (default: the version of a gateway-helm
-#                       release already on the cluster, whose CRDs an older chart cannot
-#                       replace, else v1.4.2)
+#   EG_VERSION          Envoy Gateway chart version (default: the highest version of a
+#                       gateway-helm release already on the cluster outside sct-* namespaces,
+#                       whose CRDs an older chart cannot replace, else v1.4.2)
 #   SYNC=1              build the Synclet image from the working tree (Dockerfile) and the
 #                       e2e test connectors (images that run as root), serve them from a
 #                       throwaway local registry container, install the chart with that
@@ -50,12 +50,15 @@ h() { helm --kube-context "$CTX" "$@"; }
 log() { printf '\n==> %s\n' "$*"; }
 # shellcheck source-path=SCRIPTDIR source=cluster-snapshot.sh
 source "$ROOT/scripts/cluster-snapshot.sh"
+# shellcheck source-path=SCRIPTDIR source=eg-version.sh
+source "$ROOT/scripts/eg-version.sh"
 
 [[ $(kubectl config get-contexts -o name) == *"$CTX"* ]] || { echo "context $CTX not found" >&2; exit 1; }
-EG_VERSION=${EG_VERSION:-$(h list -A -o json | jq -r '[.[] | select(.chart | startswith("gateway-helm-")) | .chart | ltrimstr("gateway-helm-")][0] // "v1.4.2"')}
+EG_VERSION=${EG_VERSION:-$(h list -A -o json | eg_version)}
 
 cleanup() {
   local rc=$?
+  trap '' INT TERM HUP
   set +e
   [[ -n $PF_PID ]] && kill "$PF_PID" 2>/dev/null
   log "cleanup ($RUN)"
@@ -92,6 +95,10 @@ cleanup() {
 
 snapshot >"$WORK/before"
 trap cleanup EXIT
+# A signal exits with 128+signo, which runs cleanup through the EXIT trap.
+trap 'exit 130' INT
+trap 'exit 143' TERM
+trap 'exit 129' HUP
 
 if [[ ${SYNC:-} == 1 ]]; then
   # Sync pods pull connector images with PullAlways, so they are served from a registry
