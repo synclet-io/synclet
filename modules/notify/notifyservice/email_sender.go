@@ -53,13 +53,21 @@ type SMTPEmailSender struct {
 	config SMTPConfig
 }
 
-// NewSMTPEmailSender creates a new SMTPEmailSender.
+// NewSMTPEmailSender creates a new SMTPEmailSender. An empty TLS mode means SMTPTLSImplicit.
 func NewSMTPEmailSender(config SMTPConfig) *SMTPEmailSender {
+	if config.TLS == "" {
+		config.TLS = SMTPTLSImplicit
+	}
+
 	return &SMTPEmailSender{config: config}
 }
 
 // SendEmail sends an HTML email via SMTP, encrypted as the TLS mode says.
 func (s *SMTPEmailSender) SendEmail(to, subject, htmlBody string) error {
+	if !s.config.TLS.Valid() {
+		return fmt.Errorf("smtp: unknown tls mode %q, want implicit, starttls or none", s.config.TLS)
+	}
+
 	addr := net.JoinHostPort(s.config.Host, strconv.Itoa(s.config.Port))
 	msg := buildMIMEMessage(s.config.From, to, subject, htmlBody)
 	tlsConfig := &tls.Config{ServerName: s.config.Host}
@@ -69,10 +77,10 @@ func (s *SMTPEmailSender) SendEmail(to, subject, htmlBody string) error {
 		err  error
 	)
 
-	if s.config.TLS == SMTPTLSImplicit {
-		conn, err = (&tls.Dialer{Config: tlsConfig}).DialContext(context.Background(), "tcp", addr)
-	} else {
+	if s.config.TLS == SMTPTLSStartTLS || s.config.TLS == SMTPTLSNone {
 		conn, err = (&net.Dialer{}).DialContext(context.Background(), "tcp", addr)
+	} else {
+		conn, err = (&tls.Dialer{Config: tlsConfig}).DialContext(context.Background(), "tcp", addr)
 	}
 
 	if err != nil {

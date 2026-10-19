@@ -330,6 +330,10 @@ smtp:
   host: ""
   ## SMTP server port.
   port: 587
+  ## Connection encryption (NOTIFY_SMTP_TLS): "implicit" opens TLS from the first byte
+  ## (usually port 465), "starttls" upgrades a plain connection (usually port 587),
+  ## "none" sends in plain text, for local catchers such as Mailpit. Empty means implicit.
+  tls: "implicit"
   ## SMTP authentication username.
   user: ""
   ## SMTP authentication password. Stored in the chart-managed Secret.

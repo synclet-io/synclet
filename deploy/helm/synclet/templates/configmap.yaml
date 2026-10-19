@@ -27,6 +27,7 @@ data:
   {{- if .Values.smtp.host }}
   NOTIFY_SMTP_HOST: {{ .Values.smtp.host | quote }}
   NOTIFY_SMTP_PORT: {{ .Values.smtp.port | quote }}
+  NOTIFY_SMTP_TLS: {{ .Values.smtp.tls | quote }}
   NOTIFY_SMTP_USER: {{ .Values.smtp.user | quote }}
   NOTIFY_SMTP_FROM: {{ .Values.smtp.from | quote }}
   {{- end }}
