@@ -25,7 +25,7 @@ import (
 
 type notifySMTPConfig struct {
 	Host     string `env:"HOST"`
-	Port     int    `env:"PORT" envDefault:"587"`
+	Port     int    `env:"PORT" envDefault:"465"`
 	User     string `env:"USER"`
 	Password string `env:"PASSWORD"`
 	From     string `env:"FROM" envDefault:"noreply@synclet.io"`
@@ -167,7 +167,7 @@ func newSMTPEmailSender(cfg *notifyConfig, logger *logging.Logger) (notifyservic
 	}
 
 	tlsMode := notifyservice.SMTPTLSMode(cfg.SMTP.TLS)
-	if !tlsMode.Valid() {
+	if tlsMode != "" && !tlsMode.Valid() {
 		return nil, fmt.Errorf("NOTIFY_SMTP_TLS: unknown mode %q, want implicit, starttls or none", cfg.SMTP.TLS)
 	}
 

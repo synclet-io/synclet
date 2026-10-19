@@ -280,7 +280,7 @@ server:
 | `WORKSPACE_MODE` | `single` shared workspace or `multi` | `single` |
 | `WORKSPACE_FRONTEND_URL` | Base URL used in invite and password reset links | `http://localhost:5173` |
 | `NOTIFY_SMTP_HOST` | SMTP server; empty disables email | empty |
-| `NOTIFY_SMTP_PORT` | SMTP port | `587` |
+| `NOTIFY_SMTP_PORT` | SMTP port | `465` |
 | `NOTIFY_SMTP_TLS` | `implicit` (TLS from the first byte), `starttls` or `none` (plain text, for local catchers such as Mailpit) | `implicit` |
 | `NOTIFY_SMTP_USER` | SMTP username | empty |
 | `NOTIFY_SMTP_PASSWORD` | SMTP password | empty |

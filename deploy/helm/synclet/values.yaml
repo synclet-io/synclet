@@ -328,10 +328,10 @@ oidc:
 smtp:
   ## SMTP server hostname (e.g. smtp.gmail.com). Empty disables email.
   host: ""
-  ## SMTP server port.
-  port: 587
+  ## SMTP server port. 465 pairs with tls "implicit"; set 587 with "starttls".
+  port: 465
   ## Connection encryption (NOTIFY_SMTP_TLS): "implicit" opens TLS from the first byte
-  ## (usually port 465), "starttls" upgrades a plain connection (usually port 587),
+  ## (port 465), "starttls" upgrades a plain connection (port 587),
   ## "none" sends in plain text, for local catchers such as Mailpit. Empty means implicit.
   tls: "implicit"
   ## SMTP authentication username.
