@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/go-pnp/go-pnp/logging"
 	"github.com/google/uuid"
-	"github.com/saturn4er/boilerplate-go/lib/filter"
 )
 
 // PersistAuditEvent inserts an audit event delivered through the bus. Execute
@@ -15,14 +15,20 @@ import (
 // rejected with a ValidationError.
 //
 // An event with a nil WorkspaceID is pending: a user-level event of a user
-// who belongs to no workspace yet. When a user creates or joins a workspace,
-// their pending events move into it.
+// who belongs to no workspace. Only the registration and the logins before the
+// user's first membership leave that state: they move into the workspace the
+// user creates or joins first, or, if that move did not happen, into the
+// workspace of the user's next login. A user whose registration is no longer
+// pending gets nothing moved, so the activity of a user removed from their last
+// workspace never reaches a workspace they join later.
 type PersistAuditEvent struct {
 	storage Storage
+	pending PendingEventStorage
+	logger  *logging.Logger
 }
 
-func NewPersistAuditEvent(storage Storage) *PersistAuditEvent {
-	return &PersistAuditEvent{storage: storage}
+func NewPersistAuditEvent(storage Storage, pending PendingEventStorage, logger *logging.Logger) *PersistAuditEvent {
+	return &PersistAuditEvent{storage: storage, pending: pending, logger: logger.Named("persist-audit-event")}
 }
 
 func (uc *PersistAuditEvent) Execute(ctx context.Context, event *AuditEvent) error {
@@ -43,8 +49,8 @@ func (uc *PersistAuditEvent) Execute(ctx context.Context, event *AuditEvent) err
 		return fmt.Errorf("persisting audit event: %w", err)
 	}
 
-	if userID, ok := joinedUser(event); ok {
-		if err := uc.adoptPendingEvents(ctx, userID, event.WorkspaceID); err != nil {
+	if userID, ok := adoptingUser(event); ok {
+		if err := uc.adoptPendingEvents(ctx, userID, event); err != nil {
 			return err
 		}
 	}
@@ -52,19 +58,21 @@ func (uc *PersistAuditEvent) Execute(ctx context.Context, event *AuditEvent) err
 	return nil
 }
 
-// joinedUser returns the user that event adds to its workspace: the creator
-// of a new workspace or a newly added member.
-func joinedUser(event *AuditEvent) (uuid.UUID, bool) {
-	if event.WorkspaceID == uuid.Nil || event.Action != ActionCreate {
+// adoptingUser returns the user whose pending events event can adopt: the
+// creator of a new workspace, a newly added member, or a user logging in to a
+// workspace.
+func adoptingUser(event *AuditEvent) (uuid.UUID, bool) {
+	if event.WorkspaceID == uuid.Nil {
 		return uuid.Nil, false
 	}
 
-	switch event.ResourceType {
-	case ResourceTypeWorkspace:
+	switch {
+	case event.ResourceType == ResourceTypeWorkspace && event.Action == ActionCreate,
+		event.ResourceType == ResourceTypeUser && event.Action == ActionLogin:
 		if event.ActorType == ActorTypeUser && event.ActorID != uuid.Nil {
 			return event.ActorID, true
 		}
-	case ResourceTypeWorkspaceMember:
+	case event.ResourceType == ResourceTypeWorkspaceMember && event.Action == ActionCreate:
 		if event.ResourceID != uuid.Nil {
 			return event.ResourceID, true
 		}
@@ -73,22 +81,14 @@ func joinedUser(event *AuditEvent) (uuid.UUID, bool) {
 	return uuid.Nil, false
 }
 
-func (uc *PersistAuditEvent) adoptPendingEvents(ctx context.Context, userID, workspaceID uuid.UUID) error {
-	pending, err := uc.storage.AuditEvents().Find(ctx, &AuditEventFilter{
-		WorkspaceID: filter.Equals(uuid.Nil),
-		ActorType:   filter.Equals(ActorTypeUser),
-		ActorID:     filter.Equals(userID),
-	})
-	if err != nil {
-		return fmt.Errorf("finding pending audit events: %w", err)
-	}
+func (uc *PersistAuditEvent) adoptPendingEvents(ctx context.Context, userID uuid.UUID, event *AuditEvent) error {
+	if _, err := uc.pending.AdoptPendingEvents(ctx, userID, event.WorkspaceID, event.CreatedAt); err != nil {
+		uc.logger.WithError(err).WithFields(map[string]interface{}{
+			"user_id":      userID.String(),
+			"workspace_id": event.WorkspaceID.String(),
+		}).Error(ctx, "moving pending audit events of user into workspace failed")
 
-	for _, event := range pending {
-		event.WorkspaceID = workspaceID
-
-		if _, err := uc.storage.AuditEvents().Update(ctx, event); err != nil {
-			return fmt.Errorf("moving pending audit event into workspace: %w", err)
-		}
+		return fmt.Errorf("moving pending audit events of user %s into workspace: %w", userID, err)
 	}
 
 	return nil

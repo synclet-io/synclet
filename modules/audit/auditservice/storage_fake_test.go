@@ -23,12 +23,14 @@ type fakeStorage struct {
 	outbox    []*AuditOutboxEvent
 	outboxErr error
 	createErr error
+	adoptErr  error
 }
 
 var (
-	_ Storage          = (*fakeStorage)(nil)
-	_ RetentionStorage = (*fakeStorage)(nil)
-	_ EventPageStorage = (*fakeStorage)(nil)
+	_ Storage             = (*fakeStorage)(nil)
+	_ RetentionStorage    = (*fakeStorage)(nil)
+	_ EventPageStorage    = (*fakeStorage)(nil)
+	_ PendingEventStorage = (*fakeStorage)(nil)
 )
 
 func newFakeStorage() *fakeStorage {
@@ -116,6 +118,42 @@ func (s *fakeStorage) DeleteOlderThan(_ context.Context, workspaceID uuid.UUID, 
 	s.events = kept
 
 	return deleted, nil
+}
+
+func isPendingRegistration(event *AuditEvent, userID uuid.UUID) bool {
+	return event.WorkspaceID == uuid.Nil && event.ActorType == ActorTypeUser && event.ActorID == userID &&
+		event.ResourceType == ResourceTypeUser && event.Action == ActionCreate
+}
+
+func (s *fakeStorage) AdoptPendingEvents(_ context.Context, userID, workspaceID uuid.UUID, until time.Time) (int64, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.adoptErr != nil {
+		return 0, s.adoptErr
+	}
+
+	if !slices.ContainsFunc(s.events, func(event *AuditEvent) bool { return isPendingRegistration(event, userID) }) {
+		return 0, nil
+	}
+
+	var moved int64
+
+	for _, event := range s.events {
+		if event.WorkspaceID != uuid.Nil || event.ActorType != ActorTypeUser || event.ActorID != userID ||
+			event.ResourceType != ResourceTypeUser || event.CreatedAt.After(until) {
+			continue
+		}
+
+		if event.Action != ActionCreate && event.Action != ActionLogin {
+			continue
+		}
+
+		event.WorkspaceID = workspaceID
+		moved++
+	}
+
+	return moved, nil
 }
 
 func equalsValue[T comparable](flt filter.Filter[T]) (T, bool) {
