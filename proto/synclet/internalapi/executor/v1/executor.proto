@@ -178,6 +178,9 @@ message ClaimConnectorTaskResponse {
     string image = 4;
     bytes config = 5;
     string workspace_id = 6;
+    // Kubernetes service account named in the runtime config of the task's
+    // source or destination; empty when the task names no entity or it sets none.
+    string service_account_name = 7;
 }
 
 // ReportConnectorTaskResult: executor reports task completion (D-18)

@@ -1305,15 +1305,18 @@ func (x *ClaimConnectorTaskRequest) GetWorkerId() string {
 }
 
 type ClaimConnectorTaskResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	HasTask       bool                   `protobuf:"varint,1,opt,name=has_task,json=hasTask,proto3" json:"has_task,omitempty"`
-	TaskId        string                 `protobuf:"bytes,2,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
-	TaskType      v11.ConnectorTaskType  `protobuf:"varint,3,opt,name=task_type,json=taskType,proto3,enum=synclet.publicapi.pipeline.v1.ConnectorTaskType" json:"task_type,omitempty"`
-	Image         string                 `protobuf:"bytes,4,opt,name=image,proto3" json:"image,omitempty"`
-	Config        []byte                 `protobuf:"bytes,5,opt,name=config,proto3" json:"config,omitempty"`
-	WorkspaceId   string                 `protobuf:"bytes,6,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	HasTask     bool                   `protobuf:"varint,1,opt,name=has_task,json=hasTask,proto3" json:"has_task,omitempty"`
+	TaskId      string                 `protobuf:"bytes,2,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
+	TaskType    v11.ConnectorTaskType  `protobuf:"varint,3,opt,name=task_type,json=taskType,proto3,enum=synclet.publicapi.pipeline.v1.ConnectorTaskType" json:"task_type,omitempty"`
+	Image       string                 `protobuf:"bytes,4,opt,name=image,proto3" json:"image,omitempty"`
+	Config      []byte                 `protobuf:"bytes,5,opt,name=config,proto3" json:"config,omitempty"`
+	WorkspaceId string                 `protobuf:"bytes,6,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	// Kubernetes service account named in the runtime config of the task's
+	// source or destination; empty when the task names no entity or it sets none.
+	ServiceAccountName string `protobuf:"bytes,7,opt,name=service_account_name,json=serviceAccountName,proto3" json:"service_account_name,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *ClaimConnectorTaskResponse) Reset() {
@@ -1384,6 +1387,13 @@ func (x *ClaimConnectorTaskResponse) GetConfig() []byte {
 func (x *ClaimConnectorTaskResponse) GetWorkspaceId() string {
 	if x != nil {
 		return x.WorkspaceId
+	}
+	return ""
+}
+
+func (x *ClaimConnectorTaskResponse) GetServiceAccountName() string {
+	if x != nil {
+		return x.ServiceAccountName
 	}
 	return ""
 }
@@ -2014,14 +2024,15 @@ const file_synclet_internalapi_executor_v1_executor_proto_rawDesc = "" +
 	"\x13IsJobActiveResponse\x12\x16\n" +
 	"\x06active\x18\x01 \x01(\bR\x06active\"8\n" +
 	"\x19ClaimConnectorTaskRequest\x12\x1b\n" +
-	"\tworker_id\x18\x01 \x01(\tR\bworkerId\"\xf0\x01\n" +
+	"\tworker_id\x18\x01 \x01(\tR\bworkerId\"\xa2\x02\n" +
 	"\x1aClaimConnectorTaskResponse\x12\x19\n" +
 	"\bhas_task\x18\x01 \x01(\bR\ahasTask\x12\x17\n" +
 	"\atask_id\x18\x02 \x01(\tR\x06taskId\x12M\n" +
 	"\ttask_type\x18\x03 \x01(\x0e20.synclet.publicapi.pipeline.v1.ConnectorTaskTypeR\btaskType\x12\x14\n" +
 	"\x05image\x18\x04 \x01(\tR\x05image\x12\x16\n" +
 	"\x06config\x18\x05 \x01(\fR\x06config\x12!\n" +
-	"\fworkspace_id\x18\x06 \x01(\tR\vworkspaceId\"\x92\x01\n" +
+	"\fworkspace_id\x18\x06 \x01(\tR\vworkspaceId\x120\n" +
+	"\x14service_account_name\x18\a \x01(\tR\x12serviceAccountName\"\x92\x01\n" +
 	" ReportConnectorTaskResultRequest\x12\x17\n" +
 	"\atask_id\x18\x01 \x01(\tR\x06taskId\x12\x18\n" +
 	"\asuccess\x18\x02 \x01(\bR\asuccess\x12#\n" +

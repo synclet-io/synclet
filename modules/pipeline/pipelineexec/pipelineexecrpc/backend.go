@@ -300,6 +300,8 @@ func (a *Backend) ClaimConnectorTask(ctx context.Context, workerID string) (*pip
 			Image:       resp.Msg.GetImage(),
 			Config:      resp.Msg.GetConfig(),
 			WorkspaceID: parsedWorkspaceID,
+
+			ServiceAccountName: resp.Msg.GetServiceAccountName(),
 		}
 
 		return nil

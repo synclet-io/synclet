@@ -214,6 +214,8 @@ func (a *UseCaseExecutorBackend) ClaimConnectorTask(ctx context.Context, workerI
 		Image:       result.Image,
 		Config:      result.Config,
 		WorkspaceID: result.WorkspaceID,
+
+		ServiceAccountName: result.ServiceAccountName,
 	}, nil
 }
 

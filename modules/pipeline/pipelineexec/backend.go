@@ -67,6 +67,9 @@ type ClaimConnectorTaskResult struct {
 	Image       string
 	Config      []byte // Decrypted JSON config (nil for spec)
 	WorkspaceID uuid.UUID
+	// ServiceAccountName is the entity's account for the connector pod; empty
+	// means the executor's default.
+	ServiceAccountName string
 }
 
 // ReportConnectorTaskResultParams holds parameters for reporting connector task completion.

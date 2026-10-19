@@ -144,3 +144,30 @@ func TestBackend_SendWithRetry(t *testing.T) {
 		assert.Equal(t, 3, calls)
 	})
 }
+
+type connectorTaskServer struct {
+	executorv1connect.UnimplementedExecutorServiceHandler
+	resp *executorv1.ClaimConnectorTaskResponse
+}
+
+func (s *connectorTaskServer) ClaimConnectorTask(_ context.Context, _ *connect.Request[executorv1.ClaimConnectorTaskRequest]) (*connect.Response[executorv1.ClaimConnectorTaskResponse], error) {
+	return connect.NewResponse(s.resp), nil
+}
+
+func TestBackend_ClaimConnectorTaskCarriesServiceAccount(t *testing.T) {
+	_, handler := executorv1connect.NewExecutorServiceHandler(&connectorTaskServer{resp: &executorv1.ClaimConnectorTaskResponse{
+		HasTask:            true,
+		TaskId:             uuid.NewString(),
+		WorkspaceId:        uuid.NewString(),
+		Image:              "source:1",
+		ServiceAccountName: "wi-sa",
+	}})
+
+	server := httptest.NewServer(handler)
+	defer server.Close()
+
+	got, err := NewBackend(server.URL, "token").ClaimConnectorTask(t.Context(), "worker")
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	assert.Equal(t, "wi-sa", got.ServiceAccountName)
+}

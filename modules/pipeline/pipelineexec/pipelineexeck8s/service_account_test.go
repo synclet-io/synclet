@@ -11,6 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
 
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineexec"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
 )
 
@@ -81,7 +82,61 @@ func TestLaunchTask_ServiceAccountName(t *testing.T) {
 				assertTokenAutomount(t, defaultAccount, job.Spec.Template.Spec.AutomountServiceAccountToken)
 			})
 		}
+
+		for _, defaultAccount := range []string{"global", ""} {
+			t.Run(taskType.String()+"/entity over "+defaultAccount, func(t *testing.T) {
+				client := fake.NewSimpleClientset()
+				adapter := NewK8sTaskLauncherAdapter(newTestSyncRunner(client), pipelineservice.RuntimeDefaults{ServiceAccountName: defaultAccount})
+
+				jobName, err := adapter.LaunchTask(context.Background(), TaskOptions{
+					TaskID:             uuid.NewString(),
+					TaskType:           taskType,
+					Image:              "connector:latest",
+					Config:             []byte(`{}`),
+					ServiceAccountName: "wi-sa",
+				})
+				require.NoError(t, err)
+
+				job, err := client.BatchV1().Jobs("test-ns").Get(context.Background(), jobName, metav1.GetOptions{})
+				require.NoError(t, err)
+				assert.Equal(t, "wi-sa", job.Spec.Template.Spec.ServiceAccountName)
+				assertTokenAutomount(t, "wi-sa", job.Spec.Template.Spec.AutomountServiceAccountToken)
+			})
+		}
 	}
+}
+
+type claimingBackend struct {
+	mockBackend
+	task *pipelineexec.ClaimConnectorTaskResult
+}
+
+func (b *claimingBackend) ClaimConnectorTask(_ context.Context, _ string) (*pipelineexec.ClaimConnectorTaskResult, error) {
+	return b.task, nil
+}
+
+type recordingTaskLauncher struct {
+	got *TaskOptions
+}
+
+func (l *recordingTaskLauncher) LaunchTask(_ context.Context, opts TaskOptions) (string, error) {
+	l.got = &opts
+
+	return "job", nil
+}
+
+func TestK8sTaskWorker_PassesClaimedServiceAccount(t *testing.T) {
+	backend := &claimingBackend{task: &pipelineexec.ClaimConnectorTaskResult{
+		TaskID:             uuid.New(),
+		TaskType:           pipelineservice.ConnectorTaskTypeCheck,
+		Image:              "connector:latest",
+		ServiceAccountName: "wi-sa",
+	}}
+	launcher := &recordingTaskLauncher{}
+
+	require.NoError(t, NewK8sTaskWorker(backend, launcher, "worker", &logging.Logger{Delegate: noopDelegate{}}).Execute(context.Background()))
+	require.NotNil(t, launcher.got)
+	assert.Equal(t, "wi-sa", launcher.got.ServiceAccountName)
 }
 
 // assertTokenAutomount checks that a pod without a service account gets no
