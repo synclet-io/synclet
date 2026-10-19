@@ -179,6 +179,10 @@ func (s *fakeAuditEventsStorage) matches(event *AuditEvent, flt *AuditEventFilte
 		return true
 	}
 
+	if id, ok := equalsValue[uuid.UUID](flt.ID); ok && event.ID != id {
+		return false
+	}
+
 	if id, ok := equalsValue[uuid.UUID](flt.WorkspaceID); ok && event.WorkspaceID != id {
 		return false
 	}
@@ -272,8 +276,17 @@ func (s *fakeAuditEventsStorage) Save(_ context.Context, _ *AuditEvent) (*AuditE
 	panic("Save not implemented")
 }
 
-func (s *fakeAuditEventsStorage) First(_ context.Context, _ *AuditEventFilter, _ ...optionutil.Option[dbutil.SelectOptions]) (*AuditEvent, error) {
-	panic("First not implemented")
+func (s *fakeAuditEventsStorage) First(ctx context.Context, flt *AuditEventFilter, _ ...optionutil.Option[dbutil.SelectOptions]) (*AuditEvent, error) {
+	events, err := s.Find(ctx, flt)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(events) == 0 {
+		return nil, ErrAuditEventNotFound
+	}
+
+	return events[0], nil
 }
 
 func (s *fakeAuditEventsStorage) FirstOrCreate(_ context.Context, _ *AuditEventFilter, _ *AuditEvent, _ ...optionutil.Option[dbutil.SelectOptions]) (*AuditEvent, error) {

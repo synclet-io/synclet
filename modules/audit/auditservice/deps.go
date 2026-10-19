@@ -23,8 +23,8 @@ type EventPageStorage interface {
 
 // UserDirectory looks up user accounts.
 type UserDirectory interface {
-	// UserExists reports whether the user account still exists.
-	UserExists(ctx context.Context, id uuid.UUID) (bool, error)
+	// ExistingUsers reports which of ids still have a user account, in one lookup.
+	ExistingUsers(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]bool, error)
 	// UserEmail returns the user's email, or "" when the account does not exist.
 	UserEmail(ctx context.Context, id uuid.UUID) (string, error)
 }

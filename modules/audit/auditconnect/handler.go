@@ -136,7 +136,10 @@ func (h *Handler) GetAuditEvent(ctx context.Context, req *connect.Request[auditv
 		return nil, mapError(err)
 	}
 
-	return connect.NewResponse(&auditv1.GetAuditEventResponse{Event: eventToProto(event)}), nil
+	resp := eventToProto(event.AuditEvent)
+	resp.ActorDeleted = event.ActorDeleted
+
+	return connect.NewResponse(&auditv1.GetAuditEventResponse{Event: resp}), nil
 }
 
 func (h *Handler) GetAuditRetention(ctx context.Context, _ *connect.Request[auditv1.GetAuditRetentionRequest]) (*connect.Response[auditv1.GetAuditRetentionResponse], error) {

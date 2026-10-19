@@ -9,14 +9,19 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/saturn4er/boilerplate-go/lib/filter"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	gormlogger "gorm.io/gorm/logger"
 
+	"github.com/synclet-io/synclet/modules/audit/auditadapt"
 	"github.com/synclet-io/synclet/modules/audit/auditdbstate"
 	"github.com/synclet-io/synclet/modules/audit/auditservice"
 	"github.com/synclet-io/synclet/modules/audit/auditstorage"
+	"github.com/synclet-io/synclet/modules/auth/authdbstate"
+	"github.com/synclet-io/synclet/modules/auth/authservice"
+	"github.com/synclet-io/synclet/modules/auth/authstorage"
 	"github.com/synclet-io/synclet/tests/testdb"
 )
 
@@ -66,6 +71,9 @@ func TestListAuditEventsP95(t *testing.T) {
 		actors[i] = uuid.New()
 	}
 
+	authStorage := authstorage.NewStorages(db, nil, nil)
+	seedUsers(ctx, t, authStorage, actors[1:])
+
 	now := time.Now().UTC()
 	seedEvents(ctx, t, storage, workspaceID, actors, now, targetEvents)
 	seedEvents(ctx, t, storage, uuid.New(), []uuid.UUID{uuid.New()}, now, noiseEvents)
@@ -86,7 +94,8 @@ func TestListAuditEventsP95(t *testing.T) {
 		{ActorID: &actors[2], Action: &action, Offset: pageSize},
 	}
 
-	list := auditservice.NewListAuditEvents(auditstorage.NewEventPageStorage(db), existingUsers{})
+	users := auditadapt.NewUserDirectory(authservice.NewGetUserByID(authStorage), authservice.NewFindExistingUserIDs(authStorage))
+	list := auditservice.NewListAuditEvents(auditstorage.NewEventPageStorage(db), users)
 	durations := make([]time.Duration, 0, runs)
 
 	for i := range runs {
@@ -108,6 +117,7 @@ func TestListAuditEventsP95(t *testing.T) {
 
 		for _, event := range events {
 			assertMatches(t, params, event.AuditEvent)
+			require.Equal(t, event.ActorID == actors[0], event.ActorDeleted, "only the unseeded actor is deleted")
 		}
 	}
 
@@ -129,6 +139,7 @@ func openDB(t *testing.T, dsn string) *gorm.DB {
 	t.Cleanup(func() { require.NoError(t, sqlDB.Close()) })
 
 	testdb.Migrate(t, sqlDB, auditdbstate.MigrationsFS, "audit_goose_db_version")
+	testdb.Migrate(t, sqlDB, authdbstate.MigrationsFS, "auth_goose_db_version")
 
 	return db
 }
@@ -136,6 +147,24 @@ func openDB(t *testing.T, dsn string) *gorm.DB {
 func truncateAuditEvents(t *testing.T, db *gorm.DB) {
 	t.Helper()
 	require.NoError(t, db.Exec("TRUNCATE audit.audit_events").Error)
+}
+
+func seedUsers(ctx context.Context, t *testing.T, storage *authstorage.Storages, ids []uuid.UUID) {
+	t.Helper()
+
+	for _, id := range ids {
+		_, err := storage.Users().Create(ctx, &authservice.User{
+			ID:        id,
+			Email:     fmt.Sprintf("auditperf-%s@example.com", id),
+			Name:      "auditperf",
+			CreatedAt: time.Now().UTC(),
+		})
+		require.NoError(t, err)
+	}
+
+	t.Cleanup(func() {
+		require.NoError(t, storage.Users().Delete(ctx, &authservice.UserFilter{ID: filter.In(ids...)}))
+	})
 }
 
 func seedEvents(
@@ -203,9 +232,3 @@ func percentile(sorted []time.Duration, pct int) time.Duration {
 
 	return sorted[max(idx, 0)]
 }
-
-type existingUsers struct{}
-
-func (existingUsers) UserExists(context.Context, uuid.UUID) (bool, error) { return true, nil }
-
-func (existingUsers) UserEmail(context.Context, uuid.UUID) (string, error) { return "", nil }

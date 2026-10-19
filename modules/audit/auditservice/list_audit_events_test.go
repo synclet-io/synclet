@@ -105,12 +105,20 @@ type fakeUserDirectory struct {
 	existing map[uuid.UUID]bool
 	emails   map[uuid.UUID]string
 	lookups  []uuid.UUID
+	batches  [][]uuid.UUID
 }
 
-func (f *fakeUserDirectory) UserExists(_ context.Context, id uuid.UUID) (bool, error) {
-	f.lookups = append(f.lookups, id)
+func (f *fakeUserDirectory) ExistingUsers(_ context.Context, ids []uuid.UUID) (map[uuid.UUID]bool, error) {
+	f.batches = append(f.batches, ids)
 
-	return f.existing[id], nil
+	existing := make(map[uuid.UUID]bool, len(ids))
+	for _, id := range ids {
+		if f.existing[id] {
+			existing[id] = true
+		}
+	}
+
+	return existing, nil
 }
 
 func (f *fakeUserDirectory) UserEmail(_ context.Context, id uuid.UUID) (string, error) {
@@ -159,5 +167,6 @@ func TestListAuditEvents_FlagsDeletedUserActors(t *testing.T) {
 		byAPIKey:       false,
 		bySystem:       false,
 	}, deleted)
-	assert.ElementsMatch(t, []uuid.UUID{liveUser, deletedUser}, users.lookups)
+	require.Len(t, users.batches, 1, "one batched existence lookup per page")
+	assert.ElementsMatch(t, []uuid.UUID{liveUser, deletedUser}, users.batches[0])
 }

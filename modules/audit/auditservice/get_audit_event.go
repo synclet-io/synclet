@@ -15,13 +15,14 @@ type GetAuditEventParams struct {
 
 type GetAuditEvent struct {
 	storage Storage
+	users   UserDirectory
 }
 
-func NewGetAuditEvent(storage Storage) *GetAuditEvent {
-	return &GetAuditEvent{storage: storage}
+func NewGetAuditEvent(storage Storage, users UserDirectory) *GetAuditEvent {
+	return &GetAuditEvent{storage: storage, users: users}
 }
 
-func (uc *GetAuditEvent) Execute(ctx context.Context, params GetAuditEventParams) (*AuditEvent, error) {
+func (uc *GetAuditEvent) Execute(ctx context.Context, params GetAuditEventParams) (*ListedAuditEvent, error) {
 	event, err := uc.storage.AuditEvents().First(ctx, &AuditEventFilter{
 		ID:          filter.Equals(params.ID),
 		WorkspaceID: filter.Equals(params.WorkspaceID),
@@ -30,5 +31,13 @@ func (uc *GetAuditEvent) Execute(ctx context.Context, params GetAuditEventParams
 		return nil, fmt.Errorf("getting audit event: %w", err)
 	}
 
-	return event, nil
+	deleted, err := deletedUserActors(ctx, uc.users, []*AuditEvent{event})
+	if err != nil {
+		return nil, err
+	}
+
+	return &ListedAuditEvent{
+		AuditEvent:   event,
+		ActorDeleted: event.ActorType == ActorTypeUser && deleted[event.ActorID],
+	}, nil
 }

@@ -81,7 +81,7 @@ func (uc *ListAuditEvents) Execute(ctx context.Context, params ListAuditEventsPa
 		return nil, fmt.Errorf("listing audit events: %w", err)
 	}
 
-	deletedActors, err := uc.deletedUserActors(ctx, events)
+	deletedActors, err := deletedUserActors(ctx, uc.users, events)
 	if err != nil {
 		return nil, err
 	}
@@ -97,24 +97,32 @@ func (uc *ListAuditEvents) Execute(ctx context.Context, params ListAuditEventsPa
 	return listed, nil
 }
 
-func (uc *ListAuditEvents) deletedUserActors(ctx context.Context, events []*AuditEvent) (map[uuid.UUID]bool, error) {
-	deleted := make(map[uuid.UUID]bool)
-	checked := make(map[uuid.UUID]bool)
+func deletedUserActors(ctx context.Context, users UserDirectory, events []*AuditEvent) (map[uuid.UUID]bool, error) {
+	seen := make(map[uuid.UUID]bool)
+	ids := make([]uuid.UUID, 0, len(events))
 
 	for _, event := range events {
-		if event.ActorType != ActorTypeUser || checked[event.ActorID] {
+		if event.ActorType != ActorTypeUser || seen[event.ActorID] {
 			continue
 		}
 
-		checked[event.ActorID] = true
+		seen[event.ActorID] = true
+		ids = append(ids, event.ActorID)
+	}
 
-		exists, err := uc.users.UserExists(ctx, event.ActorID)
-		if err != nil {
-			return nil, fmt.Errorf("checking audit actor %s: %w", event.ActorID, err)
-		}
+	if len(ids) == 0 {
+		return nil, nil
+	}
 
-		if !exists {
-			deleted[event.ActorID] = true
+	existing, err := users.ExistingUsers(ctx, ids)
+	if err != nil {
+		return nil, fmt.Errorf("checking audit actors: %w", err)
+	}
+
+	deleted := make(map[uuid.UUID]bool, len(ids))
+	for _, id := range ids {
+		if !existing[id] {
+			deleted[id] = true
 		}
 	}
 

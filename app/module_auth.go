@@ -88,6 +88,7 @@ func authUseCasesModule() fx.Option {
 		authservice.NewRefreshTokenUC,
 		authservice.NewLogout,
 		authservice.NewGetUserByID,
+		authservice.NewFindExistingUserIDs,
 		authservice.NewListUserWorkspaces,
 		authservice.NewGetUserByEmail,
 		authservice.NewUpdateProfile,
