@@ -52,7 +52,7 @@ func TestTestedWith(t *testing.T) {
 
 	faker := twImage{"airbyte/source-faker", "6.2.38"}
 	sourcePostgres := twImage{"airbyte/source-postgres", "3.8.7"}
-	goSourcePostgres := twImage{"ghcr.io/synclet-io/connectors/source-postgres", "0.2.0"}
+	goSourcePostgres := twImage{"ghcr.io/synclet-io/connectors/source-postgres", "0.2.1"}
 	destinationPostgres := twImage{"airbyte/destination-postgres", "3.0.23"}
 	destinationDevNull := twImage{"airbyte/destination-dev-null", "0.7.24"}
 	destinationDuckDB := twImage{"airbyte/destination-duckdb", "0.6.0"}

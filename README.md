@@ -459,7 +459,7 @@ These pairs were run end to end through Synclet 0.6.0 (`main` at `b7d946b`) on 2
 |---|---|---|---|
 | `airbyte/source-faker:6.2.38` | `airbyte/destination-postgres:3.0.23` | `users`, incremental, append | Passed: 100 records; the second run read 0 new records |
 | `airbyte/source-postgres:3.8.7` | `airbyte/destination-postgres:3.0.23` | `public.cities`, incremental on `id`, append | Passed: 250 records; the second run re-read the row at the cursor |
-| `ghcr.io/synclet-io/connectors/source-postgres:0.2.0` | `airbyte/destination-postgres:3.0.23` | `public.cities`, incremental on `id`, append | Passed: 250 records; the second run re-read the row at the cursor |
+| `ghcr.io/synclet-io/connectors/source-postgres:0.2.1` | `airbyte/destination-postgres:3.0.23` | `public.cities`, incremental on `id`, append | Passed: 250 records; the second run re-read the row at the cursor |
 | `airbyte/source-faker:6.2.38` | `airbyte/destination-postgres:3.0.23` | `users`, full refresh, overwrite | Passed: 100 records; the second run re-read all 100 and kept 100 rows |
 | `airbyte/source-faker:6.2.38` | `airbyte/destination-dev-null:0.7.24` | `users`, full refresh, overwrite | Passed: 100 records; the second run re-read all 100 |
 
