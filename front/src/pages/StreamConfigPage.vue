@@ -57,7 +57,7 @@ const { data: discoverTaskResult } = useConnectorTaskResult(discoverTaskId)
 function configSnapshot(rows: StreamRow[]): string {
   return JSON.stringify(rows
     .filter(s => s.enabled)
-    .map(s => [streamKey(s), s.syncMode, s.destinationSyncMode, s.cursorField, s.primaryKey, s.selectedFields]))
+    .map(s => [streamKey(s), s.syncMode, s.destinationSyncMode, s.cursorField, s.primaryKey, s.selectedFields, s.mappers]))
 }
 
 const isDirty = computed(() => !loading.value && configSnapshot(streams.value) !== savedSnapshot.value)
@@ -393,6 +393,7 @@ async function saveConfig() {
         cursorField: s.sourceDefinedCursor ? [] : s.cursorField,
         primaryKey: s.sourceDefinedPrimaryKey.length > 0 ? [] : s.primaryKey,
         selectedFields: s.selectedFields,
+        mappers: s.mappers,
       }))
     await configureStreamsMutation.mutateAsync({ connectionId: id, streams: configured })
     savedSnapshot.value = configSnapshot(streams.value)

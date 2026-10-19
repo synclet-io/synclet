@@ -38,6 +38,33 @@ export interface ConfiguredStream {
   cursorField: string[]
   primaryKey: string[][]
   selectedFields: SelectedField[]
+  mappers?: Record<string, unknown>[]
+}
+
+export interface MapperIssue {
+  step: number
+  field: string
+  message: string
+}
+
+export interface ValidateMappersParams {
+  namespace: string
+  streamName: string
+  mappers: Record<string, unknown>[]
+  selectedFields: SelectedField[]
+  primaryKey: string[][]
+  destinationSyncMode: DestinationSyncMode
+  sampleRecord?: Record<string, unknown>
+}
+
+export interface ValidateMappersResult {
+  errors: MapperIssue[]
+  warnings: MapperIssue[]
+  outputSchema: Record<string, unknown> | undefined
+  outputPrimaryKey: string[][]
+  sampleOutput: Record<string, unknown> | undefined
+  sampleKept: boolean
+  sampleError: string
 }
 
 export interface StreamState {

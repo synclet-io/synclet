@@ -27,6 +27,7 @@ function row(partial: Partial<StreamRow> = {}): StreamRow {
     sourceDefinedCursor: false,
     defaultCursorField: [],
     sourceDefinedPrimaryKey: [],
+    mappers: [],
     ...partial,
   }
 }

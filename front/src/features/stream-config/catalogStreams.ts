@@ -14,6 +14,8 @@ export interface StreamRow {
   sourceDefinedCursor: boolean
   defaultCursorField: string[]
   sourceDefinedPrimaryKey: string[][]
+  mappers: Record<string, unknown>[]
+  transformErrors?: number
 }
 
 export interface DiscoveredCatalog {
@@ -50,6 +52,7 @@ export interface ConfiguredCatalogInput {
     primaryKey?: FieldPathInput[]
     selected_fields?: Array<{ field_path?: string[], fieldPath?: string[] }>
     selectedFields?: Array<{ field_path?: string[], fieldPath?: string[] }>
+    mappers?: Record<string, unknown>[]
   }>
 }
 
@@ -105,6 +108,7 @@ export function parseStreams(cat: DiscoveredCatalog, configuredCat?: ConfiguredC
         cursorField: configured.cursor_field || configured.cursorField || [],
         primaryKey: (configured.primary_key || configured.primaryKey || []).map(fieldPath),
         selectedFields: (configured.selected_fields || configured.selectedFields || []).map(sf => ({ fieldPath: fieldPath(sf) })),
+        mappers: configured.mappers || [],
       } satisfies StreamRow
     }
 
@@ -116,6 +120,7 @@ export function parseStreams(cat: DiscoveredCatalog, configuredCat?: ConfiguredC
       cursorField: [] as string[],
       primaryKey: [] as string[][],
       selectedFields: [] as SelectedField[],
+      mappers: [] as Record<string, unknown>[],
     } satisfies StreamRow
   })
 }
@@ -142,6 +147,7 @@ export function mergeDiscoveredStreams(current: StreamRow[], discovered: StreamR
       cursorField: existing.cursorField,
       primaryKey: existing.primaryKey,
       selectedFields: existing.selectedFields,
+      mappers: existing.mappers,
     }
   })
 

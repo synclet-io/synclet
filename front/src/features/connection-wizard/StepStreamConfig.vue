@@ -25,6 +25,7 @@ interface StreamRow {
   sourceDefinedCursor: boolean
   defaultCursorField: string[]
   sourceDefinedPrimaryKey: string[][]
+  mappers: Record<string, unknown>[]
 }
 
 interface NamespaceGroup {
@@ -114,6 +115,7 @@ function parseStreams(cat: any) {
       sourceDefinedCursor: !!stream.source_defined_cursor,
       defaultCursorField: stream.default_cursor_field || [],
       sourceDefinedPrimaryKey: stream.source_defined_primary_key || [],
+      mappers: [] as Record<string, unknown>[],
     } satisfies StreamRow
   })
 

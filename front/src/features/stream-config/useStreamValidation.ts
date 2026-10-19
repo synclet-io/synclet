@@ -2,7 +2,7 @@ import type { DestinationSyncMode, SelectedField, SyncMode } from '@entities/con
 
 export interface StreamValidationError {
   streamKey: string
-  type: 'missing_cursor' | 'missing_pk' | 'missing_fields' | 'incompatible_sync_mode'
+  type: 'missing_cursor' | 'missing_pk' | 'missing_fields' | 'incompatible_sync_mode' | 'transform'
   message: string
 }
 
@@ -17,6 +17,7 @@ export interface ValidatableStream {
   selectedFields: SelectedField[]
   sourceDefinedCursor: boolean
   sourceDefinedPrimaryKey: string[][]
+  transformErrors?: number
 }
 
 function streamKey(s: ValidatableStream): string {
@@ -65,6 +66,14 @@ export function useStreamValidation() {
           streamKey: key,
           type: 'missing_pk',
           message: 'Primary key is required for Append + Dedup mode',
+        })
+      }
+
+      if ((s.transformErrors ?? 0) > 0) {
+        errors.push({
+          streamKey: key,
+          type: 'transform',
+          message: 'Fix the errors in the Transform steps',
         })
       }
     }

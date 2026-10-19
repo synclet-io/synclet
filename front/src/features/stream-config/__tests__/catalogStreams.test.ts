@@ -108,4 +108,16 @@ describe('mergeDiscoveredStreams', () => {
     expect(added).toEqual(['users'])
     expect(streams[0].enabled).toBe(true)
   })
+
+  it('keeps the mappers of configured streams through parse and merge', () => {
+    const mappers = [{ rename: { id: 'order_id' } }, { cast: { updated_at: 'timestamp' } }]
+    const current = parseStreams(discovered('orders', 'users'), {
+      streams: [{ name: 'orders', syncMode: 'full_refresh', destinationSyncMode: 'overwrite', mappers }],
+    })
+    expect(current.find(s => s.name === 'orders')!.mappers).toEqual(mappers)
+    expect(current.find(s => s.name === 'users')!.mappers).toEqual([])
+
+    const { streams } = mergeDiscoveredStreams(current, parseStreams(discovered('orders', 'users')))
+    expect(streams.find(s => s.name === 'orders')!.mappers).toEqual(mappers)
+  })
 })

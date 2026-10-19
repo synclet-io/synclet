@@ -1,4 +1,5 @@
-import type { ConfiguredStream, Connection, ConnectionStatus, DestinationSyncMode, NamespaceDefinition, SchemaChange, SchemaChangePolicy, SchemaChangeType, StateType, StreamStatesResult, SyncMode } from './types'
+import type { JsonObject } from '@bufbuild/protobuf'
+import type { ConfiguredStream, Connection, ConnectionStatus, DestinationSyncMode, NamespaceDefinition, SchemaChange, SchemaChangePolicy, SchemaChangeType, StateType, StreamStatesResult, SyncMode, ValidateMappersParams, ValidateMappersResult } from './types'
 import type { Connection as ProtoConnection, SchemaChange as ProtoSchemaChange } from '@/gen/synclet/publicapi/pipeline/v1/pipeline_pb'
 import { ConfiguredStreamSchema, connectionClient, create } from '@shared/api/services'
 import { tsToDate } from '@shared/lib/formatting'
@@ -186,9 +187,33 @@ export async function configureStreams(connectionId: string, streams: Configured
       cursorField: s.cursorField,
       primaryKey: s.primaryKey.map(pk => create(CompositeKeySchema, { fieldPath: pk })),
       selectedFields: s.selectedFields.map(sf => create(SelectedFieldSchema, { fieldPath: sf.fieldPath })),
+      mappers: (s.mappers ?? []) as JsonObject[],
     }),
   )
   await connectionClient.configureStreams({ connectionId, streams: protoStreams })
+}
+
+export async function validateMappers(connectionId: string, params: ValidateMappersParams): Promise<ValidateMappersResult> {
+  const res = await connectionClient.validateMappers({
+    connectionId,
+    namespace: params.namespace,
+    streamName: params.streamName,
+    mappers: params.mappers as JsonObject[],
+    selectedFields: params.selectedFields.map(sf => create(SelectedFieldSchema, { fieldPath: sf.fieldPath })),
+    primaryKey: params.primaryKey.map(pk => create(CompositeKeySchema, { fieldPath: pk })),
+    destinationSyncMode: toProtoDestinationSyncMode(params.destinationSyncMode),
+    sampleRecord: params.sampleRecord as JsonObject | undefined,
+  })
+  const issue = (i: { step: number, field: string, message: string }) => ({ step: i.step, field: i.field, message: i.message })
+  return {
+    errors: res.errors.map(issue),
+    warnings: res.warnings.map(issue),
+    outputSchema: res.outputSchema,
+    outputPrimaryKey: res.outputPrimaryKey.map(pk => pk.fieldPath),
+    sampleOutput: res.sampleOutput,
+    sampleKept: res.sampleKept,
+    sampleError: res.sampleError,
+  }
 }
 
 export async function updateConnection(params: {
@@ -230,6 +255,7 @@ interface RawConfiguredStream {
   cursor_field?: string[]
   primary_key?: string[][]
   selected_fields?: Array<{ field_path?: string[] }>
+  mappers?: Record<string, unknown>[]
 }
 
 export function configuredCatalogToStreams(catalog: Record<string, unknown> | null | undefined): ConfiguredStream[] {
@@ -246,6 +272,7 @@ export function configuredCatalogToStreams(catalog: Record<string, unknown> | nu
       cursorField: cs.cursor_field ?? [],
       primaryKey: cs.primary_key ?? [],
       selectedFields: (cs.selected_fields ?? []).map(sf => ({ fieldPath: sf.field_path ?? [] })),
+      mappers: cs.mappers ?? [],
     }
   })
 }
