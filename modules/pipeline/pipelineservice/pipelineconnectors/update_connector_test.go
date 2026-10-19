@@ -74,6 +74,17 @@ func (m *mockManagedConnectorsStorage) UsedManagedConnectorIDs(_ context.Context
 	return result, nil
 }
 
+func (m *mockManagedConnectorsStorage) SetStarred(_ context.Context, workspaceID, id uuid.UUID, starred bool) error {
+	mc, ok := m.connectors[id]
+	if !ok || mc.WorkspaceID != workspaceID {
+		return pipelineservice.ErrManagedConnectorNotFound
+	}
+
+	mc.Starred = starred
+
+	return nil
+}
+
 func (m *mockManagedConnectorsStorage) First(_ context.Context, f *pipelineservice.ManagedConnectorFilter, _ ...optionutil.Option[dbutil.SelectOptions]) (*pipelineservice.ManagedConnector, error) {
 	for _, mc := range m.connectors {
 		if matchManagedConnectorFilter(mc, f) {

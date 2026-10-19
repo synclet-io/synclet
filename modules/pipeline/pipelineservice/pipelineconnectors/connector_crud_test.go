@@ -48,6 +48,8 @@ type faultyManagedConnectors struct {
 	updateErr error
 	deleteErr error
 	deletes   int
+	// afterFirst runs after a successful First, standing in for a concurrent writer.
+	afterFirst func()
 }
 
 func (f *faultyManagedConnectors) First(ctx context.Context, flt *pipelineservice.ManagedConnectorFilter, opts ...optionutil.Option[dbutil.SelectOptions]) (*pipelineservice.ManagedConnector, error) {
@@ -55,7 +57,12 @@ func (f *faultyManagedConnectors) First(ctx context.Context, flt *pipelineservic
 		return nil, f.firstErr
 	}
 
-	return f.mockManagedConnectorsStorage.First(ctx, flt, opts...)
+	connector, err := f.mockManagedConnectorsStorage.First(ctx, flt, opts...)
+	if err == nil && f.afterFirst != nil {
+		f.afterFirst()
+	}
+
+	return connector, err
 }
 
 func (f *faultyManagedConnectors) Find(ctx context.Context, flt *pipelineservice.ManagedConnectorFilter, opts ...optionutil.Option[dbutil.SelectOptions]) ([]*pipelineservice.ManagedConnector, error) {
@@ -80,6 +87,14 @@ func (f *faultyManagedConnectors) Update(ctx context.Context, connector *pipelin
 	}
 
 	return f.mockManagedConnectorsStorage.Update(ctx, connector)
+}
+
+func (f *faultyManagedConnectors) SetStarred(ctx context.Context, workspaceID, id uuid.UUID, starred bool) error {
+	if f.updateErr != nil {
+		return f.updateErr
+	}
+
+	return f.mockManagedConnectorsStorage.SetStarred(ctx, workspaceID, id, starred)
 }
 
 func (f *faultyManagedConnectors) Delete(ctx context.Context, flt *pipelineservice.ManagedConnectorFilter) error {

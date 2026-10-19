@@ -42,6 +42,8 @@ type ManagedConnectorsStorage interface {
 	// user code 'ManagedConnector metods'
 	// UsedManagedConnectorIDs returns those of ids that a source or destination of the workspace is built on.
 	UsedManagedConnectorIDs(ctx context.Context, workspaceID uuid.UUID, ids []uuid.UUID) ([]uuid.UUID, error)
+	// SetStarred writes only the star flag and updated_at of the workspace's managed connector; ErrManagedConnectorNotFound when no row matches.
+	SetStarred(ctx context.Context, workspaceID, id uuid.UUID, starred bool) error
 	// end user code 'ManagedConnector metods'
 }
 

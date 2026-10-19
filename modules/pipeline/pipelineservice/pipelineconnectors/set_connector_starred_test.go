@@ -40,6 +40,22 @@ func TestSetConnectorStarred(t *testing.T) {
 		assert.Equal(t, mc.DockerImage, auditField(event.After, "docker_image"))
 	})
 
+	t.Run("star keeps a spec written after the connector was loaded", func(t *testing.T) {
+		store := newConnectorStorage()
+		workspaceID := uuid.New()
+		mc := store.addConnector(workspaceID, pipelineservice.ConnectorTypeSource)
+		store.managed.afterFirst = func() { store.managedConnectors.connectors[mc.ID].Spec = `{"v":2}` }
+
+		_, err := pipelineconnectors.NewSetConnectorStarred(store, &recordingAudit{}).Execute(context.Background(), pipelineconnectors.SetConnectorStarredParams{
+			ConnectorID: mc.ID,
+			WorkspaceID: workspaceID,
+			Starred:     true,
+		})
+		require.NoError(t, err)
+		assert.True(t, store.managedConnectors.connectors[mc.ID].Starred)
+		assert.Equal(t, `{"v":2}`, store.managedConnectors.connectors[mc.ID].Spec)
+	})
+
 	t.Run("unstar clears the flag and records an unstar event", func(t *testing.T) {
 		store := newConnectorStorage()
 		workspaceID := uuid.New()

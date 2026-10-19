@@ -41,13 +41,13 @@ func (uc *SetConnectorStarred) Execute(ctx context.Context, params SetConnectorS
 
 	before := starredAuditPayload(connector)
 
-	connector.Starred = params.Starred
-	connector.UpdatedAt = time.Now()
-
-	updated, err := uc.storage.ManagedConnectors().Update(ctx, connector)
-	if err != nil {
-		return nil, fmt.Errorf("updating managed connector: %w", err)
+	if err := uc.storage.ManagedConnectors().SetStarred(ctx, params.WorkspaceID, params.ConnectorID, params.Starred); err != nil {
+		return nil, fmt.Errorf("setting managed connector star: %w", err)
 	}
+
+	updated := connector.Copy()
+	updated.Starred = params.Starred
+	updated.UpdatedAt = time.Now()
 
 	action := "unstar"
 	if params.Starred {
@@ -61,10 +61,10 @@ func (uc *SetConnectorStarred) Execute(ctx context.Context, params SetConnectorS
 		ResourceID:    updated.ID,
 		ResourceLabel: updated.Name,
 		Before:        before,
-		After:         starredAuditPayload(updated),
+		After:         starredAuditPayload(&updated),
 	})
 
-	return updated, nil
+	return &updated, nil
 }
 
 func starredAuditPayload(connector *pipelineservice.ManagedConnector) map[string]any {

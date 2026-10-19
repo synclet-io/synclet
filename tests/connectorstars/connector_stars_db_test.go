@@ -222,3 +222,45 @@ func TestUsedManagedConnectorIDsSkipsQueryForNoIDs(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, got)
 }
+
+// TestStarConnectorWithoutSpec asserts that a connector stored without a spec
+// can be starred and keeps its other columns.
+func TestStarConnectorWithoutSpec(t *testing.T) {
+	f := setup(t)
+	workspaceID := uuid.New()
+
+	var nullable string
+	require.NoError(t, f.db.Raw(`SELECT is_nullable FROM information_schema.columns
+		WHERE table_schema = 'pipeline' AND table_name = 'managed_connectors' AND column_name = 'spec'`).Scan(&nullable).Error)
+
+	if nullable == "NO" {
+		f.exec(t, `ALTER TABLE pipeline.managed_connectors ALTER COLUMN spec DROP NOT NULL`)
+		t.Cleanup(func() { f.exec(t, `ALTER TABLE pipeline.managed_connectors ALTER COLUMN spec SET NOT NULL`) })
+	}
+
+	id := uuid.New()
+	f.exec(t, `INSERT INTO pipeline.managed_connectors (id, workspace_id, docker_image, docker_tag, name, connector_type, spec) VALUES (?, ?, ?, 'latest', 'c', 'source', NULL)`,
+		id, workspaceID, "img/"+id.String())
+	t.Cleanup(func() { f.exec(t, `DELETE FROM pipeline.managed_connectors WHERE id = ?`, id) })
+
+	_, err := pipelineconnectors.NewSetConnectorStarred(f.storage, &auditLog{}).Execute(context.Background(),
+		pipelineconnectors.SetConnectorStarredParams{ConnectorID: id, WorkspaceID: workspaceID, Starred: true})
+	require.NoError(t, err)
+	assert.Equal(t, flags{starred: true}, f.list(t, workspaceID)[id])
+}
+
+// TestConnectorSpecDefaultsToEmptyObject asserts that a connector inserted
+// without a spec stores an empty JSON object.
+func TestConnectorSpecDefaultsToEmptyObject(t *testing.T) {
+	f := setup(t)
+
+	id := uuid.New()
+	f.exec(t, `INSERT INTO pipeline.managed_connectors (id, workspace_id, docker_image, docker_tag, name, connector_type) VALUES (?, ?, ?, 'latest', 'c', 'source')`,
+		id, uuid.New(), "img/"+id.String())
+	t.Cleanup(func() { f.exec(t, `DELETE FROM pipeline.managed_connectors WHERE id = ?`, id) })
+
+	var spec *string
+	require.NoError(t, f.db.Raw(`SELECT spec::text FROM pipeline.managed_connectors WHERE id = ?`, id).Scan(&spec).Error)
+	require.NotNil(t, spec)
+	assert.JSONEq(t, `{}`, *spec)
+}

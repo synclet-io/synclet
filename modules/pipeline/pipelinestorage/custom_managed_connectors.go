@@ -3,8 +3,11 @@ package pipelinestorage
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
 )
 
 // UsedManagedConnectorIDs returns those of ids that a source or destination of
@@ -29,4 +32,21 @@ func (s *ManagedConnectorsStorage) UsedManagedConnectorIDs(ctx context.Context, 
 	}
 
 	return used, nil
+}
+
+// SetStarred writes only the star flag and updated_at of the workspace's
+// managed connector. It returns ErrManagedConnectorNotFound when no row matches.
+func (s *ManagedConnectorsStorage) SetStarred(ctx context.Context, workspaceID, id uuid.UUID, starred bool) error {
+	result := s.DB.WithContext(ctx).
+		Exec(`UPDATE pipeline.managed_connectors SET starred = ?, updated_at = ? WHERE id = ? AND workspace_id = ?`,
+			starred, time.Now(), id, workspaceID)
+	if result.Error != nil {
+		return fmt.Errorf("setting managed connector star: %w", result.Error)
+	}
+
+	if result.RowsAffected == 0 {
+		return pipelineservice.ErrManagedConnectorNotFound
+	}
+
+	return nil
 }
