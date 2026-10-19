@@ -40,13 +40,17 @@ func WriteReadyFile(dir string) error {
 }
 
 // ReadExitCode reads the exit code written by a connector's run script.
+// A file that does not start with a digit holds no exit code yet and is an error.
 func ReadExitCode(path string) (int32, error) {
 	data, err := os.ReadFile(path) //nolint:gosec // path is constructed internally
 	if err != nil {
 		return -1, fmt.Errorf("reading exit code from %s: %w", path, err)
 	}
 
-	var code int32
+	var (
+		code   int32
+		digits int
+	)
 
 	for _, b := range data {
 		if b < '0' || b > '9' {
@@ -54,6 +58,11 @@ func ReadExitCode(path string) (int32, error) {
 		}
 
 		code = code*10 + int32(b-'0')
+		digits++
+	}
+
+	if digits == 0 {
+		return -1, fmt.Errorf("no exit code in %s", path)
 	}
 
 	return code, nil
@@ -87,7 +96,9 @@ func WriteRunScript(scriptPath string, command []string, dataDir, stdinFIFO, std
 		fmt.Fprintf(&script, "> %s 2>&1\n", shellQuote(filepath.Join(dataDir, stdoutFIFO)))
 	}
 
-	fmt.Fprintf(&script, "echo $? > %s\n", shellQuote(filepath.Join(dataDir, exitCodeFile)))
+	// The code goes to a temporary file first so that readers never see the file empty or partial.
+	exitCodePath := filepath.Join(dataDir, exitCodeFile)
+	fmt.Fprintf(&script, "echo $? > %s && mv %s %s\n", shellQuote(exitCodePath+".tmp"), shellQuote(exitCodePath+".tmp"), shellQuote(exitCodePath))
 
 	return os.WriteFile(scriptPath, []byte(script.String()), 0o755) //nolint:gosec // run script needs execute permission
 }

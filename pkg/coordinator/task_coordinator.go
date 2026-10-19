@@ -73,7 +73,7 @@ func RunTask(ctx context.Context, cfg TaskConfig) error {
 		return reportTaskError(cfg, fmt.Errorf("waiting for connector completion: %w", err))
 	}
 
-	exitCode, _ := ReadExitCode(exitCodePath)
+	exitCode := waitForExitCode(exitCodePath, 10*time.Second)
 	slog.Info("task coordinator: connector finished", "task_id", cfg.TaskID, "exit_code", exitCode)
 
 	// 4. Read connector stdout log and parse messages.

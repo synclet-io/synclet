@@ -278,7 +278,7 @@ func heartbeatUntilCancelled(ctx context.Context, reporter *Reporter, onCancel f
 
 // waitForExitCode polls for an exit code file up to the given timeout.
 // Connectors write the file after their process exits, which may lag behind
-// the FIFO stream closing. Returns -1 only if the file never appears.
+// the FIFO stream closing. Returns -1 if no exit code can be read before the timeout.
 func waitForExitCode(path string, timeout time.Duration) int32 {
 	deadline := time.Now().Add(timeout)
 
@@ -289,7 +289,7 @@ func waitForExitCode(path string, timeout time.Duration) int32 {
 		}
 
 		if time.Now().After(deadline) {
-			slog.Warn("coordinator: exit code file not found after timeout", "path", path)
+			slog.Warn("coordinator: no exit code after timeout", "path", path, "error", err)
 
 			return -1
 		}
