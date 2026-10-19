@@ -16,6 +16,15 @@ import (
 type RunConfig struct {
 	IdleTimeout time.Duration      // Kill if no RECORD for this duration. 0 = disabled.
 	Rewriter    *NamespaceRewriter // Rewrite namespace/prefix on messages to the destination and restore source names on confirmed STATE. nil = no rewriting.
+
+	// Catalog is the source's configured catalog. After the source succeeds,
+	// every stream in it without a COMPLETE or INCOMPLETE status from the
+	// source gets a COMPLETE status, as the Airbyte platform sends them.
+	Catalog *protocol.ConfiguredAirbyteCatalog
+	// SourceSucceeded is asked once the source output has ended cleanly and
+	// reports whether the source exited 0. nil = a clean end of output means
+	// the source succeeded.
+	SourceSucceeded func() bool
 }
 
 // Stats holds the final statistics from a routing session.
@@ -139,6 +148,7 @@ func routeSourceMessages(ctx context.Context, reader *protocol.MessageReader, wr
 	var idle <-chan time.Time
 
 	counter := newSourceStatsCounter()
+	ended := make(map[streamKey]bool)
 
 	for {
 		var read sourceRead
@@ -153,13 +163,21 @@ func routeSourceMessages(ctx context.Context, reader *protocol.MessageReader, wr
 
 		if read.err != nil {
 			if errors.Is(read.err, io.EOF) {
-				return nil
+				if cfg.SourceSucceeded != nil && !cfg.SourceSucceeded() {
+					return nil
+				}
+
+				return completeOpenStreams(writer, cfg, ended)
 			}
 
 			return read.err
 		}
 
 		msg := read.msg
+
+		if status := streamStatusOf(msg); status != nil && isTerminalStreamStatus(status.Status) {
+			ended[streamKey{namespace: status.StreamDescriptor.Namespace, name: status.StreamDescriptor.Name}] = true
+		}
 
 		switch msg.Type {
 		case protocol.MessageTypeRecord:
@@ -266,6 +284,55 @@ func routeSourceMessages(ctx context.Context, reader *protocol.MessageReader, wr
 			}
 		}
 	}
+}
+
+func streamStatusOf(msg *protocol.AirbyteMessage) *protocol.AirbyteStreamStatusTraceMessage {
+	if msg.Type != protocol.MessageTypeTrace || msg.Trace == nil || msg.Trace.Type != protocol.TraceTypeStreamStatus {
+		return nil
+	}
+
+	return msg.Trace.StreamStatus
+}
+
+func isTerminalStreamStatus(status protocol.StreamStatus) bool {
+	return status == protocol.StreamStatusComplete || status == protocol.StreamStatusIncomplete
+}
+
+// completeOpenStreams writes a COMPLETE stream status for every catalog stream
+// not in ended, keyed by the source's descriptor.
+func completeOpenStreams(writer *protocol.MessageWriter, cfg RunConfig, ended map[streamKey]bool) error {
+	if cfg.Catalog == nil {
+		return nil
+	}
+
+	for _, configured := range cfg.Catalog.Streams {
+		descriptor := protocol.StreamDescriptor{Name: configured.Stream.Name, Namespace: configured.Stream.Namespace}
+		if ended[streamKey{namespace: descriptor.Namespace, name: descriptor.Name}] {
+			continue
+		}
+
+		msg := &protocol.AirbyteMessage{
+			Type: protocol.MessageTypeTrace,
+			Trace: &protocol.AirbyteTraceMessage{
+				Type:      protocol.TraceTypeStreamStatus,
+				EmittedAt: float64(time.Now().UnixMilli()),
+				StreamStatus: &protocol.AirbyteStreamStatusTraceMessage{
+					StreamDescriptor: descriptor,
+					Status:           protocol.StreamStatusComplete,
+				},
+			},
+		}
+
+		if cfg.Rewriter != nil {
+			cfg.Rewriter.RewriteTrace(msg)
+		}
+
+		if err := writer.Write(msg); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // readDestOutput reads messages from the destination's stdout and dispatches

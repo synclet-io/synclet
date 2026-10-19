@@ -172,6 +172,8 @@ func (e *DockerSyncExecutor) Execute(ctx context.Context, bundle *pipelineexec.S
 	routeStats, routeErr := pipelineexec.Run(ctx, filteredSource, srcPipeWriter, destStdout, pipelineexec.RedactHandler(handler, redactor), pipelineexec.RunConfig{
 		IdleTimeout: e.idleTimeout,
 		Rewriter:    rewriter,
+		// The source reader ends with EOF only after the container exited 0.
+		Catalog: catalog,
 	}, e.logger.Named("message-router"))
 
 	// Map router stats to SyncStats.

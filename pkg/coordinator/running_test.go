@@ -102,6 +102,7 @@ func TestRunPipeline_ReportsRunningOnceConnectorsConnect(t *testing.T) {
 	require.Eventually(t, func() bool { return len(svc.runningJobs()) == 1 }, 5*time.Second, 10*time.Millisecond)
 	assert.Equal(t, []string{"job-1"}, svc.runningJobs())
 
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "source.exitcode"), []byte("0"), 0o600))
 	require.NoError(t, sourceOut.Close())
 
 	_, _ = io.Copy(io.Discard, destIn)

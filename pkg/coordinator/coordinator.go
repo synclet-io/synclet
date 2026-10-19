@@ -206,40 +206,52 @@ func runPipeline(ctx context.Context, cfg Config, reporter *Reporter) (*pipeline
 		DestinationID: cfg.DestinationID,
 	})
 
-	// Build namespace rewriter from source catalog and connection settings.
-	var rewriter *pipelineexec.NamespaceRewriter
+	// Route messages using the shared router.
+	return pipelineexec.Run(ctx, sourceStdout, destStdin, destStdout, pipelineexec.RedactHandler(handler, connectorConfigRedactor(cfg.SecretsDir)), routerConfig(cfg), nil)
+}
 
-	if cfg.NamespaceDefinition != "" {
-		sourceCatalogBytes, readErr := os.ReadFile(filepath.Join(cfg.SecretsDir, "source-catalog"))
-		if readErr != nil {
-			slog.Warn("coordinator: could not read source catalog for rewriter", "error", readErr)
-		} else {
-			var catalog protocol.ConfiguredAirbyteCatalog
-			if err := json.Unmarshal(sourceCatalogBytes, &catalog); err != nil {
-				slog.Error("coordinator: failed to unmarshal source catalog for rewriter", "error", err)
-			} else {
-				nsDef := parseNamespaceDefinition(cfg.NamespaceDefinition)
-
-				var customFmt *string
-				if cfg.CustomNamespaceFormat != "" {
-					customFmt = &cfg.CustomNamespaceFormat
-				}
-
-				var prefix *string
-				if cfg.StreamPrefix != "" {
-					prefix = &cfg.StreamPrefix
-				}
-
-				rewriter = pipelineexec.NewNamespaceRewriter(&catalog, nsDef, customFmt, prefix)
-				slog.Info("coordinator: namespace rewriter created", "namespace_definition", cfg.NamespaceDefinition, "streams", len(catalog.Streams))
-			}
-		}
+// routerConfig gives the router the source catalog, a namespace rewriter when
+// the connection sets a namespace definition, and the source's exit code,
+// which its container writes to the data dir after the source FIFO closes.
+func routerConfig(cfg Config) pipelineexec.RunConfig {
+	routeCfg := pipelineexec.RunConfig{
+		SourceSucceeded: func() bool {
+			return waitForExitCode(filepath.Join(cfg.DataDir, "source.exitcode"), 10*time.Second) == 0
+		},
 	}
 
-	// Route messages using the shared router.
-	return pipelineexec.Run(ctx, sourceStdout, destStdin, destStdout, pipelineexec.RedactHandler(handler, connectorConfigRedactor(cfg.SecretsDir)), pipelineexec.RunConfig{
-		Rewriter: rewriter,
-	}, nil)
+	sourceCatalogBytes, err := os.ReadFile(filepath.Join(cfg.SecretsDir, "source-catalog"))
+	if err != nil {
+		slog.Warn("coordinator: could not read source catalog", "error", err)
+
+		return routeCfg
+	}
+
+	var catalog protocol.ConfiguredAirbyteCatalog
+	if err := json.Unmarshal(sourceCatalogBytes, &catalog); err != nil {
+		slog.Error("coordinator: failed to unmarshal source catalog", "error", err)
+
+		return routeCfg
+	}
+
+	routeCfg.Catalog = &catalog
+
+	if cfg.NamespaceDefinition != "" {
+		var customFmt *string
+		if cfg.CustomNamespaceFormat != "" {
+			customFmt = &cfg.CustomNamespaceFormat
+		}
+
+		var prefix *string
+		if cfg.StreamPrefix != "" {
+			prefix = &cfg.StreamPrefix
+		}
+
+		routeCfg.Rewriter = pipelineexec.NewNamespaceRewriter(&catalog, parseNamespaceDefinition(cfg.NamespaceDefinition), customFmt, prefix)
+		slog.Info("coordinator: namespace rewriter created", "namespace_definition", cfg.NamespaceDefinition, "streams", len(catalog.Streams))
+	}
+
+	return routeCfg
 }
 
 // heartbeatUntilCancelled sends heartbeats until ctx is done and calls onCancel
