@@ -66,7 +66,7 @@ func TestReportCompletion_NotBlockedBySlowWebhook(t *testing.T) {
 		notifyservice.NewDeliverWebhookWithClient(newNotifyStore(&notifyservice.Webhook{
 			ID:          uuid.New(),
 			WorkspaceID: workspaceID,
-			URL:         "http://203.0.113.10/hooks/sync",
+			URL:         "http://93.184.216.34/hooks/sync",
 			Events:      `["sync.completed"]`,
 			Enabled:     true,
 		}), nil, notifyservice.Config{WebhookHTTPTimeout: 5 * time.Second, WebhookMaxRetries: 1}, &http.Client{Transport: transport}),
