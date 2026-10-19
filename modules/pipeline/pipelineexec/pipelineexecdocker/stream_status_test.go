@@ -21,12 +21,14 @@ import (
 )
 
 // pairRunner runs a source that prints sourceOutput and exits with
-// sourceExit, and a destination that records everything it reads.
+// sourceExit, and a destination that records everything it reads. destDone
+// closes once the destination has read its stdin to EOF.
 type pairRunner struct {
 	mockContainerRunner
 
 	sourceOutput string
 	sourceExit   int
+	destDone     chan struct{}
 
 	mu       sync.Mutex
 	runs     int
@@ -62,6 +64,7 @@ func (r *pairRunner) Run(_ context.Context, opts pkgcontainer.RunOptions) (*pkgc
 		r.mu.Unlock()
 
 		close(done)
+		close(r.destDone)
 
 		_ = stdoutWriter.Close()
 	}()
@@ -76,12 +79,18 @@ func (r *pairRunner) Run(_ context.Context, opts pkgcontainer.RunOptions) (*pkgc
 func (r *pairRunner) destinationStreamStatuses(t *testing.T) []protocol.AirbyteStreamStatusTraceMessage {
 	t.Helper()
 
+	<-r.destDone
+
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	var statuses []protocol.AirbyteStreamStatusTraceMessage
 
 	for _, line := range strings.Split(strings.TrimSpace(r.destRead.String()), "\n") {
+		if line == "" {
+			continue
+		}
+
 		var msg protocol.AirbyteMessage
 		require.NoError(t, json.Unmarshal([]byte(line), &msg), line)
 
@@ -99,6 +108,7 @@ func executeWithSource(t *testing.T, sourceExit int) (*pairRunner, error) {
 	runner := &pairRunner{
 		sourceOutput: `{"type":"RECORD","record":{"stream":"users","namespace":"public","data":{"id":1},"emitted_at":0}}` + "\n",
 		sourceExit:   sourceExit,
+		destDone:     make(chan struct{}),
 	}
 
 	prefix := "dst_"
