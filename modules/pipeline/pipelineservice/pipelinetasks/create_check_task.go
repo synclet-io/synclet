@@ -35,6 +35,9 @@ type CreateCheckTaskParams struct {
 	// Option 2: Test with raw config (no source/destination created yet).
 	ManagedConnectorID *uuid.UUID
 	Config             json.RawMessage // Plaintext config from the frontend.
+	// ServiceAccountName is the account the raw config's check runs under;
+	// empty means the executor's default.
+	ServiceAccountName string
 }
 
 // Execute creates a connector check task and returns the task ID and records a
@@ -76,6 +79,7 @@ func (uc *CreateCheckTask) Execute(ctx context.Context, params CreateCheckTaskPa
 
 		payload.ManagedConnectorID = connector.ID
 		payload.Config = &encrypted
+		payload.ServiceAccountName = params.ServiceAccountName
 		auditEvent = &pipelineservice.AuditEvent{ResourceType: "connector", ResourceID: connector.ID, ResourceLabel: connector.Name}
 	} else {
 		// Entity reference path: resolve managed connector ID from source/destination.

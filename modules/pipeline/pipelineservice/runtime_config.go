@@ -7,6 +7,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/util/validation"
 )
 
 // RuntimeConfig holds container runtime configuration for a source or destination.
@@ -169,6 +170,12 @@ func ValidateRuntimeConfig(cfg *RuntimeConfig) error {
 		var affinity corev1.Affinity
 		if err := json.Unmarshal(cfg.Affinity, &affinity); err != nil {
 			errs = append(errs, fmt.Sprintf("affinity: %v", err))
+		}
+	}
+
+	if cfg.ServiceAccountName != "" {
+		if msgs := validation.IsDNS1123Subdomain(cfg.ServiceAccountName); len(msgs) > 0 {
+			errs = append(errs, "service_account_name: must be a Kubernetes DNS-1123 subdomain name: "+strings.Join(msgs, "; "))
 		}
 	}
 

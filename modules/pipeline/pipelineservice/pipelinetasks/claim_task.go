@@ -111,6 +111,7 @@ func (uc *ClaimTask) resolveCheckPayload(ctx context.Context, workspaceID uuid.U
 	var configJSON string
 	if payload.Config != nil {
 		configJSON = *payload.Config
+		serviceAccount = payload.ServiceAccountName
 	} else if payload.SourceID != nil {
 		src, err := uc.storage.Sources().First(ctx, &pipelineservice.SourceFilter{
 			ID:          filter.Equals(*payload.SourceID),

@@ -96,7 +96,7 @@ func (h *SourceHandler) CreateSource(ctx context.Context, req *connect.Request[p
 
 	// Blocking connection check before persist.
 	if err := runConnectionCheck(ctx, h.createCheckTask, h.waitForTaskResult,
-		h.connectionCheckTimeout, workspaceID, managedConnectorID, config); err != nil {
+		h.connectionCheckTimeout, workspaceID, managedConnectorID, config, ""); err != nil {
 		return nil, err
 	}
 
@@ -154,6 +154,10 @@ func (h *SourceHandler) UpdateSource(ctx context.Context, req *connect.Request[p
 		params.Name = req.Msg.Name
 	}
 
+	if req.Msg.RuntimeConfig != nil {
+		params.RuntimeConfig = req.Msg.RuntimeConfig
+	}
+
 	if req.Msg.GetConfig() != nil {
 		config, err := json.Marshal(req.Msg.GetConfig().AsMap())
 		if err != nil {
@@ -178,13 +182,10 @@ func (h *SourceHandler) UpdateSource(ctx context.Context, req *connect.Request[p
 
 		// Blocking connection check before persist.
 		if err := runConnectionCheck(ctx, h.createCheckTask, h.waitForTaskResult,
-			h.connectionCheckTimeout, workspaceID, existingSource.ManagedConnectorID, raw); err != nil {
+			h.connectionCheckTimeout, workspaceID, existingSource.ManagedConnectorID, raw,
+			checkServiceAccount(params.RuntimeConfig, existingSource.RuntimeConfig)); err != nil {
 			return nil, err
 		}
-	}
-
-	if req.Msg.RuntimeConfig != nil {
-		params.RuntimeConfig = req.Msg.RuntimeConfig
 	}
 
 	src, err := h.updateSource.Execute(ctx, params)

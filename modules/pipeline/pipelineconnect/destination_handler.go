@@ -82,7 +82,7 @@ func (h *DestinationHandler) CreateDestination(ctx context.Context, req *connect
 
 	// Blocking connection check before persist.
 	if err := runConnectionCheck(ctx, h.createCheckTask, h.waitForTaskResult,
-		h.connectionCheckTimeout, workspaceID, managedConnectorID, config); err != nil {
+		h.connectionCheckTimeout, workspaceID, managedConnectorID, config, ""); err != nil {
 		return nil, err
 	}
 
@@ -127,6 +127,10 @@ func (h *DestinationHandler) UpdateDestination(ctx context.Context, req *connect
 		params.Name = req.Msg.Name
 	}
 
+	if req.Msg.RuntimeConfig != nil {
+		params.RuntimeConfig = req.Msg.RuntimeConfig
+	}
+
 	if req.Msg.GetConfig() != nil {
 		config, err := json.Marshal(req.Msg.GetConfig().AsMap())
 		if err != nil {
@@ -151,13 +155,10 @@ func (h *DestinationHandler) UpdateDestination(ctx context.Context, req *connect
 
 		// Blocking connection check before persist.
 		if err := runConnectionCheck(ctx, h.createCheckTask, h.waitForTaskResult,
-			h.connectionCheckTimeout, workspaceID, existingDest.ManagedConnectorID, raw); err != nil {
+			h.connectionCheckTimeout, workspaceID, existingDest.ManagedConnectorID, raw,
+			checkServiceAccount(params.RuntimeConfig, existingDest.RuntimeConfig)); err != nil {
 			return nil, err
 		}
-	}
-
-	if req.Msg.RuntimeConfig != nil {
-		params.RuntimeConfig = req.Msg.RuntimeConfig
 	}
 
 	dest, err := h.updateDestination.Execute(ctx, params)

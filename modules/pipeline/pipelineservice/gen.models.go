@@ -2086,6 +2086,7 @@ const (
 	CheckPayloadFieldDestinationID
 	CheckPayloadFieldManagedConnectorID
 	CheckPayloadFieldConfig
+	CheckPayloadFieldServiceAccountName
 )
 
 type CheckPayloadFilter struct {
@@ -2099,6 +2100,7 @@ type CheckPayload struct {
 	DestinationID      *uuid.UUID
 	ManagedConnectorID uuid.UUID
 	Config             *string
+	ServiceAccountName string
 }
 
 // user code 'CheckPayload methods'
@@ -2122,6 +2124,7 @@ func (c *CheckPayload) Copy() CheckPayload {
 		tmp2 = (*c.Config)
 		result.Config = &tmp2
 	}
+	result.ServiceAccountName = c.ServiceAccountName
 
 	return result
 }
@@ -2158,6 +2161,9 @@ func (c *CheckPayload) Equals(to *CheckPayload) bool {
 		if (*c.Config) != (*to.Config) {
 			return false
 		}
+	}
+	if c.ServiceAccountName != to.ServiceAccountName {
+		return false
 	}
 
 	return true

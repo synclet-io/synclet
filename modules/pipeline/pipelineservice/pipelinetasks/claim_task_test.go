@@ -2,6 +2,7 @@ package pipelinetasks_test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sync"
 	"testing"
@@ -327,4 +328,25 @@ func TestClaimTask_ConcurrentClaimersGetExactlyOneWinner(t *testing.T) {
 	assert.Equal(t, pipelineservice.ConnectorTaskStatusRunning, stored.Status)
 	require.NotNil(t, stored.WorkerID)
 	assert.Equal(t, winners[0], *stored.WorkerID)
+}
+
+func TestClaimTask_DirectConfigCheckClaimsItsServiceAccount(t *testing.T) {
+	ctx := context.Background()
+	ws := uuid.New()
+	store := newTaskStore()
+	secrets := newFakeSecrets()
+	mc := seedConnector(store, ws)
+
+	_, err := pipelinetasks.NewCreateCheckTask(store, secrets, &recordingAudit{}).Execute(ctx, pipelinetasks.CreateCheckTaskParams{
+		WorkspaceID:        ws,
+		ManagedConnectorID: &mc.ID,
+		Config:             json.RawMessage(`{"host":"db"}`),
+		ServiceAccountName: "wi-sa",
+	})
+	require.NoError(t, err)
+
+	got, err := pipelinetasks.NewClaimTask(store, secrets).Execute(ctx, "worker-1")
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	assert.Equal(t, "wi-sa", got.ServiceAccountName)
 }
