@@ -145,6 +145,14 @@ func (s *fakeAuditEventsStorage) matches(event *AuditEvent, flt *AuditEventFilte
 		return false
 	}
 
+	if id, ok := equalsValue[uuid.UUID](flt.ActorID); ok && event.ActorID != id {
+		return false
+	}
+
+	if actorType, ok := equalsValue[ActorType](flt.ActorType); ok && event.ActorType != actorType {
+		return false
+	}
+
 	if !matchesTime(flt.CreatedAt, event.CreatedAt) {
 		return false
 	}
@@ -206,8 +214,20 @@ func (s *fakeAuditEventsStorage) Count(_ context.Context, _ *AuditEventFilter) (
 	panic("Count not implemented")
 }
 
-func (s *fakeAuditEventsStorage) Update(_ context.Context, _ *AuditEvent) (*AuditEvent, error) {
-	panic("Update not implemented")
+func (s *fakeAuditEventsStorage) Update(_ context.Context, event *AuditEvent) (*AuditEvent, error) {
+	s.parent.mu.Lock()
+	defer s.parent.mu.Unlock()
+
+	for i, existing := range s.parent.events {
+		if existing.ID == event.ID {
+			updated := event.Copy()
+			s.parent.events[i] = &updated
+
+			return &updated, nil
+		}
+	}
+
+	return nil, ErrAuditEventNotFound
 }
 
 func (s *fakeAuditEventsStorage) Save(_ context.Context, _ *AuditEvent) (*AuditEvent, error) {

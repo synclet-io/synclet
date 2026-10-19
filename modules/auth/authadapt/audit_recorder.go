@@ -22,7 +22,9 @@ type userWorkspacesLister interface {
 
 // AuditRecorder bridges the auth module's AuditRecorder port to the audit
 // module's RecordAuditEvent use case. Events without a workspace are
-// recorded once in each workspace the actor is a member of.
+// recorded once in each workspace the actor is a member of; for an actor
+// with no workspace they are recorded once with a nil WorkspaceID, pending
+// until the actor creates or joins one.
 type AuditRecorder struct {
 	record     auditEventWriter
 	workspaces userWorkspacesLister
@@ -74,6 +76,12 @@ func (r *AuditRecorder) Record(ctx context.Context, event authservice.AuditEvent
 	userWorkspaces, err := r.workspaces.Execute(ctx, actorID)
 	if err != nil {
 		r.logger.WithError(err).WithField("user_id", actorID).Error(ctx, "listing user workspaces for audit event failed")
+
+		return
+	}
+
+	if len(userWorkspaces) == 0 {
+		r.record.Execute(ctx, params)
 
 		return
 	}

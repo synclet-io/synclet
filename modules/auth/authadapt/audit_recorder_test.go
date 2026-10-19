@@ -93,18 +93,25 @@ func TestAuditRecorder_FansOutUserEventToEveryWorkspace(t *testing.T) {
 	}
 }
 
-func TestAuditRecorder_UserWithoutWorkspacesRecordsNothing(t *testing.T) {
+func TestAuditRecorder_UserWithoutWorkspacesRecordsPendingEvent(t *testing.T) {
 	recorder, writer := newTestRecorder(&fakeWorkspacesLister{})
 
 	userID := uuid.New()
 	recorder.Record(context.Background(), authservice.AuditEvent{
-		ActorID:      userID,
-		Action:       "logout",
-		ResourceType: "user",
-		ResourceID:   userID,
+		ActorID:       userID,
+		ActorLabel:    "new@example.com",
+		Action:        "create",
+		ResourceType:  "user",
+		ResourceID:    userID,
+		ResourceLabel: "new@example.com",
 	})
 
-	assert.Empty(t, writer.events)
+	require.Len(t, writer.events, 1)
+	assert.Equal(t, uuid.Nil, writer.events[0].WorkspaceID)
+	assert.Equal(t, auditservice.ActorTypeUser, writer.events[0].ActorType)
+	assert.Equal(t, userID, writer.events[0].ActorID)
+	assert.Equal(t, auditservice.ActionCreate, writer.events[0].Action)
+	assert.Equal(t, auditservice.ResourceTypeUser, writer.events[0].ResourceType)
 }
 
 func TestAuditRecorder_ListingFailureRecordsNothing(t *testing.T) {
