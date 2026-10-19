@@ -257,6 +257,13 @@ k8s:
   defaultMemory: 2Gi
   defaultCPU: "1"
   imagePullSecret: ""
+  ## Name of an existing PersistentVolumeClaim mounted read-write at /local in every connector
+  ## container, where file-writing destinations (duckdb, csv, local-json, sqlite) leave their files:
+  ## a destination path of /local/x.duckdb lands at x.duckdb on the volume. Shared by all jobs and
+  ## never cleaned. Connector pods may run on several nodes at once, so the claim needs
+  ## ReadWriteMany unless they all land on one node, and it must be writable by the connector
+  ## image's user. Empty mounts a per-pod emptyDir, removed with the pod.
+  localVolume: ""
 
 ## @section Auth parameters
 auth:

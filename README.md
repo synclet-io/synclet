@@ -295,8 +295,10 @@ server:
 | `PIPELINE_LOG_ARCHIVE_GCS_*` | `BUCKET`, `PREFIX`, `CREDENTIALS_FILE` for the `gcs` backend | empty |
 | `DOCKER_EXECUTOR_MAX_SYNC_DURATION` | Maximum sync run time on the Docker executor | `24h` |
 | `DOCKER_EXECUTOR_TEMP_DIR_ROOT` | Scratch directory shared with the host Docker daemon | empty |
+| `DOCKER_EXECUTOR_LOCAL_ROOT` | Host directory mounted at `/local` in every connector container, where file-writing destinations leave their files; shared by all jobs and never cleaned (see [Files written by destinations](#files-written-by-destinations)). Empty gives each job its own `/local`, removed with the job. The compose file sets `/tmp/synclet_local` | empty |
 | `DOCKER_EXECUTOR_OWNER_ID` | Owner label that scopes orphan container cleanup to this executor. Executors sharing one Docker daemon need distinct values; two standalone servers on one machine must set it explicitly. A containerised executor needs a stable hostname (the compose file sets `hostname: synclet`) or an explicit value, since a container's default hostname changes on recreation. Containers without the label (from earlier versions) are left alone; remove them by hand once | hostname |
 | `K8S_EXECUTOR_NAMESPACE` | Namespace for connector pods | empty |
+| `K8S_EXECUTOR_LOCAL_VOLUME_CLAIM` | Existing PersistentVolumeClaim mounted at `/local` in the connector containers (Helm: `k8s.localVolume`). Empty mounts a per-pod `emptyDir` | empty |
 | `K8S_EXECUTOR_OWNER_ID` | Owner label on the Jobs and Secrets the Kubernetes executor creates; its reconciler handles only those carrying it, so executors sharing one namespace need distinct values. The default is the pod name: the Helm chart runs the executor as a StatefulSet (stable names `<release>-executor-0`, `-1`, ...), so a restarted replica reclaims its own leftovers, and in standalone mode, where the server runs it in a Deployment, the chart sets the release fullname (`k8s.ownerId` overrides both). Jobs without the label (from earlier versions) are left alone; remove them by hand once | hostname |
 | `EXECUTOR_API_URL` | Internal server URL used by distributed executors | empty |
 | `EXECUTOR_API_TOKEN` | Token distributed executors present to the internal server | empty |
@@ -419,6 +421,13 @@ Synclet uses the Airbyte connector protocol. Connectors are Docker images that i
 2. Browse and select connectors from the repository
 3. Configure source/destination instances with connection parameters
 4. Create connections between sources and destinations
+
+#### Files written by destinations
+
+Destinations that write files (`destination-duckdb`, `destination-csv`, `destination-local-json`, `destination-sqlite`) write under `/local` inside the connector container, as on the Airbyte platform. Where the files end up depends on the executor:
+
+- **Docker**: set `DOCKER_EXECUTOR_LOCAL_ROOT` to a host directory and a destination path of `/local/x.duckdb` lands at `<root>/x.duckdb` on the host. The directory is shared by all jobs and never cleaned; give each connection its own file name in the destination config. The directory must be writable by the connector images' user: a root Synclet creates is made `1777` (world-writable and sticky, like `/tmp`), and an existing one keeps its permissions, with a warning at startup when it is not writable by others. With `docker compose` the root is `/tmp/synclet_local` on the host, made `1777` by the `local-root` service. Unset, each job gets its own `/local`, removed with the job, so the files are lost.
+- **Kubernetes**: set the chart value `k8s.localVolume` to an existing PersistentVolumeClaim and the files land on that volume. Connector pods can run on several nodes at once, so the claim needs `ReadWriteMany` unless they all run on one node, and it must be writable by the connector image's user. Unset, each pod gets an `emptyDir`, removed with the pod.
 
 ### Writing your own connector
 

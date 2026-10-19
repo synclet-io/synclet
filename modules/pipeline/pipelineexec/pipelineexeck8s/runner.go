@@ -29,6 +29,9 @@ type Config struct {
 	ServerAddr      string // Synclet server address reachable from pods
 	APIToken        string // Internal API token the in-pod coordinator sends to the server
 	OwnerID         string // Value of the owner label on every Job and Secret the runner creates
+	// LocalVolumeClaim names an existing PersistentVolumeClaim mounted at /local
+	// in the connector containers of every pod; empty mounts an emptyDir.
+	LocalVolumeClaim string
 }
 
 // SyncOptions contains all parameters needed to launch a sync pod.
@@ -76,12 +79,22 @@ type SyncOptions struct {
 // token; the coordinator reads it from <secrets-dir>/<APITokenSecretKey>.
 const APITokenSecretKey = "api-token"
 
-// localVolumeName is the pod's emptyDir mounted read-write at /local in the
-// connector containers, where Airbyte connectors write their files. It lives
-// as long as the pod.
+// localVolumeName is the pod volume mounted read-write at /local in the
+// connector containers, where Airbyte connectors write their files: the
+// configured PersistentVolumeClaim, or an emptyDir that lives as long as the
+// pod.
 const localVolumeName = "local"
 
-func localVolume() corev1.Volume {
+func localVolume(claim string) corev1.Volume {
+	if claim != "" {
+		return corev1.Volume{
+			Name: localVolumeName,
+			VolumeSource: corev1.VolumeSource{PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+				ClaimName: claim,
+			}},
+		}
+	}
+
 	return corev1.Volume{
 		Name:         localVolumeName,
 		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
@@ -380,7 +393,7 @@ func (r *SyncRunner) LaunchSync(ctx context.Context, opts SyncOptions) (string, 
 	podSpec := corev1.PodSpec{
 		RestartPolicy: corev1.RestartPolicyNever,
 		Containers:    []corev1.Container{orchestratorContainer, sourceContainer, destContainer},
-		Volumes:       []corev1.Volume{sharedVolume, secretVolume, localVolume()},
+		Volumes:       []corev1.Volume{sharedVolume, secretVolume, localVolume(r.config.LocalVolumeClaim)},
 	}
 
 	if r.config.ImagePullSecret != "" {
@@ -607,7 +620,7 @@ func (r *SyncRunner) LaunchConnectorTask(ctx context.Context, opts ConnectorTask
 	podSpec := corev1.PodSpec{
 		RestartPolicy: corev1.RestartPolicyNever,
 		Containers:    []corev1.Container{coordinatorContainer, connectorContainer},
-		Volumes:       append([]corev1.Volume{sharedVolume, localVolume()}, taskSecretVolumes...),
+		Volumes:       append([]corev1.Volume{sharedVolume, localVolume(r.config.LocalVolumeClaim)}, taskSecretVolumes...),
 	}
 
 	applyServiceAccount(&podSpec, opts.ServiceAccountName)

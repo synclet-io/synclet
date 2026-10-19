@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
@@ -84,13 +85,13 @@ func TestTestedWith(t *testing.T) {
 			rows:    []int{100, 100},
 		},
 		{
-			// The DuckDB file lives in the job's /local directory, removed with
-			// the job, so the runs are checked by the records they read.
+			// The DuckDB file outlives the job in the executor's local root.
 			name: "faker-incremental-append-duckdb", source: faker, destination: destinationDuckDB,
 			sourceConfig:      fakerConfig,
 			destinationConfig: map[string]any{"destination_path": "/local/destination.duckdb", "schema": "x"},
 			streams:           []streamOpt{{Name: "users", SyncMode: "incremental", CursorField: "updated_at", DestinationSyncMode: "append"}},
 			recordsRead:       []int64{100, 0},
+			localFile:         "destination.duckdb",
 		},
 		{
 			name: "faker-dev-null", source: faker, destination: destinationDevNull,
@@ -101,7 +102,11 @@ func TestTestedWith(t *testing.T) {
 		},
 	}
 
-	server := startSyncletServer(t, map[string]string{})
+	// Synclet creates the root itself, with mode 1777, so a connector of any
+	// uid writes to it.
+	localRoot := filepath.Join(t.TempDir(), "local")
+
+	server := startSyncletServer(t, map[string]string{"DOCKER_EXECUTOR_LOCAL_ROOT": localRoot})
 	defer server.Stop()
 
 	client := newAPIClient(server.baseURL)
@@ -121,6 +126,15 @@ func TestTestedWith(t *testing.T) {
 			connID := tc.createConnection(ctx, t, client, destConfig)
 
 			for run := range max(len(tc.rows), len(tc.recordsRead)) {
+				var localPath string
+
+				var before os.FileInfo
+
+				if tc.localFile != "" {
+					localPath = filepath.Join(localRoot, tc.localFile)
+					before, _ = os.Stat(localPath)
+				}
+
 				res := client.WaitForJob(ctx, t, client.TriggerSync(ctx, t, connID), 10*time.Minute)
 				require.NoError(t, res.Err, "run %d", run+1)
 
@@ -128,6 +142,22 @@ func TestTestedWith(t *testing.T) {
 					t.Logf("TESTED-WITH %s -> %s | %s | run %d: status=%s records_read=%d",
 						tc.source, tc.destination, tc.name, run+1, res.JobStatus, res.RecordsRead)
 					assert.Equal(t, tc.recordsRead[run], res.RecordsRead, "records read in run %d", run+1)
+
+					if localPath != "" {
+						rootInfo, err := os.Stat(localRoot)
+						require.NoError(t, err, "local root after run %d", run+1)
+						t.Logf("TESTED-WITH %s | run %d: local root %s", tc.name, run+1, rootInfo.Mode())
+
+						after, err := os.Stat(localPath)
+						require.NoError(t, err, "%s on the host after run %d", tc.localFile, run+1)
+						t.Logf("TESTED-WITH %s | run %d: %s left on the host, %d bytes, modified %s",
+							tc.name, run+1, localPath, after.Size(), after.ModTime().Format(time.RFC3339Nano))
+
+						if tc.recordsRead[run] > 0 {
+							written := before == nil || after.Size() != before.Size() || after.ModTime().After(before.ModTime())
+							assert.True(t, written, "run %d read %d records but did not write %s", run+1, tc.recordsRead[run], localPath)
+						}
+					}
 
 					continue
 				}
@@ -164,6 +194,9 @@ type twCase struct {
 	// recordsRead is the expected records read by each run, for a destination
 	// whose output the test cannot query.
 	recordsRead []int64
+	// localFile is a file the destination leaves in the executor's local
+	// root, checked after each run.
+	localFile string
 }
 
 func (tc twCase) createConnection(ctx context.Context, t *testing.T, c *apiClient, destConfig map[string]any) string {

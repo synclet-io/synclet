@@ -409,6 +409,17 @@ func TestChart_K8sOwnerID(t *testing.T) {
 	assert.Equal(t, "blue", renderChart(t, "--set", "k8s.ownerId=blue").get(t, "ConfigMap", "t-synclet").Data["K8S_EXECUTOR_OWNER_ID"])
 }
 
+func TestChart_K8sLocalVolume(t *testing.T) {
+	_, set := renderChart(t).get(t, "ConfigMap", "t-synclet").Data["K8S_EXECUTOR_LOCAL_VOLUME_CLAIM"]
+	assert.False(t, set, "connector pods mount an emptyDir at /local by default")
+
+	assert.Equal(t, "synclet-local",
+		renderChart(t, "--set", "k8s.localVolume=synclet-local").get(t, "ConfigMap", "t-synclet").Data["K8S_EXECUTOR_LOCAL_VOLUME_CLAIM"])
+
+	cm := renderChart(t, "--set", "mode=distributed", "--set", "k8s.localVolume=synclet-local").get(t, "ConfigMap", "t-synclet-executor")
+	assert.Equal(t, "synclet-local", cm.Data["K8S_EXECUTOR_LOCAL_VOLUME_CLAIM"])
+}
+
 func TestChart_ExecutorStrategyRenamed(t *testing.T) {
 	if _, err := exec.LookPath("helm"); err != nil {
 		t.Skip("helm binary not found")

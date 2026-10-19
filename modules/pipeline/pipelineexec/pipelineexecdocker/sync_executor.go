@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 	"time"
 
 	"github.com/go-pnp/go-pnp/logging"
@@ -40,6 +39,7 @@ type DockerSyncExecutor struct {
 	runtimeDefaults pipelineservice.RuntimeDefaults
 	idleTimeout     time.Duration
 	tempDirRoot     string
+	localRoot       string
 	logger          *logging.Logger
 }
 
@@ -52,7 +52,10 @@ type DockerSyncExecutorParams struct {
 	// TempDirRoot is where the job's /local directory is created; see
 	// NewContainerRunner.
 	TempDirRoot string
-	Logger      *logging.Logger
+	// LocalRoot, when set, is the host directory mounted at /local in every
+	// job instead of a per-job directory; it is never removed.
+	LocalRoot string
+	Logger    *logging.Logger
 }
 
 // NewDockerSyncExecutor creates a new sync executor.
@@ -63,6 +66,7 @@ func NewDockerSyncExecutor(params DockerSyncExecutorParams) *DockerSyncExecutor 
 		runtimeDefaults: params.RuntimeDefaults,
 		idleTimeout:     params.IdleTimeout,
 		tempDirRoot:     params.TempDirRoot,
+		localRoot:       params.LocalRoot,
 		logger:          params.Logger.Named("sync-executor"),
 	}
 }
@@ -79,13 +83,13 @@ func (e *DockerSyncExecutor) Execute(ctx context.Context, bundle *pipelineexec.S
 		"synclet.io/connection-id": bundle.ConnectionID.String(),
 	}
 
-	// The source and destination of the job share one /local directory,
-	// removed after both containers are.
-	localDir, err := CreateLocalDir(e.tempDirRoot)
+	// The source and destination of the job share one /local directory: the
+	// local root, or a per-job directory removed after both containers are.
+	localDir, releaseLocalDir, err := acquireLocalDir(e.tempDirRoot, e.localRoot)
 	if err != nil {
 		return nil, fmt.Errorf("creating the job's local dir: %w", err)
 	}
-	defer func() { _ = os.RemoveAll(localDir) }()
+	defer releaseLocalDir()
 
 	// Resolve runtime config for source and set resource limits.
 	srcRuntimeCfg := pipelineservice.ResolveRuntimeConfig(e.runtimeDefaults, pipelineservice.ParseRuntimeConfig(&bundle.SourceRuntimeConfig))

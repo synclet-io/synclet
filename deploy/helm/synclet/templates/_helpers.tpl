@@ -669,4 +669,7 @@ K8S_EXECUTOR_JOB_RESOURCE_CLEANUP_INTERVAL: {{ .Values.pipeline.resourceCleanupI
 {{- if .Values.k8s.imagePullSecret }}
 K8S_EXECUTOR_IMAGE_PULL_SECRET: {{ .Values.k8s.imagePullSecret | quote }}
 {{- end }}
+{{- if .Values.k8s.localVolume }}
+K8S_EXECUTOR_LOCAL_VOLUME_CLAIM: {{ .Values.k8s.localVolume | quote }}
+{{- end }}
 {{- end }}

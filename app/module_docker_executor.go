@@ -35,6 +35,13 @@ type dockerExecutorConfig struct {
 	// a path bind-mounted to the same location on the host — otherwise the
 	// host Docker daemon cannot resolve the bind-mount source.
 	TempDirRoot string `env:"TEMP_DIR_ROOT"`
+	// LocalRoot is the host directory mounted read-write at /local in every
+	// connector container, where file-writing destinations leave their files.
+	// It is shared by all jobs and never cleaned. Empty gives each job its own
+	// /local under TempDirRoot, removed with the job. Like TempDirRoot, in a
+	// Docker-in-Docker setup it must be bind-mounted at the same path on the
+	// host.
+	LocalRoot string `env:"LOCAL_ROOT"`
 	// OwnerID is stamped as the synclet.io/owner label on every connector
 	// container, and orphan cleanup removes only containers carrying it.
 	// Empty uses the hostname; executors sharing one Docker daemon need
@@ -58,13 +65,19 @@ func dockerExecutorConfigModule() fx.Option {
 	)
 }
 
-func newContainerRunner(cfg *dockerExecutorConfig) (*pipelineexecdocker.ContainerRunner, error) {
+func newContainerRunner(cfg *dockerExecutorConfig, logger *logging.Logger) (*pipelineexecdocker.ContainerRunner, error) {
 	ownerID, err := pipelineexec.ResolveOwnerID(cfg.OwnerID, "DOCKER_EXECUTOR_OWNER_ID", os.Hostname)
 	if err != nil {
 		return nil, err
 	}
 
-	return pipelineexecdocker.NewContainerRunner(cfg.TempDirRoot, ownerID)
+	if cfg.LocalRoot != "" {
+		if err := pipelineexecdocker.PrepareLocalRoot(context.Background(), cfg.LocalRoot, logger); err != nil {
+			return nil, err
+		}
+	}
+
+	return pipelineexecdocker.NewContainerRunner(cfg.TempDirRoot, cfg.LocalRoot, ownerID)
 }
 
 func dockerContainerRunnerAdapter(r *pipelineexecdocker.ContainerRunner) container.Runner {
@@ -168,6 +181,7 @@ func newDockerSyncExecutor(
 		RuntimeDefaults: cfg.Runtime.defaults(),
 		IdleTimeout:     cfg.IdleTimeout,
 		TempDirRoot:     dockerCfg.TempDirRoot,
+		LocalRoot:       dockerCfg.LocalRoot,
 		Logger:          logger,
 	})
 }

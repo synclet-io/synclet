@@ -120,6 +120,7 @@ var _ pkgcontainer.Runner = (*ContainerRunner)(nil)
 type ContainerRunner struct {
 	client       *client.Client
 	tempDirRoot  string
+	localRoot    string
 	ownerID      string
 	drainTimeout time.Duration
 }
@@ -133,14 +134,18 @@ type ContainerRunner struct {
 // host Docker daemon can resolve the bind-mount source — see
 // pipelineConfig.DockerTempDirRoot for the wiring.
 //
+// localRoot, when set, is the host directory mounted at /local in every
+// container instead of a per-run directory under tempDirRoot; the runner never
+// removes it. It follows the same host-path rule as tempDirRoot.
+//
 // ownerID is stamped as the OwnerLabel on every container the runner creates.
-func NewContainerRunner(tempDirRoot, ownerID string) (*ContainerRunner, error) {
+func NewContainerRunner(tempDirRoot, localRoot, ownerID string) (*ContainerRunner, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, fmt.Errorf("creating docker client: %w", err)
 	}
 
-	return &ContainerRunner{client: cli, tempDirRoot: tempDirRoot, ownerID: ownerID}, nil
+	return &ContainerRunner{client: cli, tempDirRoot: tempDirRoot, localRoot: localRoot, ownerID: ownerID}, nil
 }
 
 // OwnerID returns the owner id stamped on the runner's containers.
@@ -227,16 +232,15 @@ func (r *ContainerRunner) Run(ctx context.Context, opts RunOptions) (*RunResult,
 		}
 	}
 
-	// A container run without a caller-owned /local directory gets its own,
-	// removed together with the temp dir.
+	// A container run without a caller-owned /local directory gets the local
+	// root, or else its own directory, removed together with the temp dir.
 	localDir := opts.LocalDir
-
-	var ownLocalDir string
+	releaseLocalDir := func() {}
 
 	if localDir == "" {
 		var err error
 
-		ownLocalDir, err = CreateLocalDir(r.tempDirRoot)
+		localDir, releaseLocalDir, err = acquireLocalDir(r.tempDirRoot, r.localRoot)
 		if err != nil {
 			if tempDir != "" {
 				_ = os.RemoveAll(tempDir)
@@ -244,8 +248,6 @@ func (r *ContainerRunner) Run(ctx context.Context, opts RunOptions) (*RunResult,
 
 			return nil, fmt.Errorf("creating local dir: %w", err)
 		}
-
-		localDir = ownLocalDir
 	}
 
 	// Clean up helper used on error paths and once the container is done.
@@ -254,9 +256,7 @@ func (r *ContainerRunner) Run(ctx context.Context, opts RunOptions) (*RunResult,
 			_ = os.RemoveAll(tempDir)
 		}
 
-		if ownLocalDir != "" {
-			_ = os.RemoveAll(ownLocalDir)
-		}
+		releaseLocalDir()
 	}
 
 	networkMode := opts.NetworkMode

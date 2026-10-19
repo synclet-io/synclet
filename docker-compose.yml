@@ -16,6 +16,17 @@ services:
       postgres:
         condition: service_healthy
 
+  # The Docker daemon creates a missing /tmp/synclet_local owned by root with
+  # mode 0755, which connectors running as another user cannot write to; this
+  # makes it 1777 (sticky, like /tmp). The Synclet image has no shell, so the
+  # postgres image the stack already pulls does the chmod.
+  local-root:
+    image: postgres:16
+    entrypoint: ["chmod", "1777", "/tmp/synclet_local"]
+    user: "0:0"
+    volumes:
+      - /tmp/synclet_local:/tmp/synclet_local
+
   synclet:
     image: *synclet-image
     command: ["server", "--standalone"]
@@ -38,15 +49,22 @@ services:
       # bind-mount per-task config/catalog/state files into spawned connector
       # containers. Path must match the volume mount below verbatim.
       DOCKER_EXECUTOR_TEMP_DIR_ROOT: /tmp/synclet
+      # Mounted at /local in every connector container and never cleaned:
+      # file-writing destinations (duckdb, csv, local-json, sqlite) leave their
+      # files here on the host. Path must match the volume mount below verbatim.
+      DOCKER_EXECUTOR_LOCAL_ROOT: /tmp/synclet_local
     # Root reaches the Docker socket whatever group owns it on the host, and
-    # writes to /tmp/synclet, which the daemon creates root-owned. Access to
-    # the socket is root-equivalent on the host either way.
+    # writes to /tmp/synclet and /tmp/synclet_local, which the daemon creates
+    # root-owned. Access to the socket is root-equivalent on the host either way.
     user: "0:0"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /tmp/synclet:/tmp/synclet
+      - /tmp/synclet_local:/tmp/synclet_local
     depends_on:
       migrate:
+        condition: service_completed_successfully
+      local-root:
         condition: service_completed_successfully
       postgres:
         condition: service_healthy

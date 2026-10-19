@@ -33,8 +33,12 @@ type k8sExecutorConfig struct {
 	// Secret the executor creates, and the reconciler handles only those
 	// carrying it. Empty uses the hostname, which a StatefulSet keeps stable
 	// per replica; executors sharing one namespace need distinct values.
-	OwnerID string                `env:"OWNER_ID"`
-	Jobs    k8sExecutorJobsConfig `envPrefix:"JOB_"`
+	OwnerID string `env:"OWNER_ID"`
+	// LocalVolumeClaim names an existing PersistentVolumeClaim mounted at
+	// /local in the connector containers, where file-writing destinations
+	// leave their files. Empty mounts a per-pod emptyDir.
+	LocalVolumeClaim string                `env:"LOCAL_VOLUME_CLAIM"`
+	Jobs             k8sExecutorJobsConfig `envPrefix:"JOB_"`
 }
 
 // k8sExecutorConfigModule provides *k8sExecutorConfig to a process that runs
@@ -106,15 +110,16 @@ func newK8sSyncRunner(cfg *k8sExecutorConfig, apiToken string) (*pipelineexeck8s
 	}
 
 	return pipelineexeck8s.NewSyncRunner(pipelineexeck8s.Config{
-		Namespace:       cfg.Namespace,
-		Kubeconfig:      cfg.Kubeconfig,
-		ImagePullSecret: cfg.ImagePullSecret,
-		DefaultMemory:   cfg.DefaultMemory,
-		DefaultCPU:      cfg.DefaultCPU,
-		SyncletImage:    cfg.SyncletImage,
-		ServerAddr:      cfg.ServerAddr,
-		APIToken:        apiToken,
-		OwnerID:         ownerID,
+		Namespace:        cfg.Namespace,
+		Kubeconfig:       cfg.Kubeconfig,
+		ImagePullSecret:  cfg.ImagePullSecret,
+		DefaultMemory:    cfg.DefaultMemory,
+		DefaultCPU:       cfg.DefaultCPU,
+		SyncletImage:     cfg.SyncletImage,
+		ServerAddr:       cfg.ServerAddr,
+		APIToken:         apiToken,
+		OwnerID:          ownerID,
+		LocalVolumeClaim: cfg.LocalVolumeClaim,
 	})
 }
 
