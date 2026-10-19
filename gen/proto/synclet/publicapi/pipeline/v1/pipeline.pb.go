@@ -2905,8 +2905,11 @@ type Connection struct {
 	DestinationName          string `protobuf:"bytes,19,opt,name=destination_name,json=destinationName,proto3" json:"destination_name,omitempty"`
 	SourceConnectorName      string `protobuf:"bytes,20,opt,name=source_connector_name,json=sourceConnectorName,proto3" json:"source_connector_name,omitempty"`
 	DestinationConnectorName string `protobuf:"bytes,21,opt,name=destination_connector_name,json=destinationConnectorName,proto3" json:"destination_connector_name,omitempty"`
-	unknownFields            protoimpl.UnknownFields
-	sizeCache                protoimpl.SizeCache
+	// Why the connection was paused by Synclet, such as a mapper that no longer
+	// compiles after a schema change. Empty when the status was set by a user.
+	StatusReason  string `protobuf:"bytes,22,opt,name=status_reason,json=statusReason,proto3" json:"status_reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Connection) Reset() {
@@ -3075,6 +3078,13 @@ func (x *Connection) GetSourceConnectorName() string {
 func (x *Connection) GetDestinationConnectorName() string {
 	if x != nil {
 		return x.DestinationConnectorName
+	}
+	return ""
+}
+
+func (x *Connection) GetStatusReason() string {
+	if x != nil {
+		return x.StatusReason
 	}
 	return ""
 }
@@ -4103,8 +4113,11 @@ type ConfiguredStream struct {
 	CursorField         []string               `protobuf:"bytes,5,rep,name=cursor_field,json=cursorField,proto3" json:"cursor_field,omitempty"`
 	PrimaryKey          []*CompositeKey        `protobuf:"bytes,6,rep,name=primary_key,json=primaryKey,proto3" json:"primary_key,omitempty"`
 	SelectedFields      []*SelectedField       `protobuf:"bytes,7,rep,name=selected_fields,json=selectedFields,proto3" json:"selected_fields,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// Mapper steps applied to the stream's records, in order, each in the
+	// mapper step JSON shape (one of rename, cast, set, hash, mask, filter).
+	Mappers       []*structpb.Struct `protobuf:"bytes,8,rep,name=mappers,proto3" json:"mappers,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ConfiguredStream) Reset() {
@@ -4186,6 +4199,13 @@ func (x *ConfiguredStream) GetSelectedFields() []*SelectedField {
 	return nil
 }
 
+func (x *ConfiguredStream) GetMappers() []*structpb.Struct {
+	if x != nil {
+		return x.Mappers
+	}
+	return nil
+}
+
 type ConfigureStreamsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -4222,6 +4242,260 @@ func (*ConfigureStreamsResponse) Descriptor() ([]byte, []int) {
 	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{61}
 }
 
+type ValidateMappersRequest struct {
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	ConnectionId        string                 `protobuf:"bytes,1,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty"`
+	Namespace           string                 `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	StreamName          string                 `protobuf:"bytes,3,opt,name=stream_name,json=streamName,proto3" json:"stream_name,omitempty"`
+	Mappers             []*structpb.Struct     `protobuf:"bytes,4,rep,name=mappers,proto3" json:"mappers,omitempty"`
+	SelectedFields      []*SelectedField       `protobuf:"bytes,5,rep,name=selected_fields,json=selectedFields,proto3" json:"selected_fields,omitempty"`
+	PrimaryKey          []*CompositeKey        `protobuf:"bytes,6,rep,name=primary_key,json=primaryKey,proto3" json:"primary_key,omitempty"`
+	DestinationSyncMode DestinationSyncMode    `protobuf:"varint,7,opt,name=destination_sync_mode,json=destinationSyncMode,proto3,enum=synclet.publicapi.pipeline.v1.DestinationSyncMode" json:"destination_sync_mode,omitempty"`
+	SampleRecord        *structpb.Struct       `protobuf:"bytes,8,opt,name=sample_record,json=sampleRecord,proto3,oneof" json:"sample_record,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *ValidateMappersRequest) Reset() {
+	*x = ValidateMappersRequest{}
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[62]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ValidateMappersRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ValidateMappersRequest) ProtoMessage() {}
+
+func (x *ValidateMappersRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[62]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ValidateMappersRequest.ProtoReflect.Descriptor instead.
+func (*ValidateMappersRequest) Descriptor() ([]byte, []int) {
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{62}
+}
+
+func (x *ValidateMappersRequest) GetConnectionId() string {
+	if x != nil {
+		return x.ConnectionId
+	}
+	return ""
+}
+
+func (x *ValidateMappersRequest) GetNamespace() string {
+	if x != nil {
+		return x.Namespace
+	}
+	return ""
+}
+
+func (x *ValidateMappersRequest) GetStreamName() string {
+	if x != nil {
+		return x.StreamName
+	}
+	return ""
+}
+
+func (x *ValidateMappersRequest) GetMappers() []*structpb.Struct {
+	if x != nil {
+		return x.Mappers
+	}
+	return nil
+}
+
+func (x *ValidateMappersRequest) GetSelectedFields() []*SelectedField {
+	if x != nil {
+		return x.SelectedFields
+	}
+	return nil
+}
+
+func (x *ValidateMappersRequest) GetPrimaryKey() []*CompositeKey {
+	if x != nil {
+		return x.PrimaryKey
+	}
+	return nil
+}
+
+func (x *ValidateMappersRequest) GetDestinationSyncMode() DestinationSyncMode {
+	if x != nil {
+		return x.DestinationSyncMode
+	}
+	return DestinationSyncMode_DESTINATION_SYNC_MODE_UNSPECIFIED
+}
+
+func (x *ValidateMappersRequest) GetSampleRecord() *structpb.Struct {
+	if x != nil {
+		return x.SampleRecord
+	}
+	return nil
+}
+
+// MapperIssue is a problem found in one mapper step; step is -1 for a problem
+// with the field selection.
+type MapperIssue struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Step          int32                  `protobuf:"varint,1,opt,name=step,proto3" json:"step,omitempty"`
+	Field         string                 `protobuf:"bytes,2,opt,name=field,proto3" json:"field,omitempty"`
+	Message       string                 `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MapperIssue) Reset() {
+	*x = MapperIssue{}
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[63]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MapperIssue) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MapperIssue) ProtoMessage() {}
+
+func (x *MapperIssue) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[63]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MapperIssue.ProtoReflect.Descriptor instead.
+func (*MapperIssue) Descriptor() ([]byte, []int) {
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{63}
+}
+
+func (x *MapperIssue) GetStep() int32 {
+	if x != nil {
+		return x.Step
+	}
+	return 0
+}
+
+func (x *MapperIssue) GetField() string {
+	if x != nil {
+		return x.Field
+	}
+	return ""
+}
+
+func (x *MapperIssue) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+type ValidateMappersResponse struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Errors           []*MapperIssue         `protobuf:"bytes,1,rep,name=errors,proto3" json:"errors,omitempty"`
+	Warnings         []*MapperIssue         `protobuf:"bytes,2,rep,name=warnings,proto3" json:"warnings,omitempty"`
+	OutputSchema     *structpb.Struct       `protobuf:"bytes,3,opt,name=output_schema,json=outputSchema,proto3" json:"output_schema,omitempty"`
+	OutputPrimaryKey []*CompositeKey        `protobuf:"bytes,4,rep,name=output_primary_key,json=outputPrimaryKey,proto3" json:"output_primary_key,omitempty"`
+	SampleOutput     *structpb.Struct       `protobuf:"bytes,5,opt,name=sample_output,json=sampleOutput,proto3,oneof" json:"sample_output,omitempty"`
+	SampleKept       bool                   `protobuf:"varint,6,opt,name=sample_kept,json=sampleKept,proto3" json:"sample_kept,omitempty"`
+	SampleError      string                 `protobuf:"bytes,7,opt,name=sample_error,json=sampleError,proto3" json:"sample_error,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *ValidateMappersResponse) Reset() {
+	*x = ValidateMappersResponse{}
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[64]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ValidateMappersResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ValidateMappersResponse) ProtoMessage() {}
+
+func (x *ValidateMappersResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[64]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ValidateMappersResponse.ProtoReflect.Descriptor instead.
+func (*ValidateMappersResponse) Descriptor() ([]byte, []int) {
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{64}
+}
+
+func (x *ValidateMappersResponse) GetErrors() []*MapperIssue {
+	if x != nil {
+		return x.Errors
+	}
+	return nil
+}
+
+func (x *ValidateMappersResponse) GetWarnings() []*MapperIssue {
+	if x != nil {
+		return x.Warnings
+	}
+	return nil
+}
+
+func (x *ValidateMappersResponse) GetOutputSchema() *structpb.Struct {
+	if x != nil {
+		return x.OutputSchema
+	}
+	return nil
+}
+
+func (x *ValidateMappersResponse) GetOutputPrimaryKey() []*CompositeKey {
+	if x != nil {
+		return x.OutputPrimaryKey
+	}
+	return nil
+}
+
+func (x *ValidateMappersResponse) GetSampleOutput() *structpb.Struct {
+	if x != nil {
+		return x.SampleOutput
+	}
+	return nil
+}
+
+func (x *ValidateMappersResponse) GetSampleKept() bool {
+	if x != nil {
+		return x.SampleKept
+	}
+	return false
+}
+
+func (x *ValidateMappersResponse) GetSampleError() string {
+	if x != nil {
+		return x.SampleError
+	}
+	return ""
+}
+
 type GetDiscoveredCatalogRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ConnectionId  string                 `protobuf:"bytes,1,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty"`
@@ -4231,7 +4505,7 @@ type GetDiscoveredCatalogRequest struct {
 
 func (x *GetDiscoveredCatalogRequest) Reset() {
 	*x = GetDiscoveredCatalogRequest{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[62]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[65]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4243,7 +4517,7 @@ func (x *GetDiscoveredCatalogRequest) String() string {
 func (*GetDiscoveredCatalogRequest) ProtoMessage() {}
 
 func (x *GetDiscoveredCatalogRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[62]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[65]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4256,7 +4530,7 @@ func (x *GetDiscoveredCatalogRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDiscoveredCatalogRequest.ProtoReflect.Descriptor instead.
 func (*GetDiscoveredCatalogRequest) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{62}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{65}
 }
 
 func (x *GetDiscoveredCatalogRequest) GetConnectionId() string {
@@ -4275,7 +4549,7 @@ type GetDiscoveredCatalogResponse struct {
 
 func (x *GetDiscoveredCatalogResponse) Reset() {
 	*x = GetDiscoveredCatalogResponse{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[63]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[66]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4287,7 +4561,7 @@ func (x *GetDiscoveredCatalogResponse) String() string {
 func (*GetDiscoveredCatalogResponse) ProtoMessage() {}
 
 func (x *GetDiscoveredCatalogResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[63]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[66]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4300,7 +4574,7 @@ func (x *GetDiscoveredCatalogResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDiscoveredCatalogResponse.ProtoReflect.Descriptor instead.
 func (*GetDiscoveredCatalogResponse) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{63}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{66}
 }
 
 func (x *GetDiscoveredCatalogResponse) GetCatalog() *v1.AirbyteCatalog {
@@ -4319,7 +4593,7 @@ type GetConfiguredCatalogRequest struct {
 
 func (x *GetConfiguredCatalogRequest) Reset() {
 	*x = GetConfiguredCatalogRequest{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[64]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[67]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4331,7 +4605,7 @@ func (x *GetConfiguredCatalogRequest) String() string {
 func (*GetConfiguredCatalogRequest) ProtoMessage() {}
 
 func (x *GetConfiguredCatalogRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[64]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[67]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4344,7 +4618,7 @@ func (x *GetConfiguredCatalogRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetConfiguredCatalogRequest.ProtoReflect.Descriptor instead.
 func (*GetConfiguredCatalogRequest) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{64}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{67}
 }
 
 func (x *GetConfiguredCatalogRequest) GetConnectionId() string {
@@ -4363,7 +4637,7 @@ type GetConfiguredCatalogResponse struct {
 
 func (x *GetConfiguredCatalogResponse) Reset() {
 	*x = GetConfiguredCatalogResponse{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[65]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[68]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4375,7 +4649,7 @@ func (x *GetConfiguredCatalogResponse) String() string {
 func (*GetConfiguredCatalogResponse) ProtoMessage() {}
 
 func (x *GetConfiguredCatalogResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[65]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[68]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4388,7 +4662,7 @@ func (x *GetConfiguredCatalogResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetConfiguredCatalogResponse.ProtoReflect.Descriptor instead.
 func (*GetConfiguredCatalogResponse) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{65}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{68}
 }
 
 func (x *GetConfiguredCatalogResponse) GetCatalog() *structpb.Struct {
@@ -4407,7 +4681,7 @@ type GetSchemaChangesRequest struct {
 
 func (x *GetSchemaChangesRequest) Reset() {
 	*x = GetSchemaChangesRequest{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[66]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[69]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4419,7 +4693,7 @@ func (x *GetSchemaChangesRequest) String() string {
 func (*GetSchemaChangesRequest) ProtoMessage() {}
 
 func (x *GetSchemaChangesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[66]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[69]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4432,7 +4706,7 @@ func (x *GetSchemaChangesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSchemaChangesRequest.ProtoReflect.Descriptor instead.
 func (*GetSchemaChangesRequest) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{66}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{69}
 }
 
 func (x *GetSchemaChangesRequest) GetConnectionId() string {
@@ -4456,7 +4730,7 @@ type SchemaChange struct {
 
 func (x *SchemaChange) Reset() {
 	*x = SchemaChange{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[67]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[70]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4468,7 +4742,7 @@ func (x *SchemaChange) String() string {
 func (*SchemaChange) ProtoMessage() {}
 
 func (x *SchemaChange) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[67]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[70]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4481,7 +4755,7 @@ func (x *SchemaChange) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SchemaChange.ProtoReflect.Descriptor instead.
 func (*SchemaChange) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{67}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{70}
 }
 
 func (x *SchemaChange) GetType() string {
@@ -4535,7 +4809,7 @@ type GetSchemaChangesResponse struct {
 
 func (x *GetSchemaChangesResponse) Reset() {
 	*x = GetSchemaChangesResponse{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[68]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[71]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4547,7 +4821,7 @@ func (x *GetSchemaChangesResponse) String() string {
 func (*GetSchemaChangesResponse) ProtoMessage() {}
 
 func (x *GetSchemaChangesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[68]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[71]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4560,7 +4834,7 @@ func (x *GetSchemaChangesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSchemaChangesResponse.ProtoReflect.Descriptor instead.
 func (*GetSchemaChangesResponse) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{68}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{71}
 }
 
 func (x *GetSchemaChangesResponse) GetChanges() []*SchemaChange {
@@ -4581,7 +4855,7 @@ type ResetStreamStateRequest struct {
 
 func (x *ResetStreamStateRequest) Reset() {
 	*x = ResetStreamStateRequest{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[69]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[72]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4593,7 +4867,7 @@ func (x *ResetStreamStateRequest) String() string {
 func (*ResetStreamStateRequest) ProtoMessage() {}
 
 func (x *ResetStreamStateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[69]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[72]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4606,7 +4880,7 @@ func (x *ResetStreamStateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResetStreamStateRequest.ProtoReflect.Descriptor instead.
 func (*ResetStreamStateRequest) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{69}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{72}
 }
 
 func (x *ResetStreamStateRequest) GetConnectionId() string {
@@ -4638,7 +4912,7 @@ type ResetStreamStateResponse struct {
 
 func (x *ResetStreamStateResponse) Reset() {
 	*x = ResetStreamStateResponse{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[70]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[73]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4650,7 +4924,7 @@ func (x *ResetStreamStateResponse) String() string {
 func (*ResetStreamStateResponse) ProtoMessage() {}
 
 func (x *ResetStreamStateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[70]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[73]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4663,7 +4937,7 @@ func (x *ResetStreamStateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResetStreamStateResponse.ProtoReflect.Descriptor instead.
 func (*ResetStreamStateResponse) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{70}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{73}
 }
 
 type ResetConnectionStateRequest struct {
@@ -4675,7 +4949,7 @@ type ResetConnectionStateRequest struct {
 
 func (x *ResetConnectionStateRequest) Reset() {
 	*x = ResetConnectionStateRequest{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[71]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[74]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4687,7 +4961,7 @@ func (x *ResetConnectionStateRequest) String() string {
 func (*ResetConnectionStateRequest) ProtoMessage() {}
 
 func (x *ResetConnectionStateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[71]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[74]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4700,7 +4974,7 @@ func (x *ResetConnectionStateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResetConnectionStateRequest.ProtoReflect.Descriptor instead.
 func (*ResetConnectionStateRequest) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{71}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{74}
 }
 
 func (x *ResetConnectionStateRequest) GetConnectionId() string {
@@ -4718,7 +4992,7 @@ type ResetConnectionStateResponse struct {
 
 func (x *ResetConnectionStateResponse) Reset() {
 	*x = ResetConnectionStateResponse{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[72]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[75]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4730,7 +5004,7 @@ func (x *ResetConnectionStateResponse) String() string {
 func (*ResetConnectionStateResponse) ProtoMessage() {}
 
 func (x *ResetConnectionStateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[72]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[75]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4743,7 +5017,7 @@ func (x *ResetConnectionStateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResetConnectionStateResponse.ProtoReflect.Descriptor instead.
 func (*ResetConnectionStateResponse) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{72}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{75}
 }
 
 type StreamState struct {
@@ -4758,7 +5032,7 @@ type StreamState struct {
 
 func (x *StreamState) Reset() {
 	*x = StreamState{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[73]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[76]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4770,7 +5044,7 @@ func (x *StreamState) String() string {
 func (*StreamState) ProtoMessage() {}
 
 func (x *StreamState) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[73]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[76]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4783,7 +5057,7 @@ func (x *StreamState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StreamState.ProtoReflect.Descriptor instead.
 func (*StreamState) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{73}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{76}
 }
 
 func (x *StreamState) GetStreamName() string {
@@ -4823,7 +5097,7 @@ type ListStreamStatesRequest struct {
 
 func (x *ListStreamStatesRequest) Reset() {
 	*x = ListStreamStatesRequest{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[74]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[77]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4835,7 +5109,7 @@ func (x *ListStreamStatesRequest) String() string {
 func (*ListStreamStatesRequest) ProtoMessage() {}
 
 func (x *ListStreamStatesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[74]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[77]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4848,7 +5122,7 @@ func (x *ListStreamStatesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListStreamStatesRequest.ProtoReflect.Descriptor instead.
 func (*ListStreamStatesRequest) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{74}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{77}
 }
 
 func (x *ListStreamStatesRequest) GetConnectionId() string {
@@ -4868,7 +5142,7 @@ type ListStreamStatesResponse struct {
 
 func (x *ListStreamStatesResponse) Reset() {
 	*x = ListStreamStatesResponse{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[75]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[78]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4880,7 +5154,7 @@ func (x *ListStreamStatesResponse) String() string {
 func (*ListStreamStatesResponse) ProtoMessage() {}
 
 func (x *ListStreamStatesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[75]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[78]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4893,7 +5167,7 @@ func (x *ListStreamStatesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListStreamStatesResponse.ProtoReflect.Descriptor instead.
 func (*ListStreamStatesResponse) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{75}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{78}
 }
 
 func (x *ListStreamStatesResponse) GetStates() []*StreamState {
@@ -4922,7 +5196,7 @@ type UpdateStreamStateRequest struct {
 
 func (x *UpdateStreamStateRequest) Reset() {
 	*x = UpdateStreamStateRequest{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[76]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[79]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4934,7 +5208,7 @@ func (x *UpdateStreamStateRequest) String() string {
 func (*UpdateStreamStateRequest) ProtoMessage() {}
 
 func (x *UpdateStreamStateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[76]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[79]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4947,7 +5221,7 @@ func (x *UpdateStreamStateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateStreamStateRequest.ProtoReflect.Descriptor instead.
 func (*UpdateStreamStateRequest) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{76}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{79}
 }
 
 func (x *UpdateStreamStateRequest) GetConnectionId() string {
@@ -4986,7 +5260,7 @@ type UpdateStreamStateResponse struct {
 
 func (x *UpdateStreamStateResponse) Reset() {
 	*x = UpdateStreamStateResponse{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[77]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[80]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4998,7 +5272,7 @@ func (x *UpdateStreamStateResponse) String() string {
 func (*UpdateStreamStateResponse) ProtoMessage() {}
 
 func (x *UpdateStreamStateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[77]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[80]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5011,7 +5285,7 @@ func (x *UpdateStreamStateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateStreamStateResponse.ProtoReflect.Descriptor instead.
 func (*UpdateStreamStateResponse) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{77}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{80}
 }
 
 type Job struct {
@@ -5034,7 +5308,7 @@ type Job struct {
 
 func (x *Job) Reset() {
 	*x = Job{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[78]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[81]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5046,7 +5320,7 @@ func (x *Job) String() string {
 func (*Job) ProtoMessage() {}
 
 func (x *Job) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[78]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[81]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5059,7 +5333,7 @@ func (x *Job) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Job.ProtoReflect.Descriptor instead.
 func (*Job) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{78}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{81}
 }
 
 func (x *Job) GetId() string {
@@ -5160,7 +5434,7 @@ type JobAttempt struct {
 
 func (x *JobAttempt) Reset() {
 	*x = JobAttempt{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[79]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[82]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5172,7 +5446,7 @@ func (x *JobAttempt) String() string {
 func (*JobAttempt) ProtoMessage() {}
 
 func (x *JobAttempt) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[79]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[82]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5185,7 +5459,7 @@ func (x *JobAttempt) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use JobAttempt.ProtoReflect.Descriptor instead.
 func (*JobAttempt) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{79}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{82}
 }
 
 func (x *JobAttempt) GetId() string {
@@ -5241,7 +5515,7 @@ type SyncStats struct {
 
 func (x *SyncStats) Reset() {
 	*x = SyncStats{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[80]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[83]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5253,7 +5527,7 @@ func (x *SyncStats) String() string {
 func (*SyncStats) ProtoMessage() {}
 
 func (x *SyncStats) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[80]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[83]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5266,7 +5540,7 @@ func (x *SyncStats) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SyncStats.ProtoReflect.Descriptor instead.
 func (*SyncStats) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{80}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{83}
 }
 
 func (x *SyncStats) GetRecordsRead() int64 {
@@ -5299,7 +5573,7 @@ type TriggerSyncRequest struct {
 
 func (x *TriggerSyncRequest) Reset() {
 	*x = TriggerSyncRequest{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[81]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[84]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5311,7 +5585,7 @@ func (x *TriggerSyncRequest) String() string {
 func (*TriggerSyncRequest) ProtoMessage() {}
 
 func (x *TriggerSyncRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[81]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[84]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5324,7 +5598,7 @@ func (x *TriggerSyncRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TriggerSyncRequest.ProtoReflect.Descriptor instead.
 func (*TriggerSyncRequest) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{81}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{84}
 }
 
 func (x *TriggerSyncRequest) GetConnectionId() string {
@@ -5343,7 +5617,7 @@ type TriggerSyncResponse struct {
 
 func (x *TriggerSyncResponse) Reset() {
 	*x = TriggerSyncResponse{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[82]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[85]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5355,7 +5629,7 @@ func (x *TriggerSyncResponse) String() string {
 func (*TriggerSyncResponse) ProtoMessage() {}
 
 func (x *TriggerSyncResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[82]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[85]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5368,7 +5642,7 @@ func (x *TriggerSyncResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TriggerSyncResponse.ProtoReflect.Descriptor instead.
 func (*TriggerSyncResponse) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{82}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{85}
 }
 
 func (x *TriggerSyncResponse) GetJob() *Job {
@@ -5387,7 +5661,7 @@ type CancelJobRequest struct {
 
 func (x *CancelJobRequest) Reset() {
 	*x = CancelJobRequest{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[83]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[86]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5399,7 +5673,7 @@ func (x *CancelJobRequest) String() string {
 func (*CancelJobRequest) ProtoMessage() {}
 
 func (x *CancelJobRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[83]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[86]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5412,7 +5686,7 @@ func (x *CancelJobRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CancelJobRequest.ProtoReflect.Descriptor instead.
 func (*CancelJobRequest) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{83}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{86}
 }
 
 func (x *CancelJobRequest) GetJobId() string {
@@ -5430,7 +5704,7 @@ type CancelJobResponse struct {
 
 func (x *CancelJobResponse) Reset() {
 	*x = CancelJobResponse{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[84]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[87]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5442,7 +5716,7 @@ func (x *CancelJobResponse) String() string {
 func (*CancelJobResponse) ProtoMessage() {}
 
 func (x *CancelJobResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[84]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[87]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5455,7 +5729,7 @@ func (x *CancelJobResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CancelJobResponse.ProtoReflect.Descriptor instead.
 func (*CancelJobResponse) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{84}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{87}
 }
 
 type GetJobRequest struct {
@@ -5467,7 +5741,7 @@ type GetJobRequest struct {
 
 func (x *GetJobRequest) Reset() {
 	*x = GetJobRequest{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[85]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[88]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5479,7 +5753,7 @@ func (x *GetJobRequest) String() string {
 func (*GetJobRequest) ProtoMessage() {}
 
 func (x *GetJobRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[85]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[88]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5492,7 +5766,7 @@ func (x *GetJobRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetJobRequest.ProtoReflect.Descriptor instead.
 func (*GetJobRequest) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{85}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{88}
 }
 
 func (x *GetJobRequest) GetJobId() string {
@@ -5511,7 +5785,7 @@ type GetJobResponse struct {
 
 func (x *GetJobResponse) Reset() {
 	*x = GetJobResponse{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[86]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[89]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5523,7 +5797,7 @@ func (x *GetJobResponse) String() string {
 func (*GetJobResponse) ProtoMessage() {}
 
 func (x *GetJobResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[86]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[89]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5536,7 +5810,7 @@ func (x *GetJobResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetJobResponse.ProtoReflect.Descriptor instead.
 func (*GetJobResponse) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{86}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{89}
 }
 
 func (x *GetJobResponse) GetJob() *Job {
@@ -5559,7 +5833,7 @@ type ListJobsRequest struct {
 
 func (x *ListJobsRequest) Reset() {
 	*x = ListJobsRequest{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[87]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[90]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5571,7 +5845,7 @@ func (x *ListJobsRequest) String() string {
 func (*ListJobsRequest) ProtoMessage() {}
 
 func (x *ListJobsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[87]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[90]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5584,7 +5858,7 @@ func (x *ListJobsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListJobsRequest.ProtoReflect.Descriptor instead.
 func (*ListJobsRequest) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{87}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{90}
 }
 
 func (x *ListJobsRequest) GetConnectionId() string {
@@ -5633,7 +5907,7 @@ type ListJobsResponse struct {
 
 func (x *ListJobsResponse) Reset() {
 	*x = ListJobsResponse{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[88]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[91]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5645,7 +5919,7 @@ func (x *ListJobsResponse) String() string {
 func (*ListJobsResponse) ProtoMessage() {}
 
 func (x *ListJobsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[88]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[91]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5658,7 +5932,7 @@ func (x *ListJobsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListJobsResponse.ProtoReflect.Descriptor instead.
 func (*ListJobsResponse) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{88}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{91}
 }
 
 func (x *ListJobsResponse) GetJobs() []*Job {
@@ -5693,7 +5967,7 @@ type GetJobLogsRequest struct {
 
 func (x *GetJobLogsRequest) Reset() {
 	*x = GetJobLogsRequest{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[89]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[92]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5705,7 +5979,7 @@ func (x *GetJobLogsRequest) String() string {
 func (*GetJobLogsRequest) ProtoMessage() {}
 
 func (x *GetJobLogsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[89]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[92]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5718,7 +5992,7 @@ func (x *GetJobLogsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetJobLogsRequest.ProtoReflect.Descriptor instead.
 func (*GetJobLogsRequest) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{89}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{92}
 }
 
 func (x *GetJobLogsRequest) GetJobId() string {
@@ -5754,7 +6028,7 @@ type GetJobLogsResponse struct {
 
 func (x *GetJobLogsResponse) Reset() {
 	*x = GetJobLogsResponse{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[90]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[93]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5766,7 +6040,7 @@ func (x *GetJobLogsResponse) String() string {
 func (*GetJobLogsResponse) ProtoMessage() {}
 
 func (x *GetJobLogsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[90]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[93]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5779,7 +6053,7 @@ func (x *GetJobLogsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetJobLogsResponse.ProtoReflect.Descriptor instead.
 func (*GetJobLogsResponse) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{90}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{93}
 }
 
 func (x *GetJobLogsResponse) GetLines() []string {
@@ -5820,7 +6094,7 @@ type JobLogAttempt struct {
 
 func (x *JobLogAttempt) Reset() {
 	*x = JobLogAttempt{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[91]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[94]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5832,7 +6106,7 @@ func (x *JobLogAttempt) String() string {
 func (*JobLogAttempt) ProtoMessage() {}
 
 func (x *JobLogAttempt) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[91]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[94]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5845,7 +6119,7 @@ func (x *JobLogAttempt) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use JobLogAttempt.ProtoReflect.Descriptor instead.
 func (*JobLogAttempt) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{91}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{94}
 }
 
 func (x *JobLogAttempt) GetAttempt() int32 {
@@ -5872,7 +6146,7 @@ type DownloadJobLogsRequest struct {
 
 func (x *DownloadJobLogsRequest) Reset() {
 	*x = DownloadJobLogsRequest{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[92]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[95]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5884,7 +6158,7 @@ func (x *DownloadJobLogsRequest) String() string {
 func (*DownloadJobLogsRequest) ProtoMessage() {}
 
 func (x *DownloadJobLogsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[92]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[95]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5897,7 +6171,7 @@ func (x *DownloadJobLogsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DownloadJobLogsRequest.ProtoReflect.Descriptor instead.
 func (*DownloadJobLogsRequest) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{92}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{95}
 }
 
 func (x *DownloadJobLogsRequest) GetJobId() string {
@@ -5923,7 +6197,7 @@ type DownloadJobLogsResponse struct {
 
 func (x *DownloadJobLogsResponse) Reset() {
 	*x = DownloadJobLogsResponse{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[93]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[96]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5935,7 +6209,7 @@ func (x *DownloadJobLogsResponse) String() string {
 func (*DownloadJobLogsResponse) ProtoMessage() {}
 
 func (x *DownloadJobLogsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[93]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[96]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5948,7 +6222,7 @@ func (x *DownloadJobLogsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DownloadJobLogsResponse.ProtoReflect.Descriptor instead.
 func (*DownloadJobLogsResponse) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{93}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{96}
 }
 
 func (x *DownloadJobLogsResponse) GetChunk() []byte {
@@ -5967,7 +6241,7 @@ type ExportWorkspaceConfigRequest struct {
 
 func (x *ExportWorkspaceConfigRequest) Reset() {
 	*x = ExportWorkspaceConfigRequest{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[94]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[97]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5979,7 +6253,7 @@ func (x *ExportWorkspaceConfigRequest) String() string {
 func (*ExportWorkspaceConfigRequest) ProtoMessage() {}
 
 func (x *ExportWorkspaceConfigRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[94]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[97]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5992,7 +6266,7 @@ func (x *ExportWorkspaceConfigRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExportWorkspaceConfigRequest.ProtoReflect.Descriptor instead.
 func (*ExportWorkspaceConfigRequest) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{94}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{97}
 }
 
 func (x *ExportWorkspaceConfigRequest) GetWorkspaceId() string {
@@ -6011,7 +6285,7 @@ type ExportWorkspaceConfigResponse struct {
 
 func (x *ExportWorkspaceConfigResponse) Reset() {
 	*x = ExportWorkspaceConfigResponse{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[95]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[98]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6023,7 +6297,7 @@ func (x *ExportWorkspaceConfigResponse) String() string {
 func (*ExportWorkspaceConfigResponse) ProtoMessage() {}
 
 func (x *ExportWorkspaceConfigResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[95]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[98]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6036,7 +6310,7 @@ func (x *ExportWorkspaceConfigResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExportWorkspaceConfigResponse.ProtoReflect.Descriptor instead.
 func (*ExportWorkspaceConfigResponse) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{95}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{98}
 }
 
 func (x *ExportWorkspaceConfigResponse) GetConfigYaml() []byte {
@@ -6056,7 +6330,7 @@ type ImportWorkspaceConfigRequest struct {
 
 func (x *ImportWorkspaceConfigRequest) Reset() {
 	*x = ImportWorkspaceConfigRequest{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[96]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[99]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6068,7 +6342,7 @@ func (x *ImportWorkspaceConfigRequest) String() string {
 func (*ImportWorkspaceConfigRequest) ProtoMessage() {}
 
 func (x *ImportWorkspaceConfigRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[96]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[99]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6081,7 +6355,7 @@ func (x *ImportWorkspaceConfigRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ImportWorkspaceConfigRequest.ProtoReflect.Descriptor instead.
 func (*ImportWorkspaceConfigRequest) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{96}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{99}
 }
 
 func (x *ImportWorkspaceConfigRequest) GetWorkspaceId() string {
@@ -6109,7 +6383,7 @@ type ImportWorkspaceConfigResponse struct {
 
 func (x *ImportWorkspaceConfigResponse) Reset() {
 	*x = ImportWorkspaceConfigResponse{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[97]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[100]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6121,7 +6395,7 @@ func (x *ImportWorkspaceConfigResponse) String() string {
 func (*ImportWorkspaceConfigResponse) ProtoMessage() {}
 
 func (x *ImportWorkspaceConfigResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[97]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[100]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6134,7 +6408,7 @@ func (x *ImportWorkspaceConfigResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ImportWorkspaceConfigResponse.ProtoReflect.Descriptor instead.
 func (*ImportWorkspaceConfigResponse) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{97}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{100}
 }
 
 func (x *ImportWorkspaceConfigResponse) GetCreated() int32 {
@@ -6167,7 +6441,7 @@ type GetConnectorTaskResultRequest struct {
 
 func (x *GetConnectorTaskResultRequest) Reset() {
 	*x = GetConnectorTaskResultRequest{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[98]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[101]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6179,7 +6453,7 @@ func (x *GetConnectorTaskResultRequest) String() string {
 func (*GetConnectorTaskResultRequest) ProtoMessage() {}
 
 func (x *GetConnectorTaskResultRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[98]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[101]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6192,7 +6466,7 @@ func (x *GetConnectorTaskResultRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetConnectorTaskResultRequest.ProtoReflect.Descriptor instead.
 func (*GetConnectorTaskResultRequest) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{98}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{101}
 }
 
 func (x *GetConnectorTaskResultRequest) GetTaskId() string {
@@ -6219,7 +6493,7 @@ type GetConnectorTaskResultResponse struct {
 
 func (x *GetConnectorTaskResultResponse) Reset() {
 	*x = GetConnectorTaskResultResponse{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[99]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[102]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6231,7 +6505,7 @@ func (x *GetConnectorTaskResultResponse) String() string {
 func (*GetConnectorTaskResultResponse) ProtoMessage() {}
 
 func (x *GetConnectorTaskResultResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[99]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[102]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6244,7 +6518,7 @@ func (x *GetConnectorTaskResultResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetConnectorTaskResultResponse.ProtoReflect.Descriptor instead.
 func (*GetConnectorTaskResultResponse) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{99}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{102}
 }
 
 func (x *GetConnectorTaskResultResponse) GetStatus() ConnectorTaskStatus {
@@ -6334,7 +6608,7 @@ type CheckTaskResult struct {
 
 func (x *CheckTaskResult) Reset() {
 	*x = CheckTaskResult{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[100]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[103]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6346,7 +6620,7 @@ func (x *CheckTaskResult) String() string {
 func (*CheckTaskResult) ProtoMessage() {}
 
 func (x *CheckTaskResult) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[100]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[103]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6359,7 +6633,7 @@ func (x *CheckTaskResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CheckTaskResult.ProtoReflect.Descriptor instead.
 func (*CheckTaskResult) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{100}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{103}
 }
 
 func (x *CheckTaskResult) GetSuccess() bool {
@@ -6385,7 +6659,7 @@ type SpecTaskResult struct {
 
 func (x *SpecTaskResult) Reset() {
 	*x = SpecTaskResult{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[101]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[104]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6397,7 +6671,7 @@ func (x *SpecTaskResult) String() string {
 func (*SpecTaskResult) ProtoMessage() {}
 
 func (x *SpecTaskResult) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[101]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[104]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6410,7 +6684,7 @@ func (x *SpecTaskResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SpecTaskResult.ProtoReflect.Descriptor instead.
 func (*SpecTaskResult) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{101}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{104}
 }
 
 func (x *SpecTaskResult) GetSpec() *v1.ConnectorSpecification {
@@ -6429,7 +6703,7 @@ type DiscoverTaskResult struct {
 
 func (x *DiscoverTaskResult) Reset() {
 	*x = DiscoverTaskResult{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[102]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[105]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6441,7 +6715,7 @@ func (x *DiscoverTaskResult) String() string {
 func (*DiscoverTaskResult) ProtoMessage() {}
 
 func (x *DiscoverTaskResult) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[102]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[105]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6454,7 +6728,7 @@ func (x *DiscoverTaskResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DiscoverTaskResult.ProtoReflect.Descriptor instead.
 func (*DiscoverTaskResult) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{102}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{105}
 }
 
 func (x *DiscoverTaskResult) GetCatalog() *v1.AirbyteCatalog {
@@ -6473,7 +6747,7 @@ type PipelineSettings struct {
 
 func (x *PipelineSettings) Reset() {
 	*x = PipelineSettings{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[103]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[106]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6485,7 +6759,7 @@ func (x *PipelineSettings) String() string {
 func (*PipelineSettings) ProtoMessage() {}
 
 func (x *PipelineSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[103]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[106]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6498,7 +6772,7 @@ func (x *PipelineSettings) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PipelineSettings.ProtoReflect.Descriptor instead.
 func (*PipelineSettings) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{103}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{106}
 }
 
 func (x *PipelineSettings) GetMaxJobsPerWorkspace() int32 {
@@ -6516,7 +6790,7 @@ type GetPipelineSettingsRequest struct {
 
 func (x *GetPipelineSettingsRequest) Reset() {
 	*x = GetPipelineSettingsRequest{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[104]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[107]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6528,7 +6802,7 @@ func (x *GetPipelineSettingsRequest) String() string {
 func (*GetPipelineSettingsRequest) ProtoMessage() {}
 
 func (x *GetPipelineSettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[104]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[107]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6541,7 +6815,7 @@ func (x *GetPipelineSettingsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPipelineSettingsRequest.ProtoReflect.Descriptor instead.
 func (*GetPipelineSettingsRequest) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{104}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{107}
 }
 
 type GetPipelineSettingsResponse struct {
@@ -6553,7 +6827,7 @@ type GetPipelineSettingsResponse struct {
 
 func (x *GetPipelineSettingsResponse) Reset() {
 	*x = GetPipelineSettingsResponse{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[105]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[108]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6565,7 +6839,7 @@ func (x *GetPipelineSettingsResponse) String() string {
 func (*GetPipelineSettingsResponse) ProtoMessage() {}
 
 func (x *GetPipelineSettingsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[105]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[108]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6578,7 +6852,7 @@ func (x *GetPipelineSettingsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPipelineSettingsResponse.ProtoReflect.Descriptor instead.
 func (*GetPipelineSettingsResponse) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{105}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{108}
 }
 
 func (x *GetPipelineSettingsResponse) GetSettings() *PipelineSettings {
@@ -6597,7 +6871,7 @@ type UpdatePipelineSettingsRequest struct {
 
 func (x *UpdatePipelineSettingsRequest) Reset() {
 	*x = UpdatePipelineSettingsRequest{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[106]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[109]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6609,7 +6883,7 @@ func (x *UpdatePipelineSettingsRequest) String() string {
 func (*UpdatePipelineSettingsRequest) ProtoMessage() {}
 
 func (x *UpdatePipelineSettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[106]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[109]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6622,7 +6896,7 @@ func (x *UpdatePipelineSettingsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdatePipelineSettingsRequest.ProtoReflect.Descriptor instead.
 func (*UpdatePipelineSettingsRequest) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{106}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{109}
 }
 
 func (x *UpdatePipelineSettingsRequest) GetMaxJobsPerWorkspace() int32 {
@@ -6641,7 +6915,7 @@ type UpdatePipelineSettingsResponse struct {
 
 func (x *UpdatePipelineSettingsResponse) Reset() {
 	*x = UpdatePipelineSettingsResponse{}
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[107]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[110]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6653,7 +6927,7 @@ func (x *UpdatePipelineSettingsResponse) String() string {
 func (*UpdatePipelineSettingsResponse) ProtoMessage() {}
 
 func (x *UpdatePipelineSettingsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[107]
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[110]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6666,7 +6940,7 @@ func (x *UpdatePipelineSettingsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdatePipelineSettingsResponse.ProtoReflect.Descriptor instead.
 func (*UpdatePipelineSettingsResponse) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{107}
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{110}
 }
 
 func (x *UpdatePipelineSettingsResponse) GetSettings() *PipelineSettings {
@@ -6841,7 +7115,7 @@ const file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDesc = "" +
 	"\x14managed_connector_id\x18\x02 \x01(\tR\x12managedConnectorId\x12/\n" +
 	"\x06config\x18\x03 \x01(\v2\x17.google.protobuf.StructR\x06config\"<\n" +
 	"!TestDestinationConnectionResponse\x12\x17\n" +
-	"\atask_id\x18\x01 \x01(\tR\x06taskId\"\x9b\b\n" +
+	"\atask_id\x18\x01 \x01(\tR\x06taskId\"\xc0\b\n" +
 	"\n" +
 	"Connection\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
@@ -6867,7 +7141,8 @@ const file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDesc = "" +
 	"sourceName\x12)\n" +
 	"\x10destination_name\x18\x13 \x01(\tR\x0fdestinationName\x122\n" +
 	"\x15source_connector_name\x18\x14 \x01(\tR\x13sourceConnectorName\x12<\n" +
-	"\x1adestination_connector_name\x18\x15 \x01(\tR\x18destinationConnectorNameB\x14\n" +
+	"\x1adestination_connector_name\x18\x15 \x01(\tR\x18destinationConnectorName\x12#\n" +
+	"\rstatus_reason\x18\x16 \x01(\tR\fstatusReasonB\x14\n" +
 	"\x12_next_scheduled_atJ\x04\b\f\x10\r\"\x94\x04\n" +
 	"\x17CreateConnectionRequest\x12!\n" +
 	"\fworkspace_id\x18\x01 \x01(\tR\vworkspaceId\x12\x12\n" +
@@ -6949,7 +7224,7 @@ const file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDesc = "" +
 	"field_path\x18\x01 \x03(\tR\tfieldPath\"-\n" +
 	"\fCompositeKey\x12\x1d\n" +
 	"\n" +
-	"field_path\x18\x01 \x03(\tR\tfieldPath\"\xc7\x03\n" +
+	"field_path\x18\x01 \x03(\tR\tfieldPath\"\xfa\x03\n" +
 	"\x10ConfiguredStream\x12\x1f\n" +
 	"\vstream_name\x18\x01 \x01(\tR\n" +
 	"streamName\x12\x1c\n" +
@@ -6959,8 +7234,35 @@ const file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDesc = "" +
 	"\fcursor_field\x18\x05 \x03(\tR\vcursorField\x12L\n" +
 	"\vprimary_key\x18\x06 \x03(\v2+.synclet.publicapi.pipeline.v1.CompositeKeyR\n" +
 	"primaryKey\x12U\n" +
-	"\x0fselected_fields\x18\a \x03(\v2,.synclet.publicapi.pipeline.v1.SelectedFieldR\x0eselectedFields\"\x1a\n" +
-	"\x18ConfigureStreamsResponse\"B\n" +
+	"\x0fselected_fields\x18\a \x03(\v2,.synclet.publicapi.pipeline.v1.SelectedFieldR\x0eselectedFields\x121\n" +
+	"\amappers\x18\b \x03(\v2\x17.google.protobuf.StructR\amappers\"\x1a\n" +
+	"\x18ConfigureStreamsResponse\"\x91\x04\n" +
+	"\x16ValidateMappersRequest\x12#\n" +
+	"\rconnection_id\x18\x01 \x01(\tR\fconnectionId\x12\x1c\n" +
+	"\tnamespace\x18\x02 \x01(\tR\tnamespace\x12\x1f\n" +
+	"\vstream_name\x18\x03 \x01(\tR\n" +
+	"streamName\x121\n" +
+	"\amappers\x18\x04 \x03(\v2\x17.google.protobuf.StructR\amappers\x12U\n" +
+	"\x0fselected_fields\x18\x05 \x03(\v2,.synclet.publicapi.pipeline.v1.SelectedFieldR\x0eselectedFields\x12L\n" +
+	"\vprimary_key\x18\x06 \x03(\v2+.synclet.publicapi.pipeline.v1.CompositeKeyR\n" +
+	"primaryKey\x12f\n" +
+	"\x15destination_sync_mode\x18\a \x01(\x0e22.synclet.publicapi.pipeline.v1.DestinationSyncModeR\x13destinationSyncMode\x12A\n" +
+	"\rsample_record\x18\b \x01(\v2\x17.google.protobuf.StructH\x00R\fsampleRecord\x88\x01\x01B\x10\n" +
+	"\x0e_sample_record\"Q\n" +
+	"\vMapperIssue\x12\x12\n" +
+	"\x04step\x18\x01 \x01(\x05R\x04step\x12\x14\n" +
+	"\x05field\x18\x02 \x01(\tR\x05field\x12\x18\n" +
+	"\amessage\x18\x03 \x01(\tR\amessage\"\xd7\x03\n" +
+	"\x17ValidateMappersResponse\x12B\n" +
+	"\x06errors\x18\x01 \x03(\v2*.synclet.publicapi.pipeline.v1.MapperIssueR\x06errors\x12F\n" +
+	"\bwarnings\x18\x02 \x03(\v2*.synclet.publicapi.pipeline.v1.MapperIssueR\bwarnings\x12<\n" +
+	"\routput_schema\x18\x03 \x01(\v2\x17.google.protobuf.StructR\foutputSchema\x12Y\n" +
+	"\x12output_primary_key\x18\x04 \x03(\v2+.synclet.publicapi.pipeline.v1.CompositeKeyR\x10outputPrimaryKey\x12A\n" +
+	"\rsample_output\x18\x05 \x01(\v2\x17.google.protobuf.StructH\x00R\fsampleOutput\x88\x01\x01\x12\x1f\n" +
+	"\vsample_kept\x18\x06 \x01(\bR\n" +
+	"sampleKept\x12!\n" +
+	"\fsample_error\x18\a \x01(\tR\vsampleErrorB\x10\n" +
+	"\x0e_sample_output\"B\n" +
 	"\x1bGetDiscoveredCatalogRequest\x12#\n" +
 	"\rconnection_id\x18\x01 \x01(\tR\fconnectionId\"]\n" +
 	"\x1cGetDiscoveredCatalogResponse\x12=\n" +
@@ -7199,7 +7501,7 @@ const file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDesc = "" +
 	"\x11DeleteDestination\x127.synclet.publicapi.pipeline.v1.DeleteDestinationRequest\x1a8.synclet.publicapi.pipeline.v1.DeleteDestinationResponse\"\x04\x88\xb5\x18\x02\x12\x83\x01\n" +
 	"\x0eGetDestination\x124.synclet.publicapi.pipeline.v1.GetDestinationRequest\x1a5.synclet.publicapi.pipeline.v1.GetDestinationResponse\"\x04\x88\xb5\x18\x01\x12\x89\x01\n" +
 	"\x10ListDestinations\x126.synclet.publicapi.pipeline.v1.ListDestinationsRequest\x1a7.synclet.publicapi.pipeline.v1.ListDestinationsResponse\"\x04\x88\xb5\x18\x01\x12\xa4\x01\n" +
-	"\x19TestDestinationConnection\x12?.synclet.publicapi.pipeline.v1.TestDestinationConnectionRequest\x1a@.synclet.publicapi.pipeline.v1.TestDestinationConnectionResponse\"\x04\x88\xb5\x18\x022\xd4\x16\n" +
+	"\x19TestDestinationConnection\x12?.synclet.publicapi.pipeline.v1.TestDestinationConnectionRequest\x1a@.synclet.publicapi.pipeline.v1.TestDestinationConnectionResponse\"\x04\x88\xb5\x18\x022\xdd\x17\n" +
 	"\x11ConnectionService\x12\x89\x01\n" +
 	"\x10CreateConnection\x126.synclet.publicapi.pipeline.v1.CreateConnectionRequest\x1a7.synclet.publicapi.pipeline.v1.CreateConnectionResponse\"\x04\x88\xb5\x18\x02\x12\x89\x01\n" +
 	"\x10UpdateConnection\x126.synclet.publicapi.pipeline.v1.UpdateConnectionRequest\x1a7.synclet.publicapi.pipeline.v1.UpdateConnectionResponse\"\x04\x88\xb5\x18\x02\x12\x89\x01\n" +
@@ -7211,7 +7513,8 @@ const file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDesc = "" +
 	"\x0eDiscoverSchema\x124.synclet.publicapi.pipeline.v1.DiscoverSchemaRequest\x1a5.synclet.publicapi.pipeline.v1.DiscoverSchemaResponse\"\x04\x88\xb5\x18\x02\x12\x89\x01\n" +
 	"\x10ConfigureStreams\x126.synclet.publicapi.pipeline.v1.ConfigureStreamsRequest\x1a7.synclet.publicapi.pipeline.v1.ConfigureStreamsResponse\"\x04\x88\xb5\x18\x02\x12\x95\x01\n" +
 	"\x14GetDiscoveredCatalog\x12:.synclet.publicapi.pipeline.v1.GetDiscoveredCatalogRequest\x1a;.synclet.publicapi.pipeline.v1.GetDiscoveredCatalogResponse\"\x04\x88\xb5\x18\x01\x12\x95\x01\n" +
-	"\x14GetConfiguredCatalog\x12:.synclet.publicapi.pipeline.v1.GetConfiguredCatalogRequest\x1a;.synclet.publicapi.pipeline.v1.GetConfiguredCatalogResponse\"\x04\x88\xb5\x18\x01\x12\x89\x01\n" +
+	"\x14GetConfiguredCatalog\x12:.synclet.publicapi.pipeline.v1.GetConfiguredCatalogRequest\x1a;.synclet.publicapi.pipeline.v1.GetConfiguredCatalogResponse\"\x04\x88\xb5\x18\x01\x12\x86\x01\n" +
+	"\x0fValidateMappers\x125.synclet.publicapi.pipeline.v1.ValidateMappersRequest\x1a6.synclet.publicapi.pipeline.v1.ValidateMappersResponse\"\x04\x88\xb5\x18\x01\x12\x89\x01\n" +
 	"\x10GetSchemaChanges\x126.synclet.publicapi.pipeline.v1.GetSchemaChangesRequest\x1a7.synclet.publicapi.pipeline.v1.GetSchemaChangesResponse\"\x04\x88\xb5\x18\x01\x12\x89\x01\n" +
 	"\x10ResetStreamState\x126.synclet.publicapi.pipeline.v1.ResetStreamStateRequest\x1a7.synclet.publicapi.pipeline.v1.ResetStreamStateResponse\"\x04\x88\xb5\x18\x02\x12\x95\x01\n" +
 	"\x14ResetConnectionState\x12:.synclet.publicapi.pipeline.v1.ResetConnectionStateRequest\x1a;.synclet.publicapi.pipeline.v1.ResetConnectionStateResponse\"\x04\x88\xb5\x18\x02\x12\x89\x01\n" +
@@ -7247,7 +7550,7 @@ func file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP() []byte {
 }
 
 var file_synclet_publicapi_pipeline_v1_pipeline_proto_enumTypes = make([]protoimpl.EnumInfo, 11)
-var file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes = make([]protoimpl.MessageInfo, 108)
+var file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes = make([]protoimpl.MessageInfo, 111)
 var file_synclet_publicapi_pipeline_v1_pipeline_proto_goTypes = []any{
 	(ConnectionStatus)(0),                     // 0: synclet.publicapi.pipeline.v1.ConnectionStatus
 	(SchemaChangePolicy)(0),                   // 1: synclet.publicapi.pipeline.v1.SchemaChangePolicy
@@ -7322,70 +7625,73 @@ var file_synclet_publicapi_pipeline_v1_pipeline_proto_goTypes = []any{
 	(*CompositeKey)(nil),                      // 70: synclet.publicapi.pipeline.v1.CompositeKey
 	(*ConfiguredStream)(nil),                  // 71: synclet.publicapi.pipeline.v1.ConfiguredStream
 	(*ConfigureStreamsResponse)(nil),          // 72: synclet.publicapi.pipeline.v1.ConfigureStreamsResponse
-	(*GetDiscoveredCatalogRequest)(nil),       // 73: synclet.publicapi.pipeline.v1.GetDiscoveredCatalogRequest
-	(*GetDiscoveredCatalogResponse)(nil),      // 74: synclet.publicapi.pipeline.v1.GetDiscoveredCatalogResponse
-	(*GetConfiguredCatalogRequest)(nil),       // 75: synclet.publicapi.pipeline.v1.GetConfiguredCatalogRequest
-	(*GetConfiguredCatalogResponse)(nil),      // 76: synclet.publicapi.pipeline.v1.GetConfiguredCatalogResponse
-	(*GetSchemaChangesRequest)(nil),           // 77: synclet.publicapi.pipeline.v1.GetSchemaChangesRequest
-	(*SchemaChange)(nil),                      // 78: synclet.publicapi.pipeline.v1.SchemaChange
-	(*GetSchemaChangesResponse)(nil),          // 79: synclet.publicapi.pipeline.v1.GetSchemaChangesResponse
-	(*ResetStreamStateRequest)(nil),           // 80: synclet.publicapi.pipeline.v1.ResetStreamStateRequest
-	(*ResetStreamStateResponse)(nil),          // 81: synclet.publicapi.pipeline.v1.ResetStreamStateResponse
-	(*ResetConnectionStateRequest)(nil),       // 82: synclet.publicapi.pipeline.v1.ResetConnectionStateRequest
-	(*ResetConnectionStateResponse)(nil),      // 83: synclet.publicapi.pipeline.v1.ResetConnectionStateResponse
-	(*StreamState)(nil),                       // 84: synclet.publicapi.pipeline.v1.StreamState
-	(*ListStreamStatesRequest)(nil),           // 85: synclet.publicapi.pipeline.v1.ListStreamStatesRequest
-	(*ListStreamStatesResponse)(nil),          // 86: synclet.publicapi.pipeline.v1.ListStreamStatesResponse
-	(*UpdateStreamStateRequest)(nil),          // 87: synclet.publicapi.pipeline.v1.UpdateStreamStateRequest
-	(*UpdateStreamStateResponse)(nil),         // 88: synclet.publicapi.pipeline.v1.UpdateStreamStateResponse
-	(*Job)(nil),                               // 89: synclet.publicapi.pipeline.v1.Job
-	(*JobAttempt)(nil),                        // 90: synclet.publicapi.pipeline.v1.JobAttempt
-	(*SyncStats)(nil),                         // 91: synclet.publicapi.pipeline.v1.SyncStats
-	(*TriggerSyncRequest)(nil),                // 92: synclet.publicapi.pipeline.v1.TriggerSyncRequest
-	(*TriggerSyncResponse)(nil),               // 93: synclet.publicapi.pipeline.v1.TriggerSyncResponse
-	(*CancelJobRequest)(nil),                  // 94: synclet.publicapi.pipeline.v1.CancelJobRequest
-	(*CancelJobResponse)(nil),                 // 95: synclet.publicapi.pipeline.v1.CancelJobResponse
-	(*GetJobRequest)(nil),                     // 96: synclet.publicapi.pipeline.v1.GetJobRequest
-	(*GetJobResponse)(nil),                    // 97: synclet.publicapi.pipeline.v1.GetJobResponse
-	(*ListJobsRequest)(nil),                   // 98: synclet.publicapi.pipeline.v1.ListJobsRequest
-	(*ListJobsResponse)(nil),                  // 99: synclet.publicapi.pipeline.v1.ListJobsResponse
-	(*GetJobLogsRequest)(nil),                 // 100: synclet.publicapi.pipeline.v1.GetJobLogsRequest
-	(*GetJobLogsResponse)(nil),                // 101: synclet.publicapi.pipeline.v1.GetJobLogsResponse
-	(*JobLogAttempt)(nil),                     // 102: synclet.publicapi.pipeline.v1.JobLogAttempt
-	(*DownloadJobLogsRequest)(nil),            // 103: synclet.publicapi.pipeline.v1.DownloadJobLogsRequest
-	(*DownloadJobLogsResponse)(nil),           // 104: synclet.publicapi.pipeline.v1.DownloadJobLogsResponse
-	(*ExportWorkspaceConfigRequest)(nil),      // 105: synclet.publicapi.pipeline.v1.ExportWorkspaceConfigRequest
-	(*ExportWorkspaceConfigResponse)(nil),     // 106: synclet.publicapi.pipeline.v1.ExportWorkspaceConfigResponse
-	(*ImportWorkspaceConfigRequest)(nil),      // 107: synclet.publicapi.pipeline.v1.ImportWorkspaceConfigRequest
-	(*ImportWorkspaceConfigResponse)(nil),     // 108: synclet.publicapi.pipeline.v1.ImportWorkspaceConfigResponse
-	(*GetConnectorTaskResultRequest)(nil),     // 109: synclet.publicapi.pipeline.v1.GetConnectorTaskResultRequest
-	(*GetConnectorTaskResultResponse)(nil),    // 110: synclet.publicapi.pipeline.v1.GetConnectorTaskResultResponse
-	(*CheckTaskResult)(nil),                   // 111: synclet.publicapi.pipeline.v1.CheckTaskResult
-	(*SpecTaskResult)(nil),                    // 112: synclet.publicapi.pipeline.v1.SpecTaskResult
-	(*DiscoverTaskResult)(nil),                // 113: synclet.publicapi.pipeline.v1.DiscoverTaskResult
-	(*PipelineSettings)(nil),                  // 114: synclet.publicapi.pipeline.v1.PipelineSettings
-	(*GetPipelineSettingsRequest)(nil),        // 115: synclet.publicapi.pipeline.v1.GetPipelineSettingsRequest
-	(*GetPipelineSettingsResponse)(nil),       // 116: synclet.publicapi.pipeline.v1.GetPipelineSettingsResponse
-	(*UpdatePipelineSettingsRequest)(nil),     // 117: synclet.publicapi.pipeline.v1.UpdatePipelineSettingsRequest
-	(*UpdatePipelineSettingsResponse)(nil),    // 118: synclet.publicapi.pipeline.v1.UpdatePipelineSettingsResponse
-	(*structpb.Struct)(nil),                   // 119: google.protobuf.Struct
-	(*timestamppb.Timestamp)(nil),             // 120: google.protobuf.Timestamp
-	(*v1.AirbyteCatalog)(nil),                 // 121: synclet.protocol.v1.AirbyteCatalog
-	(*v1.ConnectorSpecification)(nil),         // 122: synclet.protocol.v1.ConnectorSpecification
+	(*ValidateMappersRequest)(nil),            // 73: synclet.publicapi.pipeline.v1.ValidateMappersRequest
+	(*MapperIssue)(nil),                       // 74: synclet.publicapi.pipeline.v1.MapperIssue
+	(*ValidateMappersResponse)(nil),           // 75: synclet.publicapi.pipeline.v1.ValidateMappersResponse
+	(*GetDiscoveredCatalogRequest)(nil),       // 76: synclet.publicapi.pipeline.v1.GetDiscoveredCatalogRequest
+	(*GetDiscoveredCatalogResponse)(nil),      // 77: synclet.publicapi.pipeline.v1.GetDiscoveredCatalogResponse
+	(*GetConfiguredCatalogRequest)(nil),       // 78: synclet.publicapi.pipeline.v1.GetConfiguredCatalogRequest
+	(*GetConfiguredCatalogResponse)(nil),      // 79: synclet.publicapi.pipeline.v1.GetConfiguredCatalogResponse
+	(*GetSchemaChangesRequest)(nil),           // 80: synclet.publicapi.pipeline.v1.GetSchemaChangesRequest
+	(*SchemaChange)(nil),                      // 81: synclet.publicapi.pipeline.v1.SchemaChange
+	(*GetSchemaChangesResponse)(nil),          // 82: synclet.publicapi.pipeline.v1.GetSchemaChangesResponse
+	(*ResetStreamStateRequest)(nil),           // 83: synclet.publicapi.pipeline.v1.ResetStreamStateRequest
+	(*ResetStreamStateResponse)(nil),          // 84: synclet.publicapi.pipeline.v1.ResetStreamStateResponse
+	(*ResetConnectionStateRequest)(nil),       // 85: synclet.publicapi.pipeline.v1.ResetConnectionStateRequest
+	(*ResetConnectionStateResponse)(nil),      // 86: synclet.publicapi.pipeline.v1.ResetConnectionStateResponse
+	(*StreamState)(nil),                       // 87: synclet.publicapi.pipeline.v1.StreamState
+	(*ListStreamStatesRequest)(nil),           // 88: synclet.publicapi.pipeline.v1.ListStreamStatesRequest
+	(*ListStreamStatesResponse)(nil),          // 89: synclet.publicapi.pipeline.v1.ListStreamStatesResponse
+	(*UpdateStreamStateRequest)(nil),          // 90: synclet.publicapi.pipeline.v1.UpdateStreamStateRequest
+	(*UpdateStreamStateResponse)(nil),         // 91: synclet.publicapi.pipeline.v1.UpdateStreamStateResponse
+	(*Job)(nil),                               // 92: synclet.publicapi.pipeline.v1.Job
+	(*JobAttempt)(nil),                        // 93: synclet.publicapi.pipeline.v1.JobAttempt
+	(*SyncStats)(nil),                         // 94: synclet.publicapi.pipeline.v1.SyncStats
+	(*TriggerSyncRequest)(nil),                // 95: synclet.publicapi.pipeline.v1.TriggerSyncRequest
+	(*TriggerSyncResponse)(nil),               // 96: synclet.publicapi.pipeline.v1.TriggerSyncResponse
+	(*CancelJobRequest)(nil),                  // 97: synclet.publicapi.pipeline.v1.CancelJobRequest
+	(*CancelJobResponse)(nil),                 // 98: synclet.publicapi.pipeline.v1.CancelJobResponse
+	(*GetJobRequest)(nil),                     // 99: synclet.publicapi.pipeline.v1.GetJobRequest
+	(*GetJobResponse)(nil),                    // 100: synclet.publicapi.pipeline.v1.GetJobResponse
+	(*ListJobsRequest)(nil),                   // 101: synclet.publicapi.pipeline.v1.ListJobsRequest
+	(*ListJobsResponse)(nil),                  // 102: synclet.publicapi.pipeline.v1.ListJobsResponse
+	(*GetJobLogsRequest)(nil),                 // 103: synclet.publicapi.pipeline.v1.GetJobLogsRequest
+	(*GetJobLogsResponse)(nil),                // 104: synclet.publicapi.pipeline.v1.GetJobLogsResponse
+	(*JobLogAttempt)(nil),                     // 105: synclet.publicapi.pipeline.v1.JobLogAttempt
+	(*DownloadJobLogsRequest)(nil),            // 106: synclet.publicapi.pipeline.v1.DownloadJobLogsRequest
+	(*DownloadJobLogsResponse)(nil),           // 107: synclet.publicapi.pipeline.v1.DownloadJobLogsResponse
+	(*ExportWorkspaceConfigRequest)(nil),      // 108: synclet.publicapi.pipeline.v1.ExportWorkspaceConfigRequest
+	(*ExportWorkspaceConfigResponse)(nil),     // 109: synclet.publicapi.pipeline.v1.ExportWorkspaceConfigResponse
+	(*ImportWorkspaceConfigRequest)(nil),      // 110: synclet.publicapi.pipeline.v1.ImportWorkspaceConfigRequest
+	(*ImportWorkspaceConfigResponse)(nil),     // 111: synclet.publicapi.pipeline.v1.ImportWorkspaceConfigResponse
+	(*GetConnectorTaskResultRequest)(nil),     // 112: synclet.publicapi.pipeline.v1.GetConnectorTaskResultRequest
+	(*GetConnectorTaskResultResponse)(nil),    // 113: synclet.publicapi.pipeline.v1.GetConnectorTaskResultResponse
+	(*CheckTaskResult)(nil),                   // 114: synclet.publicapi.pipeline.v1.CheckTaskResult
+	(*SpecTaskResult)(nil),                    // 115: synclet.publicapi.pipeline.v1.SpecTaskResult
+	(*DiscoverTaskResult)(nil),                // 116: synclet.publicapi.pipeline.v1.DiscoverTaskResult
+	(*PipelineSettings)(nil),                  // 117: synclet.publicapi.pipeline.v1.PipelineSettings
+	(*GetPipelineSettingsRequest)(nil),        // 118: synclet.publicapi.pipeline.v1.GetPipelineSettingsRequest
+	(*GetPipelineSettingsResponse)(nil),       // 119: synclet.publicapi.pipeline.v1.GetPipelineSettingsResponse
+	(*UpdatePipelineSettingsRequest)(nil),     // 120: synclet.publicapi.pipeline.v1.UpdatePipelineSettingsRequest
+	(*UpdatePipelineSettingsResponse)(nil),    // 121: synclet.publicapi.pipeline.v1.UpdatePipelineSettingsResponse
+	(*structpb.Struct)(nil),                   // 122: google.protobuf.Struct
+	(*timestamppb.Timestamp)(nil),             // 123: google.protobuf.Timestamp
+	(*v1.AirbyteCatalog)(nil),                 // 124: synclet.protocol.v1.AirbyteCatalog
+	(*v1.ConnectorSpecification)(nil),         // 125: synclet.protocol.v1.ConnectorSpecification
 }
 var file_synclet_publicapi_pipeline_v1_pipeline_proto_depIdxs = []int32{
-	119, // 0: synclet.publicapi.pipeline.v1.Source.config:type_name -> google.protobuf.Struct
-	120, // 1: synclet.publicapi.pipeline.v1.Source.created_at:type_name -> google.protobuf.Timestamp
-	120, // 2: synclet.publicapi.pipeline.v1.Source.updated_at:type_name -> google.protobuf.Timestamp
-	119, // 3: synclet.publicapi.pipeline.v1.CreateSourceRequest.config:type_name -> google.protobuf.Struct
+	122, // 0: synclet.publicapi.pipeline.v1.Source.config:type_name -> google.protobuf.Struct
+	123, // 1: synclet.publicapi.pipeline.v1.Source.created_at:type_name -> google.protobuf.Timestamp
+	123, // 2: synclet.publicapi.pipeline.v1.Source.updated_at:type_name -> google.protobuf.Timestamp
+	122, // 3: synclet.publicapi.pipeline.v1.CreateSourceRequest.config:type_name -> google.protobuf.Struct
 	11,  // 4: synclet.publicapi.pipeline.v1.CreateSourceResponse.source:type_name -> synclet.publicapi.pipeline.v1.Source
-	119, // 5: synclet.publicapi.pipeline.v1.UpdateSourceRequest.config:type_name -> google.protobuf.Struct
+	122, // 5: synclet.publicapi.pipeline.v1.UpdateSourceRequest.config:type_name -> google.protobuf.Struct
 	11,  // 6: synclet.publicapi.pipeline.v1.UpdateSourceResponse.source:type_name -> synclet.publicapi.pipeline.v1.Source
 	11,  // 7: synclet.publicapi.pipeline.v1.GetSourceResponse.source:type_name -> synclet.publicapi.pipeline.v1.Source
 	11,  // 8: synclet.publicapi.pipeline.v1.ListSourcesResponse.sources:type_name -> synclet.publicapi.pipeline.v1.Source
-	119, // 9: synclet.publicapi.pipeline.v1.TestSourceConnectionRequest.config:type_name -> google.protobuf.Struct
-	121, // 10: synclet.publicapi.pipeline.v1.GetSourceCatalogResponse.catalog:type_name -> synclet.protocol.v1.AirbyteCatalog
-	120, // 11: synclet.publicapi.pipeline.v1.GetSourceCatalogResponse.discovered_at:type_name -> google.protobuf.Timestamp
+	122, // 9: synclet.publicapi.pipeline.v1.TestSourceConnectionRequest.config:type_name -> google.protobuf.Struct
+	124, // 10: synclet.publicapi.pipeline.v1.GetSourceCatalogResponse.catalog:type_name -> synclet.protocol.v1.AirbyteCatalog
+	123, // 11: synclet.publicapi.pipeline.v1.GetSourceCatalogResponse.discovered_at:type_name -> google.protobuf.Timestamp
 	7,   // 12: synclet.publicapi.pipeline.v1.GetSystemInfoResponse.workspaces_mode:type_name -> synclet.publicapi.pipeline.v1.WorkspacesMode
 	32,  // 13: synclet.publicapi.pipeline.v1.GetRuntimeDefaultsResponse.runtime_defaults:type_name -> synclet.publicapi.pipeline.v1.RuntimeDefaults
 	34,  // 14: synclet.publicapi.pipeline.v1.RuntimeDefaults.executors:type_name -> synclet.publicapi.pipeline.v1.ExecutorTypeDefaults
@@ -7393,25 +7699,25 @@ var file_synclet_publicapi_pipeline_v1_pipeline_proto_depIdxs = []int32{
 	33,  // 16: synclet.publicapi.pipeline.v1.ExecutorTypeDefaults.resource_defaults:type_name -> synclet.publicapi.pipeline.v1.ExecutorResourceDefaults
 	8,   // 17: synclet.publicapi.pipeline.v1.ExecutorInstance.type:type_name -> synclet.publicapi.pipeline.v1.ExecutorType
 	33,  // 18: synclet.publicapi.pipeline.v1.ExecutorInstance.resource_defaults:type_name -> synclet.publicapi.pipeline.v1.ExecutorResourceDefaults
-	120, // 19: synclet.publicapi.pipeline.v1.ExecutorInstance.first_seen_at:type_name -> google.protobuf.Timestamp
-	120, // 20: synclet.publicapi.pipeline.v1.ExecutorInstance.last_seen_at:type_name -> google.protobuf.Timestamp
+	123, // 19: synclet.publicapi.pipeline.v1.ExecutorInstance.first_seen_at:type_name -> google.protobuf.Timestamp
+	123, // 20: synclet.publicapi.pipeline.v1.ExecutorInstance.last_seen_at:type_name -> google.protobuf.Timestamp
 	35,  // 21: synclet.publicapi.pipeline.v1.ListExecutorsResponse.executors:type_name -> synclet.publicapi.pipeline.v1.ExecutorInstance
-	119, // 22: synclet.publicapi.pipeline.v1.Destination.config:type_name -> google.protobuf.Struct
-	120, // 23: synclet.publicapi.pipeline.v1.Destination.created_at:type_name -> google.protobuf.Timestamp
-	120, // 24: synclet.publicapi.pipeline.v1.Destination.updated_at:type_name -> google.protobuf.Timestamp
-	119, // 25: synclet.publicapi.pipeline.v1.CreateDestinationRequest.config:type_name -> google.protobuf.Struct
+	122, // 22: synclet.publicapi.pipeline.v1.Destination.config:type_name -> google.protobuf.Struct
+	123, // 23: synclet.publicapi.pipeline.v1.Destination.created_at:type_name -> google.protobuf.Timestamp
+	123, // 24: synclet.publicapi.pipeline.v1.Destination.updated_at:type_name -> google.protobuf.Timestamp
+	122, // 25: synclet.publicapi.pipeline.v1.CreateDestinationRequest.config:type_name -> google.protobuf.Struct
 	38,  // 26: synclet.publicapi.pipeline.v1.CreateDestinationResponse.destination:type_name -> synclet.publicapi.pipeline.v1.Destination
-	119, // 27: synclet.publicapi.pipeline.v1.UpdateDestinationRequest.config:type_name -> google.protobuf.Struct
+	122, // 27: synclet.publicapi.pipeline.v1.UpdateDestinationRequest.config:type_name -> google.protobuf.Struct
 	38,  // 28: synclet.publicapi.pipeline.v1.UpdateDestinationResponse.destination:type_name -> synclet.publicapi.pipeline.v1.Destination
 	38,  // 29: synclet.publicapi.pipeline.v1.GetDestinationResponse.destination:type_name -> synclet.publicapi.pipeline.v1.Destination
 	38,  // 30: synclet.publicapi.pipeline.v1.ListDestinationsResponse.destinations:type_name -> synclet.publicapi.pipeline.v1.Destination
-	119, // 31: synclet.publicapi.pipeline.v1.TestDestinationConnectionRequest.config:type_name -> google.protobuf.Struct
+	122, // 31: synclet.publicapi.pipeline.v1.TestDestinationConnectionRequest.config:type_name -> google.protobuf.Struct
 	0,   // 32: synclet.publicapi.pipeline.v1.Connection.status:type_name -> synclet.publicapi.pipeline.v1.ConnectionStatus
 	1,   // 33: synclet.publicapi.pipeline.v1.Connection.schema_change_policy:type_name -> synclet.publicapi.pipeline.v1.SchemaChangePolicy
-	120, // 34: synclet.publicapi.pipeline.v1.Connection.created_at:type_name -> google.protobuf.Timestamp
-	120, // 35: synclet.publicapi.pipeline.v1.Connection.updated_at:type_name -> google.protobuf.Timestamp
+	123, // 34: synclet.publicapi.pipeline.v1.Connection.created_at:type_name -> google.protobuf.Timestamp
+	123, // 35: synclet.publicapi.pipeline.v1.Connection.updated_at:type_name -> google.protobuf.Timestamp
 	6,   // 36: synclet.publicapi.pipeline.v1.Connection.namespace_definition:type_name -> synclet.publicapi.pipeline.v1.NamespaceDefinition
-	120, // 37: synclet.publicapi.pipeline.v1.Connection.next_scheduled_at:type_name -> google.protobuf.Timestamp
+	123, // 37: synclet.publicapi.pipeline.v1.Connection.next_scheduled_at:type_name -> google.protobuf.Timestamp
 	1,   // 38: synclet.publicapi.pipeline.v1.CreateConnectionRequest.schema_change_policy:type_name -> synclet.publicapi.pipeline.v1.SchemaChangePolicy
 	6,   // 39: synclet.publicapi.pipeline.v1.CreateConnectionRequest.namespace_definition:type_name -> synclet.publicapi.pipeline.v1.NamespaceDefinition
 	51,  // 40: synclet.publicapi.pipeline.v1.CreateConnectionResponse.connection:type_name -> synclet.publicapi.pipeline.v1.Connection
@@ -7427,128 +7733,141 @@ var file_synclet_publicapi_pipeline_v1_pipeline_proto_depIdxs = []int32{
 	5,   // 50: synclet.publicapi.pipeline.v1.ConfiguredStream.destination_sync_mode:type_name -> synclet.publicapi.pipeline.v1.DestinationSyncMode
 	70,  // 51: synclet.publicapi.pipeline.v1.ConfiguredStream.primary_key:type_name -> synclet.publicapi.pipeline.v1.CompositeKey
 	69,  // 52: synclet.publicapi.pipeline.v1.ConfiguredStream.selected_fields:type_name -> synclet.publicapi.pipeline.v1.SelectedField
-	121, // 53: synclet.publicapi.pipeline.v1.GetDiscoveredCatalogResponse.catalog:type_name -> synclet.protocol.v1.AirbyteCatalog
-	119, // 54: synclet.publicapi.pipeline.v1.GetConfiguredCatalogResponse.catalog:type_name -> google.protobuf.Struct
-	78,  // 55: synclet.publicapi.pipeline.v1.GetSchemaChangesResponse.changes:type_name -> synclet.publicapi.pipeline.v1.SchemaChange
-	120, // 56: synclet.publicapi.pipeline.v1.StreamState.updated_at:type_name -> google.protobuf.Timestamp
-	84,  // 57: synclet.publicapi.pipeline.v1.ListStreamStatesResponse.states:type_name -> synclet.publicapi.pipeline.v1.StreamState
-	2,   // 58: synclet.publicapi.pipeline.v1.Job.status:type_name -> synclet.publicapi.pipeline.v1.JobStatus
-	3,   // 59: synclet.publicapi.pipeline.v1.Job.job_type:type_name -> synclet.publicapi.pipeline.v1.JobType
-	120, // 60: synclet.publicapi.pipeline.v1.Job.scheduled_at:type_name -> google.protobuf.Timestamp
-	120, // 61: synclet.publicapi.pipeline.v1.Job.started_at:type_name -> google.protobuf.Timestamp
-	120, // 62: synclet.publicapi.pipeline.v1.Job.completed_at:type_name -> google.protobuf.Timestamp
-	120, // 63: synclet.publicapi.pipeline.v1.Job.created_at:type_name -> google.protobuf.Timestamp
-	90,  // 64: synclet.publicapi.pipeline.v1.Job.attempts:type_name -> synclet.publicapi.pipeline.v1.JobAttempt
-	120, // 65: synclet.publicapi.pipeline.v1.JobAttempt.started_at:type_name -> google.protobuf.Timestamp
-	120, // 66: synclet.publicapi.pipeline.v1.JobAttempt.completed_at:type_name -> google.protobuf.Timestamp
-	91,  // 67: synclet.publicapi.pipeline.v1.JobAttempt.sync_stats:type_name -> synclet.publicapi.pipeline.v1.SyncStats
-	89,  // 68: synclet.publicapi.pipeline.v1.TriggerSyncResponse.job:type_name -> synclet.publicapi.pipeline.v1.Job
-	89,  // 69: synclet.publicapi.pipeline.v1.GetJobResponse.job:type_name -> synclet.publicapi.pipeline.v1.Job
-	2,   // 70: synclet.publicapi.pipeline.v1.ListJobsRequest.statuses:type_name -> synclet.publicapi.pipeline.v1.JobStatus
-	89,  // 71: synclet.publicapi.pipeline.v1.ListJobsResponse.jobs:type_name -> synclet.publicapi.pipeline.v1.Job
-	102, // 72: synclet.publicapi.pipeline.v1.GetJobLogsResponse.attempts:type_name -> synclet.publicapi.pipeline.v1.JobLogAttempt
-	10,  // 73: synclet.publicapi.pipeline.v1.GetConnectorTaskResultResponse.status:type_name -> synclet.publicapi.pipeline.v1.ConnectorTaskStatus
-	9,   // 74: synclet.publicapi.pipeline.v1.GetConnectorTaskResultResponse.task_type:type_name -> synclet.publicapi.pipeline.v1.ConnectorTaskType
-	111, // 75: synclet.publicapi.pipeline.v1.GetConnectorTaskResultResponse.check_result:type_name -> synclet.publicapi.pipeline.v1.CheckTaskResult
-	112, // 76: synclet.publicapi.pipeline.v1.GetConnectorTaskResultResponse.spec_result:type_name -> synclet.publicapi.pipeline.v1.SpecTaskResult
-	113, // 77: synclet.publicapi.pipeline.v1.GetConnectorTaskResultResponse.discover_result:type_name -> synclet.publicapi.pipeline.v1.DiscoverTaskResult
-	122, // 78: synclet.publicapi.pipeline.v1.SpecTaskResult.spec:type_name -> synclet.protocol.v1.ConnectorSpecification
-	121, // 79: synclet.publicapi.pipeline.v1.DiscoverTaskResult.catalog:type_name -> synclet.protocol.v1.AirbyteCatalog
-	114, // 80: synclet.publicapi.pipeline.v1.GetPipelineSettingsResponse.settings:type_name -> synclet.publicapi.pipeline.v1.PipelineSettings
-	114, // 81: synclet.publicapi.pipeline.v1.UpdatePipelineSettingsResponse.settings:type_name -> synclet.publicapi.pipeline.v1.PipelineSettings
-	12,  // 82: synclet.publicapi.pipeline.v1.SourceService.CreateSource:input_type -> synclet.publicapi.pipeline.v1.CreateSourceRequest
-	14,  // 83: synclet.publicapi.pipeline.v1.SourceService.UpdateSource:input_type -> synclet.publicapi.pipeline.v1.UpdateSourceRequest
-	16,  // 84: synclet.publicapi.pipeline.v1.SourceService.DeleteSource:input_type -> synclet.publicapi.pipeline.v1.DeleteSourceRequest
-	18,  // 85: synclet.publicapi.pipeline.v1.SourceService.GetSource:input_type -> synclet.publicapi.pipeline.v1.GetSourceRequest
-	20,  // 86: synclet.publicapi.pipeline.v1.SourceService.ListSources:input_type -> synclet.publicapi.pipeline.v1.ListSourcesRequest
-	22,  // 87: synclet.publicapi.pipeline.v1.SourceService.TestSourceConnection:input_type -> synclet.publicapi.pipeline.v1.TestSourceConnectionRequest
-	24,  // 88: synclet.publicapi.pipeline.v1.SourceService.DiscoverSourceSchema:input_type -> synclet.publicapi.pipeline.v1.DiscoverSourceSchemaRequest
-	26,  // 89: synclet.publicapi.pipeline.v1.SourceService.GetSourceCatalog:input_type -> synclet.publicapi.pipeline.v1.GetSourceCatalogRequest
-	28,  // 90: synclet.publicapi.pipeline.v1.SourceService.GetSystemInfo:input_type -> synclet.publicapi.pipeline.v1.GetSystemInfoRequest
-	30,  // 91: synclet.publicapi.pipeline.v1.SourceService.GetRuntimeDefaults:input_type -> synclet.publicapi.pipeline.v1.GetRuntimeDefaultsRequest
-	36,  // 92: synclet.publicapi.pipeline.v1.SourceService.ListExecutors:input_type -> synclet.publicapi.pipeline.v1.ListExecutorsRequest
-	39,  // 93: synclet.publicapi.pipeline.v1.DestinationService.CreateDestination:input_type -> synclet.publicapi.pipeline.v1.CreateDestinationRequest
-	41,  // 94: synclet.publicapi.pipeline.v1.DestinationService.UpdateDestination:input_type -> synclet.publicapi.pipeline.v1.UpdateDestinationRequest
-	43,  // 95: synclet.publicapi.pipeline.v1.DestinationService.DeleteDestination:input_type -> synclet.publicapi.pipeline.v1.DeleteDestinationRequest
-	45,  // 96: synclet.publicapi.pipeline.v1.DestinationService.GetDestination:input_type -> synclet.publicapi.pipeline.v1.GetDestinationRequest
-	47,  // 97: synclet.publicapi.pipeline.v1.DestinationService.ListDestinations:input_type -> synclet.publicapi.pipeline.v1.ListDestinationsRequest
-	49,  // 98: synclet.publicapi.pipeline.v1.DestinationService.TestDestinationConnection:input_type -> synclet.publicapi.pipeline.v1.TestDestinationConnectionRequest
-	52,  // 99: synclet.publicapi.pipeline.v1.ConnectionService.CreateConnection:input_type -> synclet.publicapi.pipeline.v1.CreateConnectionRequest
-	54,  // 100: synclet.publicapi.pipeline.v1.ConnectionService.UpdateConnection:input_type -> synclet.publicapi.pipeline.v1.UpdateConnectionRequest
-	56,  // 101: synclet.publicapi.pipeline.v1.ConnectionService.DeleteConnection:input_type -> synclet.publicapi.pipeline.v1.DeleteConnectionRequest
-	58,  // 102: synclet.publicapi.pipeline.v1.ConnectionService.GetConnection:input_type -> synclet.publicapi.pipeline.v1.GetConnectionRequest
-	60,  // 103: synclet.publicapi.pipeline.v1.ConnectionService.ListConnections:input_type -> synclet.publicapi.pipeline.v1.ListConnectionsRequest
-	62,  // 104: synclet.publicapi.pipeline.v1.ConnectionService.EnableConnection:input_type -> synclet.publicapi.pipeline.v1.EnableConnectionRequest
-	64,  // 105: synclet.publicapi.pipeline.v1.ConnectionService.DisableConnection:input_type -> synclet.publicapi.pipeline.v1.DisableConnectionRequest
-	66,  // 106: synclet.publicapi.pipeline.v1.ConnectionService.DiscoverSchema:input_type -> synclet.publicapi.pipeline.v1.DiscoverSchemaRequest
-	68,  // 107: synclet.publicapi.pipeline.v1.ConnectionService.ConfigureStreams:input_type -> synclet.publicapi.pipeline.v1.ConfigureStreamsRequest
-	73,  // 108: synclet.publicapi.pipeline.v1.ConnectionService.GetDiscoveredCatalog:input_type -> synclet.publicapi.pipeline.v1.GetDiscoveredCatalogRequest
-	75,  // 109: synclet.publicapi.pipeline.v1.ConnectionService.GetConfiguredCatalog:input_type -> synclet.publicapi.pipeline.v1.GetConfiguredCatalogRequest
-	77,  // 110: synclet.publicapi.pipeline.v1.ConnectionService.GetSchemaChanges:input_type -> synclet.publicapi.pipeline.v1.GetSchemaChangesRequest
-	80,  // 111: synclet.publicapi.pipeline.v1.ConnectionService.ResetStreamState:input_type -> synclet.publicapi.pipeline.v1.ResetStreamStateRequest
-	82,  // 112: synclet.publicapi.pipeline.v1.ConnectionService.ResetConnectionState:input_type -> synclet.publicapi.pipeline.v1.ResetConnectionStateRequest
-	85,  // 113: synclet.publicapi.pipeline.v1.ConnectionService.ListStreamStates:input_type -> synclet.publicapi.pipeline.v1.ListStreamStatesRequest
-	87,  // 114: synclet.publicapi.pipeline.v1.ConnectionService.UpdateStreamState:input_type -> synclet.publicapi.pipeline.v1.UpdateStreamStateRequest
-	105, // 115: synclet.publicapi.pipeline.v1.ConnectionService.ExportWorkspaceConfig:input_type -> synclet.publicapi.pipeline.v1.ExportWorkspaceConfigRequest
-	107, // 116: synclet.publicapi.pipeline.v1.ConnectionService.ImportWorkspaceConfig:input_type -> synclet.publicapi.pipeline.v1.ImportWorkspaceConfigRequest
-	115, // 117: synclet.publicapi.pipeline.v1.ConnectionService.GetPipelineSettings:input_type -> synclet.publicapi.pipeline.v1.GetPipelineSettingsRequest
-	117, // 118: synclet.publicapi.pipeline.v1.ConnectionService.UpdatePipelineSettings:input_type -> synclet.publicapi.pipeline.v1.UpdatePipelineSettingsRequest
-	92,  // 119: synclet.publicapi.pipeline.v1.JobService.TriggerSync:input_type -> synclet.publicapi.pipeline.v1.TriggerSyncRequest
-	94,  // 120: synclet.publicapi.pipeline.v1.JobService.CancelJob:input_type -> synclet.publicapi.pipeline.v1.CancelJobRequest
-	96,  // 121: synclet.publicapi.pipeline.v1.JobService.GetJob:input_type -> synclet.publicapi.pipeline.v1.GetJobRequest
-	98,  // 122: synclet.publicapi.pipeline.v1.JobService.ListJobs:input_type -> synclet.publicapi.pipeline.v1.ListJobsRequest
-	100, // 123: synclet.publicapi.pipeline.v1.JobService.GetJobLogs:input_type -> synclet.publicapi.pipeline.v1.GetJobLogsRequest
-	103, // 124: synclet.publicapi.pipeline.v1.JobService.DownloadJobLogs:input_type -> synclet.publicapi.pipeline.v1.DownloadJobLogsRequest
-	109, // 125: synclet.publicapi.pipeline.v1.ConnectorTaskService.GetConnectorTaskResult:input_type -> synclet.publicapi.pipeline.v1.GetConnectorTaskResultRequest
-	13,  // 126: synclet.publicapi.pipeline.v1.SourceService.CreateSource:output_type -> synclet.publicapi.pipeline.v1.CreateSourceResponse
-	15,  // 127: synclet.publicapi.pipeline.v1.SourceService.UpdateSource:output_type -> synclet.publicapi.pipeline.v1.UpdateSourceResponse
-	17,  // 128: synclet.publicapi.pipeline.v1.SourceService.DeleteSource:output_type -> synclet.publicapi.pipeline.v1.DeleteSourceResponse
-	19,  // 129: synclet.publicapi.pipeline.v1.SourceService.GetSource:output_type -> synclet.publicapi.pipeline.v1.GetSourceResponse
-	21,  // 130: synclet.publicapi.pipeline.v1.SourceService.ListSources:output_type -> synclet.publicapi.pipeline.v1.ListSourcesResponse
-	23,  // 131: synclet.publicapi.pipeline.v1.SourceService.TestSourceConnection:output_type -> synclet.publicapi.pipeline.v1.TestSourceConnectionResponse
-	25,  // 132: synclet.publicapi.pipeline.v1.SourceService.DiscoverSourceSchema:output_type -> synclet.publicapi.pipeline.v1.DiscoverSourceSchemaResponse
-	27,  // 133: synclet.publicapi.pipeline.v1.SourceService.GetSourceCatalog:output_type -> synclet.publicapi.pipeline.v1.GetSourceCatalogResponse
-	29,  // 134: synclet.publicapi.pipeline.v1.SourceService.GetSystemInfo:output_type -> synclet.publicapi.pipeline.v1.GetSystemInfoResponse
-	31,  // 135: synclet.publicapi.pipeline.v1.SourceService.GetRuntimeDefaults:output_type -> synclet.publicapi.pipeline.v1.GetRuntimeDefaultsResponse
-	37,  // 136: synclet.publicapi.pipeline.v1.SourceService.ListExecutors:output_type -> synclet.publicapi.pipeline.v1.ListExecutorsResponse
-	40,  // 137: synclet.publicapi.pipeline.v1.DestinationService.CreateDestination:output_type -> synclet.publicapi.pipeline.v1.CreateDestinationResponse
-	42,  // 138: synclet.publicapi.pipeline.v1.DestinationService.UpdateDestination:output_type -> synclet.publicapi.pipeline.v1.UpdateDestinationResponse
-	44,  // 139: synclet.publicapi.pipeline.v1.DestinationService.DeleteDestination:output_type -> synclet.publicapi.pipeline.v1.DeleteDestinationResponse
-	46,  // 140: synclet.publicapi.pipeline.v1.DestinationService.GetDestination:output_type -> synclet.publicapi.pipeline.v1.GetDestinationResponse
-	48,  // 141: synclet.publicapi.pipeline.v1.DestinationService.ListDestinations:output_type -> synclet.publicapi.pipeline.v1.ListDestinationsResponse
-	50,  // 142: synclet.publicapi.pipeline.v1.DestinationService.TestDestinationConnection:output_type -> synclet.publicapi.pipeline.v1.TestDestinationConnectionResponse
-	53,  // 143: synclet.publicapi.pipeline.v1.ConnectionService.CreateConnection:output_type -> synclet.publicapi.pipeline.v1.CreateConnectionResponse
-	55,  // 144: synclet.publicapi.pipeline.v1.ConnectionService.UpdateConnection:output_type -> synclet.publicapi.pipeline.v1.UpdateConnectionResponse
-	57,  // 145: synclet.publicapi.pipeline.v1.ConnectionService.DeleteConnection:output_type -> synclet.publicapi.pipeline.v1.DeleteConnectionResponse
-	59,  // 146: synclet.publicapi.pipeline.v1.ConnectionService.GetConnection:output_type -> synclet.publicapi.pipeline.v1.GetConnectionResponse
-	61,  // 147: synclet.publicapi.pipeline.v1.ConnectionService.ListConnections:output_type -> synclet.publicapi.pipeline.v1.ListConnectionsResponse
-	63,  // 148: synclet.publicapi.pipeline.v1.ConnectionService.EnableConnection:output_type -> synclet.publicapi.pipeline.v1.EnableConnectionResponse
-	65,  // 149: synclet.publicapi.pipeline.v1.ConnectionService.DisableConnection:output_type -> synclet.publicapi.pipeline.v1.DisableConnectionResponse
-	67,  // 150: synclet.publicapi.pipeline.v1.ConnectionService.DiscoverSchema:output_type -> synclet.publicapi.pipeline.v1.DiscoverSchemaResponse
-	72,  // 151: synclet.publicapi.pipeline.v1.ConnectionService.ConfigureStreams:output_type -> synclet.publicapi.pipeline.v1.ConfigureStreamsResponse
-	74,  // 152: synclet.publicapi.pipeline.v1.ConnectionService.GetDiscoveredCatalog:output_type -> synclet.publicapi.pipeline.v1.GetDiscoveredCatalogResponse
-	76,  // 153: synclet.publicapi.pipeline.v1.ConnectionService.GetConfiguredCatalog:output_type -> synclet.publicapi.pipeline.v1.GetConfiguredCatalogResponse
-	79,  // 154: synclet.publicapi.pipeline.v1.ConnectionService.GetSchemaChanges:output_type -> synclet.publicapi.pipeline.v1.GetSchemaChangesResponse
-	81,  // 155: synclet.publicapi.pipeline.v1.ConnectionService.ResetStreamState:output_type -> synclet.publicapi.pipeline.v1.ResetStreamStateResponse
-	83,  // 156: synclet.publicapi.pipeline.v1.ConnectionService.ResetConnectionState:output_type -> synclet.publicapi.pipeline.v1.ResetConnectionStateResponse
-	86,  // 157: synclet.publicapi.pipeline.v1.ConnectionService.ListStreamStates:output_type -> synclet.publicapi.pipeline.v1.ListStreamStatesResponse
-	88,  // 158: synclet.publicapi.pipeline.v1.ConnectionService.UpdateStreamState:output_type -> synclet.publicapi.pipeline.v1.UpdateStreamStateResponse
-	106, // 159: synclet.publicapi.pipeline.v1.ConnectionService.ExportWorkspaceConfig:output_type -> synclet.publicapi.pipeline.v1.ExportWorkspaceConfigResponse
-	108, // 160: synclet.publicapi.pipeline.v1.ConnectionService.ImportWorkspaceConfig:output_type -> synclet.publicapi.pipeline.v1.ImportWorkspaceConfigResponse
-	116, // 161: synclet.publicapi.pipeline.v1.ConnectionService.GetPipelineSettings:output_type -> synclet.publicapi.pipeline.v1.GetPipelineSettingsResponse
-	118, // 162: synclet.publicapi.pipeline.v1.ConnectionService.UpdatePipelineSettings:output_type -> synclet.publicapi.pipeline.v1.UpdatePipelineSettingsResponse
-	93,  // 163: synclet.publicapi.pipeline.v1.JobService.TriggerSync:output_type -> synclet.publicapi.pipeline.v1.TriggerSyncResponse
-	95,  // 164: synclet.publicapi.pipeline.v1.JobService.CancelJob:output_type -> synclet.publicapi.pipeline.v1.CancelJobResponse
-	97,  // 165: synclet.publicapi.pipeline.v1.JobService.GetJob:output_type -> synclet.publicapi.pipeline.v1.GetJobResponse
-	99,  // 166: synclet.publicapi.pipeline.v1.JobService.ListJobs:output_type -> synclet.publicapi.pipeline.v1.ListJobsResponse
-	101, // 167: synclet.publicapi.pipeline.v1.JobService.GetJobLogs:output_type -> synclet.publicapi.pipeline.v1.GetJobLogsResponse
-	104, // 168: synclet.publicapi.pipeline.v1.JobService.DownloadJobLogs:output_type -> synclet.publicapi.pipeline.v1.DownloadJobLogsResponse
-	110, // 169: synclet.publicapi.pipeline.v1.ConnectorTaskService.GetConnectorTaskResult:output_type -> synclet.publicapi.pipeline.v1.GetConnectorTaskResultResponse
-	126, // [126:170] is the sub-list for method output_type
-	82,  // [82:126] is the sub-list for method input_type
-	82,  // [82:82] is the sub-list for extension type_name
-	82,  // [82:82] is the sub-list for extension extendee
-	0,   // [0:82] is the sub-list for field type_name
+	122, // 53: synclet.publicapi.pipeline.v1.ConfiguredStream.mappers:type_name -> google.protobuf.Struct
+	122, // 54: synclet.publicapi.pipeline.v1.ValidateMappersRequest.mappers:type_name -> google.protobuf.Struct
+	69,  // 55: synclet.publicapi.pipeline.v1.ValidateMappersRequest.selected_fields:type_name -> synclet.publicapi.pipeline.v1.SelectedField
+	70,  // 56: synclet.publicapi.pipeline.v1.ValidateMappersRequest.primary_key:type_name -> synclet.publicapi.pipeline.v1.CompositeKey
+	5,   // 57: synclet.publicapi.pipeline.v1.ValidateMappersRequest.destination_sync_mode:type_name -> synclet.publicapi.pipeline.v1.DestinationSyncMode
+	122, // 58: synclet.publicapi.pipeline.v1.ValidateMappersRequest.sample_record:type_name -> google.protobuf.Struct
+	74,  // 59: synclet.publicapi.pipeline.v1.ValidateMappersResponse.errors:type_name -> synclet.publicapi.pipeline.v1.MapperIssue
+	74,  // 60: synclet.publicapi.pipeline.v1.ValidateMappersResponse.warnings:type_name -> synclet.publicapi.pipeline.v1.MapperIssue
+	122, // 61: synclet.publicapi.pipeline.v1.ValidateMappersResponse.output_schema:type_name -> google.protobuf.Struct
+	70,  // 62: synclet.publicapi.pipeline.v1.ValidateMappersResponse.output_primary_key:type_name -> synclet.publicapi.pipeline.v1.CompositeKey
+	122, // 63: synclet.publicapi.pipeline.v1.ValidateMappersResponse.sample_output:type_name -> google.protobuf.Struct
+	124, // 64: synclet.publicapi.pipeline.v1.GetDiscoveredCatalogResponse.catalog:type_name -> synclet.protocol.v1.AirbyteCatalog
+	122, // 65: synclet.publicapi.pipeline.v1.GetConfiguredCatalogResponse.catalog:type_name -> google.protobuf.Struct
+	81,  // 66: synclet.publicapi.pipeline.v1.GetSchemaChangesResponse.changes:type_name -> synclet.publicapi.pipeline.v1.SchemaChange
+	123, // 67: synclet.publicapi.pipeline.v1.StreamState.updated_at:type_name -> google.protobuf.Timestamp
+	87,  // 68: synclet.publicapi.pipeline.v1.ListStreamStatesResponse.states:type_name -> synclet.publicapi.pipeline.v1.StreamState
+	2,   // 69: synclet.publicapi.pipeline.v1.Job.status:type_name -> synclet.publicapi.pipeline.v1.JobStatus
+	3,   // 70: synclet.publicapi.pipeline.v1.Job.job_type:type_name -> synclet.publicapi.pipeline.v1.JobType
+	123, // 71: synclet.publicapi.pipeline.v1.Job.scheduled_at:type_name -> google.protobuf.Timestamp
+	123, // 72: synclet.publicapi.pipeline.v1.Job.started_at:type_name -> google.protobuf.Timestamp
+	123, // 73: synclet.publicapi.pipeline.v1.Job.completed_at:type_name -> google.protobuf.Timestamp
+	123, // 74: synclet.publicapi.pipeline.v1.Job.created_at:type_name -> google.protobuf.Timestamp
+	93,  // 75: synclet.publicapi.pipeline.v1.Job.attempts:type_name -> synclet.publicapi.pipeline.v1.JobAttempt
+	123, // 76: synclet.publicapi.pipeline.v1.JobAttempt.started_at:type_name -> google.protobuf.Timestamp
+	123, // 77: synclet.publicapi.pipeline.v1.JobAttempt.completed_at:type_name -> google.protobuf.Timestamp
+	94,  // 78: synclet.publicapi.pipeline.v1.JobAttempt.sync_stats:type_name -> synclet.publicapi.pipeline.v1.SyncStats
+	92,  // 79: synclet.publicapi.pipeline.v1.TriggerSyncResponse.job:type_name -> synclet.publicapi.pipeline.v1.Job
+	92,  // 80: synclet.publicapi.pipeline.v1.GetJobResponse.job:type_name -> synclet.publicapi.pipeline.v1.Job
+	2,   // 81: synclet.publicapi.pipeline.v1.ListJobsRequest.statuses:type_name -> synclet.publicapi.pipeline.v1.JobStatus
+	92,  // 82: synclet.publicapi.pipeline.v1.ListJobsResponse.jobs:type_name -> synclet.publicapi.pipeline.v1.Job
+	105, // 83: synclet.publicapi.pipeline.v1.GetJobLogsResponse.attempts:type_name -> synclet.publicapi.pipeline.v1.JobLogAttempt
+	10,  // 84: synclet.publicapi.pipeline.v1.GetConnectorTaskResultResponse.status:type_name -> synclet.publicapi.pipeline.v1.ConnectorTaskStatus
+	9,   // 85: synclet.publicapi.pipeline.v1.GetConnectorTaskResultResponse.task_type:type_name -> synclet.publicapi.pipeline.v1.ConnectorTaskType
+	114, // 86: synclet.publicapi.pipeline.v1.GetConnectorTaskResultResponse.check_result:type_name -> synclet.publicapi.pipeline.v1.CheckTaskResult
+	115, // 87: synclet.publicapi.pipeline.v1.GetConnectorTaskResultResponse.spec_result:type_name -> synclet.publicapi.pipeline.v1.SpecTaskResult
+	116, // 88: synclet.publicapi.pipeline.v1.GetConnectorTaskResultResponse.discover_result:type_name -> synclet.publicapi.pipeline.v1.DiscoverTaskResult
+	125, // 89: synclet.publicapi.pipeline.v1.SpecTaskResult.spec:type_name -> synclet.protocol.v1.ConnectorSpecification
+	124, // 90: synclet.publicapi.pipeline.v1.DiscoverTaskResult.catalog:type_name -> synclet.protocol.v1.AirbyteCatalog
+	117, // 91: synclet.publicapi.pipeline.v1.GetPipelineSettingsResponse.settings:type_name -> synclet.publicapi.pipeline.v1.PipelineSettings
+	117, // 92: synclet.publicapi.pipeline.v1.UpdatePipelineSettingsResponse.settings:type_name -> synclet.publicapi.pipeline.v1.PipelineSettings
+	12,  // 93: synclet.publicapi.pipeline.v1.SourceService.CreateSource:input_type -> synclet.publicapi.pipeline.v1.CreateSourceRequest
+	14,  // 94: synclet.publicapi.pipeline.v1.SourceService.UpdateSource:input_type -> synclet.publicapi.pipeline.v1.UpdateSourceRequest
+	16,  // 95: synclet.publicapi.pipeline.v1.SourceService.DeleteSource:input_type -> synclet.publicapi.pipeline.v1.DeleteSourceRequest
+	18,  // 96: synclet.publicapi.pipeline.v1.SourceService.GetSource:input_type -> synclet.publicapi.pipeline.v1.GetSourceRequest
+	20,  // 97: synclet.publicapi.pipeline.v1.SourceService.ListSources:input_type -> synclet.publicapi.pipeline.v1.ListSourcesRequest
+	22,  // 98: synclet.publicapi.pipeline.v1.SourceService.TestSourceConnection:input_type -> synclet.publicapi.pipeline.v1.TestSourceConnectionRequest
+	24,  // 99: synclet.publicapi.pipeline.v1.SourceService.DiscoverSourceSchema:input_type -> synclet.publicapi.pipeline.v1.DiscoverSourceSchemaRequest
+	26,  // 100: synclet.publicapi.pipeline.v1.SourceService.GetSourceCatalog:input_type -> synclet.publicapi.pipeline.v1.GetSourceCatalogRequest
+	28,  // 101: synclet.publicapi.pipeline.v1.SourceService.GetSystemInfo:input_type -> synclet.publicapi.pipeline.v1.GetSystemInfoRequest
+	30,  // 102: synclet.publicapi.pipeline.v1.SourceService.GetRuntimeDefaults:input_type -> synclet.publicapi.pipeline.v1.GetRuntimeDefaultsRequest
+	36,  // 103: synclet.publicapi.pipeline.v1.SourceService.ListExecutors:input_type -> synclet.publicapi.pipeline.v1.ListExecutorsRequest
+	39,  // 104: synclet.publicapi.pipeline.v1.DestinationService.CreateDestination:input_type -> synclet.publicapi.pipeline.v1.CreateDestinationRequest
+	41,  // 105: synclet.publicapi.pipeline.v1.DestinationService.UpdateDestination:input_type -> synclet.publicapi.pipeline.v1.UpdateDestinationRequest
+	43,  // 106: synclet.publicapi.pipeline.v1.DestinationService.DeleteDestination:input_type -> synclet.publicapi.pipeline.v1.DeleteDestinationRequest
+	45,  // 107: synclet.publicapi.pipeline.v1.DestinationService.GetDestination:input_type -> synclet.publicapi.pipeline.v1.GetDestinationRequest
+	47,  // 108: synclet.publicapi.pipeline.v1.DestinationService.ListDestinations:input_type -> synclet.publicapi.pipeline.v1.ListDestinationsRequest
+	49,  // 109: synclet.publicapi.pipeline.v1.DestinationService.TestDestinationConnection:input_type -> synclet.publicapi.pipeline.v1.TestDestinationConnectionRequest
+	52,  // 110: synclet.publicapi.pipeline.v1.ConnectionService.CreateConnection:input_type -> synclet.publicapi.pipeline.v1.CreateConnectionRequest
+	54,  // 111: synclet.publicapi.pipeline.v1.ConnectionService.UpdateConnection:input_type -> synclet.publicapi.pipeline.v1.UpdateConnectionRequest
+	56,  // 112: synclet.publicapi.pipeline.v1.ConnectionService.DeleteConnection:input_type -> synclet.publicapi.pipeline.v1.DeleteConnectionRequest
+	58,  // 113: synclet.publicapi.pipeline.v1.ConnectionService.GetConnection:input_type -> synclet.publicapi.pipeline.v1.GetConnectionRequest
+	60,  // 114: synclet.publicapi.pipeline.v1.ConnectionService.ListConnections:input_type -> synclet.publicapi.pipeline.v1.ListConnectionsRequest
+	62,  // 115: synclet.publicapi.pipeline.v1.ConnectionService.EnableConnection:input_type -> synclet.publicapi.pipeline.v1.EnableConnectionRequest
+	64,  // 116: synclet.publicapi.pipeline.v1.ConnectionService.DisableConnection:input_type -> synclet.publicapi.pipeline.v1.DisableConnectionRequest
+	66,  // 117: synclet.publicapi.pipeline.v1.ConnectionService.DiscoverSchema:input_type -> synclet.publicapi.pipeline.v1.DiscoverSchemaRequest
+	68,  // 118: synclet.publicapi.pipeline.v1.ConnectionService.ConfigureStreams:input_type -> synclet.publicapi.pipeline.v1.ConfigureStreamsRequest
+	76,  // 119: synclet.publicapi.pipeline.v1.ConnectionService.GetDiscoveredCatalog:input_type -> synclet.publicapi.pipeline.v1.GetDiscoveredCatalogRequest
+	78,  // 120: synclet.publicapi.pipeline.v1.ConnectionService.GetConfiguredCatalog:input_type -> synclet.publicapi.pipeline.v1.GetConfiguredCatalogRequest
+	73,  // 121: synclet.publicapi.pipeline.v1.ConnectionService.ValidateMappers:input_type -> synclet.publicapi.pipeline.v1.ValidateMappersRequest
+	80,  // 122: synclet.publicapi.pipeline.v1.ConnectionService.GetSchemaChanges:input_type -> synclet.publicapi.pipeline.v1.GetSchemaChangesRequest
+	83,  // 123: synclet.publicapi.pipeline.v1.ConnectionService.ResetStreamState:input_type -> synclet.publicapi.pipeline.v1.ResetStreamStateRequest
+	85,  // 124: synclet.publicapi.pipeline.v1.ConnectionService.ResetConnectionState:input_type -> synclet.publicapi.pipeline.v1.ResetConnectionStateRequest
+	88,  // 125: synclet.publicapi.pipeline.v1.ConnectionService.ListStreamStates:input_type -> synclet.publicapi.pipeline.v1.ListStreamStatesRequest
+	90,  // 126: synclet.publicapi.pipeline.v1.ConnectionService.UpdateStreamState:input_type -> synclet.publicapi.pipeline.v1.UpdateStreamStateRequest
+	108, // 127: synclet.publicapi.pipeline.v1.ConnectionService.ExportWorkspaceConfig:input_type -> synclet.publicapi.pipeline.v1.ExportWorkspaceConfigRequest
+	110, // 128: synclet.publicapi.pipeline.v1.ConnectionService.ImportWorkspaceConfig:input_type -> synclet.publicapi.pipeline.v1.ImportWorkspaceConfigRequest
+	118, // 129: synclet.publicapi.pipeline.v1.ConnectionService.GetPipelineSettings:input_type -> synclet.publicapi.pipeline.v1.GetPipelineSettingsRequest
+	120, // 130: synclet.publicapi.pipeline.v1.ConnectionService.UpdatePipelineSettings:input_type -> synclet.publicapi.pipeline.v1.UpdatePipelineSettingsRequest
+	95,  // 131: synclet.publicapi.pipeline.v1.JobService.TriggerSync:input_type -> synclet.publicapi.pipeline.v1.TriggerSyncRequest
+	97,  // 132: synclet.publicapi.pipeline.v1.JobService.CancelJob:input_type -> synclet.publicapi.pipeline.v1.CancelJobRequest
+	99,  // 133: synclet.publicapi.pipeline.v1.JobService.GetJob:input_type -> synclet.publicapi.pipeline.v1.GetJobRequest
+	101, // 134: synclet.publicapi.pipeline.v1.JobService.ListJobs:input_type -> synclet.publicapi.pipeline.v1.ListJobsRequest
+	103, // 135: synclet.publicapi.pipeline.v1.JobService.GetJobLogs:input_type -> synclet.publicapi.pipeline.v1.GetJobLogsRequest
+	106, // 136: synclet.publicapi.pipeline.v1.JobService.DownloadJobLogs:input_type -> synclet.publicapi.pipeline.v1.DownloadJobLogsRequest
+	112, // 137: synclet.publicapi.pipeline.v1.ConnectorTaskService.GetConnectorTaskResult:input_type -> synclet.publicapi.pipeline.v1.GetConnectorTaskResultRequest
+	13,  // 138: synclet.publicapi.pipeline.v1.SourceService.CreateSource:output_type -> synclet.publicapi.pipeline.v1.CreateSourceResponse
+	15,  // 139: synclet.publicapi.pipeline.v1.SourceService.UpdateSource:output_type -> synclet.publicapi.pipeline.v1.UpdateSourceResponse
+	17,  // 140: synclet.publicapi.pipeline.v1.SourceService.DeleteSource:output_type -> synclet.publicapi.pipeline.v1.DeleteSourceResponse
+	19,  // 141: synclet.publicapi.pipeline.v1.SourceService.GetSource:output_type -> synclet.publicapi.pipeline.v1.GetSourceResponse
+	21,  // 142: synclet.publicapi.pipeline.v1.SourceService.ListSources:output_type -> synclet.publicapi.pipeline.v1.ListSourcesResponse
+	23,  // 143: synclet.publicapi.pipeline.v1.SourceService.TestSourceConnection:output_type -> synclet.publicapi.pipeline.v1.TestSourceConnectionResponse
+	25,  // 144: synclet.publicapi.pipeline.v1.SourceService.DiscoverSourceSchema:output_type -> synclet.publicapi.pipeline.v1.DiscoverSourceSchemaResponse
+	27,  // 145: synclet.publicapi.pipeline.v1.SourceService.GetSourceCatalog:output_type -> synclet.publicapi.pipeline.v1.GetSourceCatalogResponse
+	29,  // 146: synclet.publicapi.pipeline.v1.SourceService.GetSystemInfo:output_type -> synclet.publicapi.pipeline.v1.GetSystemInfoResponse
+	31,  // 147: synclet.publicapi.pipeline.v1.SourceService.GetRuntimeDefaults:output_type -> synclet.publicapi.pipeline.v1.GetRuntimeDefaultsResponse
+	37,  // 148: synclet.publicapi.pipeline.v1.SourceService.ListExecutors:output_type -> synclet.publicapi.pipeline.v1.ListExecutorsResponse
+	40,  // 149: synclet.publicapi.pipeline.v1.DestinationService.CreateDestination:output_type -> synclet.publicapi.pipeline.v1.CreateDestinationResponse
+	42,  // 150: synclet.publicapi.pipeline.v1.DestinationService.UpdateDestination:output_type -> synclet.publicapi.pipeline.v1.UpdateDestinationResponse
+	44,  // 151: synclet.publicapi.pipeline.v1.DestinationService.DeleteDestination:output_type -> synclet.publicapi.pipeline.v1.DeleteDestinationResponse
+	46,  // 152: synclet.publicapi.pipeline.v1.DestinationService.GetDestination:output_type -> synclet.publicapi.pipeline.v1.GetDestinationResponse
+	48,  // 153: synclet.publicapi.pipeline.v1.DestinationService.ListDestinations:output_type -> synclet.publicapi.pipeline.v1.ListDestinationsResponse
+	50,  // 154: synclet.publicapi.pipeline.v1.DestinationService.TestDestinationConnection:output_type -> synclet.publicapi.pipeline.v1.TestDestinationConnectionResponse
+	53,  // 155: synclet.publicapi.pipeline.v1.ConnectionService.CreateConnection:output_type -> synclet.publicapi.pipeline.v1.CreateConnectionResponse
+	55,  // 156: synclet.publicapi.pipeline.v1.ConnectionService.UpdateConnection:output_type -> synclet.publicapi.pipeline.v1.UpdateConnectionResponse
+	57,  // 157: synclet.publicapi.pipeline.v1.ConnectionService.DeleteConnection:output_type -> synclet.publicapi.pipeline.v1.DeleteConnectionResponse
+	59,  // 158: synclet.publicapi.pipeline.v1.ConnectionService.GetConnection:output_type -> synclet.publicapi.pipeline.v1.GetConnectionResponse
+	61,  // 159: synclet.publicapi.pipeline.v1.ConnectionService.ListConnections:output_type -> synclet.publicapi.pipeline.v1.ListConnectionsResponse
+	63,  // 160: synclet.publicapi.pipeline.v1.ConnectionService.EnableConnection:output_type -> synclet.publicapi.pipeline.v1.EnableConnectionResponse
+	65,  // 161: synclet.publicapi.pipeline.v1.ConnectionService.DisableConnection:output_type -> synclet.publicapi.pipeline.v1.DisableConnectionResponse
+	67,  // 162: synclet.publicapi.pipeline.v1.ConnectionService.DiscoverSchema:output_type -> synclet.publicapi.pipeline.v1.DiscoverSchemaResponse
+	72,  // 163: synclet.publicapi.pipeline.v1.ConnectionService.ConfigureStreams:output_type -> synclet.publicapi.pipeline.v1.ConfigureStreamsResponse
+	77,  // 164: synclet.publicapi.pipeline.v1.ConnectionService.GetDiscoveredCatalog:output_type -> synclet.publicapi.pipeline.v1.GetDiscoveredCatalogResponse
+	79,  // 165: synclet.publicapi.pipeline.v1.ConnectionService.GetConfiguredCatalog:output_type -> synclet.publicapi.pipeline.v1.GetConfiguredCatalogResponse
+	75,  // 166: synclet.publicapi.pipeline.v1.ConnectionService.ValidateMappers:output_type -> synclet.publicapi.pipeline.v1.ValidateMappersResponse
+	82,  // 167: synclet.publicapi.pipeline.v1.ConnectionService.GetSchemaChanges:output_type -> synclet.publicapi.pipeline.v1.GetSchemaChangesResponse
+	84,  // 168: synclet.publicapi.pipeline.v1.ConnectionService.ResetStreamState:output_type -> synclet.publicapi.pipeline.v1.ResetStreamStateResponse
+	86,  // 169: synclet.publicapi.pipeline.v1.ConnectionService.ResetConnectionState:output_type -> synclet.publicapi.pipeline.v1.ResetConnectionStateResponse
+	89,  // 170: synclet.publicapi.pipeline.v1.ConnectionService.ListStreamStates:output_type -> synclet.publicapi.pipeline.v1.ListStreamStatesResponse
+	91,  // 171: synclet.publicapi.pipeline.v1.ConnectionService.UpdateStreamState:output_type -> synclet.publicapi.pipeline.v1.UpdateStreamStateResponse
+	109, // 172: synclet.publicapi.pipeline.v1.ConnectionService.ExportWorkspaceConfig:output_type -> synclet.publicapi.pipeline.v1.ExportWorkspaceConfigResponse
+	111, // 173: synclet.publicapi.pipeline.v1.ConnectionService.ImportWorkspaceConfig:output_type -> synclet.publicapi.pipeline.v1.ImportWorkspaceConfigResponse
+	119, // 174: synclet.publicapi.pipeline.v1.ConnectionService.GetPipelineSettings:output_type -> synclet.publicapi.pipeline.v1.GetPipelineSettingsResponse
+	121, // 175: synclet.publicapi.pipeline.v1.ConnectionService.UpdatePipelineSettings:output_type -> synclet.publicapi.pipeline.v1.UpdatePipelineSettingsResponse
+	96,  // 176: synclet.publicapi.pipeline.v1.JobService.TriggerSync:output_type -> synclet.publicapi.pipeline.v1.TriggerSyncResponse
+	98,  // 177: synclet.publicapi.pipeline.v1.JobService.CancelJob:output_type -> synclet.publicapi.pipeline.v1.CancelJobResponse
+	100, // 178: synclet.publicapi.pipeline.v1.JobService.GetJob:output_type -> synclet.publicapi.pipeline.v1.GetJobResponse
+	102, // 179: synclet.publicapi.pipeline.v1.JobService.ListJobs:output_type -> synclet.publicapi.pipeline.v1.ListJobsResponse
+	104, // 180: synclet.publicapi.pipeline.v1.JobService.GetJobLogs:output_type -> synclet.publicapi.pipeline.v1.GetJobLogsResponse
+	107, // 181: synclet.publicapi.pipeline.v1.JobService.DownloadJobLogs:output_type -> synclet.publicapi.pipeline.v1.DownloadJobLogsResponse
+	113, // 182: synclet.publicapi.pipeline.v1.ConnectorTaskService.GetConnectorTaskResult:output_type -> synclet.publicapi.pipeline.v1.GetConnectorTaskResultResponse
+	138, // [138:183] is the sub-list for method output_type
+	93,  // [93:138] is the sub-list for method input_type
+	93,  // [93:93] is the sub-list for extension type_name
+	93,  // [93:93] is the sub-list for extension extendee
+	0,   // [0:93] is the sub-list for field type_name
 }
 
 func init() { file_synclet_publicapi_pipeline_v1_pipeline_proto_init() }
@@ -7565,19 +7884,21 @@ func file_synclet_publicapi_pipeline_v1_pipeline_proto_init() {
 	file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[40].OneofWrappers = []any{}
 	file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[41].OneofWrappers = []any{}
 	file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[43].OneofWrappers = []any{}
-	file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[99].OneofWrappers = []any{
+	file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[62].OneofWrappers = []any{}
+	file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[64].OneofWrappers = []any{}
+	file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[102].OneofWrappers = []any{
 		(*GetConnectorTaskResultResponse_CheckResult)(nil),
 		(*GetConnectorTaskResultResponse_SpecResult)(nil),
 		(*GetConnectorTaskResultResponse_DiscoverResult)(nil),
 	}
-	file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[106].OneofWrappers = []any{}
+	file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[109].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDesc), len(file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDesc)),
 			NumEnums:      11,
-			NumMessages:   108,
+			NumMessages:   111,
 			NumExtensions: 0,
 			NumServices:   5,
 		},

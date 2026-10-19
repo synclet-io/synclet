@@ -108,6 +108,13 @@ func (w *K8sSyncWorker) Execute(ctx context.Context) error {
 		return nil
 	}
 
+	sourceCatalogJSON, err := json.Marshal(pipelineservice.BuildSourceCatalog(&catalog))
+	if err != nil {
+		w.failJob(ctx, result, fmt.Errorf("marshaling source catalog: %w", err))
+
+		return nil
+	}
+
 	// Build K8s job options directly from the claimed bundle.
 	opts := K8sSyncJobOptions{
 		JobID:                 result.Job.ID,
@@ -118,7 +125,7 @@ func (w *K8sSyncWorker) Execute(ctx context.Context) error {
 		DestImage:             result.DestImage,
 		SourceConfig:          result.SourceConfig,
 		DestConfig:            result.DestConfig,
-		SourceCatalog:         result.ConfiguredCatalog,
+		SourceCatalog:         sourceCatalogJSON,
 		DestCatalog:           destCatalogJSON,
 		State:                 result.StateBlob,
 		RuntimeConfig:         result.SourceRuntimeConfig,

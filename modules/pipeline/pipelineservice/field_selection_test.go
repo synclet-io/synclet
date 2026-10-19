@@ -153,3 +153,126 @@ func TestBuildDestinationCatalog(t *testing.T) {
 		require.ErrorContains(t, err, "parsing properties")
 	})
 }
+
+const ordersSchema = `{
+	"type": "object",
+	"properties": {
+		"cust_id": {"type": "integer"},
+		"amount": {"type": "number"}
+	}
+}`
+
+func TestBuildDestinationCatalogMappers(t *testing.T) {
+	t.Run("rename rewrites the schema and the primary key", func(t *testing.T) {
+		catalog := &protocol.ConfiguredAirbyteCatalog{Streams: []protocol.ConfiguredAirbyteStream{{
+			Stream:              protocol.AirbyteStream{Name: "orders", JSONSchema: json.RawMessage(ordersSchema)},
+			DestinationSyncMode: protocol.DestinationSyncModeAppendDedup,
+			PrimaryKey:          [][]string{{"cust_id"}},
+			Mappers:             json.RawMessage(`[{"rename":{"cust_id":"customer_id"}}]`),
+		}}}
+
+		dest, err := BuildDestinationCatalog(catalog)
+		require.NoError(t, err)
+
+		assert.JSONEq(t, `{
+			"type": "object",
+			"properties": {
+				"customer_id": {"type": "integer"},
+				"amount": {"type": "number"}
+			}
+		}`, string(dest.Streams[0].Stream.JSONSchema))
+		assert.Equal(t, [][]string{{"customer_id"}}, dest.Streams[0].PrimaryKey)
+		assert.Nil(t, dest.Streams[0].Mappers)
+		assert.NotContains(t, marshalCatalog(t, dest), "mappers")
+
+		assert.Equal(t, [][]string{{"cust_id"}}, catalog.Streams[0].PrimaryKey, "configured catalog must not be mutated")
+		assert.JSONEq(t, ordersSchema, string(catalog.Streams[0].Stream.JSONSchema))
+	})
+
+	t.Run("set on an unselected field's value", func(t *testing.T) {
+		catalog := &protocol.ConfiguredAirbyteCatalog{Streams: []protocol.ConfiguredAirbyteStream{{
+			Stream:              protocol.AirbyteStream{Name: "orders", JSONSchema: json.RawMessage(ordersSchema)},
+			DestinationSyncMode: protocol.DestinationSyncModeAppend,
+			SelectedFields:      fields([]string{"cust_id"}),
+			Mappers:             json.RawMessage(`[{"set":{"total_cents":"int(r.amount * 100.0)"}}]`),
+		}}}
+
+		dest, err := BuildDestinationCatalog(catalog)
+		require.NoError(t, err)
+
+		var schema struct {
+			Properties map[string]json.RawMessage `json:"properties"`
+		}
+		require.NoError(t, json.Unmarshal(dest.Streams[0].Stream.JSONSchema, &schema))
+		assert.Contains(t, schema.Properties, "total_cents")
+		assert.Contains(t, schema.Properties, "cust_id")
+		assert.NotContains(t, schema.Properties, "amount")
+	})
+
+	t.Run("mappers that do not compile fail with the stream and step", func(t *testing.T) {
+		catalog := &protocol.ConfiguredAirbyteCatalog{Streams: []protocol.ConfiguredAirbyteStream{{
+			Stream:  protocol.AirbyteStream{Name: "orders", JSONSchema: json.RawMessage(ordersSchema)},
+			Mappers: json.RawMessage(`[{"set":{"x":"r.nope"}}]`),
+		}}}
+
+		_, err := BuildDestinationCatalog(catalog)
+		require.ErrorContains(t, err, `stream "orders"`)
+		require.ErrorContains(t, err, "step 0")
+	})
+}
+
+func TestBuildSourceCatalog(t *testing.T) {
+	catalog := &protocol.ConfiguredAirbyteCatalog{Streams: []protocol.ConfiguredAirbyteStream{
+		{
+			Stream:              protocol.AirbyteStream{Name: "orders", JSONSchema: json.RawMessage(ordersSchema)},
+			DestinationSyncMode: protocol.DestinationSyncModeAppendDedup,
+			PrimaryKey:          [][]string{{"cust_id"}},
+			SelectedFields:      fields([]string{"cust_id"}),
+			Mappers:             json.RawMessage(`[{"rename":{"cust_id":"customer_id"}}]`),
+		},
+		{
+			Stream:         protocol.AirbyteStream{Name: "users", JSONSchema: json.RawMessage(nestedSchema)},
+			SelectedFields: fields([]string{"id"}),
+		},
+	}}
+
+	src := BuildSourceCatalog(catalog)
+
+	require.Len(t, src.Streams, 2)
+	assert.JSONEq(t, ordersSchema, string(src.Streams[0].Stream.JSONSchema))
+	assert.Equal(t, [][]string{{"cust_id"}}, src.Streams[0].PrimaryKey)
+	assert.Equal(t, fields([]string{"cust_id"}), src.Streams[0].SelectedFields)
+	assert.Nil(t, src.Streams[0].Mappers)
+	assert.NotContains(t, marshalCatalog(t, src), "mappers")
+	assert.JSONEq(t, nestedSchema, string(src.Streams[1].Stream.JSONSchema))
+	assert.NotNil(t, catalog.Streams[0].Mappers, "configured catalog must not be mutated")
+}
+
+func marshalCatalog(t *testing.T, catalog *protocol.ConfiguredAirbyteCatalog) string {
+	t.Helper()
+
+	raw, err := json.Marshal(catalog)
+	require.NoError(t, err)
+
+	return string(raw)
+}
+
+func TestBuildDestinationCatalogRenamedCursor(t *testing.T) {
+	catalog := &protocol.ConfiguredAirbyteCatalog{Streams: []protocol.ConfiguredAirbyteStream{{
+		Stream:              protocol.AirbyteStream{Name: "orders", JSONSchema: json.RawMessage(ordersSchema)},
+		SyncMode:            protocol.SyncModeIncremental,
+		DestinationSyncMode: protocol.DestinationSyncModeAppendDedup,
+		PrimaryKey:          [][]string{{"cust_id"}},
+		CursorField:         []string{"amount"},
+		Mappers:             json.RawMessage(`[{"rename":{"amount":"total"}},{"rename":{"total":"order_total","cust_id":"customer_id"}}]`),
+	}}}
+
+	dest, err := BuildDestinationCatalog(catalog)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"order_total"}, dest.Streams[0].CursorField)
+	assert.Equal(t, [][]string{{"customer_id"}}, dest.Streams[0].PrimaryKey)
+	assert.Contains(t, string(dest.Streams[0].Stream.JSONSchema), `"order_total"`)
+
+	assert.Equal(t, []string{"amount"}, catalog.Streams[0].CursorField, "configured catalog must not be mutated")
+	assert.Equal(t, []string{"amount"}, BuildSourceCatalog(catalog).Streams[0].CursorField)
+}

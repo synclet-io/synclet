@@ -102,6 +102,8 @@ func pipelineUseCasesModule() fx.Option {
 			pipelinecatalog.NewGetDiscoveredCatalogForConnection,
 			pipelinecatalog.NewGetSourceCatalog,
 			pipelinecatalog.NewPopulateGenerationIDs,
+			pipelinecatalog.NewValidateMappers,
+			pipelinecatalog.NewRecheckStreamMappers,
 		),
 
 		// Job use cases

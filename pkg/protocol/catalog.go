@@ -62,4 +62,7 @@ type ConfiguredAirbyteStream struct {
 	SyncID                int64               `json:"sync_id"`
 	IncludeFiles          bool                `json:"include_files,omitempty"`
 	SelectedFields        []SelectedField     `json:"selected_fields,omitempty"`
+	// Mappers is the stream's mapper steps as a JSON array; Synclet runs them
+	// between source and destination and never sends them to a connector.
+	Mappers json.RawMessage `json:"mappers,omitempty"`
 }

@@ -168,6 +168,11 @@ service ConnectionService {
   rpc GetConfiguredCatalog(GetConfiguredCatalogRequest) returns (GetConfiguredCatalogResponse) {
     option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
   }
+  // ValidateMappers compiles an unsaved mapper list against the stream's
+  // discovered schema and, when a sample record is given, runs it through.
+  rpc ValidateMappers(ValidateMappersRequest) returns (ValidateMappersResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
+  }
   rpc GetSchemaChanges(GetSchemaChangesRequest) returns (GetSchemaChangesResponse) {
     option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
   }
@@ -499,6 +504,9 @@ message Connection {
   string destination_name = 19;
   string source_connector_name = 20;
   string destination_connector_name = 21;
+  // Why the connection was paused by Synclet, such as a mapper that no longer
+  // compiles after a schema change. Empty when the status was set by a user.
+  string status_reason = 22;
 }
 
 message CreateConnectionRequest {
@@ -611,9 +619,41 @@ message ConfiguredStream {
   repeated string cursor_field = 5;
   repeated CompositeKey primary_key = 6;
   repeated SelectedField selected_fields = 7;
+  // Mapper steps applied to the stream's records, in order, each in the
+  // mapper step JSON shape (one of rename, cast, set, hash, mask, filter).
+  repeated google.protobuf.Struct mappers = 8;
 }
 
 message ConfigureStreamsResponse {}
+
+message ValidateMappersRequest {
+  string connection_id = 1;
+  string namespace = 2;
+  string stream_name = 3;
+  repeated google.protobuf.Struct mappers = 4;
+  repeated SelectedField selected_fields = 5;
+  repeated CompositeKey primary_key = 6;
+  DestinationSyncMode destination_sync_mode = 7;
+  optional google.protobuf.Struct sample_record = 8;
+}
+
+// MapperIssue is a problem found in one mapper step; step is -1 for a problem
+// with the field selection.
+message MapperIssue {
+  int32 step = 1;
+  string field = 2;
+  string message = 3;
+}
+
+message ValidateMappersResponse {
+  repeated MapperIssue errors = 1;
+  repeated MapperIssue warnings = 2;
+  google.protobuf.Struct output_schema = 3;
+  repeated CompositeKey output_primary_key = 4;
+  optional google.protobuf.Struct sample_output = 5;
+  bool sample_kept = 6;
+  string sample_error = 7;
+}
 
 message GetDiscoveredCatalogRequest {
   string connection_id = 1;

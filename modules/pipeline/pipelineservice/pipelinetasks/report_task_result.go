@@ -12,6 +12,8 @@ import (
 	"github.com/saturn4er/boilerplate-go/lib/filter"
 
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinecatalog"
+	"github.com/synclet-io/synclet/pkg/protocol"
 )
 
 // ReportTaskResultParams holds parameters for reporting connector task completion.
@@ -27,14 +29,16 @@ type ReportTaskResult struct {
 	storage pipelineservice.Storage
 	secrets pipelineservice.SecretsProvider
 	logger  *logging.Logger
+	recheck *pipelinecatalog.RecheckStreamMappers
 }
 
 // NewReportTaskResult creates a new ReportTaskResult use case.
-func NewReportTaskResult(storage pipelineservice.Storage, secrets pipelineservice.SecretsProvider, logger *logging.Logger) *ReportTaskResult {
+func NewReportTaskResult(storage pipelineservice.Storage, secrets pipelineservice.SecretsProvider, logger *logging.Logger, recheck *pipelinecatalog.RecheckStreamMappers) *ReportTaskResult {
 	return &ReportTaskResult{
 		storage: storage,
 		secrets: secrets,
 		logger:  logger,
+		recheck: recheck,
 	}
 }
 
@@ -121,6 +125,19 @@ func (uc *ReportTaskResult) persistDiscoverResult(ctx context.Context, task *pip
 
 	if _, err := uc.storage.CatalogDiscoveries().Create(ctx, record); err != nil {
 		uc.logger.WithError(err).Error(ctx, "failed to persist catalog discovery result")
+
+		return
+	}
+
+	var catalog protocol.AirbyteCatalog
+	if err := json.Unmarshal([]byte(discoverResult.Catalog), &catalog); err != nil {
+		uc.logger.WithError(err).Error(ctx, "failed to decode discovered catalog for the mapper recheck")
+
+		return
+	}
+
+	if err := uc.recheck.Execute(ctx, discoverPayload.SourceID, &catalog); err != nil {
+		uc.logger.WithError(err).Error(ctx, "failed to recheck stream mappers after discovery")
 	}
 }
 

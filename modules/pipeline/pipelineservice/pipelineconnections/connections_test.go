@@ -374,6 +374,24 @@ func TestEnableDisableConnection(t *testing.T) {
 		assert.Equal(t, pipelineservice.ConnectionStatusActive, out.Status)
 	})
 
+	t.Run("enable clears the pause reason", func(t *testing.T) {
+		store := newCreateConnStore(ws, uuid.New(), uuid.New())
+		reason := `stream "public.users": mapper step 1: unknown field "name"`
+		conn := &pipelineservice.Connection{ID: uuid.New(), WorkspaceID: ws, Status: pipelineservice.ConnectionStatusPaused, StatusReason: &reason}
+		seedConnection(t, store, conn)
+
+		getter := pipelineconnections.NewGetConnection(store)
+		statusUC := pipelineconnections.NewUpdateConnectionStatus(store)
+		uc := pipelineconnections.NewEnableConnection(getter, statusUC, pipelineservice.NoopAuditRecorder{})
+		out, err := uc.Execute(context.Background(), pipelineconnections.EnableConnectionParams{
+			ConnectionID: conn.ID,
+			WorkspaceID:  ws,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, pipelineservice.ConnectionStatusActive, out.Status)
+		assert.Nil(t, out.StatusReason)
+	})
+
 	t.Run("disable transitions active to inactive", func(t *testing.T) {
 		store := newCreateConnStore(ws, uuid.New(), uuid.New())
 		conn := &pipelineservice.Connection{ID: uuid.New(), WorkspaceID: ws, Status: pipelineservice.ConnectionStatusActive}

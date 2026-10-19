@@ -30,7 +30,7 @@ func TestReportTaskResult(t *testing.T) {
 		task := runningTask(ws, pipelineservice.ConnectorTaskTypeCheck, &pipelineservice.CheckPayload{})
 		store := newTaskStore(task)
 
-		err := pipelinetasks.NewReportTaskResult(store, newFakeSecrets(), testLogger()).Execute(ctx, pipelinetasks.ReportTaskResultParams{
+		err := newReportTaskResult(store, newFakeSecrets(), testLogger()).Execute(ctx, pipelinetasks.ReportTaskResultParams{
 			TaskID:  task.ID,
 			Success: true,
 			Result:  []byte(`{"Success":true,"Message":"ok"}`),
@@ -49,7 +49,7 @@ func TestReportTaskResult(t *testing.T) {
 		task := runningTask(ws, pipelineservice.ConnectorTaskTypeSpec, &pipelineservice.SpecPayload{})
 		store := newTaskStore(task)
 
-		err := pipelinetasks.NewReportTaskResult(store, newFakeSecrets(), testLogger()).Execute(ctx, pipelinetasks.ReportTaskResultParams{
+		err := newReportTaskResult(store, newFakeSecrets(), testLogger()).Execute(ctx, pipelinetasks.ReportTaskResultParams{
 			TaskID:  task.ID,
 			Success: true,
 			Result:  []byte(`{"DocumentationURL":"https://docs"}`),
@@ -65,7 +65,7 @@ func TestReportTaskResult(t *testing.T) {
 		task := runningTask(ws, pipelineservice.ConnectorTaskTypeCheck, &pipelineservice.CheckPayload{})
 		store := newTaskStore(task)
 
-		err := pipelinetasks.NewReportTaskResult(store, newFakeSecrets(), testLogger()).Execute(ctx, pipelinetasks.ReportTaskResultParams{TaskID: task.ID, Success: true})
+		err := newReportTaskResult(store, newFakeSecrets(), testLogger()).Execute(ctx, pipelinetasks.ReportTaskResultParams{TaskID: task.ID, Success: true})
 		require.NoError(t, err)
 
 		got := store.tasks.get(task.ID)
@@ -77,7 +77,7 @@ func TestReportTaskResult(t *testing.T) {
 		task := runningTask(ws, pipelineservice.ConnectorTaskTypeCheck, &pipelineservice.CheckPayload{})
 		store := newTaskStore(task)
 
-		err := pipelinetasks.NewReportTaskResult(store, newFakeSecrets(), testLogger()).Execute(ctx, pipelinetasks.ReportTaskResultParams{
+		err := newReportTaskResult(store, newFakeSecrets(), testLogger()).Execute(ctx, pipelinetasks.ReportTaskResultParams{
 			TaskID:       task.ID,
 			ErrorMessage: "connection refused",
 		})
@@ -96,7 +96,7 @@ func TestReportTaskResult(t *testing.T) {
 		store := newTaskStore(task)
 		secrets := newFakeSecrets()
 
-		err := pipelinetasks.NewReportTaskResult(store, secrets, testLogger()).Execute(ctx, pipelinetasks.ReportTaskResultParams{
+		err := newReportTaskResult(store, secrets, testLogger()).Execute(ctx, pipelinetasks.ReportTaskResultParams{
 			TaskID:       task.ID,
 			ErrorMessage: "connection refused",
 		})
@@ -110,7 +110,7 @@ func TestReportTaskResult(t *testing.T) {
 		secrets := newFakeSecrets()
 		secrets.deleteErr = errBoom
 
-		err := pipelinetasks.NewReportTaskResult(store, secrets, testLogger()).Execute(ctx, pipelinetasks.ReportTaskResultParams{TaskID: task.ID, Success: true})
+		err := newReportTaskResult(store, secrets, testLogger()).Execute(ctx, pipelinetasks.ReportTaskResultParams{TaskID: task.ID, Success: true})
 		require.NoError(t, err)
 		assert.Equal(t, pipelineservice.ConnectorTaskStatusCompleted, store.tasks.get(task.ID).Status)
 	})
@@ -120,13 +120,13 @@ func TestReportTaskResult(t *testing.T) {
 		store := newTaskStore(task)
 		secrets := newFakeSecrets()
 
-		err := pipelinetasks.NewReportTaskResult(store, secrets, testLogger()).Execute(ctx, pipelinetasks.ReportTaskResultParams{TaskID: task.ID, Success: true})
+		err := newReportTaskResult(store, secrets, testLogger()).Execute(ctx, pipelinetasks.ReportTaskResultParams{TaskID: task.ID, Success: true})
 		require.NoError(t, err)
 		assert.Empty(t, secrets.deletedOwners())
 	})
 
 	t.Run("unknown task returns not found", func(t *testing.T) {
-		err := pipelinetasks.NewReportTaskResult(newTaskStore(), newFakeSecrets(), testLogger()).Execute(ctx, pipelinetasks.ReportTaskResultParams{
+		err := newReportTaskResult(newTaskStore(), newFakeSecrets(), testLogger()).Execute(ctx, pipelinetasks.ReportTaskResultParams{
 			TaskID:  uuid.New(),
 			Success: true,
 		})
@@ -137,7 +137,7 @@ func TestReportTaskResult(t *testing.T) {
 		task := runningTask(ws, pipelineservice.ConnectorTaskTypeDiscover, &pipelineservice.DiscoverPayload{})
 		store := newTaskStore(task)
 
-		err := pipelinetasks.NewReportTaskResult(store, newFakeSecrets(), testLogger()).Execute(ctx, pipelinetasks.ReportTaskResultParams{
+		err := newReportTaskResult(store, newFakeSecrets(), testLogger()).Execute(ctx, pipelinetasks.ReportTaskResultParams{
 			TaskID:  task.ID,
 			Success: true,
 			Result:  []byte(`{`),
@@ -151,7 +151,7 @@ func TestReportTaskResult(t *testing.T) {
 			task := runningTask(ws, taskType, nil)
 			store := newTaskStore(task)
 
-			err := pipelinetasks.NewReportTaskResult(store, newFakeSecrets(), testLogger()).Execute(ctx, pipelinetasks.ReportTaskResultParams{
+			err := newReportTaskResult(store, newFakeSecrets(), testLogger()).Execute(ctx, pipelinetasks.ReportTaskResultParams{
 				TaskID:  task.ID,
 				Success: true,
 				Result:  []byte(`[]`),
@@ -164,7 +164,7 @@ func TestReportTaskResult(t *testing.T) {
 		task := runningTask(ws, pipelineservice.ConnectorTaskType(0), nil)
 		store := newTaskStore(task)
 
-		err := pipelinetasks.NewReportTaskResult(store, newFakeSecrets(), testLogger()).Execute(ctx, pipelinetasks.ReportTaskResultParams{
+		err := newReportTaskResult(store, newFakeSecrets(), testLogger()).Execute(ctx, pipelinetasks.ReportTaskResultParams{
 			TaskID:  task.ID,
 			Success: true,
 			Result:  []byte(`{}`),
@@ -177,7 +177,7 @@ func TestReportTaskResult(t *testing.T) {
 		store := newTaskStore(task)
 		store.tasks.updateErr = errBoom
 
-		err := pipelinetasks.NewReportTaskResult(store, newFakeSecrets(), testLogger()).Execute(ctx, pipelinetasks.ReportTaskResultParams{TaskID: task.ID, Success: true})
+		err := newReportTaskResult(store, newFakeSecrets(), testLogger()).Execute(ctx, pipelinetasks.ReportTaskResultParams{TaskID: task.ID, Success: true})
 		require.ErrorIs(t, err, errBoom)
 	})
 
@@ -190,7 +190,7 @@ func TestReportTaskResult(t *testing.T) {
 			{ID: uuid.New(), SourceID: uuid.New(), Version: 9},
 		}
 
-		err := pipelinetasks.NewReportTaskResult(store, newFakeSecrets(), testLogger()).Execute(ctx, pipelinetasks.ReportTaskResultParams{
+		err := newReportTaskResult(store, newFakeSecrets(), testLogger()).Execute(ctx, pipelinetasks.ReportTaskResultParams{
 			TaskID:  task.ID,
 			Success: true,
 			Result:  []byte(`{"Catalog":"{\"streams\":[]}"}`),
@@ -204,12 +204,38 @@ func TestReportTaskResult(t *testing.T) {
 		assert.JSONEq(t, `{"streams":[]}`, created.CatalogJSON)
 	})
 
+	t.Run("successful discover pauses a connection whose mappers break", func(t *testing.T) {
+		srcID := uuid.New()
+		task := runningTask(ws, pipelineservice.ConnectorTaskTypeDiscover, &pipelineservice.DiscoverPayload{SourceID: srcID})
+		store := newTaskStore(task)
+
+		conn := &pipelineservice.Connection{ID: uuid.New(), WorkspaceID: ws, SourceID: srcID, Status: pipelineservice.ConnectionStatusActive}
+		store.connections.records[conn.ID] = conn
+		store.configured.records[conn.ID] = &pipelineservice.ConfiguredCatalog{
+			ID:           uuid.New(),
+			ConnectionID: conn.ID,
+			StreamsJSON:  `[{"stream":{"name":"users"},"sync_mode":"full_refresh","destination_sync_mode":"overwrite","mappers":[{"set":{"label":"r.name + '!'"}}]}]`,
+		}
+
+		err := newReportTaskResult(store, newFakeSecrets(), testLogger()).Execute(ctx, pipelinetasks.ReportTaskResultParams{
+			TaskID:  task.ID,
+			Success: true,
+			Result:  []byte(`{"Catalog":"{\"streams\":[{\"name\":\"users\",\"json_schema\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"integer\"}}}}]}"}`),
+		})
+		require.NoError(t, err)
+
+		got := store.connections.records[conn.ID]
+		assert.Equal(t, pipelineservice.ConnectionStatusPaused, got.Status)
+		require.NotNil(t, got.StatusReason)
+		assert.Contains(t, *got.StatusReason, `stream "users": mapper step 0`)
+	})
+
 	t.Run("first discover starts at version one", func(t *testing.T) {
 		srcID := uuid.New()
 		task := runningTask(ws, pipelineservice.ConnectorTaskTypeDiscover, &pipelineservice.DiscoverPayload{SourceID: srcID})
 		store := newTaskStore(task)
 
-		err := pipelinetasks.NewReportTaskResult(store, newFakeSecrets(), testLogger()).Execute(ctx, pipelinetasks.ReportTaskResultParams{
+		err := newReportTaskResult(store, newFakeSecrets(), testLogger()).Execute(ctx, pipelinetasks.ReportTaskResultParams{
 			TaskID:  task.ID,
 			Success: true,
 			Result:  []byte(`{"Catalog":"{}"}`),
@@ -223,7 +249,7 @@ func TestReportTaskResult(t *testing.T) {
 		task := runningTask(ws, pipelineservice.ConnectorTaskTypeDiscover, &pipelineservice.DiscoverPayload{SourceID: uuid.New()})
 		store := newTaskStore(task)
 
-		err := pipelinetasks.NewReportTaskResult(store, newFakeSecrets(), testLogger()).Execute(ctx, pipelinetasks.ReportTaskResultParams{
+		err := newReportTaskResult(store, newFakeSecrets(), testLogger()).Execute(ctx, pipelinetasks.ReportTaskResultParams{
 			TaskID:  task.ID,
 			Success: true,
 			Result:  []byte(`{"Catalog":""}`),
@@ -237,7 +263,7 @@ func TestReportTaskResult(t *testing.T) {
 		store := newTaskStore(task)
 		store.catalogs.createErr = errBoom
 
-		err := pipelinetasks.NewReportTaskResult(store, newFakeSecrets(), testLogger()).Execute(ctx, pipelinetasks.ReportTaskResultParams{
+		err := newReportTaskResult(store, newFakeSecrets(), testLogger()).Execute(ctx, pipelinetasks.ReportTaskResultParams{
 			TaskID:  task.ID,
 			Success: true,
 			Result:  []byte(`{"Catalog":"{}"}`),

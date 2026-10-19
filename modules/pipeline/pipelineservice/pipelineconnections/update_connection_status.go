@@ -40,6 +40,10 @@ func (uc *UpdateConnectionStatus) Execute(ctx context.Context, params UpdateConn
 	conn.Status = params.Status
 	conn.UpdatedAt = time.Now()
 
+	if params.Status == pipelineservice.ConnectionStatusActive {
+		conn.StatusReason = nil
+	}
+
 	// Maintain next_scheduled_at based on new status
 	pipelineservice.RecomputeNextScheduledAt(conn, time.Now())
 

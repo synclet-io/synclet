@@ -14,6 +14,8 @@ import (
 	"github.com/saturn4er/boilerplate-go/lib/filter"
 
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinecatalog"
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinetasks"
 	"github.com/synclet-io/synclet/pkg/secretutil"
 )
 
@@ -26,6 +28,8 @@ type taskStore struct {
 	sources      *sourceStorage
 	destinations *destinationStorage
 	catalogs     *catalogStorage
+	connections  *connectionStorage
+	configured   *configuredCatalogStorage
 }
 
 func newTaskStore(records ...*pipelineservice.ConnectorTask) *taskStore {
@@ -40,6 +44,8 @@ func newTaskStore(records ...*pipelineservice.ConnectorTask) *taskStore {
 		sources:      &sourceStorage{records: map[uuid.UUID]*pipelineservice.Source{}},
 		destinations: &destinationStorage{records: map[uuid.UUID]*pipelineservice.Destination{}},
 		catalogs:     &catalogStorage{},
+		connections:  &connectionStorage{records: map[uuid.UUID]*pipelineservice.Connection{}},
+		configured:   &configuredCatalogStorage{records: map[uuid.UUID]*pipelineservice.ConfiguredCatalog{}},
 	}
 }
 
@@ -437,4 +443,66 @@ func strPtr(s string) *string {
 
 func uuidPtr(id uuid.UUID) *uuid.UUID {
 	return &id
+}
+
+func (s *taskStore) Connections() pipelineservice.ConnectionsStorage {
+	return s.connections
+}
+
+func (s *taskStore) ConfiguredCatalogs() pipelineservice.ConfiguredCatalogsStorage {
+	return s.configured
+}
+
+type connectionStorage struct {
+	pipelineservice.ConnectionsStorage
+
+	records map[uuid.UUID]*pipelineservice.Connection
+}
+
+func (s *connectionStorage) Find(_ context.Context, f *pipelineservice.ConnectionFilter, _ ...optionutil.Option[dbutil.SelectOptions]) ([]*pipelineservice.Connection, error) {
+	var out []*pipelineservice.Connection
+
+	for _, conn := range s.records {
+		if sid, ok := f.SourceID.(*filter.EqualsFilter[uuid.UUID]); ok && conn.SourceID != sid.Value {
+			continue
+		}
+
+		cp := *conn
+		out = append(out, &cp)
+	}
+
+	return out, nil
+}
+
+func (s *connectionStorage) Update(_ context.Context, conn *pipelineservice.Connection) (*pipelineservice.Connection, error) {
+	cp := *conn
+	s.records[conn.ID] = &cp
+
+	return conn, nil
+}
+
+type configuredCatalogStorage struct {
+	pipelineservice.ConfiguredCatalogsStorage
+
+	records map[uuid.UUID]*pipelineservice.ConfiguredCatalog
+}
+
+func (s *configuredCatalogStorage) First(_ context.Context, f *pipelineservice.ConfiguredCatalogFilter, _ ...optionutil.Option[dbutil.SelectOptions]) (*pipelineservice.ConfiguredCatalog, error) {
+	id, _ := f.ConnectionID.(*filter.EqualsFilter[uuid.UUID])
+	if id == nil {
+		return nil, pipelineservice.ErrConfiguredCatalogNotFound
+	}
+
+	rec, ok := s.records[id.Value]
+	if !ok {
+		return nil, pipelineservice.ErrConfiguredCatalogNotFound
+	}
+
+	cp := *rec
+
+	return &cp, nil
+}
+
+func newReportTaskResult(store pipelineservice.Storage, secrets pipelineservice.SecretsProvider, logger *logging.Logger) *pipelinetasks.ReportTaskResult {
+	return pipelinetasks.NewReportTaskResult(store, secrets, logger, pipelinecatalog.NewRecheckStreamMappers(store))
 }

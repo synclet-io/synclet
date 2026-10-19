@@ -52,6 +52,7 @@ type ConnectionHandler struct {
 	getConfiguredCatalog              *pipelinecatalog.GetConfiguredCatalog
 	detectSchemaChanges               *pipelinecatalog.DetectSchemaChanges
 	countPendingSchemaChanges         *pipelinecatalog.CountPendingSchemaChanges
+	validateMappers                   *pipelinecatalog.ValidateMappers
 
 	// Composite state use cases (with workspace verification)
 	resetStreamState     *pipelinestate.ResetStreamState
@@ -84,6 +85,7 @@ func NewConnectionHandler(
 	getConfiguredCatalog *pipelinecatalog.GetConfiguredCatalog,
 	detectSchemaChanges *pipelinecatalog.DetectSchemaChanges,
 	countPendingSchemaChanges *pipelinecatalog.CountPendingSchemaChanges,
+	validateMappers *pipelinecatalog.ValidateMappers,
 	resetStreamState *pipelinestate.ResetStreamState,
 	resetConnectionState *pipelinestate.ResetConnectionState,
 	updateStreamState *pipelinestate.UpdateStreamState,
@@ -108,6 +110,7 @@ func NewConnectionHandler(
 		getConfiguredCatalog:              getConfiguredCatalog,
 		detectSchemaChanges:               detectSchemaChanges,
 		countPendingSchemaChanges:         countPendingSchemaChanges,
+		validateMappers:                   validateMappers,
 		resetStreamState:                  resetStreamState,
 		resetConnectionState:              resetConnectionState,
 		updateStreamState:                 updateStreamState,
@@ -497,6 +500,13 @@ func (h *ConnectionHandler) ConfigureStreams(ctx context.Context, req *connect.R
 			PrimaryKey:          primaryKey,
 			SelectedFields:      selectedFields,
 		}
+
+		mappers, err := mappersToJSON(stream.GetMappers())
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+
+		streams[i].Mappers = mappers
 	}
 
 	if err := h.configureStreams.Execute(ctx, pipelinecatalog.ConfigureStreamsParams{
@@ -848,6 +858,7 @@ func connectionToProto(conn *pipelineservice.Connection) *pipelinev1.Connection 
 		CustomNamespaceFormat: stringPtrOrEmpty(conn.CustomNamespaceFormat),
 		StreamPrefix:          stringPtrOrEmpty(conn.StreamPrefix),
 		NextScheduledAt:       timestampPtrOrNil(conn.NextScheduledAt),
+		StatusReason:          stringPtrOrEmpty(conn.StatusReason),
 	}
 }
 

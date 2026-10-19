@@ -1234,6 +1234,7 @@ const (
 	ConnectionFieldWorkspaceID
 	ConnectionFieldName
 	ConnectionFieldStatus
+	ConnectionFieldStatusReason
 	ConnectionFieldSourceID
 	ConnectionFieldDestinationID
 	ConnectionFieldSchedule
@@ -1264,6 +1265,7 @@ type Connection struct {
 	WorkspaceID           uuid.UUID
 	Name                  string
 	Status                ConnectionStatus
+	StatusReason          *string
 	SourceID              uuid.UUID
 	DestinationID         uuid.UUID
 	Schedule              *string
@@ -1286,30 +1288,35 @@ func (c *Connection) Copy() Connection {
 	result.WorkspaceID = c.WorkspaceID
 	result.Name = c.Name
 	result.Status = c.Status // enum
+	if c.StatusReason != nil {
+		var tmp string
+		tmp = (*c.StatusReason)
+		result.StatusReason = &tmp
+	}
 	result.SourceID = c.SourceID
 	result.DestinationID = c.DestinationID
 	if c.Schedule != nil {
-		var tmp string
-		tmp = (*c.Schedule)
-		result.Schedule = &tmp
+		var tmp1 string
+		tmp1 = (*c.Schedule)
+		result.Schedule = &tmp1
 	}
 	result.SchemaChangePolicy = c.SchemaChangePolicy // enum
 	result.MaxAttempts = c.MaxAttempts
 	result.NamespaceDefinition = c.NamespaceDefinition // enum
 	if c.CustomNamespaceFormat != nil {
-		var tmp1 string
-		tmp1 = (*c.CustomNamespaceFormat)
-		result.CustomNamespaceFormat = &tmp1
+		var tmp2 string
+		tmp2 = (*c.CustomNamespaceFormat)
+		result.CustomNamespaceFormat = &tmp2
 	}
 	if c.StreamPrefix != nil {
-		var tmp2 string
-		tmp2 = (*c.StreamPrefix)
-		result.StreamPrefix = &tmp2
+		var tmp3 string
+		tmp3 = (*c.StreamPrefix)
+		result.StreamPrefix = &tmp3
 	}
 	if c.NextScheduledAt != nil {
-		var tmp3 time.Time
-		tmp3 = (*c.NextScheduledAt)
-		result.NextScheduledAt = &tmp3
+		var tmp4 time.Time
+		tmp4 = (*c.NextScheduledAt)
+		result.NextScheduledAt = &tmp4
 	}
 	result.CreatedAt = c.CreatedAt
 	result.UpdatedAt = c.UpdatedAt
@@ -1334,6 +1341,14 @@ func (c *Connection) Equals(to *Connection) bool {
 	}
 	if c.Status != to.Status {
 		return false
+	}
+	if (c.StatusReason == nil) != (to.StatusReason == nil) {
+		return false
+	}
+	if c.StatusReason != nil && to.StatusReason != nil {
+		if (*c.StatusReason) != (*to.StatusReason) {
+			return false
+		}
 	}
 	if c.SourceID != to.SourceID {
 		return false

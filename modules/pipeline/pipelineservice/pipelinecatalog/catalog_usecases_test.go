@@ -22,7 +22,7 @@ func TestDiscoverCatalog(t *testing.T) {
 		store := newFakeStore()
 		sourceID := uuid.New()
 
-		uc := NewDiscoverCatalog(store, &fakeDiscoverer{catalog: discovered})
+		uc := NewDiscoverCatalog(store, &fakeDiscoverer{catalog: discovered}, NewRecheckStreamMappers(store), testLogger())
 		got, err := uc.Execute(context.Background(), DiscoverCatalogParams{SourceID: sourceID, Image: "img"})
 		require.NoError(t, err)
 		assert.Equal(t, discovered, got)
@@ -40,7 +40,7 @@ func TestDiscoverCatalog(t *testing.T) {
 		seedDiscovery(t, store, sourceID, 4, protocol.AirbyteCatalog{})
 		seedDiscovery(t, store, uuid.New(), 9, protocol.AirbyteCatalog{})
 
-		uc := NewDiscoverCatalog(store, &fakeDiscoverer{catalog: discovered})
+		uc := NewDiscoverCatalog(store, &fakeDiscoverer{catalog: discovered}, NewRecheckStreamMappers(store), testLogger())
 		_, err := uc.Execute(context.Background(), DiscoverCatalogParams{SourceID: sourceID})
 		require.NoError(t, err)
 
@@ -51,7 +51,7 @@ func TestDiscoverCatalog(t *testing.T) {
 	t.Run("connector failure stores nothing", func(t *testing.T) {
 		store := newFakeStore()
 
-		uc := NewDiscoverCatalog(store, &fakeDiscoverer{err: errStorage})
+		uc := NewDiscoverCatalog(store, &fakeDiscoverer{err: errStorage}, NewRecheckStreamMappers(store), testLogger())
 		_, err := uc.Execute(context.Background(), DiscoverCatalogParams{SourceID: uuid.New()})
 		require.ErrorIs(t, err, errStorage)
 		assert.Empty(t, store.discoveries.records)
@@ -61,7 +61,7 @@ func TestDiscoverCatalog(t *testing.T) {
 		store := newFakeStore()
 		store.discoveries.firstErr = errStorage
 
-		uc := NewDiscoverCatalog(store, &fakeDiscoverer{catalog: discovered})
+		uc := NewDiscoverCatalog(store, &fakeDiscoverer{catalog: discovered}, NewRecheckStreamMappers(store), testLogger())
 		_, err := uc.Execute(context.Background(), DiscoverCatalogParams{SourceID: uuid.New()})
 		require.ErrorIs(t, err, errStorage)
 	})
@@ -70,9 +70,24 @@ func TestDiscoverCatalog(t *testing.T) {
 		store := newFakeStore()
 		store.discoveries.createErr = errStorage
 
-		uc := NewDiscoverCatalog(store, &fakeDiscoverer{catalog: discovered})
+		uc := NewDiscoverCatalog(store, &fakeDiscoverer{catalog: discovered}, NewRecheckStreamMappers(store), testLogger())
 		_, err := uc.Execute(context.Background(), DiscoverCatalogParams{SourceID: uuid.New()})
 		require.ErrorIs(t, err, errStorage)
+	})
+
+	t.Run("a discovery that breaks a connection's mappers pauses it", func(t *testing.T) {
+		store, conn := recheckFixture(t, pipelineservice.ConnectionStatusActive)
+
+		uc := NewDiscoverCatalog(store, &fakeDiscoverer{
+			catalog: usersCatalog(`{"type":"object","properties":{"id":{"type":"integer"}}}`),
+		}, NewRecheckStreamMappers(store), testLogger())
+		_, err := uc.Execute(context.Background(), DiscoverCatalogParams{SourceID: conn.SourceID})
+		require.NoError(t, err)
+
+		got := store.connections.records[conn.ID]
+		assert.Equal(t, pipelineservice.ConnectionStatusPaused, got.Status)
+		require.NotNil(t, got.StatusReason)
+		assert.Contains(t, *got.StatusReason, `stream "public.users": mapper step 1`)
 	})
 }
 

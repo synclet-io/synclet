@@ -272,6 +272,7 @@ types:
         - { name: WorkspaceID, type: uuid, filterable: true }
         - { name: Name, type: string, filterable: true }
         - { name: Status, type: ConnectionStatus, filterable: true }
+        - { name: StatusReason, type: "*string" }
         - { name: SourceID, type: uuid, filterable: true }
         - { name: DestinationID, type: uuid, filterable: true }
         - { name: Schedule, type: "*string" }

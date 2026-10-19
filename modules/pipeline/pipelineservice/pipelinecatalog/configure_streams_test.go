@@ -279,3 +279,96 @@ func TestConfigureStreams_StorageErrors(t *testing.T) {
 		assert.Empty(t, f.audit.events)
 	})
 }
+
+func TestConfigureStreams_Mappers(t *testing.T) {
+	withMappers := func(s protocol.ConfiguredAirbyteStream, raw string) protocol.ConfiguredAirbyteStream {
+		s.Mappers = json.RawMessage(raw)
+
+		return s
+	}
+
+	withSelectedFields := func(s protocol.ConfiguredAirbyteStream, paths ...[]string) protocol.ConfiguredAirbyteStream {
+		s.SelectedFields = fields(paths...)
+
+		return s
+	}
+
+	t.Run("valid mappers are stored and read back", func(t *testing.T) {
+		f := newConfigureFixture(t)
+
+		const mappers = `[{"rename":{"name":"full_name"}},{"set":{"label":"r.full_name + '!'"}}]`
+
+		users := withMappers(
+			configured("public", "users", protocol.SyncModeFullRefresh, protocol.DestinationSyncModeOverwrite),
+			mappers,
+		)
+		require.NoError(t, f.execute(users))
+
+		got := storedStreams(t, f.store, f.conn.ID)
+		require.Len(t, got, 1)
+		assert.JSONEq(t, mappers, string(got[0].Mappers))
+
+		catalog, err := NewGetConfiguredCatalog(f.store).Execute(context.Background(), GetConfiguredCatalogParams{ConnectionID: f.conn.ID})
+		require.NoError(t, err)
+		require.Len(t, catalog.Streams, 1)
+		assert.JSONEq(t, mappers, string(catalog.Streams[0].Mappers))
+	})
+
+	tests := []struct {
+		name    string
+		stream  protocol.ConfiguredAirbyteStream
+		wantErr string
+	}{
+		{
+			name: "set reads an unknown field",
+			stream: withMappers(
+				configured("public", "users", protocol.SyncModeFullRefresh, protocol.DestinationSyncModeOverwrite),
+				`[{"rename":{"name":"full_name"}},{"set":{"label":"r.nope + 'x'"}}]`,
+			),
+			wantErr: `invalid mappers for stream "public.users": step 1`,
+		},
+		{
+			name: "rename onto an existing field",
+			stream: withMappers(
+				configured("public", "orders", protocol.SyncModeIncremental, protocol.DestinationSyncModeAppendDedup),
+				`[{"rename":{"id":"ts"}}]`,
+			),
+			wantErr: `invalid mappers for stream "public.orders": step 0: field "ts" already exists`,
+		},
+		{
+			name: "source-defined primary key outside the selection is force-included",
+			stream: withMappers(
+				withSelectedFields(configured("public", "orders", protocol.SyncModeIncremental, protocol.DestinationSyncModeAppendDedup), []string{"ts"}),
+				`[{"rename":{"id":"order_id"}}]`,
+			),
+		},
+		{
+			name: "mappers are not a list of steps",
+			stream: withMappers(
+				configured("public", "users", protocol.SyncModeFullRefresh, protocol.DestinationSyncModeOverwrite),
+				`{"rename":{"name":"full_name"}}`,
+			),
+			wantErr: `invalid mappers for stream "public.users"`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := newConfigureFixture(t)
+
+			err := f.execute(tt.stream)
+			if tt.wantErr == "" {
+				require.NoError(t, err)
+				assert.Equal(t, fields([]string{"ts"}, []string{"id"}), storedStreams(t, f.store, f.conn.ID)[0].SelectedFields)
+
+				return
+			}
+
+			require.ErrorContains(t, err, tt.wantErr)
+
+			var validationErr *pipelineservice.ValidationError
+			require.ErrorAs(t, err, &validationErr)
+			assert.Empty(t, f.store.configured.records)
+		})
+	}
+}

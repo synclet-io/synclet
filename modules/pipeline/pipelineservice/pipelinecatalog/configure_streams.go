@@ -44,24 +44,9 @@ func (uc *ConfigureStreams) Execute(ctx context.Context, params ConfigureStreams
 		return fmt.Errorf("getting connection: %w", err)
 	}
 
-	// Get the latest discovered catalog to validate against.
-	latestRecord, err := uc.storage.CatalogDiscoveries().First(ctx, &pipelineservice.CatalogDiscoveryFilter{
-		SourceID: filter.Equals(params.SourceID),
-	}, dbutil.WithOrder(pipelineservice.CatalogDiscoveryFieldVersion, dbutil.OrderDirDesc))
+	availableStreams, err := latestDiscoveredStreams(ctx, uc.storage, params.SourceID)
 	if err != nil {
 		return fmt.Errorf("getting latest catalog for validation: %w", err)
-	}
-
-	var latestCatalog protocol.AirbyteCatalog
-	if err := json.Unmarshal([]byte(latestRecord.CatalogJSON), &latestCatalog); err != nil {
-		return fmt.Errorf("unmarshaling latest catalog: %w", err)
-	}
-
-	// Build a lookup map of available streams.
-	availableStreams := make(map[string]protocol.AirbyteStream, len(latestCatalog.Streams))
-	for _, stream := range latestCatalog.Streams {
-		key := streamKey(stream.Namespace, stream.Name)
-		availableStreams[key] = stream
 	}
 
 	// Validate each configured stream.
@@ -123,9 +108,17 @@ func (uc *ConfigureStreams) Execute(ctx context.Context, params ConfigureStreams
 
 			params.Streams[i].SelectedFields = pipelineservice.ForceIncludeFields(
 				configured.SelectedFields,
-				configured.CursorField,
-				configured.PrimaryKey,
+				params.Streams[i].CursorField,
+				params.Streams[i].PrimaryKey,
 			)
+		}
+
+		if pipelineservice.HasMappers(&params.Streams[i]) {
+			if err := validateStreamMappers(key, &params.Streams[i]); err != nil {
+				return err
+			}
+		} else {
+			params.Streams[i].Mappers = nil
 		}
 	}
 
@@ -211,6 +204,48 @@ func streamsAuditPayload(streams []protocol.ConfiguredAirbyteStream) map[string]
 	slices.Sort(entries)
 
 	return map[string]any{"streams": entries}
+}
+
+// latestDiscoveredStreams returns the streams of the source's latest
+// discovered catalog by stream key.
+func latestDiscoveredStreams(ctx context.Context, storage pipelineservice.Storage, sourceID uuid.UUID) (map[string]protocol.AirbyteStream, error) {
+	latestRecord, err := storage.CatalogDiscoveries().First(ctx, &pipelineservice.CatalogDiscoveryFilter{
+		SourceID: filter.Equals(sourceID),
+	}, dbutil.WithOrder(pipelineservice.CatalogDiscoveryFieldVersion, dbutil.OrderDirDesc))
+	if err != nil {
+		return nil, err
+	}
+
+	var latestCatalog protocol.AirbyteCatalog
+	if err := json.Unmarshal([]byte(latestRecord.CatalogJSON), &latestCatalog); err != nil {
+		return nil, fmt.Errorf("unmarshaling latest catalog: %w", err)
+	}
+
+	return streamsByKey(latestCatalog.Streams), nil
+}
+
+func streamsByKey(streams []protocol.AirbyteStream) map[string]protocol.AirbyteStream {
+	out := make(map[string]protocol.AirbyteStream, len(streams))
+	for _, stream := range streams {
+		out[streamKey(stream.Namespace, stream.Name)] = stream
+	}
+
+	return out
+}
+
+// validateStreamMappers compiles the stream's mappers against its schema and
+// returns a validation error naming each failing step.
+func validateStreamMappers(key string, stream *protocol.ConfiguredAirbyteStream) error {
+	_, result, err := pipelineservice.CompileStreamMappers(stream, stream.Stream.JSONSchema)
+	if err != nil {
+		return streamValidationError("invalid mappers for stream %q: %v", key, err)
+	}
+
+	if len(result.Errors) > 0 {
+		return streamValidationError("invalid mappers for stream %q: %s", key, pipelineservice.FormatMapperIssues(result.Errors))
+	}
+
+	return nil
 }
 
 // streamKey returns a unique key for a stream based on namespace and name.

@@ -135,9 +135,10 @@ func FilterRecordData(data json.RawMessage, selectedFields []protocol.SelectedFi
 	return result, nil
 }
 
-// BuildDestinationCatalog creates a deep copy of the catalog with JSON schemas
-// filtered by selected fields for streams that have them. Streams without
-// selected fields are passed through unchanged.
+// BuildDestinationCatalog creates a copy of the catalog for the destination.
+// A stream with mappers gets the mappers' output schema, primary key and
+// renamed cursor field and loses the mappers; a stream with selected fields gets its JSON schema
+// filtered by them; other streams are passed through unchanged.
 func BuildDestinationCatalog(catalog *protocol.ConfiguredAirbyteCatalog) (*protocol.ConfiguredAirbyteCatalog, error) {
 	dest := &protocol.ConfiguredAirbyteCatalog{
 		Streams: make([]protocol.ConfiguredAirbyteStream, len(catalog.Streams)),
@@ -145,6 +146,29 @@ func BuildDestinationCatalog(catalog *protocol.ConfiguredAirbyteCatalog) (*proto
 
 	for i, stream := range catalog.Streams {
 		dest.Streams[i] = stream
+		dest.Streams[i].Mappers = nil
+
+		if HasMappers(&stream) {
+			_, result, err := CompileStreamMappers(&stream, stream.Stream.JSONSchema)
+			if err != nil {
+				return nil, fmt.Errorf("stream %q: %w", stream.Stream.Name, err)
+			}
+
+			if len(result.Errors) > 0 {
+				return nil, fmt.Errorf("stream %q: mappers do not compile: %s", stream.Stream.Name, FormatMapperIssues(result.Errors))
+			}
+
+			cursor, err := RenamedCursorField(&stream)
+			if err != nil {
+				return nil, fmt.Errorf("stream %q: %w", stream.Stream.Name, err)
+			}
+
+			dest.Streams[i].Stream.JSONSchema = result.Schema
+			dest.Streams[i].PrimaryKey = result.PrimaryKey
+			dest.Streams[i].CursorField = cursor
+
+			continue
+		}
 
 		if len(stream.SelectedFields) == 0 {
 			continue

@@ -97,7 +97,7 @@ func (e *DockerSyncExecutor) Execute(ctx context.Context, bundle *pipelineexec.S
 	srcMemLimit, srcCPULimit, _, _ := pipelineservice.ToContainerResources(srcRuntimeCfg)
 
 	// Start source read.
-	sourceStdout, sourceCleanup, err := e.client.Read(ctx, bundle.SourceImage, bundle.SourceConfig, catalog, bundle.StateBlob, labels, ResourceLimits{
+	sourceStdout, sourceCleanup, err := e.client.Read(ctx, bundle.SourceImage, bundle.SourceConfig, pipelineservice.BuildSourceCatalog(catalog), bundle.StateBlob, labels, ResourceLimits{
 		MemoryLimit: srcMemLimit,
 		CPULimit:    srcCPULimit,
 		NetworkMode: srcRuntimeCfg.DockerNetwork,

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/go-pnp/go-pnp/logging"
 	"github.com/go-pnp/go-pnp/pkg/optionutil"
 	"github.com/google/uuid"
 	"github.com/saturn4er/boilerplate-go/lib/dbutil"
@@ -82,6 +83,30 @@ type fakeConnections struct {
 	pipelineservice.ConnectionsStorage
 
 	records map[uuid.UUID]*pipelineservice.Connection
+	updated int
+}
+
+func (s *fakeConnections) Find(_ context.Context, f *pipelineservice.ConnectionFilter, _ ...optionutil.Option[dbutil.SelectOptions]) ([]*pipelineservice.Connection, error) {
+	var out []*pipelineservice.Connection
+
+	for _, conn := range s.records {
+		if sid, ok := equalsValue(f.SourceID); ok && conn.SourceID != sid {
+			continue
+		}
+
+		cp := *conn
+		out = append(out, &cp)
+	}
+
+	return out, nil
+}
+
+func (s *fakeConnections) Update(_ context.Context, conn *pipelineservice.Connection) (*pipelineservice.Connection, error) {
+	s.updated++
+	cp := *conn
+	s.records[conn.ID] = &cp
+
+	return conn, nil
 }
 
 func (s *fakeConnections) First(_ context.Context, f *pipelineservice.ConnectionFilter, _ ...optionutil.Option[dbutil.SelectOptions]) (*pipelineservice.Connection, error) {
@@ -300,4 +325,20 @@ func storedStreams(t *testing.T, store *fakeStore, connectionID uuid.UUID) []pro
 	require.NoError(t, json.Unmarshal([]byte(rec.StreamsJSON), &streams))
 
 	return streams
+}
+
+type noopLogDelegate struct{}
+
+func (noopLogDelegate) Info(context.Context, string, ...interface{})         {}
+func (noopLogDelegate) Warn(context.Context, string, ...interface{})         {}
+func (noopLogDelegate) Debug(context.Context, string, ...interface{})        {}
+func (noopLogDelegate) Error(context.Context, string, ...interface{})        {}
+func (d noopLogDelegate) WithFields(map[string]interface{}) logging.Delegate { return d }
+func (d noopLogDelegate) WithField(string, interface{}) logging.Delegate     { return d }
+func (d noopLogDelegate) WithError(error) logging.Delegate                   { return d }
+func (d noopLogDelegate) Named(string) logging.Delegate                      { return d }
+func (d noopLogDelegate) SkipCallers(int) logging.Delegate                   { return d }
+
+func testLogger() *logging.Logger {
+	return &logging.Logger{Delegate: noopLogDelegate{}}
 }

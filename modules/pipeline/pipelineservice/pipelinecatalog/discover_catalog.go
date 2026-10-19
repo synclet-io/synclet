@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/go-pnp/go-pnp/logging"
 	"github.com/google/uuid"
 	"github.com/saturn4er/boilerplate-go/lib/dbutil"
 	"github.com/saturn4er/boilerplate-go/lib/filter"
@@ -26,11 +27,18 @@ type DiscoverCatalogParams struct {
 type DiscoverCatalog struct {
 	storage   pipelineservice.Storage
 	connector pipelineservice.ConnectorDiscoverer
+	recheck   *RecheckStreamMappers
+	logger    *logging.Logger
 }
 
 // NewDiscoverCatalog creates a new DiscoverCatalog use case.
-func NewDiscoverCatalog(storage pipelineservice.Storage, connector pipelineservice.ConnectorDiscoverer) *DiscoverCatalog {
-	return &DiscoverCatalog{storage: storage, connector: connector}
+func NewDiscoverCatalog(
+	storage pipelineservice.Storage,
+	connector pipelineservice.ConnectorDiscoverer,
+	recheck *RecheckStreamMappers,
+	logger *logging.Logger,
+) *DiscoverCatalog {
+	return &DiscoverCatalog{storage: storage, connector: connector, recheck: recheck, logger: logger}
 }
 
 // Execute discovers the catalog from a source connector and persists it.
@@ -70,6 +78,10 @@ func (uc *DiscoverCatalog) Execute(ctx context.Context, params DiscoverCatalogPa
 
 	if _, err := uc.storage.CatalogDiscoveries().Create(ctx, record); err != nil {
 		return nil, fmt.Errorf("storing catalog: %w", err)
+	}
+
+	if err := uc.recheck.Execute(ctx, params.SourceID, catalog); err != nil {
+		uc.logger.WithError(err).Error(ctx, "failed to recheck stream mappers after discovery")
 	}
 
 	return catalog, nil

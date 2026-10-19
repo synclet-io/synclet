@@ -124,6 +124,9 @@ const (
 	// ConnectionServiceGetConfiguredCatalogProcedure is the fully-qualified name of the
 	// ConnectionService's GetConfiguredCatalog RPC.
 	ConnectionServiceGetConfiguredCatalogProcedure = "/synclet.publicapi.pipeline.v1.ConnectionService/GetConfiguredCatalog"
+	// ConnectionServiceValidateMappersProcedure is the fully-qualified name of the ConnectionService's
+	// ValidateMappers RPC.
+	ConnectionServiceValidateMappersProcedure = "/synclet.publicapi.pipeline.v1.ConnectionService/ValidateMappers"
 	// ConnectionServiceGetSchemaChangesProcedure is the fully-qualified name of the ConnectionService's
 	// GetSchemaChanges RPC.
 	ConnectionServiceGetSchemaChangesProcedure = "/synclet.publicapi.pipeline.v1.ConnectionService/GetSchemaChanges"
@@ -722,6 +725,9 @@ type ConnectionServiceClient interface {
 	ConfigureStreams(context.Context, *connect.Request[v1.ConfigureStreamsRequest]) (*connect.Response[v1.ConfigureStreamsResponse], error)
 	GetDiscoveredCatalog(context.Context, *connect.Request[v1.GetDiscoveredCatalogRequest]) (*connect.Response[v1.GetDiscoveredCatalogResponse], error)
 	GetConfiguredCatalog(context.Context, *connect.Request[v1.GetConfiguredCatalogRequest]) (*connect.Response[v1.GetConfiguredCatalogResponse], error)
+	// ValidateMappers compiles an unsaved mapper list against the stream's
+	// discovered schema and, when a sample record is given, runs it through.
+	ValidateMappers(context.Context, *connect.Request[v1.ValidateMappersRequest]) (*connect.Response[v1.ValidateMappersResponse], error)
 	GetSchemaChanges(context.Context, *connect.Request[v1.GetSchemaChangesRequest]) (*connect.Response[v1.GetSchemaChangesResponse], error)
 	ResetStreamState(context.Context, *connect.Request[v1.ResetStreamStateRequest]) (*connect.Response[v1.ResetStreamStateResponse], error)
 	ResetConnectionState(context.Context, *connect.Request[v1.ResetConnectionStateRequest]) (*connect.Response[v1.ResetConnectionStateResponse], error)
@@ -811,6 +817,12 @@ func NewConnectionServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			connect.WithSchema(connectionServiceMethods.ByName("GetConfiguredCatalog")),
 			connect.WithClientOptions(opts...),
 		),
+		validateMappers: connect.NewClient[v1.ValidateMappersRequest, v1.ValidateMappersResponse](
+			httpClient,
+			baseURL+ConnectionServiceValidateMappersProcedure,
+			connect.WithSchema(connectionServiceMethods.ByName("ValidateMappers")),
+			connect.WithClientOptions(opts...),
+		),
 		getSchemaChanges: connect.NewClient[v1.GetSchemaChangesRequest, v1.GetSchemaChangesResponse](
 			httpClient,
 			baseURL+ConnectionServiceGetSchemaChangesProcedure,
@@ -881,6 +893,7 @@ type connectionServiceClient struct {
 	configureStreams       *connect.Client[v1.ConfigureStreamsRequest, v1.ConfigureStreamsResponse]
 	getDiscoveredCatalog   *connect.Client[v1.GetDiscoveredCatalogRequest, v1.GetDiscoveredCatalogResponse]
 	getConfiguredCatalog   *connect.Client[v1.GetConfiguredCatalogRequest, v1.GetConfiguredCatalogResponse]
+	validateMappers        *connect.Client[v1.ValidateMappersRequest, v1.ValidateMappersResponse]
 	getSchemaChanges       *connect.Client[v1.GetSchemaChangesRequest, v1.GetSchemaChangesResponse]
 	resetStreamState       *connect.Client[v1.ResetStreamStateRequest, v1.ResetStreamStateResponse]
 	resetConnectionState   *connect.Client[v1.ResetConnectionStateRequest, v1.ResetConnectionStateResponse]
@@ -947,6 +960,11 @@ func (c *connectionServiceClient) GetConfiguredCatalog(ctx context.Context, req 
 	return c.getConfiguredCatalog.CallUnary(ctx, req)
 }
 
+// ValidateMappers calls synclet.publicapi.pipeline.v1.ConnectionService.ValidateMappers.
+func (c *connectionServiceClient) ValidateMappers(ctx context.Context, req *connect.Request[v1.ValidateMappersRequest]) (*connect.Response[v1.ValidateMappersResponse], error) {
+	return c.validateMappers.CallUnary(ctx, req)
+}
+
 // GetSchemaChanges calls synclet.publicapi.pipeline.v1.ConnectionService.GetSchemaChanges.
 func (c *connectionServiceClient) GetSchemaChanges(ctx context.Context, req *connect.Request[v1.GetSchemaChangesRequest]) (*connect.Response[v1.GetSchemaChangesResponse], error) {
 	return c.getSchemaChanges.CallUnary(ctx, req)
@@ -1009,6 +1027,9 @@ type ConnectionServiceHandler interface {
 	ConfigureStreams(context.Context, *connect.Request[v1.ConfigureStreamsRequest]) (*connect.Response[v1.ConfigureStreamsResponse], error)
 	GetDiscoveredCatalog(context.Context, *connect.Request[v1.GetDiscoveredCatalogRequest]) (*connect.Response[v1.GetDiscoveredCatalogResponse], error)
 	GetConfiguredCatalog(context.Context, *connect.Request[v1.GetConfiguredCatalogRequest]) (*connect.Response[v1.GetConfiguredCatalogResponse], error)
+	// ValidateMappers compiles an unsaved mapper list against the stream's
+	// discovered schema and, when a sample record is given, runs it through.
+	ValidateMappers(context.Context, *connect.Request[v1.ValidateMappersRequest]) (*connect.Response[v1.ValidateMappersResponse], error)
 	GetSchemaChanges(context.Context, *connect.Request[v1.GetSchemaChangesRequest]) (*connect.Response[v1.GetSchemaChangesResponse], error)
 	ResetStreamState(context.Context, *connect.Request[v1.ResetStreamStateRequest]) (*connect.Response[v1.ResetStreamStateResponse], error)
 	ResetConnectionState(context.Context, *connect.Request[v1.ResetConnectionStateRequest]) (*connect.Response[v1.ResetConnectionStateResponse], error)
@@ -1093,6 +1114,12 @@ func NewConnectionServiceHandler(svc ConnectionServiceHandler, opts ...connect.H
 		connect.WithSchema(connectionServiceMethods.ByName("GetConfiguredCatalog")),
 		connect.WithHandlerOptions(opts...),
 	)
+	connectionServiceValidateMappersHandler := connect.NewUnaryHandler(
+		ConnectionServiceValidateMappersProcedure,
+		svc.ValidateMappers,
+		connect.WithSchema(connectionServiceMethods.ByName("ValidateMappers")),
+		connect.WithHandlerOptions(opts...),
+	)
 	connectionServiceGetSchemaChangesHandler := connect.NewUnaryHandler(
 		ConnectionServiceGetSchemaChangesProcedure,
 		svc.GetSchemaChanges,
@@ -1171,6 +1198,8 @@ func NewConnectionServiceHandler(svc ConnectionServiceHandler, opts ...connect.H
 			connectionServiceGetDiscoveredCatalogHandler.ServeHTTP(w, r)
 		case ConnectionServiceGetConfiguredCatalogProcedure:
 			connectionServiceGetConfiguredCatalogHandler.ServeHTTP(w, r)
+		case ConnectionServiceValidateMappersProcedure:
+			connectionServiceValidateMappersHandler.ServeHTTP(w, r)
 		case ConnectionServiceGetSchemaChangesProcedure:
 			connectionServiceGetSchemaChangesHandler.ServeHTTP(w, r)
 		case ConnectionServiceResetStreamStateProcedure:
@@ -1240,6 +1269,10 @@ func (UnimplementedConnectionServiceHandler) GetDiscoveredCatalog(context.Contex
 
 func (UnimplementedConnectionServiceHandler) GetConfiguredCatalog(context.Context, *connect.Request[v1.GetConfiguredCatalogRequest]) (*connect.Response[v1.GetConfiguredCatalogResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("synclet.publicapi.pipeline.v1.ConnectionService.GetConfiguredCatalog is not implemented"))
+}
+
+func (UnimplementedConnectionServiceHandler) ValidateMappers(context.Context, *connect.Request[v1.ValidateMappersRequest]) (*connect.Response[v1.ValidateMappersResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("synclet.publicapi.pipeline.v1.ConnectionService.ValidateMappers is not implemented"))
 }
 
 func (UnimplementedConnectionServiceHandler) GetSchemaChanges(context.Context, *connect.Request[v1.GetSchemaChangesRequest]) (*connect.Response[v1.GetSchemaChangesResponse], error) {
