@@ -249,3 +249,138 @@ func TestListConnectorsWithUpdateInfo_AsksUsedOnce(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 1, store.managedConnectors.usedCalls)
 }
+
+func TestListConnectorsWithUpdateInfo_UsedFlag(t *testing.T) {
+	store := newMockStorage()
+	useCase := pipelineconnectors.NewListConnectorsWithUpdateInfo(store)
+
+	workspaceID := uuid.New()
+	usedID, unusedID := uuid.New(), uuid.New()
+	store.managedConnectors.connectors[usedID] = &pipelineservice.ManagedConnector{ID: usedID, WorkspaceID: workspaceID, Spec: "{}"}
+	store.managedConnectors.connectors[unusedID] = &pipelineservice.ManagedConnector{ID: unusedID, WorkspaceID: workspaceID, Spec: "{}"}
+	store.managedConnectors.used = map[uuid.UUID][]uuid.UUID{
+		workspaceID: {usedID},
+		uuid.New():  {unusedID},
+	}
+
+	result, err := useCase.Execute(context.Background(), pipelineconnectors.ListConnectorsWithUpdateInfoParams{
+		WorkspaceID: workspaceID,
+	})
+
+	require.NoError(t, err)
+	require.Len(t, result, 2)
+
+	used := make(map[uuid.UUID]bool)
+	for _, item := range result {
+		used[item.Connector.ID] = item.Used
+	}
+
+	assert.Equal(t, map[uuid.UUID]bool{usedID: true, unusedID: false}, used)
+	assert.ElementsMatch(t, []uuid.UUID{usedID, unusedID}, store.managedConnectors.usedRequested)
+}
+
+func TestListConnectorsWithUpdateInfo_UsedLookupError(t *testing.T) {
+	store := newMockStorage()
+	useCase := pipelineconnectors.NewListConnectorsWithUpdateInfo(store)
+
+	workspaceID := uuid.New()
+	id := uuid.New()
+	store.managedConnectors.connectors[id] = &pipelineservice.ManagedConnector{ID: id, WorkspaceID: workspaceID, Spec: "{}"}
+	store.managedConnectors.usedErr = errStorage
+
+	_, err := useCase.Execute(context.Background(), pipelineconnectors.ListConnectorsWithUpdateInfoParams{
+		WorkspaceID: workspaceID,
+	})
+
+	require.ErrorIs(t, err, errStorage)
+}
+
+func TestListConnectorsWithUpdateInfo_SearchSkipsUsedQueryWhenNothingMatches(t *testing.T) {
+	store := newMockStorage()
+	useCase := pipelineconnectors.NewListConnectorsWithUpdateInfo(store)
+
+	workspaceID := uuid.New()
+	id := uuid.New()
+	store.managedConnectors.connectors[id] = &pipelineservice.ManagedConnector{ID: id, WorkspaceID: workspaceID, Name: "Postgres", DockerImage: "airbyte/source-postgres", Spec: "{}"}
+
+	result, err := useCase.Execute(context.Background(), pipelineconnectors.ListConnectorsWithUpdateInfoParams{
+		WorkspaceID: workspaceID,
+		Search:      "mysql",
+	})
+
+	require.NoError(t, err)
+	assert.Empty(t, result)
+	assert.Zero(t, store.managedConnectors.usedCalls)
+}
+
+func TestListConnectorsWithUpdateInfo_FindError(t *testing.T) {
+	store := newConnectorStorage()
+	store.managed.findErr = errStorage
+
+	_, err := pipelineconnectors.NewListConnectorsWithUpdateInfo(store).Execute(context.Background(), pipelineconnectors.ListConnectorsWithUpdateInfoParams{
+		WorkspaceID: uuid.New(),
+	})
+
+	require.ErrorIs(t, err, errStorage)
+}
+
+func TestGetConnectorWithUpdateInfo_Used(t *testing.T) {
+	workspaceID := uuid.New()
+
+	for _, tc := range []struct {
+		name string
+		used bool
+	}{
+		{name: "used", used: true},
+		{name: "unused", used: false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			store := newMockStorage()
+			id := uuid.New()
+			store.managedConnectors.connectors[id] = &pipelineservice.ManagedConnector{ID: id, WorkspaceID: workspaceID, Spec: "{}"}
+
+			if tc.used {
+				store.managedConnectors.used = map[uuid.UUID][]uuid.UUID{workspaceID: {id}}
+			}
+
+			result, err := pipelineconnectors.NewGetConnectorWithUpdateInfo(store).Execute(context.Background(), pipelineconnectors.GetConnectorWithUpdateInfoParams{
+				ID:          id,
+				WorkspaceID: workspaceID,
+			})
+
+			require.NoError(t, err)
+			assert.Equal(t, tc.used, result.Used)
+			assert.Nil(t, result.UpdateInfo)
+			assert.Equal(t, []uuid.UUID{id}, store.managedConnectors.usedRequested)
+		})
+	}
+}
+
+func TestGetConnectorWithUpdateInfo_UsedLookupError(t *testing.T) {
+	store := newMockStorage()
+	workspaceID := uuid.New()
+	id := uuid.New()
+	store.managedConnectors.connectors[id] = &pipelineservice.ManagedConnector{ID: id, WorkspaceID: workspaceID, Spec: "{}"}
+	store.managedConnectors.usedErr = errStorage
+
+	_, err := pipelineconnectors.NewGetConnectorWithUpdateInfo(store).Execute(context.Background(), pipelineconnectors.GetConnectorWithUpdateInfoParams{
+		ID:          id,
+		WorkspaceID: workspaceID,
+	})
+
+	require.ErrorIs(t, err, errStorage)
+}
+
+func TestGetConnectorWithUpdateInfo_OtherWorkspaceNotFound(t *testing.T) {
+	store := newMockStorage()
+	id := uuid.New()
+	store.managedConnectors.connectors[id] = &pipelineservice.ManagedConnector{ID: id, WorkspaceID: uuid.New(), Spec: "{}"}
+
+	_, err := pipelineconnectors.NewGetConnectorWithUpdateInfo(store).Execute(context.Background(), pipelineconnectors.GetConnectorWithUpdateInfoParams{
+		ID:          id,
+		WorkspaceID: uuid.New(),
+	})
+
+	require.ErrorIs(t, err, pipelineservice.ErrManagedConnectorNotFound)
+	assert.Zero(t, store.managedConnectors.usedCalls)
+}

@@ -2,6 +2,7 @@ package pipelineconnectors_test
 
 import (
 	"context"
+	"slices"
 	"testing"
 
 	"github.com/go-pnp/go-pnp/pkg/optionutil"
@@ -47,13 +48,30 @@ func (m *mockStorage) RepositoryConnectors() pipelineservice.RepositoryConnector
 type mockManagedConnectorsStorage struct {
 	pipelineservice.ManagedConnectorsStorage
 	connectors map[uuid.UUID]*pipelineservice.ManagedConnector
-	usedCalls  int
+	// used holds the IDs a source or destination is built on, per workspace.
+	used          map[uuid.UUID][]uuid.UUID
+	usedErr       error
+	usedCalls     int
+	usedRequested []uuid.UUID
 }
 
-func (m *mockManagedConnectorsStorage) UsedManagedConnectorIDs(_ context.Context, _ uuid.UUID, _ []uuid.UUID) ([]uuid.UUID, error) {
+func (m *mockManagedConnectorsStorage) UsedManagedConnectorIDs(_ context.Context, workspaceID uuid.UUID, ids []uuid.UUID) ([]uuid.UUID, error) {
 	m.usedCalls++
+	m.usedRequested = append(m.usedRequested, ids...)
 
-	return nil, nil
+	if m.usedErr != nil {
+		return nil, m.usedErr
+	}
+
+	var result []uuid.UUID
+
+	for _, usedID := range m.used[workspaceID] {
+		if slices.Contains(ids, usedID) {
+			result = append(result, usedID)
+		}
+	}
+
+	return result, nil
 }
 
 func (m *mockManagedConnectorsStorage) First(_ context.Context, f *pipelineservice.ManagedConnectorFilter, _ ...optionutil.Option[dbutil.SelectOptions]) (*pipelineservice.ManagedConnector, error) {
