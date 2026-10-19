@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { JobAttempt } from '@entities/job'
-import { isActiveJobStatus, useJob, useJobLogs } from '@entities/job'
+import { downloadJobLogs, isActiveJobStatus, useJob, useJobLogs } from '@entities/job'
+import { getErrorMessage } from '@shared/lib/errorUtils'
 import { formatDuration, statusVariant } from '@shared/lib/format'
-import { PageHeader, SAlert, SBadge, SCard, SLogViewer, SSkeleton } from '@shared/ui'
-import { CheckCircle2, ChevronDown, ChevronRight, Clock, Loader2, PlayCircle, XCircle } from 'lucide-vue-next'
+import { PageHeader, SAlert, SBadge, SCard, SLogViewer, SSkeleton, useToast } from '@shared/ui'
+import { CheckCircle2, ChevronDown, ChevronRight, Clock, Download, Loader2, PlayCircle, XCircle } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
@@ -22,7 +23,35 @@ const latestAttempt = computed(() => {
 
 const isActive = computed(() => isActiveJobStatus(job.value?.status))
 
-const { lines, isLoading: logsLoading } = useJobLogs(jobId, isActive)
+const { lines, droppedLines, isLoading: logsLoading } = useJobLogs(jobId, isActive)
+
+const totalDropped = computed(() => Object.values(droppedLines.value).reduce((sum, n) => sum + n, 0))
+
+function droppedLabel(n: number): string {
+  return `${n.toLocaleString()} ${n === 1 ? 'line' : 'lines'} dropped`
+}
+
+const toast = useToast()
+const downloading = ref<Record<number, boolean>>({})
+
+async function downloadAttemptLogs(attempt: number) {
+  downloading.value[attempt] = true
+  try {
+    const blob = await downloadJobLogs(jobId.value, attempt)
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `job-${jobId.value}-attempt-${attempt}.log`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+  catch (e: unknown) {
+    toast.error(getErrorMessage(e) || 'Failed to download logs')
+  }
+  finally {
+    downloading.value[attempt] = false
+  }
+}
 
 const expanded = ref<Record<string, boolean>>({})
 function toggle(id: string) {
@@ -217,10 +246,26 @@ function parseLogTimestamp(line: string): number | null {
                 <div class="flex items-baseline gap-3 flex-wrap">
                   <span class="font-medium text-heading text-sm">{{ ev.label }}</span>
                   <span v-if="ev.duration" class="text-xs text-text-muted">{{ ev.duration }}</span>
+                  <span
+                    v-if="ev.attempt && droppedLines[ev.attempt.attemptNumber]"
+                    class="text-xs text-warning"
+                    :data-testid="`attempt-${ev.attempt.attemptNumber}-dropped`"
+                  >{{ droppedLabel(droppedLines[ev.attempt.attemptNumber]) }}</span>
                   <button
                     v-if="ev.attempt"
                     type="button"
-                    class="ml-auto inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                    class="ml-auto inline-flex items-center gap-1 text-xs text-primary hover:underline disabled:opacity-50"
+                    :disabled="downloading[ev.attempt.attemptNumber]"
+                    :data-testid="`attempt-${ev.attempt.attemptNumber}-download`"
+                    @click="downloadAttemptLogs(ev.attempt.attemptNumber)"
+                  >
+                    <component :is="downloading[ev.attempt.attemptNumber] ? Loader2 : Download" class="w-3.5 h-3.5" :class="{ 'animate-spin': downloading[ev.attempt.attemptNumber] }" />
+                    Download logs
+                  </button>
+                  <button
+                    v-if="ev.attempt"
+                    type="button"
+                    class="inline-flex items-center gap-1 text-xs text-primary hover:underline"
                     @click="toggle(ev.id)"
                   >
                     <component :is="expanded[ev.id] ? ChevronDown : ChevronRight" class="w-3.5 h-3.5" />
@@ -247,7 +292,8 @@ function parseLogTimestamp(line: string): number | null {
       <!-- Full unified log viewer -->
       <SCard title="All logs">
         <p class="text-xs text-text-muted mb-3">
-          Combined log stream across all attempts. Use the timeline above to expand a specific attempt.
+          Combined log stream across all attempts. Use the timeline above to expand or download a specific attempt.
+          <span v-if="totalDropped > 0" class="text-warning" data-testid="all-logs-dropped">{{ droppedLabel(totalDropped) }}</span>
         </p>
         <SLogViewer
           :lines="lines"

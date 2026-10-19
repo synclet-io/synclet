@@ -120,7 +120,7 @@ export async function getJobLogs(
   jobId: string,
   afterId: number = 0,
   limit: number = 0,
-): Promise<{ lines: string[], lastId: number, hasMore: boolean }> {
+): Promise<JobLogPage> {
   if (limit > 0)
     return getJobLogsPage(jobId, afterId, limit)
 
@@ -132,15 +132,35 @@ export async function getJobLogs(
     if (page.lines.length > 0)
       lastId = page.lastId
     if (!page.hasMore || page.lines.length === 0)
-      return { lines, lastId, hasMore: false }
+      return { lines, lastId, hasMore: false, droppedLines: page.droppedLines }
   }
 }
 
-async function getJobLogsPage(jobId: string, afterId: number, limit: number) {
+export interface JobLogPage {
+  lines: string[]
+  lastId: number
+  hasMore: boolean
+  /** Lines dropped by the per-attempt line cap, keyed by attempt number. */
+  droppedLines: Record<number, number>
+}
+
+async function getJobLogsPage(jobId: string, afterId: number, limit: number): Promise<JobLogPage> {
   const res = await jobClient.getJobLogs({ jobId, afterId: BigInt(afterId), limit })
+  const droppedLines: Record<number, number> = {}
+  for (const a of res.attempts ?? [])
+    droppedLines[a.attempt] = Number(a.droppedLines)
   return {
     lines: res.lines,
     lastId: Number(res.lastId),
     hasMore: res.hasMore,
+    droppedLines,
   }
+}
+
+/** Streams the full log of one attempt into a plain-text Blob. */
+export async function downloadJobLogs(jobId: string, attempt: number): Promise<Blob> {
+  const chunks: Uint8Array<ArrayBuffer>[] = []
+  for await (const res of jobClient.downloadJobLogs({ jobId, attempt }))
+    chunks.push(new Uint8Array(res.chunk))
+  return new Blob(chunks, { type: 'text/plain' })
 }

@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { JobStatus as ProtoJobStatus } from '@/gen/synclet/publicapi/pipeline/v1/pipeline_pb'
-import { getJobLogs, listJobs } from '../api'
+import { downloadJobLogs, getJobLogs, listJobs } from '../api'
 
 const jobClient = vi.hoisted(() => ({
   listJobs: vi.fn(),
   getJobLogs: vi.fn(),
+  downloadJobLogs: vi.fn(),
 }))
 
 vi.mock('@shared/api/services', () => ({
@@ -47,7 +48,7 @@ describe('job api', () => {
 
     expect(jobClient.getJobLogs).toHaveBeenCalledTimes(2)
     expect(jobClient.getJobLogs.mock.calls[1][0]).toEqual(expect.objectContaining({ jobId: 'job-1', afterId: 2n }))
-    expect(result).toEqual({ lines: ['a', 'b', 'c'], lastId: 3, hasMore: false })
+    expect(result).toEqual({ lines: ['a', 'b', 'c'], lastId: 3, hasMore: false, droppedLines: {} })
   })
 
   it('keeps the cursor when no new lines arrive', async () => {
@@ -55,7 +56,7 @@ describe('job api', () => {
 
     const result = await getJobLogs('job-1', 7)
 
-    expect(result).toEqual({ lines: [], lastId: 7, hasMore: false })
+    expect(result).toEqual({ lines: [], lastId: 7, hasMore: false, droppedLines: {} })
   })
 
   it('returns a single page when a limit is given', async () => {
@@ -64,6 +65,33 @@ describe('job api', () => {
     const result = await getJobLogs('job-1', 0, 1)
 
     expect(jobClient.getJobLogs).toHaveBeenCalledTimes(1)
-    expect(result).toEqual({ lines: ['a'], lastId: 1, hasMore: true })
+    expect(result).toEqual({ lines: ['a'], lastId: 1, hasMore: true, droppedLines: {} })
+  })
+
+  it('maps dropped lines per attempt', async () => {
+    jobClient.getJobLogs.mockResolvedValueOnce({
+      lines: [],
+      lastId: 0n,
+      hasMore: false,
+      attempts: [{ attempt: 1, droppedLines: 12n }, { attempt: 2, droppedLines: 0n }],
+    })
+
+    const result = await getJobLogs('job-1', 0)
+
+    expect(result.droppedLines).toEqual({ 1: 12, 2: 0 })
+  })
+
+  it('collects the streamed attempt log into a text blob', async () => {
+    const enc = new TextEncoder()
+    jobClient.downloadJobLogs.mockImplementation(async function* () {
+      yield { chunk: enc.encode('line 1\nli') }
+      yield { chunk: enc.encode('ne 2\n') }
+    })
+
+    const blob = await downloadJobLogs('job-1', 2)
+
+    expect(jobClient.downloadJobLogs).toHaveBeenCalledWith({ jobId: 'job-1', attempt: 2 })
+    expect(blob.type).toBe('text/plain')
+    expect(await blob.text()).toBe('line 1\nline 2\n')
   })
 })

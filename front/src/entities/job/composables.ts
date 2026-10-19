@@ -57,6 +57,7 @@ export function useJob(id: MaybeRef<string>) {
 interface JobLogBuffer {
   lines: string[]
   lastId: number
+  droppedLines: Record<number, number>
 }
 
 export function useJobLogs(jobId: MaybeRef<string>, isActive: MaybeRef<boolean>) {
@@ -66,11 +67,11 @@ export function useJobLogs(jobId: MaybeRef<string>, isActive: MaybeRef<boolean>)
   const query = useQuery({
     queryKey: computed(() => [...jobKeys.detail(currentWorkspaceId.value ?? '', toValue(jobId)), 'logs']),
     queryFn: async ({ queryKey }): Promise<JobLogBuffer> => {
-      const prev = qc.getQueryData<JobLogBuffer>(queryKey) ?? { lines: [], lastId: 0 }
+      const prev = qc.getQueryData<JobLogBuffer>(queryKey) ?? { lines: [], lastId: 0, droppedLines: {} }
       const result = await jobApi.getJobLogs(toValue(jobId), prev.lastId)
       if (result.lines.length === 0)
-        return prev
-      return { lines: [...prev.lines, ...result.lines], lastId: result.lastId }
+        return { ...prev, droppedLines: result.droppedLines }
+      return { lines: [...prev.lines, ...result.lines], lastId: result.lastId, droppedLines: result.droppedLines }
     },
     enabled: computed(() => !!currentWorkspaceId.value && !!toValue(jobId)),
     refetchInterval: computed(() => toValue(isActive) ? 5_000 : false),
@@ -83,6 +84,7 @@ export function useJobLogs(jobId: MaybeRef<string>, isActive: MaybeRef<boolean>)
 
   return {
     lines: computed(() => query.data.value?.lines ?? []),
+    droppedLines: computed(() => query.data.value?.droppedLines ?? {}),
     isLoading: query.isLoading,
   }
 }
