@@ -3,8 +3,13 @@ package helm_test
 import (
 	"bytes"
 	"errors"
+	"flag"
 	"io"
+	"os"
 	"os/exec"
+	"path/filepath"
+	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -59,6 +64,7 @@ type container struct {
 			Name string `yaml:"name"`
 		} `yaml:"configMapRef"`
 	} `yaml:"envFrom"`
+	StartupProbe   *probe `yaml:"startupProbe"`
 	LivenessProbe  *probe `yaml:"livenessProbe"`
 	ReadinessProbe *probe `yaml:"readinessProbe"`
 }
@@ -72,20 +78,35 @@ type probe struct {
 
 type rendered []manifest
 
-func renderChart(t *testing.T, args ...string) rendered {
+var update = flag.Bool("update", false, "rewrite the golden files in testdata")
+
+func helmTemplate(t *testing.T, args ...string) *exec.Cmd {
 	t.Helper()
 
-	if _, err := exec.LookPath("helm"); err != nil {
-		t.Skip("helm binary not found")
-	}
+	_, err := exec.LookPath("helm")
+	require.NoError(t, err, "helm binary not found: the chart tests need helm on PATH")
 
-	cmd := exec.CommandContext(t.Context(), "helm", append([]string{"template", "t", "synclet", "--namespace", "synclet"}, args...)...) //nolint:gosec // arguments are fixed by the tests
+	return exec.CommandContext(t.Context(), "helm", append([]string{"template", "t", "synclet", "--namespace", "synclet"}, args...)...) //nolint:gosec // arguments are fixed by the tests
+}
+
+func renderRaw(t *testing.T, args ...string) []byte {
+	t.Helper()
+
+	cmd := helmTemplate(t, args...)
 
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 
 	out, err := cmd.Output()
 	require.NoError(t, err, stderr.String())
+
+	return out
+}
+
+func renderChart(t *testing.T, args ...string) rendered {
+	t.Helper()
+
+	out := renderRaw(t, args...)
 
 	var docs rendered
 
@@ -421,14 +442,92 @@ func TestChart_K8sLocalVolume(t *testing.T) {
 }
 
 func TestChart_ExecutorStrategyRenamed(t *testing.T) {
-	if _, err := exec.LookPath("helm"); err != nil {
-		t.Skip("helm binary not found")
-	}
-
-	cmd := exec.CommandContext(t.Context(), "helm", "template", "t", "synclet", "--namespace", "synclet",
-		"--set", "mode=distributed", "--set", "executor.strategy.rollingUpdate.maxSurge=1")
-
-	out, err := cmd.CombinedOutput()
+	out, err := helmTemplate(t, "--set", "mode=distributed", "--set", "executor.strategy.rollingUpdate.maxSurge=1").CombinedOutput()
 	require.Error(t, err, "render must fail while executor.strategy is set")
 	assert.Contains(t, string(out), "executor.strategy was renamed to executor.updateStrategy")
+}
+
+func TestChart_ServerStartupProbe(t *testing.T) {
+	server := renderChart(t).get(t, "Deployment", "t-synclet-server").container(t, "synclet")
+
+	require.NotNil(t, server.StartupProbe)
+	assert.Equal(t, "/live", server.StartupProbe.HTTPGet.Path)
+	assert.Equal(t, "internal", server.StartupProbe.HTTPGet.Port)
+
+	server = renderChart(t,
+		"--set", "server.startupProbe.path=/health",
+		"--set", "server.startupProbe.port=public",
+	).get(t, "Deployment", "t-synclet-server").container(t, "synclet")
+
+	require.NotNil(t, server.StartupProbe)
+	assert.Equal(t, "/health", server.StartupProbe.HTTPGet.Path)
+	assert.Equal(t, "public", server.StartupProbe.HTTPGet.Port)
+
+	server = renderChart(t, "--set", "server.startupProbe.port=8081").get(t, "Deployment", "t-synclet-server").container(t, "synclet")
+
+	require.NotNil(t, server.StartupProbe)
+	assert.Equal(t, 8081, server.StartupProbe.HTTPGet.Port)
+}
+
+func TestChart_GatewayParentRefNameRequired(t *testing.T) {
+	out, err := helmTemplate(t,
+		"--set", "server.ingress.enabled=false",
+		"--set", "server.gateway.enabled=true",
+		"--set", "server.gateway.parentRefs[0].namespace=gateway-system",
+		"--set", "server.gateway.hostnames[0]=synclet.example.com",
+	).CombinedOutput()
+	require.Error(t, err, "render must fail while a parentRef has no name")
+	assert.Contains(t, string(out), "server.gateway.parentRefs[].name is required")
+
+	route := renderChart(t,
+		"--set", "server.ingress.enabled=false",
+		"--set", "server.gateway.enabled=true",
+		"--set", "server.gateway.parentRefs[0].name=gw",
+		"--set", "server.gateway.hostnames[0]=synclet.example.com",
+	)
+	assert.Equal(t, []string{"t-synclet"}, route.names("HTTPRoute"))
+}
+
+// goldenSecrets pins the values the chart otherwise generates at random, so the
+// default render is stable.
+var goldenSecrets = []string{
+	"--set", "auth.jwtSecret=golden-jwt-secret",
+	"--set", "encryption.key=golden-encryption-key",
+	"--set", "internalApi.secret=golden-internal-api-secret",
+	"--set", "postgresql.auth.password=golden-postgres-password",
+}
+
+// checksumAnnotation matches the pod template checksums, which hash rendered
+// manifests that carry the chart version.
+var checksumAnnotation = regexp.MustCompile(`(checksum/[a-z]+): [0-9a-f]{64}`)
+
+// TestChart_DefaultsGolden compares the whole default render with
+// testdata/defaults.golden.yaml. The chart version, appVersion and checksum
+// annotations are replaced with placeholders so release bumps leave the golden
+// untouched. Run with -update to rewrite it after an intended template change.
+func TestChart_DefaultsGolden(t *testing.T) {
+	var chart struct {
+		Version    string `yaml:"version"`
+		AppVersion string `yaml:"appVersion"`
+	}
+
+	chartYAML, err := os.ReadFile(filepath.Join("synclet", "Chart.yaml"))
+	require.NoError(t, err)
+	require.NoError(t, yaml.Unmarshal(chartYAML, &chart))
+
+	got := strings.NewReplacer(
+		"synclet-"+chart.Version, "synclet-CHART_VERSION",
+		chart.AppVersion, "APP_VERSION",
+	).Replace(string(renderRaw(t, goldenSecrets...)))
+	got = checksumAnnotation.ReplaceAllString(got, "$1: SHA256")
+
+	const golden = "testdata/defaults.golden.yaml"
+
+	if *update {
+		require.NoError(t, os.WriteFile(golden, []byte(got), 0o600))
+	}
+
+	want, err := os.ReadFile(golden)
+	require.NoError(t, err, "run go test ./deploy/helm/ -run TestChart_DefaultsGolden -update to create it")
+	assert.Equal(t, string(want), got, "default render differs from %s; rerun with -update if the change is intended", golden)
 }
