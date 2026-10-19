@@ -15,7 +15,7 @@ import (
 
 // readOnlyPrefixes marks RPCs whose names promise no state change.
 var readOnlyPrefixes = []string{
-	"Get", "List", "Search", "Is", "Check", "Preview", "Export",
+	"Get", "List", "Search", "Is", "Check", "Preview", "Export", "Download",
 	"Stream", "Validate", "Wait", "Refresh", "Heartbeat",
 }
 
