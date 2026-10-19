@@ -97,4 +97,26 @@ describe('jobDetailPage logs', () => {
     expect(mocks.downloadJobLogs).toHaveBeenCalledWith(JOB_ID, 2)
     expect(URL.createObjectURL).toHaveBeenCalled()
   })
+
+  it('keeps the object URL alive until the browser has started the download', async () => {
+    vi.useFakeTimers()
+    try {
+      mocks.downloadJobLogs.mockResolvedValue(new Blob(['x'], { type: 'text/plain' }))
+      URL.createObjectURL = vi.fn(() => 'blob:x')
+      URL.revokeObjectURL = vi.fn()
+
+      const wrapper = await mountPage()
+      await wrapper.get('[data-testid="attempt-2-download"]').trigger('click')
+      await flushPromises()
+
+      expect(URL.createObjectURL).toHaveBeenCalled()
+      expect(URL.revokeObjectURL).not.toHaveBeenCalled()
+
+      vi.runAllTimers()
+      expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:x')
+    }
+    finally {
+      vi.useRealTimers()
+    }
+  })
 })

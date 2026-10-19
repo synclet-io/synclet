@@ -157,10 +157,23 @@ async function getJobLogsPage(jobId: string, afterId: number, limit: number): Pr
   }
 }
 
-/** Streams the full log of one attempt into a plain-text Blob. */
-export async function downloadJobLogs(jobId: string, attempt: number): Promise<Blob> {
+/** Largest attempt log, in bytes, that the browser collects in memory. */
+export const MAX_DOWNLOAD_LOG_BYTES = 200 * 1024 * 1024
+
+/**
+ * Streams the full log of one attempt into a plain-text Blob. Throws and
+ * cancels the stream once the log passes maxBytes.
+ */
+export async function downloadJobLogs(jobId: string, attempt: number, maxBytes = MAX_DOWNLOAD_LOG_BYTES): Promise<Blob> {
   const chunks: Uint8Array<ArrayBuffer>[] = []
-  for await (const res of jobClient.downloadJobLogs({ jobId, attempt }))
+  let size = 0
+  for await (const res of jobClient.downloadJobLogs({ jobId, attempt })) {
+    size += res.chunk.byteLength
+    if (size > maxBytes) {
+      const mb = Math.round(maxBytes / 1024 / 1024)
+      throw new Error(`This log is larger than ${mb} MB and too large to download in the browser. Enable the log archive (filesystem or S3) and read the attempt's object from there.`)
+    }
     chunks.push(new Uint8Array(res.chunk))
+  }
   return new Blob(chunks, { type: 'text/plain' })
 }

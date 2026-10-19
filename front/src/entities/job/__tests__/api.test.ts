@@ -94,4 +94,22 @@ describe('job api', () => {
     expect(blob.type).toBe('text/plain')
     expect(await blob.text()).toBe('line 1\nline 2\n')
   })
+
+  it('stops collecting the attempt log past the size limit', async () => {
+    const enc = new TextEncoder()
+    let finished = false
+    jobClient.downloadJobLogs.mockImplementation(async function* () {
+      try {
+        yield { chunk: enc.encode('12345') }
+        yield { chunk: enc.encode('67890') }
+        yield { chunk: enc.encode('never read') }
+      }
+      finally {
+        finished = true
+      }
+    })
+
+    await expect(downloadJobLogs('job-1', 2, 8)).rejects.toThrow(/too large to download in the browser.*log archive/)
+    expect(finished).toBe(true)
+  })
 })

@@ -43,7 +43,7 @@ async function downloadAttemptLogs(attempt: number) {
     a.href = url
     a.download = `job-${jobId.value}-attempt-${attempt}.log`
     a.click()
-    URL.revokeObjectURL(url)
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
   catch (e: unknown) {
     toast.error(getErrorMessage(e) || 'Failed to download logs')
