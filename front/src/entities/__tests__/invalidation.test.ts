@@ -38,10 +38,10 @@ function mutationComposables(): MutationComposable[] {
 }
 
 function onSuccessBody(body: string): string | undefined {
-  const start = body.indexOf('onSuccess:')
-  if (start === -1)
+  const starts = ['onSuccess:', 'onSettled:'].map(hook => body.indexOf(hook)).filter(i => i !== -1)
+  if (starts.length === 0)
     return undefined
-  return body.slice(start)
+  return body.slice(Math.min(...starts))
 }
 
 describe('mutation cache invalidation', () => {
@@ -55,7 +55,7 @@ describe('mutation cache invalidation', () => {
     if (name in mutationsWithoutCacheEffects)
       return
     const onSuccess = onSuccessBody(composable.body)
-    expect(onSuccess, `${name} in ${composable.file} has no onSuccess`).toBeDefined()
+    expect(onSuccess, `${name} in ${composable.file} has no onSuccess or onSettled`).toBeDefined()
     const referenced = Array.from(onSuccess!.matchAll(/\b(\w+Keys)\.\w+/g), m => m[1])
     expect(
       referenced.some(key => keyFactoryNames.has(key)),

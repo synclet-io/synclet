@@ -35,6 +35,7 @@ vi.mock('@entities/connector', () => {
     }),
     useConnectorSpec: () => ({ data: ref(null), isLoading: ref(false), error: ref(null) }),
     useSetConnectorStar: () => ({ mutate: setStar, isPending: ref(false) }),
+    useConnectorStarPending: () => ref(false),
   }
 })
 vi.mock('@entities/connector-task', () => ({

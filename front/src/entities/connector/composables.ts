@@ -2,7 +2,7 @@ import type { MaybeRef, Ref } from 'vue'
 import type { ManagedConnector } from './types'
 import { useAuth } from '@entities/auth'
 import { connectorKeys } from '@shared/lib/queryKeys'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
+import { useIsMutating, useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
 import { computed, toValue } from 'vue'
 import * as connectorApi from './api'
 
@@ -80,24 +80,32 @@ export function useBatchUpdateConnectors() {
   })
 }
 
+const STAR_MUTATION_KEY = ['connector-star'] as const
+
 export function useSetConnectorStar() {
   const qc = useQueryClient()
   const { currentWorkspaceId } = useAuth()
   const managedKey = () => [...connectorKeys.all(currentWorkspaceId.value ?? ''), 'managed']
+  const setStarred = (id: string, starred: boolean) =>
+    qc.setQueriesData<ManagedConnector[]>({ queryKey: managedKey() }, list =>
+      list?.map(c => (c.id === id ? { ...c, starred } : c)))
   return useMutation({
+    mutationKey: STAR_MUTATION_KEY,
     mutationFn: ({ id, starred }: { id: string, starred: boolean }) =>
       starred ? connectorApi.starManagedConnector(id) : connectorApi.unstarManagedConnector(id),
     onMutate: async ({ id, starred }) => {
       await qc.cancelQueries({ queryKey: managedKey() })
-      const previous = qc.getQueriesData<ManagedConnector[]>({ queryKey: managedKey() })
-      qc.setQueriesData<ManagedConnector[]>({ queryKey: managedKey() }, list =>
-        list?.map(c => (c.id === id ? { ...c, starred } : c)))
-      return { previous }
+      setStarred(id, starred)
     },
-    onError: (_err, _vars, context) => {
-      for (const [key, data] of context?.previous ?? [])
-        qc.setQueryData(key, data)
-    },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: connectorKeys.all(currentWorkspaceId.value ?? '') }) },
+    onError: (_err, { id, starred }) => { setStarred(id, !starred) },
+    onSettled: () => qc.invalidateQueries({ queryKey: connectorKeys.all(currentWorkspaceId.value ?? '') }),
   })
+}
+
+export function useConnectorStarPending(id: MaybeRef<string>) {
+  const count = useIsMutating({
+    mutationKey: STAR_MUTATION_KEY,
+    predicate: m => (m.state.variables as { id?: string } | undefined)?.id === toValue(id),
+  })
+  return computed(() => count.value > 0)
 }
