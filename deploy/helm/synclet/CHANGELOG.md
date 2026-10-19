@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.4.0](https://github.com/synclet-io/synclet/compare/synclet-helm-v0.3.0...synclet-helm-v0.4.0) (2026-10-19)
+
+
+### Features
+
+* **executor:** persistent /local root on the host for file-writing destinations ([39b87f8](https://github.com/synclet-io/synclet/commit/39b87f8f46b195b673086e1c7f2fa8ff8d1f8efc))
+* **helm:** executor pods start in parallel ([ffcac0c](https://github.com/synclet-io/synclet/commit/ffcac0c2ccfd677ca1e77670bea66f3402d4e221))
+* **helm:** executor runs as a StatefulSet with a headless Service and its own ConfigMap ([d5916ae](https://github.com/synclet-io/synclet/commit/d5916ae5586ee95e7f44506c179d0fab888d05b2))
+
+
+### Bug Fixes
+
+* **executor:** connector pods get no Kubernetes API token unless a service account is chosen ([5c0c072](https://github.com/synclet-io/synclet/commit/5c0c0721ee7498bb57f03ec81922e55cb4b0959b))
+
 ## [0.3.0](https://github.com/synclet-io/synclet/compare/synclet-helm-v0.2.0...synclet-helm-v0.3.0) (2026-10-18)
 
 
