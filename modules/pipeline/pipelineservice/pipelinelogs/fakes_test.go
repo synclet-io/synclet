@@ -304,12 +304,12 @@ func (m *logSegments) MarkArchived(_ context.Context, segment *pipelineservice.J
 
 func (m *logSegments) Find(_ context.Context, f *pipelineservice.JobLogSegmentFilter, _ ...optionutil.Option[dbutil.SelectOptions]) ([]*pipelineservice.JobLogSegment, error) {
 	jobID := f.JobID.(*filter.EqualsFilter[uuid.UUID]).Value
-	status := f.Status.(*filter.EqualsFilter[pipelineservice.JobLogSegmentStatus]).Value
+	status, byStatus := f.Status.(*filter.EqualsFilter[pipelineservice.JobLogSegmentStatus])
 
 	var out []*pipelineservice.JobLogSegment
 
 	for _, segment := range m.store.segments {
-		if segment.JobID == jobID && segment.Status == status {
+		if segment.JobID == jobID && (!byStatus || segment.Status == status.Value) {
 			cp := *segment
 			out = append(out, &cp)
 		}

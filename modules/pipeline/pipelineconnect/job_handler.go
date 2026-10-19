@@ -1,8 +1,11 @@
 package pipelineconnect
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"connectrpc.com/connect"
@@ -26,6 +29,7 @@ type JobHandler struct {
 	getJobWithAttempts   *pipelinejobs.GetJobWithAttempts
 	listJobsWithAttempts *pipelinejobs.ListJobsWithAttempts
 	getJobLog            *pipelinelogs.GetJobLog
+	downloadJobLog       *pipelinelogs.DownloadJobLog
 }
 
 // NewJobHandler creates a new job handler.
@@ -35,6 +39,7 @@ func NewJobHandler(
 	getJobWithAttempts *pipelinejobs.GetJobWithAttempts,
 	listJobsWithAttempts *pipelinejobs.ListJobsWithAttempts,
 	getJobLog *pipelinelogs.GetJobLog,
+	downloadJobLog *pipelinelogs.DownloadJobLog,
 ) *JobHandler {
 	return &JobHandler{
 		triggerSync:          triggerSync,
@@ -42,6 +47,7 @@ func NewJobHandler(
 		getJobWithAttempts:   getJobWithAttempts,
 		listJobsWithAttempts: listJobsWithAttempts,
 		getJobLog:            getJobLog,
+		downloadJobLog:       downloadJobLog,
 	}
 }
 
@@ -179,11 +185,74 @@ func (h *JobHandler) GetJobLogs(ctx context.Context, req *connect.Request[pipeli
 		return nil, mapError(err)
 	}
 
+	attempts := make([]*pipelinev1.JobLogAttempt, len(result.Attempts))
+	for i, a := range result.Attempts {
+		attempts[i] = &pipelinev1.JobLogAttempt{Attempt: int32(a.Attempt), DroppedLines: int64(a.DroppedLines)}
+	}
+
 	return connect.NewResponse(&pipelinev1.GetJobLogsResponse{
-		Lines:   result.Lines,
-		LastId:  result.LastID,
-		HasMore: result.HasMore,
+		Lines:    result.Lines,
+		LastId:   result.LastID,
+		HasMore:  result.HasMore,
+		Attempts: attempts,
 	}), nil
+}
+
+func (h *JobHandler) DownloadJobLogs(ctx context.Context, req *connect.Request[pipelinev1.DownloadJobLogsRequest], stream *connect.ServerStream[pipelinev1.DownloadJobLogsResponse]) error {
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
+	if err != nil {
+		return err
+	}
+
+	jobID, err := uuid.Parse(req.Msg.GetJobId())
+	if err != nil {
+		return connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	if req.Msg.GetAttempt() < 1 {
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("attempt must be at least 1"))
+	}
+
+	out := bufio.NewWriterSize(&chunkSender{send: func(chunk []byte) error {
+		return stream.Send(&pipelinev1.DownloadJobLogsResponse{Chunk: chunk})
+	}}, logChunkSize)
+
+	if err := h.downloadJobLog.Execute(ctx, pipelinelogs.DownloadJobLogParams{
+		WorkspaceID: workspaceID,
+		JobID:       jobID,
+		Attempt:     int(req.Msg.GetAttempt()),
+	}, out); err != nil {
+		return mapError(err)
+	}
+
+	if err := out.Flush(); err != nil {
+		return mapError(err)
+	}
+
+	return nil
+}
+
+const logChunkSize = 32 << 10
+
+// chunkSender sends what is written to it in copies of at most logChunkSize bytes.
+type chunkSender struct {
+	send func(chunk []byte) error
+}
+
+func (c *chunkSender) Write(data []byte) (int, error) {
+	written := 0
+
+	for len(data) > 0 {
+		n := min(len(data), logChunkSize)
+		if err := c.send(bytes.Clone(data[:n])); err != nil {
+			return written, err
+		}
+
+		written += n
+		data = data[n:]
+	}
+
+	return written, nil
 }
 
 func jobStatusesFromProto(statuses []pipelinev1.JobStatus) ([]pipelineservice.JobStatus, error) {

@@ -161,6 +161,9 @@ const (
 	JobServiceListJobsProcedure = "/synclet.publicapi.pipeline.v1.JobService/ListJobs"
 	// JobServiceGetJobLogsProcedure is the fully-qualified name of the JobService's GetJobLogs RPC.
 	JobServiceGetJobLogsProcedure = "/synclet.publicapi.pipeline.v1.JobService/GetJobLogs"
+	// JobServiceDownloadJobLogsProcedure is the fully-qualified name of the JobService's
+	// DownloadJobLogs RPC.
+	JobServiceDownloadJobLogsProcedure = "/synclet.publicapi.pipeline.v1.JobService/DownloadJobLogs"
 	// ConnectorTaskServiceGetConnectorTaskResultProcedure is the fully-qualified name of the
 	// ConnectorTaskService's GetConnectorTaskResult RPC.
 	ConnectorTaskServiceGetConnectorTaskResultProcedure = "/synclet.publicapi.pipeline.v1.ConnectorTaskService/GetConnectorTaskResult"
@@ -1282,6 +1285,8 @@ type JobServiceClient interface {
 	GetJob(context.Context, *connect.Request[v1.GetJobRequest]) (*connect.Response[v1.GetJobResponse], error)
 	ListJobs(context.Context, *connect.Request[v1.ListJobsRequest]) (*connect.Response[v1.ListJobsResponse], error)
 	GetJobLogs(context.Context, *connect.Request[v1.GetJobLogsRequest]) (*connect.Response[v1.GetJobLogsResponse], error)
+	// Streams the full log of one attempt as plain text, one line per log line.
+	DownloadJobLogs(context.Context, *connect.Request[v1.DownloadJobLogsRequest]) (*connect.ServerStreamForClient[v1.DownloadJobLogsResponse], error)
 }
 
 // NewJobServiceClient constructs a client for the synclet.publicapi.pipeline.v1.JobService service.
@@ -1325,16 +1330,23 @@ func NewJobServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithSchema(jobServiceMethods.ByName("GetJobLogs")),
 			connect.WithClientOptions(opts...),
 		),
+		downloadJobLogs: connect.NewClient[v1.DownloadJobLogsRequest, v1.DownloadJobLogsResponse](
+			httpClient,
+			baseURL+JobServiceDownloadJobLogsProcedure,
+			connect.WithSchema(jobServiceMethods.ByName("DownloadJobLogs")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // jobServiceClient implements JobServiceClient.
 type jobServiceClient struct {
-	triggerSync *connect.Client[v1.TriggerSyncRequest, v1.TriggerSyncResponse]
-	cancelJob   *connect.Client[v1.CancelJobRequest, v1.CancelJobResponse]
-	getJob      *connect.Client[v1.GetJobRequest, v1.GetJobResponse]
-	listJobs    *connect.Client[v1.ListJobsRequest, v1.ListJobsResponse]
-	getJobLogs  *connect.Client[v1.GetJobLogsRequest, v1.GetJobLogsResponse]
+	triggerSync     *connect.Client[v1.TriggerSyncRequest, v1.TriggerSyncResponse]
+	cancelJob       *connect.Client[v1.CancelJobRequest, v1.CancelJobResponse]
+	getJob          *connect.Client[v1.GetJobRequest, v1.GetJobResponse]
+	listJobs        *connect.Client[v1.ListJobsRequest, v1.ListJobsResponse]
+	getJobLogs      *connect.Client[v1.GetJobLogsRequest, v1.GetJobLogsResponse]
+	downloadJobLogs *connect.Client[v1.DownloadJobLogsRequest, v1.DownloadJobLogsResponse]
 }
 
 // TriggerSync calls synclet.publicapi.pipeline.v1.JobService.TriggerSync.
@@ -1362,6 +1374,11 @@ func (c *jobServiceClient) GetJobLogs(ctx context.Context, req *connect.Request[
 	return c.getJobLogs.CallUnary(ctx, req)
 }
 
+// DownloadJobLogs calls synclet.publicapi.pipeline.v1.JobService.DownloadJobLogs.
+func (c *jobServiceClient) DownloadJobLogs(ctx context.Context, req *connect.Request[v1.DownloadJobLogsRequest]) (*connect.ServerStreamForClient[v1.DownloadJobLogsResponse], error) {
+	return c.downloadJobLogs.CallServerStream(ctx, req)
+}
+
 // JobServiceHandler is an implementation of the synclet.publicapi.pipeline.v1.JobService service.
 type JobServiceHandler interface {
 	TriggerSync(context.Context, *connect.Request[v1.TriggerSyncRequest]) (*connect.Response[v1.TriggerSyncResponse], error)
@@ -1369,6 +1386,8 @@ type JobServiceHandler interface {
 	GetJob(context.Context, *connect.Request[v1.GetJobRequest]) (*connect.Response[v1.GetJobResponse], error)
 	ListJobs(context.Context, *connect.Request[v1.ListJobsRequest]) (*connect.Response[v1.ListJobsResponse], error)
 	GetJobLogs(context.Context, *connect.Request[v1.GetJobLogsRequest]) (*connect.Response[v1.GetJobLogsResponse], error)
+	// Streams the full log of one attempt as plain text, one line per log line.
+	DownloadJobLogs(context.Context, *connect.Request[v1.DownloadJobLogsRequest], *connect.ServerStream[v1.DownloadJobLogsResponse]) error
 }
 
 // NewJobServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -1408,6 +1427,12 @@ func NewJobServiceHandler(svc JobServiceHandler, opts ...connect.HandlerOption) 
 		connect.WithSchema(jobServiceMethods.ByName("GetJobLogs")),
 		connect.WithHandlerOptions(opts...),
 	)
+	jobServiceDownloadJobLogsHandler := connect.NewServerStreamHandler(
+		JobServiceDownloadJobLogsProcedure,
+		svc.DownloadJobLogs,
+		connect.WithSchema(jobServiceMethods.ByName("DownloadJobLogs")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/synclet.publicapi.pipeline.v1.JobService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case JobServiceTriggerSyncProcedure:
@@ -1420,6 +1445,8 @@ func NewJobServiceHandler(svc JobServiceHandler, opts ...connect.HandlerOption) 
 			jobServiceListJobsHandler.ServeHTTP(w, r)
 		case JobServiceGetJobLogsProcedure:
 			jobServiceGetJobLogsHandler.ServeHTTP(w, r)
+		case JobServiceDownloadJobLogsProcedure:
+			jobServiceDownloadJobLogsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1447,6 +1474,10 @@ func (UnimplementedJobServiceHandler) ListJobs(context.Context, *connect.Request
 
 func (UnimplementedJobServiceHandler) GetJobLogs(context.Context, *connect.Request[v1.GetJobLogsRequest]) (*connect.Response[v1.GetJobLogsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("synclet.publicapi.pipeline.v1.JobService.GetJobLogs is not implemented"))
+}
+
+func (UnimplementedJobServiceHandler) DownloadJobLogs(context.Context, *connect.Request[v1.DownloadJobLogsRequest], *connect.ServerStream[v1.DownloadJobLogsResponse]) error {
+	return connect.NewError(connect.CodeUnimplemented, errors.New("synclet.publicapi.pipeline.v1.JobService.DownloadJobLogs is not implemented"))
 }
 
 // ConnectorTaskServiceClient is a client for the synclet.publicapi.pipeline.v1.ConnectorTaskService

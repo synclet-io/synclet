@@ -1,9 +1,12 @@
 package pipelinelogs_test
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -557,4 +560,151 @@ func TestArchiveJobLogs_CancelledRunCountsFailedAttemptOnceAndCommittedBytesOnly
 	assert.True(t, f.archive.exists(t, f.key(1)))
 	assert.False(t, f.archive.exists(t, f.key(2)))
 	f.assertArchiveMetrics(t, 1, f.store.segments[segmentKey{f.jobID, 1}].SizeBytes)
+}
+
+func (f *logFixture) download(t *testing.T, attempt int) string {
+	t.Helper()
+
+	var out strings.Builder
+
+	require.NoError(t, pipelinelogs.NewDownloadJobLog(f.store, f.archive).Execute(context.Background(), pipelinelogs.DownloadJobLogParams{
+		WorkspaceID: f.workspaceID,
+		JobID:       f.jobID,
+		Attempt:     attempt,
+	}, &out))
+
+	return out.String()
+}
+
+func TestDownloadJobLog_PostgresOnly(t *testing.T) {
+	f := newLogFixture(t)
+	f.append(t, 0, "a1", "a2")
+	f.retry()
+	f.append(t, 0, "b1")
+
+	assert.Equal(t, "a1\na2\n", f.download(t, 1))
+	assert.Equal(t, "b1\n", f.download(t, 2))
+	assert.Empty(t, f.download(t, 3))
+}
+
+func TestDownloadJobLog_PagesPostgresRows(t *testing.T) {
+	f := newLogFixture(t)
+
+	lines := make([]string, pipelinelogs.MaxLogLimit+3)
+	for i := range lines {
+		lines[i] = strconv.Itoa(i)
+	}
+
+	f.append(t, 0, lines...)
+
+	assert.Equal(t, strings.Join(lines, "\n")+"\n", f.download(t, 1))
+}
+
+func TestDownloadJobLog_Archived(t *testing.T) {
+	f := newLogFixture(t)
+	f.append(t, 0, "a1", "a2")
+	f.retry()
+	f.append(t, 0, "b1")
+	f.finish(pipelineservice.JobStatusCompleted)
+	require.NoError(t, f.archiver(true).Execute(context.Background(), f.jobID))
+	require.Empty(t, f.store.logs)
+
+	f.append(t, 0, "b2")
+
+	assert.Equal(t, "a1\na2\n", f.download(t, 1))
+	assert.Equal(t, "b1\nb2\n", f.download(t, 2))
+}
+
+func TestDownloadJobLog_RefusesCrossWorkspace(t *testing.T) {
+	f := newLogFixture(t)
+	f.append(t, 0, "secret")
+
+	var out strings.Builder
+
+	err := pipelinelogs.NewDownloadJobLog(f.store, f.archive).Execute(context.Background(), pipelinelogs.DownloadJobLogParams{
+		WorkspaceID: uuid.New(),
+		JobID:       f.jobID,
+		Attempt:     1,
+	}, &out)
+	require.ErrorIs(t, err, pipelineservice.ErrJobNotFound)
+	assert.Empty(t, out.String())
+}
+
+func TestGetJobLog_ReportsDroppedLinesPerAttempt(t *testing.T) {
+	f := newLogFixture(t)
+	f.append(t, 2, "1", "2", "3", "4", "5")
+	f.retry()
+	f.append(t, 2, "x")
+
+	want := []pipelinelogs.AttemptLogStats{{Attempt: 1, DroppedLines: 3}, {Attempt: 2, DroppedLines: 0}}
+	assert.Equal(t, want, f.get(t, 0, 0).Attempts)
+
+	f.finish(pipelineservice.JobStatusCompleted)
+	require.NoError(t, f.archiver(true).Execute(context.Background(), f.jobID))
+
+	assert.Equal(t, want, f.get(t, 0, 0).Attempts, "counters survive archiving")
+}
+
+func TestDownloadJobLog_Backends(t *testing.T) {
+	backends := map[string]func(t *testing.T) (pipelineservice.LogArchive, bool){
+		"none": func(*testing.T) (pipelineservice.LogArchive, bool) { return logarchive.None{}, false },
+		"filesystem": func(t *testing.T) (pipelineservice.LogArchive, bool) {
+			t.Helper()
+
+			fs, err := logarchive.NewFilesystem(t.TempDir())
+			require.NoError(t, err)
+
+			return fs, true
+		},
+		"s3": func(t *testing.T) (pipelineservice.LogArchive, bool) {
+			t.Helper()
+
+			endpoint := os.Getenv("TEST_S3_ENDPOINT")
+			if endpoint == "" {
+				t.Skip("TEST_S3_ENDPOINT is not set")
+			}
+
+			region := cmp.Or(os.Getenv("TEST_S3_REGION"), "us-east-1")
+
+			s3, err := logarchive.NewS3(context.Background(), logarchive.S3Config{
+				Endpoint:        endpoint,
+				Region:          region,
+				Bucket:          os.Getenv("TEST_S3_BUCKET"),
+				Prefix:          "synclet-test/" + uuid.NewString(),
+				AccessKeyID:     os.Getenv("TEST_S3_ACCESS_KEY_ID"),
+				SecretAccessKey: os.Getenv("TEST_S3_SECRET_ACCESS_KEY"),
+				UsePathStyle:    true,
+			})
+			require.NoError(t, err)
+
+			return s3, true
+		},
+	}
+
+	for name, newArchive := range backends {
+		t.Run(name, func(t *testing.T) {
+			archive, enabled := newArchive(t)
+
+			f := newLogFixture(t)
+			f.append(t, 0, "a1", "a2")
+			f.retry()
+			f.append(t, 0, "b1")
+			f.finish(pipelineservice.JobStatusCompleted)
+
+			archiver := pipelinelogs.NewArchiveJobLogs(f.store, archive, pipelineservice.Config{LogArchiveEnabled: enabled, LogArchiveBackend: name}, f.metrics)
+			require.NoError(t, archiver.Execute(context.Background(), f.jobID))
+			assert.Equal(t, !enabled, len(f.store.logs) > 0, "lines stay in Postgres only without a backend")
+
+			for attempt, want := range map[int]string{1: "a1\na2\n", 2: "b1\n"} {
+				var out strings.Builder
+
+				require.NoError(t, pipelinelogs.NewDownloadJobLog(f.store, archive).Execute(context.Background(), pipelinelogs.DownloadJobLogParams{
+					WorkspaceID: f.workspaceID,
+					JobID:       f.jobID,
+					Attempt:     attempt,
+				}, &out))
+				assert.Equal(t, want, out.String())
+			}
+		})
+	}
 }

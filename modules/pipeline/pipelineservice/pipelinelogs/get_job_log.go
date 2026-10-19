@@ -31,6 +31,14 @@ type GetJobLogResult struct {
 	Lines   []string
 	LastID  int64
 	HasMore bool
+	// Attempts lists, in attempt order, every attempt that produced log lines.
+	Attempts []AttemptLogStats
+}
+
+// AttemptLogStats holds the line-cap counters of one job attempt.
+type AttemptLogStats struct {
+	Attempt      int
+	DroppedLines int
 }
 
 // GetJobLog retrieves log lines for a job with cursor-based pagination.
@@ -49,20 +57,15 @@ func NewGetJobLog(storage pipelineservice.Storage, archive pipelineservice.LogAr
 // id order; archived lines keep their job_logs ids, so a cursor stays valid
 // when the job is archived between two calls.
 func (uc *GetJobLog) Execute(ctx context.Context, params GetJobLogParams) (*GetJobLogResult, error) {
-	// Verify the job belongs to the caller's workspace.
-	job, err := uc.storage.Jobs().First(ctx, &pipelineservice.JobFilter{
-		ID: filter.Equals(params.JobID),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("getting job: %w", err)
+	if err := checkJobWorkspace(ctx, uc.storage, params.WorkspaceID, params.JobID); err != nil {
+		return nil, err
 	}
 
-	conn, err := uc.storage.Connections().First(ctx, &pipelineservice.ConnectionFilter{
-		ID:          filter.Equals(job.ConnectionID),
-		WorkspaceID: filter.Equals(params.WorkspaceID),
+	segments, err := uc.storage.JobLogSegments().Find(ctx, &pipelineservice.JobLogSegmentFilter{
+		JobID: filter.Equals(params.JobID),
 	})
-	if err != nil || conn == nil {
-		return nil, pipelineservice.ErrJobNotFound
+	if err != nil {
+		return nil, fmt.Errorf("listing job log segments: %w", err)
 	}
 
 	limit := params.Limit
@@ -73,7 +76,7 @@ func (uc *GetJobLog) Execute(ctx context.Context, params GetJobLogParams) (*GetJ
 	limit = min(limit, MaxLogLimit)
 
 	// Fetch limit+1 to detect hasMore.
-	lines, err := uc.archivedLines(ctx, params.JobID, params.AfterID, limit+1)
+	lines, err := uc.archivedLines(ctx, segments, params.AfterID, limit+1)
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +97,7 @@ func (uc *GetJobLog) Execute(ctx context.Context, params GetJobLogParams) (*GetJ
 		lines = lines[:limit]
 	}
 
-	result := &GetJobLogResult{Lines: make([]string, len(lines))}
+	result := &GetJobLogResult{Lines: make([]string, len(lines)), Attempts: attemptStats(segments)}
 
 	for i, l := range lines {
 		result.Lines[i] = l.Message
@@ -106,18 +109,21 @@ func (uc *GetJobLog) Execute(ctx context.Context, params GetJobLogParams) (*GetJ
 	return result, nil
 }
 
-// archivedLines returns up to limit archived lines with id > afterID, in id order.
-func (uc *GetJobLog) archivedLines(ctx context.Context, jobID uuid.UUID, afterID int64, limit int) ([]archivedLine, error) {
-	segments, err := uc.storage.JobLogSegments().Find(ctx, &pipelineservice.JobLogSegmentFilter{
-		JobID:  filter.Equals(jobID),
-		Status: filter.Equals(pipelineservice.JobLogSegmentStatusArchived),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("listing job log segments: %w", err)
+func attemptStats(segments []*pipelineservice.JobLogSegment) []AttemptLogStats {
+	stats := make([]AttemptLogStats, len(segments))
+	for i, s := range segments {
+		stats[i] = AttemptLogStats{Attempt: s.Attempt, DroppedLines: s.DroppedCount}
 	}
 
-	segments = slices.DeleteFunc(segments, func(s *pipelineservice.JobLogSegment) bool {
-		return s.ArchiveKey == nil || s.FirstLogID == nil || s.LastLogID == nil || *s.LastLogID <= afterID
+	slices.SortFunc(stats, func(a, b AttemptLogStats) int { return cmp.Compare(a.Attempt, b.Attempt) })
+
+	return stats
+}
+
+// archivedLines returns up to limit archived lines with id > afterID, in id order.
+func (uc *GetJobLog) archivedLines(ctx context.Context, segments []*pipelineservice.JobLogSegment, afterID int64, limit int) ([]archivedLine, error) {
+	segments = slices.DeleteFunc(slices.Clone(segments), func(s *pipelineservice.JobLogSegment) bool {
+		return s.Status != pipelineservice.JobLogSegmentStatusArchived || s.ArchiveKey == nil || s.FirstLogID == nil || s.LastLogID == nil || *s.LastLogID <= afterID
 	})
 	slices.SortFunc(segments, func(a, b *pipelineservice.JobLogSegment) int { return cmp.Compare(*a.FirstLogID, *b.FirstLogID) })
 

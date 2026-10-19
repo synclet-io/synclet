@@ -213,6 +213,10 @@ service JobService {
   rpc GetJobLogs(GetJobLogsRequest) returns (GetJobLogsResponse) {
     option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
   }
+  // Streams the full log of one attempt as plain text, one line per log line.
+  rpc DownloadJobLogs(DownloadJobLogsRequest) returns (stream DownloadJobLogsResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
+  }
 }
 
 // ==================== Source Messages ====================
@@ -761,6 +765,21 @@ message GetJobLogsResponse {
   repeated string lines = 1;
   int64 last_id = 2;     // cursor for next poll
   bool has_more = 3;
+  repeated JobLogAttempt attempts = 4; // every attempt that produced log lines, in attempt order
+}
+
+message JobLogAttempt {
+  int32 attempt = 1;
+  int64 dropped_lines = 2; // lines dropped by the per-attempt line cap
+}
+
+message DownloadJobLogsRequest {
+  string job_id = 1;
+  int32 attempt = 2;
+}
+
+message DownloadJobLogsResponse {
+  bytes chunk = 1;
 }
 
 // ==================== Config Import/Export Messages ====================
