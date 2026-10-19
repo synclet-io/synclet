@@ -75,8 +75,8 @@ spec:
           {{- if .Values.server.startupProbe.enabled }}
           startupProbe:
             httpGet:
-              path: {{ include "synclet.server.probePath" (list .Values.server.startupProbe "/live") }}
-              port: {{ .Values.server.startupProbe.port | default "internal" }}
+              path: {{ include "synclet.probePath" (list .Values.server.startupProbe "" "/live") }}
+              port: {{ include "synclet.probePort" (list .Values.server.startupProbe "") }}
             initialDelaySeconds: {{ .Values.server.startupProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.server.startupProbe.periodSeconds }}
             failureThreshold: {{ .Values.server.startupProbe.failureThreshold }}
@@ -84,16 +84,16 @@ spec:
           {{- if .Values.server.readinessProbe.enabled }}
           readinessProbe:
             httpGet:
-              path: {{ include "synclet.server.probePath" (list .Values.server.readinessProbe "/ready") }}
-              port: {{ .Values.server.readinessProbe.port | default "internal" }}
+              path: {{ include "synclet.probePath" (list .Values.server.readinessProbe "" "/ready") }}
+              port: {{ include "synclet.probePort" (list .Values.server.readinessProbe "") }}
             initialDelaySeconds: {{ .Values.server.readinessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.server.readinessProbe.periodSeconds }}
           {{- end }}
           {{- if .Values.server.livenessProbe.enabled }}
           livenessProbe:
             httpGet:
-              path: {{ include "synclet.server.probePath" (list .Values.server.livenessProbe "/live") }}
-              port: {{ .Values.server.livenessProbe.port | default "internal" }}
+              path: {{ include "synclet.probePath" (list .Values.server.livenessProbe "" "/live") }}
+              port: {{ include "synclet.probePort" (list .Values.server.livenessProbe "") }}
             initialDelaySeconds: {{ .Values.server.livenessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.server.livenessProbe.periodSeconds }}
           {{- end }}

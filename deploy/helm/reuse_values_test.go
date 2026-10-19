@@ -2,22 +2,69 @@ package helm_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
+
+	"github.com/Masterminds/semver/v3"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 )
 
-// releasedValues are the values.yaml files of earlier chart releases, copied
-// from their synclet-helm-v<version> tags. Add the values of each new release
-// here so the next one is rendered over them.
-var releasedValues = []string{"0.1.3", "0.2.0", "0.3.0"}
+// releasedValues lists the chart versions in testdata/release-values: the
+// values.yaml of each release, copied from its synclet-helm-v<version> tag.
+func releasedValues(t *testing.T) []string {
+	t.Helper()
+
+	entries, err := os.ReadDir(filepath.Join("testdata", "release-values"))
+	require.NoError(t, err)
+
+	var versions []*semver.Version
+
+	for _, e := range entries {
+		if name, ok := strings.CutSuffix(e.Name(), ".yaml"); ok {
+			version, err := semver.StrictNewVersion(name)
+			require.NoError(t, err, "testdata/release-values/%s is not named after a chart version", e.Name())
+
+			versions = append(versions, version)
+		}
+	}
+
+	slices.SortFunc(versions, func(a, b *semver.Version) int { return a.Compare(b) })
+
+	names := make([]string, len(versions))
+	for i, v := range versions {
+		names[i] = v.String()
+	}
+
+	return names
+}
+
+// TestReleasedValues_CoverLastRelease fails until the values of the chart
+// version release-please last released are copied to testdata/release-values.
+func TestReleasedValues_CoverLastRelease(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("..", "..", ".release-please-manifest.json"))
+	require.NoError(t, err)
+
+	var manifest map[string]string
+	require.NoError(t, json.Unmarshal(raw, &manifest))
+
+	released := manifest["deploy/helm/synclet"]
+	require.NotEmpty(t, released, "release-please manifest has no deploy/helm/synclet version")
+
+	versions := releasedValues(t)
+	require.NotEmpty(t, versions)
+	assert.Equal(t, released, versions[len(versions)-1],
+		"copy `git show synclet-helm-v%s:deploy/helm/synclet/values.yaml` to testdata/release-values/%s.yaml", released, released)
+}
 
 // reuseValuesChart copies the chart into a temp dir with values.yaml replaced
 // by a released one: helm upgrade --reuse-values renders the new templates over
@@ -29,7 +76,7 @@ func reuseValuesChart(t *testing.T, version string) string {
 
 	require.NoError(t, os.CopyFS(dir, os.DirFS("synclet")))
 
-	values, err := os.ReadFile(filepath.Join("testdata", "release-values", version+".yaml")) //nolint:gosec // version comes from releasedValues
+	values, err := os.ReadFile(filepath.Join("testdata", "release-values", version+".yaml")) //nolint:gosec // version comes from the testdata directory
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "values.yaml"), values, 0o600)) //nolint:gosec // writes into the test temp dir
 
@@ -123,21 +170,23 @@ func probes(docs []map[string]any) []renderedProbe {
 }
 
 // TestChart_ReuseValues renders the chart over the values of each earlier
-// release, as helm upgrade --reuse-values does.
+// release, as helm upgrade --reuse-values does. Every ConfigMap key must render
+// as it does with the new defaults under the old release's values: keys the
+// old release set keep its value, the rest fall back to values.yaml.
 func TestChart_ReuseValues(t *testing.T) {
-	for _, version := range releasedValues {
+	for _, version := range releasedValues(t) {
 		for _, mode := range []string{"standalone", "distributed"} {
 			t.Run(version+"/"+mode, func(t *testing.T) {
-				docs := renderDocs(t, reuseValuesChart(t, version), "--set", "mode="+mode)
-				defaults := configMapData(renderDocs(t, "synclet", "--set", "mode="+mode))
+				set := "mode=" + mode + ",jobs.livenessProbe.enabled=true,jobs.readinessProbe.enabled=true," +
+					"executor.livenessProbe.enabled=true,executor.readinessProbe.enabled=true"
 
-				for name, data := range configMapData(docs) {
-					for key, want := range defaults[name] {
-						if want == "" {
-							continue
-						}
+				docs := renderDocs(t, reuseValuesChart(t, version), "--set", set)
+				got := configMapData(docs)
+				want := configMapData(renderDocs(t, "synclet", "--set", set, "-f", filepath.Join("testdata", "release-values", version+".yaml")))
 
-						assert.NotEmpty(t, data[key], "ConfigMap %s key %s is empty over %s values (default %q)", name, key, version, want)
+				for name, data := range want {
+					for key, value := range data {
+						assert.Equal(t, value, got[name][key], "ConfigMap %s key %s over %s values", name, key, version)
 					}
 				}
 
@@ -146,11 +195,8 @@ func TestChart_ReuseValues(t *testing.T) {
 						continue
 					}
 
-					assert.NotEmpty(t, p.httpGet["port"], "%s/%s %s has no port", p.workload, p.container, p.kind)
-
-					if p.container == "synclet" {
-						assert.Contains(t, []any{"/live", "/ready"}, p.httpGet["path"], "%s/%s %s path", p.workload, p.container, p.kind)
-					}
+					assert.Contains(t, []any{"internal", 8081}, p.httpGet["port"], "%s/%s %s port", p.workload, p.container, p.kind)
+					assert.Contains(t, []any{"/live", "/ready"}, p.httpGet["path"], "%s/%s %s path", p.workload, p.container, p.kind)
 				}
 			})
 		}

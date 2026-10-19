@@ -60,16 +60,37 @@ app.kubernetes.io/component: server
 {{- end }}
 
 {{/*
-Server probe path from (list probe fallback). A probe without a port comes from
-a release before 0.2.0, whose default path /health the server no longer serves:
-it takes the fallback.
+Whether a probe from (list probe legacyPort) holds the defaults of a release
+before 0.2.0, which the binary no longer serves: path /health on no port or on
+legacyPort (8080 for jobs and executor, "" for the server).
 */}}
-{{- define "synclet.server.probePath" -}}
+{{- define "synclet.probeIsLegacy" -}}
 {{- $probe := index . 0 -}}
-{{- if and (not $probe.port) (eq ($probe.path | default "/health") "/health") -}}
-{{- index . 1 -}}
+{{- if and (eq ($probe.path | default "/health") "/health") (has (toString ($probe.port | default "")) (list "" (index . 1))) -}}
+true
+{{- end -}}
+{{- end }}
+
+{{/*
+Probe path from (list probe legacyPort fallback): a legacy probe takes the fallback.
+*/}}
+{{- define "synclet.probePath" -}}
+{{- if include "synclet.probeIsLegacy" . -}}
+{{- index . 2 -}}
 {{- else -}}
-{{- $probe.path -}}
+{{- (index . 0).path -}}
+{{- end -}}
+{{- end }}
+
+{{/*
+Probe port from (list probe legacyPort): a legacy probe or one without a port
+hits the internal port.
+*/}}
+{{- define "synclet.probePort" -}}
+{{- if include "synclet.probeIsLegacy" . -}}
+internal
+{{- else -}}
+{{- (index . 0).port | default "internal" -}}
 {{- end -}}
 {{- end }}
 

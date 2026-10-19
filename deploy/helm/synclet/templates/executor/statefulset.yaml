@@ -68,16 +68,16 @@ spec:
           {{- if .Values.executor.livenessProbe.enabled }}
           livenessProbe:
             httpGet:
-              path: {{ .Values.executor.livenessProbe.path }}
-              port: {{ .Values.executor.livenessProbe.port }}
+              path: {{ include "synclet.probePath" (list .Values.executor.livenessProbe "8080" "/live") }}
+              port: {{ include "synclet.probePort" (list .Values.executor.livenessProbe "8080") }}
             initialDelaySeconds: {{ .Values.executor.livenessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.executor.livenessProbe.periodSeconds }}
           {{- end }}
           {{- if .Values.executor.readinessProbe.enabled }}
           readinessProbe:
             httpGet:
-              path: {{ .Values.executor.readinessProbe.path }}
-              port: {{ .Values.executor.readinessProbe.port }}
+              path: {{ include "synclet.probePath" (list .Values.executor.readinessProbe "8080" "/ready") }}
+              port: {{ include "synclet.probePort" (list .Values.executor.readinessProbe "8080") }}
             initialDelaySeconds: {{ .Values.executor.readinessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.executor.readinessProbe.periodSeconds }}
           {{- end }}
