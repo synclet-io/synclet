@@ -100,11 +100,21 @@ function isSelected(name: string): boolean {
   return selected.length === 0 || selected.some(sf => sf.fieldPath[0] === name)
 }
 
+const markOrder: ColumnMark[] = ['new', 'renamed', 'retyped', 'dropped']
+
+// The server's output schema types every column it returns; a column the
+// source sent is marked retyped when that type differs from its input type.
 const outputColumns = computed(() => {
   const serverProps = validation.outputSchema.value?.properties as Record<string, unknown> | undefined
+  const inputTypes = new Map(inputColumns.value.map(c => [c.name, c.type]))
   return walk.value.output.map((c) => {
-    const serverType = serverProps && c.name in serverProps ? schemaType(serverProps[c.name]) : undefined
-    return { ...c, type: c.type === 'any' && serverType ? serverType : c.type }
+    if (!serverProps || !(c.name in serverProps))
+      return c
+    const type = schemaType(serverProps[c.name])
+    const inputType = c.marks.includes('new') ? undefined : inputTypes.get(c.renamedFrom ?? c.name)
+    const retyped = c.marks.includes('retyped') || (inputType !== undefined && inputType !== type)
+    const marks = markOrder.filter(m => (m === 'retyped' ? retyped : c.marks.includes(m)))
+    return { ...c, type, marks }
   })
 })
 

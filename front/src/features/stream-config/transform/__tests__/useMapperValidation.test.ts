@@ -111,4 +111,19 @@ describe('useMapperValidation', () => {
     expect(wrapper.get('[data-testid="test-step-output"]').text()).toContain('Filtered out')
     expect(wrapper.get('[data-testid="result-type"]').text()).toBe('→ boolean')
   })
+
+  it('gives an existing column the type a set step writes and marks it changed', async () => {
+    vi.mocked(validateMappers).mockResolvedValue(result({
+      outputSchema: { properties: { id: { type: 'integer' }, amount: { type: 'boolean' } } },
+    }))
+    const wrapper = mount(TransformTab, {
+      props: { stream: row([{ set: { amount: 'true' } }]), connectionId: 'conn-1' },
+    })
+    await vi.advanceTimersByTimeAsync(400)
+
+    expect(wrapper.get('[data-testid="result-type"]').text()).toBe('→ boolean')
+    const amount = wrapper.findAll('[data-testid="output-column"]').find(c => c.text().startsWith('amount'))!
+    expect(amount.text()).toContain('boolean')
+    expect(amount.text()).toContain('type changed')
+  })
 })
