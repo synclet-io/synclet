@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -48,22 +50,70 @@ func releasedValues(t *testing.T) []string {
 	return names
 }
 
-// TestReleasedValues_CoverLastRelease fails until the values of the chart
-// version release-please last released are copied to testdata/release-values.
+var changelogRelease = regexp.MustCompile(`(?m)^## \[([^\]]+)\]`)
+
+// checkReleasedValues accepts testdata whose newest version is the chart
+// version in the release-please manifest or the release before it, the second
+// CHANGELOG heading: a release-please PR bumps both before its tag exists.
+func checkReleasedValues(manifestJSON, changelog []byte, newest string) error {
+	var manifest map[string]string
+	if err := json.Unmarshal(manifestJSON, &manifest); err != nil {
+		return fmt.Errorf("parse release-please manifest: %w", err)
+	}
+
+	current := manifest["deploy/helm/synclet"]
+	if current == "" {
+		return errors.New("release-please manifest has no deploy/helm/synclet version")
+	}
+
+	accepted := []string{current}
+
+	if headings := changelogRelease.FindAllSubmatch(changelog, 2); len(headings) == 2 {
+		accepted = append(accepted, string(headings[1][1]))
+	}
+
+	if !slices.Contains(accepted, newest) {
+		return fmt.Errorf("testdata/release-values ends at %s, want one of %v: copy `git show synclet-helm-v<version>:deploy/helm/synclet/values.yaml` to testdata/release-values/<version>.yaml", newest, accepted)
+	}
+
+	return nil
+}
+
+func TestCheckReleasedValues(t *testing.T) {
+	manifest := []byte(`{".": "0.7.0", "deploy/helm/synclet": "0.4.1"}`)
+	changelog := []byte("# Changelog\n\n## [0.4.1](https://x) (2026-10-19)\n\n## [0.4.0](https://x) (2026-10-19)\n\n## [0.3.0](https://x) (2026-10-18)\n")
+
+	for _, tc := range []struct {
+		name, newest string
+		ok           bool
+	}{
+		{"equal", "0.4.1", true},
+		{"one behind", "0.4.0", true},
+		{"two behind", "0.3.0", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := checkReleasedValues(manifest, changelog, tc.newest)
+			if tc.ok {
+				assert.NoError(t, err)
+			} else {
+				assert.Error(t, err)
+			}
+		})
+	}
+}
+
+// TestReleasedValues_CoverLastRelease fails when testdata/release-values lags
+// the chart's releases by two or more.
 func TestReleasedValues_CoverLastRelease(t *testing.T) {
-	raw, err := os.ReadFile(filepath.Join("..", "..", ".release-please-manifest.json"))
+	manifest, err := os.ReadFile(filepath.Join("..", "..", ".release-please-manifest.json"))
 	require.NoError(t, err)
 
-	var manifest map[string]string
-	require.NoError(t, json.Unmarshal(raw, &manifest))
-
-	released := manifest["deploy/helm/synclet"]
-	require.NotEmpty(t, released, "release-please manifest has no deploy/helm/synclet version")
+	changelog, err := os.ReadFile(filepath.Join("synclet", "CHANGELOG.md"))
+	require.NoError(t, err)
 
 	versions := releasedValues(t)
 	require.NotEmpty(t, versions)
-	assert.Equal(t, released, versions[len(versions)-1],
-		"copy `git show synclet-helm-v%s:deploy/helm/synclet/values.yaml` to testdata/release-values/%s.yaml", released, released)
+	require.NoError(t, checkReleasedValues(manifest, changelog, versions[len(versions)-1]))
 }
 
 // reuseValuesChart copies the chart into a temp dir with values.yaml replaced
