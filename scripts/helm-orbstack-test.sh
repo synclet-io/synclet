@@ -223,18 +223,35 @@ wait_task() {
   return 1
 }
 
+# split_image_ref sets ref_image and ref_tag from REF: the tag follows the last ':' after the
+# last '/', so a registry port stays in the image; a digest stays on the tag (tag@sha256:...).
+split_image_ref() {
+  local ref=$1 digest= name
+  if [[ $ref == *@* ]]; then
+    digest=@${ref#*@} ref=${ref%%@*}
+  fi
+  name=${ref##*/}
+  if [[ $name != *:* ]]; then
+    echo "image reference $1 needs a tag" >&2
+    return 1
+  fi
+  ref_image=${ref%:*} ref_tag=${name##*:}$digest
+}
+
 if [[ ${SYNC:-} == 1 ]]; then
   log "sync with root-based connectors"
   user_id=$(api auth.v1.AuthService/Register "{\"email\":\"$RUN@test.local\",\"password\":\"$(openssl rand -hex 12)Aa1!\",\"name\":\"Chart test\"}" | jq -r .user.id)
   WS_ID=$(api workspace.v1.WorkspaceService/CreateWorkspace "{\"name\":\"$RUN\",\"ownerUserId\":\"$user_id\"}" | jq -r .workspace.id)
   src_image=$REG/synclet-test-source src_tag=$RUN src_config='{"streams":[{"name":"users","namespace":"public","record_count":100}]}'
   if [[ -n ${SYNC_SOURCE:-} ]]; then
-    src_image=${SYNC_SOURCE%:*} src_tag=${SYNC_SOURCE##*:} src_config=${SYNC_SOURCE_CONFIG:-'{}'}
+    split_image_ref "$SYNC_SOURCE"
+    src_image=$ref_image src_tag=$ref_tag src_config=${SYNC_SOURCE_CONFIG:-'{}'}
   fi
   src_connector=$(api registry.v1.ConnectorRegistryService/AddConnector "{\"dockerImage\":\"$src_image\",\"dockerTag\":\"$src_tag\",\"name\":\"test source\",\"connectorType\":\"CONNECTOR_TYPE_SOURCE\"}" | jq -r .id)
   dst_image=$REG/synclet-test-dest dst_tag=$RUN dst_config='{"output_dir":"/tmp/output"}'
   if [[ -n ${SYNC_DEST:-} ]]; then
-    dst_image=${SYNC_DEST%:*} dst_tag=${SYNC_DEST##*:} dst_config=${SYNC_DEST_CONFIG:-'{}'}
+    split_image_ref "$SYNC_DEST"
+    dst_image=$ref_image dst_tag=$ref_tag dst_config=${SYNC_DEST_CONFIG:-'{}'}
   fi
   dst_connector=$(api registry.v1.ConnectorRegistryService/AddConnector "{\"dockerImage\":\"$dst_image\",\"dockerTag\":\"$dst_tag\",\"name\":\"test destination\",\"connectorType\":\"CONNECTOR_TYPE_DESTINATION\"}" | jq -r .id)
   source_id=$(api pipeline.v1.SourceService/CreateSource "{\"workspaceId\":\"$WS_ID\",\"name\":\"source\",\"managedConnectorId\":\"$src_connector\",\"config\":$src_config}" | jq -r .source.id)

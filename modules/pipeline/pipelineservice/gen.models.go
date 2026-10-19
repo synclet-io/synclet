@@ -1399,6 +1399,7 @@ const (
 	JobFieldError
 	JobFieldAttempt
 	JobFieldMaxAttempts
+	JobFieldSyncID
 	JobFieldWorkerID
 	JobFieldHeartbeatAt
 	JobFieldK8sJobName
@@ -1429,6 +1430,7 @@ type Job struct {
 	Error         *string
 	Attempt       int
 	MaxAttempts   int
+	SyncID        *int64
 	WorkerID      *string
 	HeartbeatAt   *time.Time
 	K8sJobName    *string
@@ -1463,25 +1465,30 @@ func (j *Job) Copy() Job {
 	}
 	result.Attempt = j.Attempt
 	result.MaxAttempts = j.MaxAttempts
+	if j.SyncID != nil {
+		var tmp3 int64
+		tmp3 = (*j.SyncID)
+		result.SyncID = &tmp3
+	}
 	if j.WorkerID != nil {
-		var tmp3 string
-		tmp3 = (*j.WorkerID)
-		result.WorkerID = &tmp3
+		var tmp4 string
+		tmp4 = (*j.WorkerID)
+		result.WorkerID = &tmp4
 	}
 	if j.HeartbeatAt != nil {
-		var tmp4 time.Time
-		tmp4 = (*j.HeartbeatAt)
-		result.HeartbeatAt = &tmp4
+		var tmp5 time.Time
+		tmp5 = (*j.HeartbeatAt)
+		result.HeartbeatAt = &tmp5
 	}
 	if j.K8sJobName != nil {
-		var tmp5 string
-		tmp5 = (*j.K8sJobName)
-		result.K8sJobName = &tmp5
+		var tmp6 string
+		tmp6 = (*j.K8sJobName)
+		result.K8sJobName = &tmp6
 	}
 	if j.FailureReason != nil {
-		var tmp6 string
-		tmp6 = (*j.FailureReason)
-		result.FailureReason = &tmp6
+		var tmp7 string
+		tmp7 = (*j.FailureReason)
+		result.FailureReason = &tmp7
 	}
 	result.CreatedAt = j.CreatedAt
 
@@ -1538,6 +1545,14 @@ func (j *Job) Equals(to *Job) bool {
 	}
 	if j.MaxAttempts != to.MaxAttempts {
 		return false
+	}
+	if (j.SyncID == nil) != (to.SyncID == nil) {
+		return false
+	}
+	if j.SyncID != nil && to.SyncID != nil {
+		if (*j.SyncID) != (*to.SyncID) {
+			return false
+		}
 	}
 	if (j.WorkerID == nil) != (to.WorkerID == nil) {
 		return false

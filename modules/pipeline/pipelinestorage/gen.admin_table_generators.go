@@ -1500,6 +1500,21 @@ func NewTableGenerators() table.GeneratorList {
 				}
 				return values
 			}
+			info.AddField("SyncID", "sync_id", db.Int)
+			info.FieldSortable()
+			formList.AddField("SyncID", "sync_id", db.Int, form.Text)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
 			info.AddField("WorkerID", "worker_id", db.Text)
 			info.FieldSortable()
 			formList.AddField("WorkerID", "worker_id", db.Text, form.Text)

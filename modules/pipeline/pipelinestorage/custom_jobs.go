@@ -13,13 +13,16 @@ import (
 // ClaimNextScheduledJob atomically claims the next scheduled job for a worker.
 // Uses SELECT FOR UPDATE SKIP LOCKED for safe concurrent claiming.
 // Sets status to 'starting', assigns worker_id, started_at, and heartbeat_at.
+// The first claim of a job draws its sync_id from pipeline.job_sync_id_seq;
+// later claims of the same job keep it.
 // Returns nil, nil if no scheduled jobs are available.
 func (s *JobsStorage) ClaimNextScheduledJob(ctx context.Context, workerID string) (*pipelinesvc.Job, error) {
 	var row dbJob
 	now := time.Now()
 
 	result := s.DB.WithContext(ctx).
-		Raw(`UPDATE pipeline.jobs SET status = ?, worker_id = ?, started_at = ?, heartbeat_at = ?
+		Raw(`UPDATE pipeline.jobs SET status = ?, worker_id = ?, started_at = ?, heartbeat_at = ?,
+		       sync_id = COALESCE(sync_id, nextval('pipeline.job_sync_id_seq'))
 		     WHERE id = (
 		       SELECT id FROM pipeline.jobs
 		       WHERE status = ?

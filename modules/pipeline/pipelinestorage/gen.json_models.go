@@ -830,6 +830,7 @@ type jsonJob struct {
 	Error         *string    `json:"error"`
 	Attempt       int        `json:"attempt"`
 	MaxAttempts   int        `json:"max_attempts"`
+	SyncID        *int64     `json:"sync_id"`
 	WorkerID      *string    `json:"worker_id"`
 	HeartbeatAt   *time.Time `json:"heartbeat_at"`
 	K8sJobName    *string    `json:"k8s_job_name"`
@@ -877,6 +878,11 @@ func convertJobToJsonModel(src *pipelineservice.Job) (*jsonJob, error) {
 	}
 	result.Attempt = src.Attempt
 	result.MaxAttempts = src.MaxAttempts
+	if src.SyncID == nil {
+		result.SyncID = nil
+	} else {
+		result.SyncID = toPtr(fromPtr(src.SyncID))
+	}
 	if src.WorkerID == nil {
 		result.WorkerID = nil
 	} else {
@@ -905,16 +911,16 @@ func convertJobFromJsonModel(src *jsonJob) (*pipelineservice.Job, error) {
 	result := &pipelineservice.Job{}
 	result.ID = src.ID
 	result.ConnectionID = src.ConnectionID
-	tmp24, err := convertJobStatusFromDB(src.Status)
+	tmp26, err := convertJobStatusFromDB(src.Status)
 	if err != nil {
 		return nil, err
 	}
-	result.Status = tmp24
-	tmp25, err := convertJobTypeFromDB(src.JobType)
+	result.Status = tmp26
+	tmp27, err := convertJobTypeFromDB(src.JobType)
 	if err != nil {
 		return nil, err
 	}
-	result.JobType = tmp25
+	result.JobType = tmp27
 	result.ScheduledAt = src.ScheduledAt
 	if src.StartedAt == nil {
 		result.StartedAt = nil
@@ -933,6 +939,11 @@ func convertJobFromJsonModel(src *jsonJob) (*pipelineservice.Job, error) {
 	}
 	result.Attempt = src.Attempt
 	result.MaxAttempts = src.MaxAttempts
+	if src.SyncID == nil {
+		result.SyncID = nil
+	} else {
+		result.SyncID = toPtr(fromPtr(src.SyncID))
+	}
 	if src.WorkerID == nil {
 		result.WorkerID = nil
 	} else {

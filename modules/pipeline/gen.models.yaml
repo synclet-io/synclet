@@ -297,6 +297,7 @@ types:
         - { name: Error, type: "*string" }
         - { name: Attempt, type: int }
         - { name: MaxAttempts, type: int }
+        - { name: SyncID, type: "*int64" }
         - { name: WorkerID, type: "*string" }
         - { name: HeartbeatAt, type: "*timestamp", filterable: true }
         - { name: K8sJobName, type: "*string" }

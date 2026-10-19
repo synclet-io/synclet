@@ -478,6 +478,7 @@ type dbJob struct {
 	Error         *string    `gorm:"column:error;type:text"`
 	Attempt       int        `gorm:"column:attempt"`
 	MaxAttempts   int        `gorm:"column:max_attempts"`
+	SyncID        *int64     `gorm:"column:sync_id"`
 	WorkerID      *string    `gorm:"column:worker_id;type:text"`
 	HeartbeatAt   *time.Time `gorm:"column:heartbeat_at"`
 	K8sJobName    *string    `gorm:"column:k8s_job_name;type:text"`
@@ -517,6 +518,11 @@ func convertJobToDB(src *pipelineservice.Job) (*dbJob, error) {
 	}
 	result.Attempt = src.Attempt
 	result.MaxAttempts = src.MaxAttempts
+	if src.SyncID == nil {
+		result.SyncID = nil
+	} else {
+		result.SyncID = toPtr(fromPtr(src.SyncID))
+	}
 	if src.WorkerID == nil {
 		result.WorkerID = nil
 	} else {
@@ -545,16 +551,16 @@ func convertJobFromDB(src *dbJob) (*pipelineservice.Job, error) {
 	result := &pipelineservice.Job{}
 	result.ID = src.ID
 	result.ConnectionID = src.ConnectionID
-	tmp24, err := convertJobStatusFromDB(src.Status)
+	tmp26, err := convertJobStatusFromDB(src.Status)
 	if err != nil {
 		return nil, err
 	}
-	result.Status = tmp24
-	tmp25, err := convertJobTypeFromDB(src.JobType)
+	result.Status = tmp26
+	tmp27, err := convertJobTypeFromDB(src.JobType)
 	if err != nil {
 		return nil, err
 	}
-	result.JobType = tmp25
+	result.JobType = tmp27
 	result.ScheduledAt = src.ScheduledAt
 	if src.StartedAt == nil {
 		result.StartedAt = nil
@@ -573,6 +579,11 @@ func convertJobFromDB(src *dbJob) (*pipelineservice.Job, error) {
 	}
 	result.Attempt = src.Attempt
 	result.MaxAttempts = src.MaxAttempts
+	if src.SyncID == nil {
+		result.SyncID = nil
+	} else {
+		result.SyncID = toPtr(fromPtr(src.SyncID))
+	}
 	if src.WorkerID == nil {
 		result.WorkerID = nil
 	} else {

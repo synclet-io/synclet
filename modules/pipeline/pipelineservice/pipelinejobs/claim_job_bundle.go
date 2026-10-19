@@ -166,19 +166,15 @@ func (uc *ClaimJobBundle) loadBundle(ctx context.Context, job *pipelineservice.J
 		return nil, fmt.Errorf("loading configured catalog: %w", err)
 	}
 
-	// Populate sync metadata (sync_id, generation_id, minimum_generation_id) so
-	// Airbyte CDK connectors receive valid non-zero integers instead of defaults.
-	jobCount, err := uc.storage.Jobs().Count(ctx, &pipelineservice.JobFilter{
-		ConnectionID: filter.Equals(job.ConnectionID),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("counting jobs for sync_id: %w", err)
+	// sync_id is the job's: assigned at its first claim and kept by every attempt.
+	if job.SyncID == nil {
+		return nil, fmt.Errorf("job %s has no sync_id", job.ID)
 	}
 
 	if err := uc.populateGenerationIDs.Execute(ctx, pipelinecatalog.PopulateGenerationIDsParams{
 		ConnectionID: job.ConnectionID,
 		Catalog:      catalog,
-		SyncID:       int64(jobCount),
+		SyncID:       *job.SyncID,
 	}); err != nil {
 		return nil, fmt.Errorf("populating generation IDs: %w", err)
 	}

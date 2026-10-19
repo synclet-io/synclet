@@ -314,6 +314,7 @@ func NewJobsStorage(db *gorm.DB, logger *logging.Logger) pipelinesvc.JobsStorage
 				pipelinesvc.JobFieldError:         {Name: "error"},
 				pipelinesvc.JobFieldAttempt:       {Name: "attempt"},
 				pipelinesvc.JobFieldMaxAttempts:   {Name: "max_attempts"},
+				pipelinesvc.JobFieldSyncID:        {Name: "sync_id"},
 				pipelinesvc.JobFieldWorkerID:      {Name: "worker_id"},
 				pipelinesvc.JobFieldHeartbeatAt:   {Name: "heartbeat_at"},
 				pipelinesvc.JobFieldK8sJobName:    {Name: "k8s_job_name"},
