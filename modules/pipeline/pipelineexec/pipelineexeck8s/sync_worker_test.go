@@ -1,7 +1,9 @@
 package pipelineexeck8s
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 
@@ -208,4 +210,33 @@ func TestK8sSyncWorker_LaunchSyncJobSuccess(t *testing.T) {
 	assert.NotNil(t, runner.lastOpts)
 	assert.Equal(t, "airbyte/source-postgres:0.1.0", runner.lastOpts.SourceImage)
 	assert.Equal(t, "airbyte/destination-postgres:0.1.0", runner.lastOpts.DestImage)
+}
+
+func TestK8sSyncWorker_DestCatalogKeepsGenerationFields(t *testing.T) {
+	backend := &mockBackend{claimResult: &pipelineexec.ClaimJobResult{
+		Job:          &pipelineservice.Job{ID: uuid.New()},
+		ConnectionID: uuid.New(),
+		ConfiguredCatalog: []byte(`{"streams":[{"stream":{"name":"users","namespace":"public","json_schema":{}},` +
+			`"sync_mode":"full_refresh","destination_sync_mode":"overwrite",` +
+			`"generation_id":5,"minimum_generation_id":5,"sync_id":7}]}`),
+		NamespaceDefinition: pipelineservice.NamespaceDefinitionDestination,
+		StreamPrefix:        "sl_",
+	}}
+	runner := &mockK8sSyncLauncher{}
+
+	worker := NewK8sSyncWorker(backend, runner, "", "test-worker", &logging.Logger{Delegate: noopDelegate{}})
+	require.NoError(t, worker.Execute(context.Background()))
+	require.NotNil(t, runner.lastOpts)
+
+	var sent struct {
+		Streams []map[string]any `json:"streams"`
+	}
+	decoder := json.NewDecoder(bytes.NewReader(runner.lastOpts.DestCatalog))
+	decoder.UseNumber()
+	require.NoError(t, decoder.Decode(&sent))
+	require.Len(t, sent.Streams, 1)
+	assert.Equal(t, "sl_users", sent.Streams[0]["stream"].(map[string]any)["name"])
+	assert.Equal(t, json.Number("5"), sent.Streams[0]["generation_id"])
+	assert.Equal(t, json.Number("5"), sent.Streams[0]["minimum_generation_id"])
+	assert.Equal(t, json.Number("7"), sent.Streams[0]["sync_id"])
 }

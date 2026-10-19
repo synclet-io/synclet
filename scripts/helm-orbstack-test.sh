@@ -12,6 +12,13 @@
 #   SYNC=1              also build the e2e test connectors (images that run as root),
 #                       serve them from a throwaway local registry container and run a
 #                       sync through the API; the run fails unless the job completes
+#   SYNC_SOURCE=<image:tag>, SYNC_DEST=<image:tag>
+#                       with SYNC=1, use this connector image (pulled from its registry)
+#                       instead of the test source or destination
+#   SYNC_SOURCE_CONFIG=<json>, SYNC_DEST_CONFIG=<json>
+#                       their configs (default {})
+#   SYNC_STREAM_NAMESPACE  namespace of the synced "users" stream (default public; set it
+#                       empty for sources without namespaces)
 #   POST_INSTALL=<cmd>  run after the route and UI checks, before cleanup, with CTX and
 #                       APP_NS exported; its failure fails the run
 set -euo pipefail
@@ -220,13 +227,21 @@ if [[ ${SYNC:-} == 1 ]]; then
   log "sync with root-based connectors"
   user_id=$(api auth.v1.AuthService/Register "{\"email\":\"$RUN@test.local\",\"password\":\"$(openssl rand -hex 12)Aa1!\",\"name\":\"Chart test\"}" | jq -r .user.id)
   WS_ID=$(api workspace.v1.WorkspaceService/CreateWorkspace "{\"name\":\"$RUN\",\"ownerUserId\":\"$user_id\"}" | jq -r .workspace.id)
-  src_connector=$(api registry.v1.ConnectorRegistryService/AddConnector "{\"dockerImage\":\"$REG/synclet-test-source\",\"dockerTag\":\"$RUN\",\"name\":\"test source\",\"connectorType\":\"CONNECTOR_TYPE_SOURCE\"}" | jq -r .id)
-  dst_connector=$(api registry.v1.ConnectorRegistryService/AddConnector "{\"dockerImage\":\"$REG/synclet-test-dest\",\"dockerTag\":\"$RUN\",\"name\":\"test destination\",\"connectorType\":\"CONNECTOR_TYPE_DESTINATION\"}" | jq -r .id)
-  source_id=$(api pipeline.v1.SourceService/CreateSource "{\"workspaceId\":\"$WS_ID\",\"name\":\"source\",\"managedConnectorId\":\"$src_connector\",\"config\":{\"streams\":[{\"name\":\"users\",\"namespace\":\"public\",\"record_count\":100}]}}" | jq -r .source.id)
+  src_image=$REG/synclet-test-source src_tag=$RUN src_config='{"streams":[{"name":"users","namespace":"public","record_count":100}]}'
+  if [[ -n ${SYNC_SOURCE:-} ]]; then
+    src_image=${SYNC_SOURCE%:*} src_tag=${SYNC_SOURCE##*:} src_config=${SYNC_SOURCE_CONFIG:-'{}'}
+  fi
+  src_connector=$(api registry.v1.ConnectorRegistryService/AddConnector "{\"dockerImage\":\"$src_image\",\"dockerTag\":\"$src_tag\",\"name\":\"test source\",\"connectorType\":\"CONNECTOR_TYPE_SOURCE\"}" | jq -r .id)
+  dst_image=$REG/synclet-test-dest dst_tag=$RUN dst_config='{"output_dir":"/tmp/output"}'
+  if [[ -n ${SYNC_DEST:-} ]]; then
+    dst_image=${SYNC_DEST%:*} dst_tag=${SYNC_DEST##*:} dst_config=${SYNC_DEST_CONFIG:-'{}'}
+  fi
+  dst_connector=$(api registry.v1.ConnectorRegistryService/AddConnector "{\"dockerImage\":\"$dst_image\",\"dockerTag\":\"$dst_tag\",\"name\":\"test destination\",\"connectorType\":\"CONNECTOR_TYPE_DESTINATION\"}" | jq -r .id)
+  source_id=$(api pipeline.v1.SourceService/CreateSource "{\"workspaceId\":\"$WS_ID\",\"name\":\"source\",\"managedConnectorId\":\"$src_connector\",\"config\":$src_config}" | jq -r .source.id)
   wait_task "$(api pipeline.v1.SourceService/DiscoverSourceSchema "{\"sourceId\":\"$source_id\"}" | jq -r .taskId)"
-  dest_id=$(api pipeline.v1.DestinationService/CreateDestination "{\"workspaceId\":\"$WS_ID\",\"name\":\"destination\",\"managedConnectorId\":\"$dst_connector\",\"config\":{\"output_dir\":\"/tmp/output\"}}" | jq -r .destination.id)
+  dest_id=$(api pipeline.v1.DestinationService/CreateDestination "{\"workspaceId\":\"$WS_ID\",\"name\":\"destination\",\"managedConnectorId\":\"$dst_connector\",\"config\":$dst_config}" | jq -r .destination.id)
   conn_id=$(api pipeline.v1.ConnectionService/CreateConnection "{\"workspaceId\":\"$WS_ID\",\"name\":\"$RUN\",\"sourceId\":\"$source_id\",\"destinationId\":\"$dest_id\"}" | jq -r .connection.id)
-  api pipeline.v1.ConnectionService/ConfigureStreams "{\"connectionId\":\"$conn_id\",\"streams\":[{\"streamName\":\"users\",\"namespace\":\"public\",\"syncMode\":\"SYNC_MODE_FULL_REFRESH\",\"destinationSyncMode\":\"DESTINATION_SYNC_MODE_OVERWRITE\"}]}" >/dev/null
+  api pipeline.v1.ConnectionService/ConfigureStreams "{\"connectionId\":\"$conn_id\",\"streams\":[{\"streamName\":\"users\",\"namespace\":\"${SYNC_STREAM_NAMESPACE-public}\",\"syncMode\":\"SYNC_MODE_FULL_REFRESH\",\"destinationSyncMode\":\"DESTINATION_SYNC_MODE_OVERWRITE\"}]}" >/dev/null
   job_id=$(api pipeline.v1.JobService/TriggerSync "{\"connectionId\":\"$conn_id\"}" | jq -r .job.id)
   status=
   for _ in $(seq 100); do
