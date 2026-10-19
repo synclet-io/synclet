@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -20,21 +21,76 @@ import (
 
 const coalesceFunction = "__coalesce"
 
-// coalesceMacro expands coalesce(r.f, b) to has(r.f) ? __coalesce(r.f, b) : b,
-// so a missing field falls back like a null one.
-var coalesceMacro = cel.GlobalMacro("coalesce", 2,
-	func(helper cel.MacroExprFactory, _ ast.Expr, args []ast.Expr) (ast.Expr, *common.Error) {
-		call := helper.NewCall(coalesceFunction, args[0], args[1])
+var coalesceParam = cel.TypeParamType("T")
 
-		if args[0].Kind() != ast.SelectKind || args[0].AsSelect().IsTestOnly() {
-			return call, nil
+var coalesceMismatch = regexp.MustCompile(`found no matching overload for '` + coalesceFunction + `' applied to '\((.*?)\)'`)
+
+// coalesceMessage rewrites CEL's overload error for __coalesce into one that
+// names coalesce and the two argument types that differ.
+func coalesceMessage(msg string) string {
+	return coalesceMismatch.ReplaceAllStringFunc(msg, func(match string) string {
+		left, right := splitTypePair(coalesceMismatch.FindStringSubmatch(match)[1])
+
+		return fmt.Sprintf("coalesce arguments have different types: %s and %s", left, right)
+	})
+}
+
+// splitTypePair splits "A, B" at the comma outside any parentheses, so
+// parameterized types such as map(string, int) stay whole.
+func splitTypePair(pair string) (left, right string) {
+	depth := 0
+
+	for i, ch := range pair {
+		switch ch {
+		case '(':
+			depth++
+		case ')':
+			depth--
+		case ',':
+			if depth == 0 {
+				return pair[:i], strings.TrimSpace(pair[i+1:])
+			}
+		}
+	}
+
+	return pair, ""
+}
+
+// coalesceMacro expands coalesce(a, b, ...) right to left into
+// has(r.a) ? __coalesce(r.a, rest) : rest, so a missing field falls back like
+// a null one. A null literal argument is rejected: it would make the result null.
+var coalesceMacro = cel.GlobalVarArgMacro("coalesce",
+	func(helper cel.MacroExprFactory, _ ast.Expr, args []ast.Expr) (ast.Expr, *common.Error) {
+		if len(args) < 2 {
+			return nil, &common.Error{Message: "coalesce takes at least two arguments"}
 		}
 
-		sel := args[0].AsSelect()
-		present := helper.NewPresenceTest(helper.Copy(sel.Operand()), sel.FieldName())
+		for _, arg := range args {
+			if arg.Kind() == ast.LiteralKind && arg.AsLiteral().Type() == types.NullType {
+				return nil, helper.NewError(arg.ID(), "coalesce argument cannot be null")
+			}
+		}
 
-		return helper.NewCall(operators.Conditional, present, call, helper.Copy(args[1])), nil
+		rest := args[len(args)-1]
+		for i := len(args) - 2; i >= 0; i-- {
+			rest = coalescePair(helper, args[i], rest)
+		}
+
+		return rest, nil
 	})
+
+func coalescePair(helper cel.MacroExprFactory, value, fallback ast.Expr) ast.Expr {
+	call := helper.NewCall(coalesceFunction, value, fallback)
+
+	if value.Kind() != ast.SelectKind || value.AsSelect().IsTestOnly() {
+		return call
+	}
+
+	sel := value.AsSelect()
+	present := helper.NewPresenceTest(helper.Copy(sel.Operand()), sel.FieldName())
+
+	return helper.NewCall(operators.Conditional, present, call, helper.Copy(fallback))
+}
 
 func newEnv(provider *recordTypes, recordType *types.Type) (*cel.Env, error) {
 	env, err := cel.NewEnv(
@@ -76,7 +132,7 @@ func newEnv(provider *recordTypes, recordType *types.Type) (*cel.Env, error) {
 				})),
 		),
 		cel.Function(coalesceFunction,
-			cel.Overload(coalesceFunction+"_dyn_dyn", []*cel.Type{cel.DynType, cel.DynType}, cel.DynType,
+			cel.Overload(coalesceFunction+"_T_T", []*cel.Type{coalesceParam, coalesceParam}, coalesceParam,
 				cel.BinaryBinding(func(value, fallback ref.Val) ref.Val {
 					if value.Type() == types.NullType {
 						return fallback
@@ -173,11 +229,21 @@ func literalString(args []ast.Expr, idx int) (string, bool) {
 }
 
 // readsNullable reports whether an expression selects a record field, at any
-// depth, whose schema admits null.
+// depth, whose schema admits null. Every argument of coalesce but the last is
+// skipped: a null there falls back to the next one.
 func readsNullable(checked *cel.Ast, props map[string]json.RawMessage) bool {
-	sels := ast.MatchDescendants(ast.NavigateAST(checked.NativeRep()), ast.KindMatcher(ast.SelectKind))
-	for _, sel := range sels {
-		if sel.AsSelect().IsTestOnly() {
+	root := ast.NavigateAST(checked.NativeRep())
+
+	fallenBack := map[int64]bool{}
+
+	for _, call := range ast.MatchDescendants(root, ast.FunctionMatcher(coalesceFunction)) {
+		for _, sel := range ast.MatchDescendants(call.Children()[0], ast.KindMatcher(ast.SelectKind)) {
+			fallenBack[sel.ID()] = true
+		}
+	}
+
+	for _, sel := range ast.MatchDescendants(root, ast.KindMatcher(ast.SelectKind)) {
+		if sel.AsSelect().IsTestOnly() || fallenBack[sel.ID()] {
 			continue
 		}
 

@@ -547,7 +547,7 @@ func (c *compiler) expression(idx int, field string, env *cel.Env, expr string) 
 	checked, iss := env.Compile(expr)
 	if iss.Err() != nil {
 		if !c.renamedReference(idx, env, expr) {
-			c.fail(idx, field, iss.Err().Error())
+			c.fail(idx, field, coalesceMessage(iss.Err().Error()))
 		}
 
 		return nil, nil, false

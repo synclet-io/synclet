@@ -56,8 +56,8 @@ func TestFunctions(t *testing.T) {
 		"num":{"type":"number"},
 		"num_dot":{"type":"number"},
 		"hash":{"type":"string"},
-		"fallback":{},
-		"present":{},
+		"fallback":{"type":"string"},
+		"present":{"type":"string"},
 		"recent":{"type":"boolean"}
 	}}`, string(res.Schema))
 
@@ -88,4 +88,98 @@ func TestFunctions(t *testing.T) {
 	})
 	require.Len(t, res.Errors, 1)
 	require.Contains(t, res.Errors[0].Message, `unknown cast format "QQ"`)
+}
+
+const coalesceSchema = `{"type":"object","properties":{
+	"nick":{"type":["null","string"]},
+	"alias":{"type":["null","string"]},
+	"name":{"type":"string"},
+	"discount":{"type":["null","number"]},
+	"count":{"type":"integer"},
+	"any":{},
+	"items":{"type":"array"}
+}}`
+
+func TestCoalesceTypes(t *testing.T) {
+	t.Parallel()
+
+	_, res := mustCompile(t, Input{
+		Schema: json.RawMessage(coalesceSchema),
+		Steps: steps(t, `[{"set":{
+			"str":"coalesce(r.nick, 'anon')",
+			"num":"coalesce(r.discount, 0.0)",
+			"three":"coalesce(r.nick, r.alias, 'anon')",
+			"three_null":"coalesce(r.name, r.nick, r.alias)",
+			"pair_null":"coalesce(r.nick, r.alias)",
+			"pair_last_set":"coalesce(r.nick, r.name)",
+			"dyn":"coalesce(r.any, 'x')"
+		}}]`),
+	})
+
+	var schema struct {
+		Properties map[string]json.RawMessage `json:"properties"`
+	}
+	require.NoError(t, json.Unmarshal(res.Schema, &schema))
+
+	for field, want := range map[string]string{
+		"str":           `{"type":"string"}`,
+		"num":           `{"type":"number"}`,
+		"three":         `{"type":"string"}`,
+		"three_null":    `{"type":["null","string"]}`,
+		"pair_null":     `{"type":["null","string"]}`,
+		"pair_last_set": `{"type":"string"}`,
+		"dyn":           `{}`,
+	} {
+		require.JSONEq(t, want, string(schema.Properties[field]), field)
+	}
+}
+
+func TestCoalesceCompileErrors(t *testing.T) {
+	t.Parallel()
+
+	for expr, want := range map[string]string{
+		"coalesce(r.discount, 0)":       "coalesce arguments have different types: double and int",
+		"coalesce(r.nick, r.alias, 1)":  "coalesce arguments have different types: string and int",
+		"coalesce(r.discount, r.count)": "coalesce arguments have different types: double and int",
+		"coalesce(r.items, {'a': 1})":   "coalesce arguments have different types: list(dyn) and map(string, int)",
+		"coalesce(r.any, r.nick, 1)":    "coalesce arguments have different types: string and int",
+		"coalesce(r.nick, null)":        "<input>:1:18: coalesce argument cannot be null",
+		"coalesce(r.nick, null, 'x')":   "<input>:1:18: coalesce argument cannot be null",
+		"coalesce(r.nick)":              "<input>:1:9: coalesce takes at least two arguments",
+		"coalesce()":                    "<input>:1:9: coalesce takes at least two arguments",
+	} {
+		_, res := Compile(Input{
+			Schema: json.RawMessage(coalesceSchema),
+			Steps:  steps(t, `[{"set":{"x":"`+expr+`"}}]`),
+		})
+		require.Len(t, res.Errors, 1, expr)
+		require.Equal(t, 0, res.Errors[0].Step, expr)
+		require.Contains(t, res.Errors[0].Message, want, expr)
+		require.NotContains(t, res.Errors[0].Message, coalesceFunction, expr)
+	}
+}
+
+func TestCoalesceRuntime(t *testing.T) {
+	t.Parallel()
+
+	chain, _ := mustCompile(t, Input{
+		Schema: json.RawMessage(coalesceSchema),
+		Steps: steps(t, `[{"set":{
+			"pair":"coalesce(r.nick, 'anon')",
+			"three":"coalesce(r.nick, r.alias, 'anon')"
+		}}]`),
+	})
+
+	for rec, want := range map[string][2]string{
+		`{}`:                         {"anon", "anon"},
+		`{"nick":null,"alias":null}`: {"anon", "anon"},
+		`{"alias":"al"}`:             {"anon", "al"},
+		`{"nick":null,"alias":"al"}`: {"anon", "al"},
+		`{"nick":"n","alias":"al"}`:  {"n", "n"},
+	} {
+		out, _, err := chain.Run(record(t, rec), testSync)
+		require.NoError(t, err, rec)
+		require.Equal(t, want[0], out["pair"], rec)
+		require.Equal(t, want[1], out["three"], rec)
+	}
 }

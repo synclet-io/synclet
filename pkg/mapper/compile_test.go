@@ -213,7 +213,7 @@ func TestCompileOutputSchema(t *testing.T) {
 		"total_cents":{"type":"integer"},
 		"synced_at":{"type":"string","format":"date-time","airbyte_type":"timestamp_with_timezone"},
 		"big":{"type":"boolean"},
-		"label":{}
+		"label":{"type":"string"}
 	}}`, string(res.Schema))
 }
 
