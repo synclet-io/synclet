@@ -170,3 +170,26 @@ func TestListAuditEvents_FlagsDeletedUserActors(t *testing.T) {
 	require.Len(t, users.batches, 1, "one batched existence lookup per page")
 	assert.ElementsMatch(t, []uuid.UUID{liveUser, deletedUser}, users.batches[0])
 }
+
+func TestListAuditEvents_SkipsLookupWithoutUserActors(t *testing.T) {
+	now := time.Date(2026, 10, 16, 12, 0, 0, 0, time.UTC)
+	storage := newFakeStorage()
+	workspaceID := uuid.New()
+
+	addAuditEvent(storage, workspaceID, now.Add(-time.Minute))
+	storage.events[len(storage.events)-1].ActorType = ActorTypeAPIKey
+	storage.events[len(storage.events)-1].ActorID = uuid.New()
+	addAuditEvent(storage, workspaceID, now.Add(-2*time.Minute))
+	storage.events[len(storage.events)-1].ActorType = ActorTypeSystem
+	storage.events[len(storage.events)-1].ActorID = uuid.Nil
+
+	users := &fakeUserDirectory{}
+
+	events, err := NewListAuditEvents(storage, users).Execute(context.Background(), ListAuditEventsParams{
+		WorkspaceID: workspaceID,
+	})
+	require.NoError(t, err)
+
+	require.Len(t, events, 2)
+	assert.Empty(t, users.batches)
+}

@@ -38,6 +38,6 @@ func (uc *GetAuditEvent) Execute(ctx context.Context, params GetAuditEventParams
 
 	return &ListedAuditEvent{
 		AuditEvent:   event,
-		ActorDeleted: event.ActorType == ActorTypeUser && deleted[event.ActorID],
+		ActorDeleted: deleted[event.ActorID],
 	}, nil
 }
