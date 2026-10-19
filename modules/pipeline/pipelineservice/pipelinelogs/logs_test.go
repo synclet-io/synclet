@@ -708,3 +708,43 @@ func TestDownloadJobLog_Backends(t *testing.T) {
 		})
 	}
 }
+
+// hookWriter runs onFirst before its first write.
+type hookWriter struct {
+	buf     strings.Builder
+	onFirst func()
+}
+
+func (w *hookWriter) Write(p []byte) (int, error) {
+	if w.onFirst != nil {
+		w.onFirst()
+		w.onFirst = nil
+	}
+
+	return w.buf.Write(p)
+}
+
+func TestDownloadJobLog_ArchivedMidDownload(t *testing.T) {
+	f := newLogFixture(t)
+
+	lines := make([]string, 6000)
+	for i := range lines {
+		lines[i] = strconv.Itoa(i)
+	}
+
+	f.append(t, 0, lines...)
+	f.finish(pipelineservice.JobStatusCompleted)
+
+	out := &hookWriter{onFirst: func() {
+		require.NoError(t, f.archiver(true).Execute(context.Background(), f.jobID))
+		require.Empty(t, f.store.logs)
+	}}
+
+	require.NoError(t, pipelinelogs.NewDownloadJobLog(f.store, f.archive).Execute(context.Background(), pipelinelogs.DownloadJobLogParams{
+		WorkspaceID: f.workspaceID,
+		JobID:       f.jobID,
+		Attempt:     1,
+	}, out))
+	require.Equal(t, len(lines), strings.Count(out.buf.String(), "\n"), "every line exactly once")
+	assert.Equal(t, strings.Join(lines, "\n")+"\n", out.buf.String())
+}
