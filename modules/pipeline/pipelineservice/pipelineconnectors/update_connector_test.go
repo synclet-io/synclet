@@ -43,6 +43,14 @@ func (m *mockStorage) RepositoryConnectors() pipelineservice.RepositoryConnector
 	return m.repoConnectors
 }
 
+func (m *mockStorage) Sources() pipelineservice.SourcesStorage {
+	return &fakeSources{}
+}
+
+func (m *mockStorage) Destinations() pipelineservice.DestinationsStorage {
+	return &fakeDestinations{}
+}
+
 // mockManagedConnectorsStorage provides in-memory managed connector storage.
 type mockManagedConnectorsStorage struct {
 	pipelineservice.ManagedConnectorsStorage

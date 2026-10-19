@@ -22,6 +22,8 @@ type ManagedConnectorUpdateInfo struct {
 type ManagedConnectorWithUpdateInfo struct {
 	Connector  *pipelineservice.ManagedConnector
 	UpdateInfo *ManagedConnectorUpdateInfo
+	// Used is true when a source or destination of the connector's workspace is built on it.
+	Used bool
 }
 
 // ListConnectorsWithUpdateInfo returns managed connectors enriched with update info.
@@ -114,10 +116,16 @@ func (uc *ListConnectorsWithUpdateInfo) Execute(ctx context.Context, params List
 		}
 	}
 
+	used, err := usedConnectorIDs(ctx, uc.storage, params.WorkspaceID, connectors)
+	if err != nil {
+		return nil, err
+	}
+
 	// Enrich each connector with update info.
 	result := make([]ManagedConnectorWithUpdateInfo, len(connectors))
 	for i, connector := range connectors {
-		result[i] = ManagedConnectorWithUpdateInfo{Connector: connector}
+		_, isUsed := used[connector.ID]
+		result[i] = ManagedConnectorWithUpdateInfo{Connector: connector, Used: isUsed}
 
 		if connector.RepositoryID == nil {
 			continue
@@ -160,7 +168,13 @@ func (uc *GetConnectorWithUpdateInfo) Execute(ctx context.Context, params GetCon
 		return nil, fmt.Errorf("getting managed connector: %w", err)
 	}
 
-	result := &ManagedConnectorWithUpdateInfo{Connector: connector}
+	used, err := usedConnectorIDs(ctx, uc.storage, params.WorkspaceID, []*pipelineservice.ManagedConnector{connector})
+	if err != nil {
+		return nil, err
+	}
+
+	_, isUsed := used[connector.ID]
+	result := &ManagedConnectorWithUpdateInfo{Connector: connector, Used: isUsed}
 
 	if connector.RepositoryID == nil {
 		return result, nil
@@ -193,4 +207,44 @@ func enrichUpdateInfo(connector *pipelineservice.ManagedConnector, repoConn *pip
 	}
 
 	return info
+}
+
+// usedConnectorIDs returns the IDs among connectors that a source or destination
+// of the workspace is built on.
+func usedConnectorIDs(ctx context.Context, storage pipelineservice.Storage, workspaceID uuid.UUID, connectors []*pipelineservice.ManagedConnector) (map[uuid.UUID]struct{}, error) {
+	used := make(map[uuid.UUID]struct{})
+	if len(connectors) == 0 {
+		return used, nil
+	}
+
+	ids := make([]uuid.UUID, len(connectors))
+	for i, connector := range connectors {
+		ids[i] = connector.ID
+	}
+
+	sources, err := storage.Sources().Find(ctx, &pipelineservice.SourceFilter{
+		WorkspaceID:        filter.Equals(workspaceID),
+		ManagedConnectorID: filter.In(ids...),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("listing sources: %w", err)
+	}
+
+	for _, source := range sources {
+		used[source.ManagedConnectorID] = struct{}{}
+	}
+
+	destinations, err := storage.Destinations().Find(ctx, &pipelineservice.DestinationFilter{
+		WorkspaceID:        filter.Equals(workspaceID),
+		ManagedConnectorID: filter.In(ids...),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("listing destinations: %w", err)
+	}
+
+	for _, destination := range destinations {
+		used[destination.ManagedConnectorID] = struct{}{}
+	}
+
+	return used, nil
 }

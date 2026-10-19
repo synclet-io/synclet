@@ -23,6 +23,7 @@ type dbManagedConnector struct {
 	CreatedAt     time.Time  `gorm:"column:created_at"`
 	UpdatedAt     time.Time  `gorm:"column:updated_at"`
 	RepositoryID  *uuid.UUID `gorm:"column:repository_id"`
+	Starred       bool       `gorm:"column:starred"`
 }
 
 func convertManagedConnectorToDB(src *pipelineservice.ManagedConnector) (*dbManagedConnector, error) {
@@ -45,6 +46,7 @@ func convertManagedConnectorToDB(src *pipelineservice.ManagedConnector) (*dbMana
 	} else {
 		result.RepositoryID = toPtr(fromPtr(src.RepositoryID))
 	}
+	result.Starred = src.Starred
 	return result, nil
 }
 
@@ -55,11 +57,11 @@ func convertManagedConnectorFromDB(src *dbManagedConnector) (*pipelineservice.Ma
 	result.DockerImage = src.DockerImage
 	result.DockerTag = src.DockerTag
 	result.Name = src.Name
-	tmp16, err := convertConnectorTypeFromDB(src.ConnectorType)
+	tmp17, err := convertConnectorTypeFromDB(src.ConnectorType)
 	if err != nil {
 		return nil, err
 	}
-	result.ConnectorType = tmp16
+	result.ConnectorType = tmp17
 	result.Spec = src.Spec
 	result.CreatedAt = src.CreatedAt
 	result.UpdatedAt = src.UpdatedAt
@@ -68,6 +70,7 @@ func convertManagedConnectorFromDB(src *dbManagedConnector) (*pipelineservice.Ma
 	} else {
 		result.RepositoryID = toPtr(fromPtr(src.RepositoryID))
 	}
+	result.Starred = src.Starred
 	return result, nil
 }
 func (a dbManagedConnector) TableName() string {

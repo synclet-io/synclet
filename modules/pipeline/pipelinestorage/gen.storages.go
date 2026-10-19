@@ -135,6 +135,7 @@ func NewManagedConnectorsStorage(db *gorm.DB, logger *logging.Logger) pipelinesv
 			pipelinesvc.ManagedConnectorFieldCreatedAt:     {Name: "created_at"},
 			pipelinesvc.ManagedConnectorFieldUpdatedAt:     {Name: "updated_at"},
 			pipelinesvc.ManagedConnectorFieldRepositoryID:  {Name: "repository_id"},
+			pipelinesvc.ManagedConnectorFieldStarred:       {Name: "starred"},
 		},
 		LockScope: "pipeline.ManagedConnectors",
 	}

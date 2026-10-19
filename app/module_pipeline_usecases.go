@@ -33,6 +33,7 @@ func pipelineUseCasesModule() fx.Option {
 			pipelineconnectors.NewListConnectors,
 			pipelineconnectors.NewDeleteConnector,
 			pipelineconnectors.NewUpdateManagedConnector,
+			pipelineconnectors.NewSetConnectorStarred,
 			pipelineconnectors.NewBatchUpdateConnectors,
 			pipelineconnectors.NewListConnectorsWithUpdateInfo,
 			pipelineconnectors.NewGetConnectorWithUpdateInfo,

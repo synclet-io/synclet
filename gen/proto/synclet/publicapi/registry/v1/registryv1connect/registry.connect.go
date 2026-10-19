@@ -51,6 +51,12 @@ const (
 	// ConnectorRegistryServiceDeleteManagedConnectorProcedure is the fully-qualified name of the
 	// ConnectorRegistryService's DeleteManagedConnector RPC.
 	ConnectorRegistryServiceDeleteManagedConnectorProcedure = "/synclet.publicapi.registry.v1.ConnectorRegistryService/DeleteManagedConnector"
+	// ConnectorRegistryServiceStarManagedConnectorProcedure is the fully-qualified name of the
+	// ConnectorRegistryService's StarManagedConnector RPC.
+	ConnectorRegistryServiceStarManagedConnectorProcedure = "/synclet.publicapi.registry.v1.ConnectorRegistryService/StarManagedConnector"
+	// ConnectorRegistryServiceUnstarManagedConnectorProcedure is the fully-qualified name of the
+	// ConnectorRegistryService's UnstarManagedConnector RPC.
+	ConnectorRegistryServiceUnstarManagedConnectorProcedure = "/synclet.publicapi.registry.v1.ConnectorRegistryService/UnstarManagedConnector"
 	// ConnectorRegistryServiceAddRepositoryProcedure is the fully-qualified name of the
 	// ConnectorRegistryService's AddRepository RPC.
 	ConnectorRegistryServiceAddRepositoryProcedure = "/synclet.publicapi.registry.v1.ConnectorRegistryService/AddRepository"
@@ -86,6 +92,8 @@ type ConnectorRegistryServiceClient interface {
 	GetManagedConnector(context.Context, *connect.Request[v1.GetManagedConnectorRequest]) (*connect.Response[v1.ManagedConnectorInfo], error)
 	ListManagedConnectors(context.Context, *connect.Request[v1.ListManagedConnectorsRequest]) (*connect.Response[v1.ListManagedConnectorsResponse], error)
 	DeleteManagedConnector(context.Context, *connect.Request[v1.DeleteManagedConnectorRequest]) (*connect.Response[v1.DeleteManagedConnectorResponse], error)
+	StarManagedConnector(context.Context, *connect.Request[v1.StarManagedConnectorRequest]) (*connect.Response[v1.StarManagedConnectorResponse], error)
+	UnstarManagedConnector(context.Context, *connect.Request[v1.UnstarManagedConnectorRequest]) (*connect.Response[v1.UnstarManagedConnectorResponse], error)
 	AddRepository(context.Context, *connect.Request[v1.AddRepositoryRequest]) (*connect.Response[v1.AddRepositoryResponse], error)
 	ListRepositories(context.Context, *connect.Request[v1.ListRepositoriesRequest]) (*connect.Response[v1.ListRepositoriesResponse], error)
 	DeleteRepository(context.Context, *connect.Request[v1.DeleteRepositoryRequest]) (*connect.Response[v1.DeleteRepositoryResponse], error)
@@ -142,6 +150,18 @@ func NewConnectorRegistryServiceClient(httpClient connect.HTTPClient, baseURL st
 			httpClient,
 			baseURL+ConnectorRegistryServiceDeleteManagedConnectorProcedure,
 			connect.WithSchema(connectorRegistryServiceMethods.ByName("DeleteManagedConnector")),
+			connect.WithClientOptions(opts...),
+		),
+		starManagedConnector: connect.NewClient[v1.StarManagedConnectorRequest, v1.StarManagedConnectorResponse](
+			httpClient,
+			baseURL+ConnectorRegistryServiceStarManagedConnectorProcedure,
+			connect.WithSchema(connectorRegistryServiceMethods.ByName("StarManagedConnector")),
+			connect.WithClientOptions(opts...),
+		),
+		unstarManagedConnector: connect.NewClient[v1.UnstarManagedConnectorRequest, v1.UnstarManagedConnectorResponse](
+			httpClient,
+			baseURL+ConnectorRegistryServiceUnstarManagedConnectorProcedure,
+			connect.WithSchema(connectorRegistryServiceMethods.ByName("UnstarManagedConnector")),
 			connect.WithClientOptions(opts...),
 		),
 		addRepository: connect.NewClient[v1.AddRepositoryRequest, v1.AddRepositoryResponse](
@@ -203,6 +223,8 @@ type connectorRegistryServiceClient struct {
 	getManagedConnector      *connect.Client[v1.GetManagedConnectorRequest, v1.ManagedConnectorInfo]
 	listManagedConnectors    *connect.Client[v1.ListManagedConnectorsRequest, v1.ListManagedConnectorsResponse]
 	deleteManagedConnector   *connect.Client[v1.DeleteManagedConnectorRequest, v1.DeleteManagedConnectorResponse]
+	starManagedConnector     *connect.Client[v1.StarManagedConnectorRequest, v1.StarManagedConnectorResponse]
+	unstarManagedConnector   *connect.Client[v1.UnstarManagedConnectorRequest, v1.UnstarManagedConnectorResponse]
 	addRepository            *connect.Client[v1.AddRepositoryRequest, v1.AddRepositoryResponse]
 	listRepositories         *connect.Client[v1.ListRepositoriesRequest, v1.ListRepositoriesResponse]
 	deleteRepository         *connect.Client[v1.DeleteRepositoryRequest, v1.DeleteRepositoryResponse]
@@ -244,6 +266,18 @@ func (c *connectorRegistryServiceClient) ListManagedConnectors(ctx context.Conte
 // synclet.publicapi.registry.v1.ConnectorRegistryService.DeleteManagedConnector.
 func (c *connectorRegistryServiceClient) DeleteManagedConnector(ctx context.Context, req *connect.Request[v1.DeleteManagedConnectorRequest]) (*connect.Response[v1.DeleteManagedConnectorResponse], error) {
 	return c.deleteManagedConnector.CallUnary(ctx, req)
+}
+
+// StarManagedConnector calls
+// synclet.publicapi.registry.v1.ConnectorRegistryService.StarManagedConnector.
+func (c *connectorRegistryServiceClient) StarManagedConnector(ctx context.Context, req *connect.Request[v1.StarManagedConnectorRequest]) (*connect.Response[v1.StarManagedConnectorResponse], error) {
+	return c.starManagedConnector.CallUnary(ctx, req)
+}
+
+// UnstarManagedConnector calls
+// synclet.publicapi.registry.v1.ConnectorRegistryService.UnstarManagedConnector.
+func (c *connectorRegistryServiceClient) UnstarManagedConnector(ctx context.Context, req *connect.Request[v1.UnstarManagedConnectorRequest]) (*connect.Response[v1.UnstarManagedConnectorResponse], error) {
+	return c.unstarManagedConnector.CallUnary(ctx, req)
 }
 
 // AddRepository calls synclet.publicapi.registry.v1.ConnectorRegistryService.AddRepository.
@@ -299,6 +333,8 @@ type ConnectorRegistryServiceHandler interface {
 	GetManagedConnector(context.Context, *connect.Request[v1.GetManagedConnectorRequest]) (*connect.Response[v1.ManagedConnectorInfo], error)
 	ListManagedConnectors(context.Context, *connect.Request[v1.ListManagedConnectorsRequest]) (*connect.Response[v1.ListManagedConnectorsResponse], error)
 	DeleteManagedConnector(context.Context, *connect.Request[v1.DeleteManagedConnectorRequest]) (*connect.Response[v1.DeleteManagedConnectorResponse], error)
+	StarManagedConnector(context.Context, *connect.Request[v1.StarManagedConnectorRequest]) (*connect.Response[v1.StarManagedConnectorResponse], error)
+	UnstarManagedConnector(context.Context, *connect.Request[v1.UnstarManagedConnectorRequest]) (*connect.Response[v1.UnstarManagedConnectorResponse], error)
 	AddRepository(context.Context, *connect.Request[v1.AddRepositoryRequest]) (*connect.Response[v1.AddRepositoryResponse], error)
 	ListRepositories(context.Context, *connect.Request[v1.ListRepositoriesRequest]) (*connect.Response[v1.ListRepositoriesResponse], error)
 	DeleteRepository(context.Context, *connect.Request[v1.DeleteRepositoryRequest]) (*connect.Response[v1.DeleteRepositoryResponse], error)
@@ -350,6 +386,18 @@ func NewConnectorRegistryServiceHandler(svc ConnectorRegistryServiceHandler, opt
 		ConnectorRegistryServiceDeleteManagedConnectorProcedure,
 		svc.DeleteManagedConnector,
 		connect.WithSchema(connectorRegistryServiceMethods.ByName("DeleteManagedConnector")),
+		connect.WithHandlerOptions(opts...),
+	)
+	connectorRegistryServiceStarManagedConnectorHandler := connect.NewUnaryHandler(
+		ConnectorRegistryServiceStarManagedConnectorProcedure,
+		svc.StarManagedConnector,
+		connect.WithSchema(connectorRegistryServiceMethods.ByName("StarManagedConnector")),
+		connect.WithHandlerOptions(opts...),
+	)
+	connectorRegistryServiceUnstarManagedConnectorHandler := connect.NewUnaryHandler(
+		ConnectorRegistryServiceUnstarManagedConnectorProcedure,
+		svc.UnstarManagedConnector,
+		connect.WithSchema(connectorRegistryServiceMethods.ByName("UnstarManagedConnector")),
 		connect.WithHandlerOptions(opts...),
 	)
 	connectorRegistryServiceAddRepositoryHandler := connect.NewUnaryHandler(
@@ -414,6 +462,10 @@ func NewConnectorRegistryServiceHandler(svc ConnectorRegistryServiceHandler, opt
 			connectorRegistryServiceListManagedConnectorsHandler.ServeHTTP(w, r)
 		case ConnectorRegistryServiceDeleteManagedConnectorProcedure:
 			connectorRegistryServiceDeleteManagedConnectorHandler.ServeHTTP(w, r)
+		case ConnectorRegistryServiceStarManagedConnectorProcedure:
+			connectorRegistryServiceStarManagedConnectorHandler.ServeHTTP(w, r)
+		case ConnectorRegistryServiceUnstarManagedConnectorProcedure:
+			connectorRegistryServiceUnstarManagedConnectorHandler.ServeHTTP(w, r)
 		case ConnectorRegistryServiceAddRepositoryProcedure:
 			connectorRegistryServiceAddRepositoryHandler.ServeHTTP(w, r)
 		case ConnectorRegistryServiceListRepositoriesProcedure:
@@ -461,6 +513,14 @@ func (UnimplementedConnectorRegistryServiceHandler) ListManagedConnectors(contex
 
 func (UnimplementedConnectorRegistryServiceHandler) DeleteManagedConnector(context.Context, *connect.Request[v1.DeleteManagedConnectorRequest]) (*connect.Response[v1.DeleteManagedConnectorResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("synclet.publicapi.registry.v1.ConnectorRegistryService.DeleteManagedConnector is not implemented"))
+}
+
+func (UnimplementedConnectorRegistryServiceHandler) StarManagedConnector(context.Context, *connect.Request[v1.StarManagedConnectorRequest]) (*connect.Response[v1.StarManagedConnectorResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("synclet.publicapi.registry.v1.ConnectorRegistryService.StarManagedConnector is not implemented"))
+}
+
+func (UnimplementedConnectorRegistryServiceHandler) UnstarManagedConnector(context.Context, *connect.Request[v1.UnstarManagedConnectorRequest]) (*connect.Response[v1.UnstarManagedConnectorResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("synclet.publicapi.registry.v1.ConnectorRegistryService.UnstarManagedConnector is not implemented"))
 }
 
 func (UnimplementedConnectorRegistryServiceHandler) AddRepository(context.Context, *connect.Request[v1.AddRepositoryRequest]) (*connect.Response[v1.AddRepositoryResponse], error) {

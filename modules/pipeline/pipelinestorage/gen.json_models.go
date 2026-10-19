@@ -25,6 +25,7 @@ type jsonManagedConnector struct {
 	CreatedAt     time.Time  `json:"created_at"`
 	UpdatedAt     time.Time  `json:"updated_at"`
 	RepositoryID  *uuid.UUID `json:"repository_id"`
+	Starred       bool       `json:"starred"`
 }
 
 func (m *jsonManagedConnector) Scan(value any) error {
@@ -55,6 +56,7 @@ func convertManagedConnectorToJsonModel(src *pipelineservice.ManagedConnector) (
 	} else {
 		result.RepositoryID = toPtr(fromPtr(src.RepositoryID))
 	}
+	result.Starred = src.Starred
 	return result, nil
 }
 
@@ -65,11 +67,11 @@ func convertManagedConnectorFromJsonModel(src *jsonManagedConnector) (*pipelines
 	result.DockerImage = src.DockerImage
 	result.DockerTag = src.DockerTag
 	result.Name = src.Name
-	tmp16, err := convertConnectorTypeFromDB(src.ConnectorType)
+	tmp17, err := convertConnectorTypeFromDB(src.ConnectorType)
 	if err != nil {
 		return nil, err
 	}
-	result.ConnectorType = tmp16
+	result.ConnectorType = tmp17
 	result.Spec = src.Spec
 	result.CreatedAt = src.CreatedAt
 	result.UpdatedAt = src.UpdatedAt
@@ -78,6 +80,7 @@ func convertManagedConnectorFromJsonModel(src *jsonManagedConnector) (*pipelines
 	} else {
 		result.RepositoryID = toPtr(fromPtr(src.RepositoryID))
 	}
+	result.Starred = src.Starred
 	return result, nil
 }
 

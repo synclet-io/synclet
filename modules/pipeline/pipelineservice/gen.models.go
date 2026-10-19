@@ -232,6 +232,7 @@ const (
 	ManagedConnectorFieldCreatedAt
 	ManagedConnectorFieldUpdatedAt
 	ManagedConnectorFieldRepositoryID
+	ManagedConnectorFieldStarred
 )
 
 type ManagedConnectorFilter struct {
@@ -257,6 +258,7 @@ type ManagedConnector struct {
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 	RepositoryID  *uuid.UUID
+	Starred       bool
 }
 
 // user code 'ManagedConnector methods'
@@ -278,6 +280,7 @@ func (m *ManagedConnector) Copy() ManagedConnector {
 		tmp = (*m.RepositoryID)
 		result.RepositoryID = &tmp
 	}
+	result.Starred = m.Starred
 
 	return result
 }
@@ -322,6 +325,9 @@ func (m *ManagedConnector) Equals(to *ManagedConnector) bool {
 		if (*m.RepositoryID) != (*to.RepositoryID) {
 			return false
 		}
+	}
+	if m.Starred != to.Starred {
+		return false
 	}
 
 	return true

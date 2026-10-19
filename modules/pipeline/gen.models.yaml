@@ -152,6 +152,7 @@ types:
         - { name: CreatedAt, type: timestamp }
         - { name: UpdatedAt, type: timestamp }
         - { name: RepositoryID, type: "*uuid", filterable: true }
+        - { name: Starred, type: bool }
 
     - name: Repository
       plural_name: Repositories

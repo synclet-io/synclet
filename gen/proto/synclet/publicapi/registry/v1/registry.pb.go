@@ -1100,6 +1100,10 @@ type ManagedConnectorInfo struct {
 	ConnectorType ConnectorType          `protobuf:"varint,5,opt,name=connector_type,json=connectorType,proto3,enum=synclet.publicapi.registry.v1.ConnectorType" json:"connector_type,omitempty"`
 	RepositoryId  string                 `protobuf:"bytes,7,opt,name=repository_id,json=repositoryId,proto3" json:"repository_id,omitempty"`
 	UpdateInfo    *UpdateInfo            `protobuf:"bytes,8,opt,name=update_info,json=updateInfo,proto3" json:"update_info,omitempty"`
+	// Workspace-wide mark set by any member who may create sources and destinations.
+	Starred bool `protobuf:"varint,9,opt,name=starred,proto3" json:"starred,omitempty"`
+	// True when at least one source or destination of the workspace is built on this connector.
+	Used          bool `protobuf:"varint,10,opt,name=used,proto3" json:"used,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1183,6 +1187,20 @@ func (x *ManagedConnectorInfo) GetUpdateInfo() *UpdateInfo {
 	return nil
 }
 
+func (x *ManagedConnectorInfo) GetStarred() bool {
+	if x != nil {
+		return x.Starred
+	}
+	return false
+}
+
+func (x *ManagedConnectorInfo) GetUsed() bool {
+	if x != nil {
+		return x.Used
+	}
+	return false
+}
+
 type DeleteManagedConnectorRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -1263,6 +1281,166 @@ func (*DeleteManagedConnectorResponse) Descriptor() ([]byte, []int) {
 	return file_synclet_publicapi_registry_v1_registry_proto_rawDescGZIP(), []int{15}
 }
 
+type StarManagedConnectorRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StarManagedConnectorRequest) Reset() {
+	*x = StarManagedConnectorRequest{}
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StarManagedConnectorRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StarManagedConnectorRequest) ProtoMessage() {}
+
+func (x *StarManagedConnectorRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StarManagedConnectorRequest.ProtoReflect.Descriptor instead.
+func (*StarManagedConnectorRequest) Descriptor() ([]byte, []int) {
+	return file_synclet_publicapi_registry_v1_registry_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *StarManagedConnectorRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type StarManagedConnectorResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StarManagedConnectorResponse) Reset() {
+	*x = StarManagedConnectorResponse{}
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StarManagedConnectorResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StarManagedConnectorResponse) ProtoMessage() {}
+
+func (x *StarManagedConnectorResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StarManagedConnectorResponse.ProtoReflect.Descriptor instead.
+func (*StarManagedConnectorResponse) Descriptor() ([]byte, []int) {
+	return file_synclet_publicapi_registry_v1_registry_proto_rawDescGZIP(), []int{17}
+}
+
+type UnstarManagedConnectorRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UnstarManagedConnectorRequest) Reset() {
+	*x = UnstarManagedConnectorRequest{}
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnstarManagedConnectorRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnstarManagedConnectorRequest) ProtoMessage() {}
+
+func (x *UnstarManagedConnectorRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnstarManagedConnectorRequest.ProtoReflect.Descriptor instead.
+func (*UnstarManagedConnectorRequest) Descriptor() ([]byte, []int) {
+	return file_synclet_publicapi_registry_v1_registry_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *UnstarManagedConnectorRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type UnstarManagedConnectorResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UnstarManagedConnectorResponse) Reset() {
+	*x = UnstarManagedConnectorResponse{}
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnstarManagedConnectorResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnstarManagedConnectorResponse) ProtoMessage() {}
+
+func (x *UnstarManagedConnectorResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnstarManagedConnectorResponse.ProtoReflect.Descriptor instead.
+func (*UnstarManagedConnectorResponse) Descriptor() ([]byte, []int) {
+	return file_synclet_publicapi_registry_v1_registry_proto_rawDescGZIP(), []int{19}
+}
+
 type Repository struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	Id             string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -1279,7 +1457,7 @@ type Repository struct {
 
 func (x *Repository) Reset() {
 	*x = Repository{}
-	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[16]
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1291,7 +1469,7 @@ func (x *Repository) String() string {
 func (*Repository) ProtoMessage() {}
 
 func (x *Repository) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[16]
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1304,7 +1482,7 @@ func (x *Repository) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Repository.ProtoReflect.Descriptor instead.
 func (*Repository) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_registry_v1_registry_proto_rawDescGZIP(), []int{16}
+	return file_synclet_publicapi_registry_v1_registry_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *Repository) GetId() string {
@@ -1374,7 +1552,7 @@ type AddRepositoryRequest struct {
 
 func (x *AddRepositoryRequest) Reset() {
 	*x = AddRepositoryRequest{}
-	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[17]
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1386,7 +1564,7 @@ func (x *AddRepositoryRequest) String() string {
 func (*AddRepositoryRequest) ProtoMessage() {}
 
 func (x *AddRepositoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[17]
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1399,7 +1577,7 @@ func (x *AddRepositoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddRepositoryRequest.ProtoReflect.Descriptor instead.
 func (*AddRepositoryRequest) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_registry_v1_registry_proto_rawDescGZIP(), []int{17}
+	return file_synclet_publicapi_registry_v1_registry_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *AddRepositoryRequest) GetName() string {
@@ -1432,7 +1610,7 @@ type AddRepositoryResponse struct {
 
 func (x *AddRepositoryResponse) Reset() {
 	*x = AddRepositoryResponse{}
-	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[18]
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1444,7 +1622,7 @@ func (x *AddRepositoryResponse) String() string {
 func (*AddRepositoryResponse) ProtoMessage() {}
 
 func (x *AddRepositoryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[18]
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1457,7 +1635,7 @@ func (x *AddRepositoryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddRepositoryResponse.ProtoReflect.Descriptor instead.
 func (*AddRepositoryResponse) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_registry_v1_registry_proto_rawDescGZIP(), []int{18}
+	return file_synclet_publicapi_registry_v1_registry_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *AddRepositoryResponse) GetRepository() *Repository {
@@ -1475,7 +1653,7 @@ type ListRepositoriesRequest struct {
 
 func (x *ListRepositoriesRequest) Reset() {
 	*x = ListRepositoriesRequest{}
-	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[19]
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1487,7 +1665,7 @@ func (x *ListRepositoriesRequest) String() string {
 func (*ListRepositoriesRequest) ProtoMessage() {}
 
 func (x *ListRepositoriesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[19]
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1500,7 +1678,7 @@ func (x *ListRepositoriesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRepositoriesRequest.ProtoReflect.Descriptor instead.
 func (*ListRepositoriesRequest) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_registry_v1_registry_proto_rawDescGZIP(), []int{19}
+	return file_synclet_publicapi_registry_v1_registry_proto_rawDescGZIP(), []int{23}
 }
 
 type ListRepositoriesResponse struct {
@@ -1512,7 +1690,7 @@ type ListRepositoriesResponse struct {
 
 func (x *ListRepositoriesResponse) Reset() {
 	*x = ListRepositoriesResponse{}
-	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[20]
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1524,7 +1702,7 @@ func (x *ListRepositoriesResponse) String() string {
 func (*ListRepositoriesResponse) ProtoMessage() {}
 
 func (x *ListRepositoriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[20]
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1537,7 +1715,7 @@ func (x *ListRepositoriesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRepositoriesResponse.ProtoReflect.Descriptor instead.
 func (*ListRepositoriesResponse) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_registry_v1_registry_proto_rawDescGZIP(), []int{20}
+	return file_synclet_publicapi_registry_v1_registry_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *ListRepositoriesResponse) GetRepositories() []*Repository {
@@ -1556,7 +1734,7 @@ type DeleteRepositoryRequest struct {
 
 func (x *DeleteRepositoryRequest) Reset() {
 	*x = DeleteRepositoryRequest{}
-	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[21]
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1568,7 +1746,7 @@ func (x *DeleteRepositoryRequest) String() string {
 func (*DeleteRepositoryRequest) ProtoMessage() {}
 
 func (x *DeleteRepositoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[21]
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1581,7 +1759,7 @@ func (x *DeleteRepositoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteRepositoryRequest.ProtoReflect.Descriptor instead.
 func (*DeleteRepositoryRequest) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_registry_v1_registry_proto_rawDescGZIP(), []int{21}
+	return file_synclet_publicapi_registry_v1_registry_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *DeleteRepositoryRequest) GetId() string {
@@ -1600,7 +1778,7 @@ type DeleteRepositoryResponse struct {
 
 func (x *DeleteRepositoryResponse) Reset() {
 	*x = DeleteRepositoryResponse{}
-	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[22]
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1612,7 +1790,7 @@ func (x *DeleteRepositoryResponse) String() string {
 func (*DeleteRepositoryResponse) ProtoMessage() {}
 
 func (x *DeleteRepositoryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[22]
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1625,7 +1803,7 @@ func (x *DeleteRepositoryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteRepositoryResponse.ProtoReflect.Descriptor instead.
 func (*DeleteRepositoryResponse) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_registry_v1_registry_proto_rawDescGZIP(), []int{22}
+	return file_synclet_publicapi_registry_v1_registry_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *DeleteRepositoryResponse) GetAffectedConnectors() int32 {
@@ -1644,7 +1822,7 @@ type SyncRepositoryRequest struct {
 
 func (x *SyncRepositoryRequest) Reset() {
 	*x = SyncRepositoryRequest{}
-	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[23]
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1656,7 +1834,7 @@ func (x *SyncRepositoryRequest) String() string {
 func (*SyncRepositoryRequest) ProtoMessage() {}
 
 func (x *SyncRepositoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[23]
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1669,7 +1847,7 @@ func (x *SyncRepositoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SyncRepositoryRequest.ProtoReflect.Descriptor instead.
 func (*SyncRepositoryRequest) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_registry_v1_registry_proto_rawDescGZIP(), []int{23}
+	return file_synclet_publicapi_registry_v1_registry_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *SyncRepositoryRequest) GetId() string {
@@ -1688,7 +1866,7 @@ type SyncRepositoryResponse struct {
 
 func (x *SyncRepositoryResponse) Reset() {
 	*x = SyncRepositoryResponse{}
-	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[24]
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1700,7 +1878,7 @@ func (x *SyncRepositoryResponse) String() string {
 func (*SyncRepositoryResponse) ProtoMessage() {}
 
 func (x *SyncRepositoryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[24]
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1713,7 +1891,7 @@ func (x *SyncRepositoryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SyncRepositoryResponse.ProtoReflect.Descriptor instead.
 func (*SyncRepositoryResponse) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_registry_v1_registry_proto_rawDescGZIP(), []int{24}
+	return file_synclet_publicapi_registry_v1_registry_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *SyncRepositoryResponse) GetRepository() *Repository {
@@ -1735,7 +1913,7 @@ type ListRepositoryConnectorsRequest struct {
 
 func (x *ListRepositoryConnectorsRequest) Reset() {
 	*x = ListRepositoryConnectorsRequest{}
-	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[25]
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1747,7 +1925,7 @@ func (x *ListRepositoryConnectorsRequest) String() string {
 func (*ListRepositoryConnectorsRequest) ProtoMessage() {}
 
 func (x *ListRepositoryConnectorsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[25]
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1760,7 +1938,7 @@ func (x *ListRepositoryConnectorsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRepositoryConnectorsRequest.ProtoReflect.Descriptor instead.
 func (*ListRepositoryConnectorsRequest) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_registry_v1_registry_proto_rawDescGZIP(), []int{25}
+	return file_synclet_publicapi_registry_v1_registry_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *ListRepositoryConnectorsRequest) GetRepositoryId() string {
@@ -1800,7 +1978,7 @@ type ListRepositoryConnectorsResponse struct {
 
 func (x *ListRepositoryConnectorsResponse) Reset() {
 	*x = ListRepositoryConnectorsResponse{}
-	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[26]
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1812,7 +1990,7 @@ func (x *ListRepositoryConnectorsResponse) String() string {
 func (*ListRepositoryConnectorsResponse) ProtoMessage() {}
 
 func (x *ListRepositoryConnectorsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[26]
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1825,7 +2003,7 @@ func (x *ListRepositoryConnectorsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRepositoryConnectorsResponse.ProtoReflect.Descriptor instead.
 func (*ListRepositoryConnectorsResponse) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_registry_v1_registry_proto_rawDescGZIP(), []int{26}
+	return file_synclet_publicapi_registry_v1_registry_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *ListRepositoryConnectorsResponse) GetConnectors() []*ConnectorInfo {
@@ -1844,7 +2022,7 @@ type GetConnectorVersionsRequest struct {
 
 func (x *GetConnectorVersionsRequest) Reset() {
 	*x = GetConnectorVersionsRequest{}
-	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[27]
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1856,7 +2034,7 @@ func (x *GetConnectorVersionsRequest) String() string {
 func (*GetConnectorVersionsRequest) ProtoMessage() {}
 
 func (x *GetConnectorVersionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[27]
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1869,7 +2047,7 @@ func (x *GetConnectorVersionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetConnectorVersionsRequest.ProtoReflect.Descriptor instead.
 func (*GetConnectorVersionsRequest) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_registry_v1_registry_proto_rawDescGZIP(), []int{27}
+	return file_synclet_publicapi_registry_v1_registry_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *GetConnectorVersionsRequest) GetConnectorImage() string {
@@ -1889,7 +2067,7 @@ type GetConnectorVersionsResponse struct {
 
 func (x *GetConnectorVersionsResponse) Reset() {
 	*x = GetConnectorVersionsResponse{}
-	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[28]
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1901,7 +2079,7 @@ func (x *GetConnectorVersionsResponse) String() string {
 func (*GetConnectorVersionsResponse) ProtoMessage() {}
 
 func (x *GetConnectorVersionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[28]
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1914,7 +2092,7 @@ func (x *GetConnectorVersionsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetConnectorVersionsResponse.ProtoReflect.Descriptor instead.
 func (*GetConnectorVersionsResponse) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_registry_v1_registry_proto_rawDescGZIP(), []int{28}
+	return file_synclet_publicapi_registry_v1_registry_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *GetConnectorVersionsResponse) GetVersions() []string {
@@ -1940,7 +2118,7 @@ type UpdateManagedConnectorRequest struct {
 
 func (x *UpdateManagedConnectorRequest) Reset() {
 	*x = UpdateManagedConnectorRequest{}
-	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[29]
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1952,7 +2130,7 @@ func (x *UpdateManagedConnectorRequest) String() string {
 func (*UpdateManagedConnectorRequest) ProtoMessage() {}
 
 func (x *UpdateManagedConnectorRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[29]
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1965,7 +2143,7 @@ func (x *UpdateManagedConnectorRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateManagedConnectorRequest.ProtoReflect.Descriptor instead.
 func (*UpdateManagedConnectorRequest) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_registry_v1_registry_proto_rawDescGZIP(), []int{29}
+	return file_synclet_publicapi_registry_v1_registry_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *UpdateManagedConnectorRequest) GetId() string {
@@ -1984,7 +2162,7 @@ type UpdateManagedConnectorResponse struct {
 
 func (x *UpdateManagedConnectorResponse) Reset() {
 	*x = UpdateManagedConnectorResponse{}
-	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[30]
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1996,7 +2174,7 @@ func (x *UpdateManagedConnectorResponse) String() string {
 func (*UpdateManagedConnectorResponse) ProtoMessage() {}
 
 func (x *UpdateManagedConnectorResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[30]
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2009,7 +2187,7 @@ func (x *UpdateManagedConnectorResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateManagedConnectorResponse.ProtoReflect.Descriptor instead.
 func (*UpdateManagedConnectorResponse) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_registry_v1_registry_proto_rawDescGZIP(), []int{30}
+	return file_synclet_publicapi_registry_v1_registry_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *UpdateManagedConnectorResponse) GetConnector() *ManagedConnectorInfo {
@@ -2028,7 +2206,7 @@ type BatchUpdateConnectorsRequest struct {
 
 func (x *BatchUpdateConnectorsRequest) Reset() {
 	*x = BatchUpdateConnectorsRequest{}
-	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[31]
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2040,7 +2218,7 @@ func (x *BatchUpdateConnectorsRequest) String() string {
 func (*BatchUpdateConnectorsRequest) ProtoMessage() {}
 
 func (x *BatchUpdateConnectorsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[31]
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2053,7 +2231,7 @@ func (x *BatchUpdateConnectorsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BatchUpdateConnectorsRequest.ProtoReflect.Descriptor instead.
 func (*BatchUpdateConnectorsRequest) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_registry_v1_registry_proto_rawDescGZIP(), []int{31}
+	return file_synclet_publicapi_registry_v1_registry_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *BatchUpdateConnectorsRequest) GetConnectorIds() []string {
@@ -2073,7 +2251,7 @@ type BatchUpdateConnectorsResponse struct {
 
 func (x *BatchUpdateConnectorsResponse) Reset() {
 	*x = BatchUpdateConnectorsResponse{}
-	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[32]
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2085,7 +2263,7 @@ func (x *BatchUpdateConnectorsResponse) String() string {
 func (*BatchUpdateConnectorsResponse) ProtoMessage() {}
 
 func (x *BatchUpdateConnectorsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[32]
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2098,7 +2276,7 @@ func (x *BatchUpdateConnectorsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BatchUpdateConnectorsResponse.ProtoReflect.Descriptor instead.
 func (*BatchUpdateConnectorsResponse) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_registry_v1_registry_proto_rawDescGZIP(), []int{32}
+	return file_synclet_publicapi_registry_v1_registry_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *BatchUpdateConnectorsResponse) GetUpdatedCount() int32 {
@@ -2124,7 +2302,7 @@ type ListManagedConnectorsRequest_Filter struct {
 
 func (x *ListManagedConnectorsRequest_Filter) Reset() {
 	*x = ListManagedConnectorsRequest_Filter{}
-	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[33]
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2136,7 +2314,7 @@ func (x *ListManagedConnectorsRequest_Filter) String() string {
 func (*ListManagedConnectorsRequest_Filter) ProtoMessage() {}
 
 func (x *ListManagedConnectorsRequest_Filter) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[33]
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2170,7 +2348,7 @@ type ListRepositoryConnectorsRequest_Filter struct {
 
 func (x *ListRepositoryConnectorsRequest_Filter) Reset() {
 	*x = ListRepositoryConnectorsRequest_Filter{}
-	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[34]
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2182,7 +2360,7 @@ func (x *ListRepositoryConnectorsRequest_Filter) String() string {
 func (*ListRepositoryConnectorsRequest_Filter) ProtoMessage() {}
 
 func (x *ListRepositoryConnectorsRequest_Filter) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[34]
+	mi := &file_synclet_publicapi_registry_v1_registry_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2195,7 +2373,7 @@ func (x *ListRepositoryConnectorsRequest_Filter) ProtoReflect() protoreflect.Mes
 
 // Deprecated: Use ListRepositoryConnectorsRequest_Filter.ProtoReflect.Descriptor instead.
 func (*ListRepositoryConnectorsRequest_Filter) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_registry_v1_registry_proto_rawDescGZIP(), []int{25, 0}
+	return file_synclet_publicapi_registry_v1_registry_proto_rawDescGZIP(), []int{29, 0}
 }
 
 func (x *ListRepositoryConnectorsRequest_Filter) GetSupportLevel() SupportLevel {
@@ -2285,7 +2463,7 @@ const file_synclet_publicapi_registry_v1_registry_proto_rawDesc = "" +
 	"\x11available_version\x18\x01 \x01(\tR\x10availableVersion\x12\x1d\n" +
 	"\n" +
 	"has_update\x18\x02 \x01(\bR\thasUpdate\x12X\n" +
-	"\x10breaking_changes\x18\x03 \x03(\v2-.synclet.publicapi.registry.v1.BreakingChangeR\x0fbreakingChanges\"\xc8\x02\n" +
+	"\x10breaking_changes\x18\x03 \x03(\v2-.synclet.publicapi.registry.v1.BreakingChangeR\x0fbreakingChanges\"\xf6\x02\n" +
 	"\x14ManagedConnectorInfo\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
 	"\fdocker_image\x18\x02 \x01(\tR\vdockerImage\x12\x1d\n" +
@@ -2295,10 +2473,19 @@ const file_synclet_publicapi_registry_v1_registry_proto_rawDesc = "" +
 	"\x0econnector_type\x18\x05 \x01(\x0e2,.synclet.publicapi.registry.v1.ConnectorTypeR\rconnectorType\x12#\n" +
 	"\rrepository_id\x18\a \x01(\tR\frepositoryId\x12J\n" +
 	"\vupdate_info\x18\b \x01(\v2).synclet.publicapi.registry.v1.UpdateInfoR\n" +
-	"updateInfoJ\x04\b\x06\x10\a\"/\n" +
+	"updateInfo\x12\x18\n" +
+	"\astarred\x18\t \x01(\bR\astarred\x12\x12\n" +
+	"\x04used\x18\n" +
+	" \x01(\bR\x04usedJ\x04\b\x06\x10\a\"/\n" +
 	"\x1dDeleteManagedConnectorRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\" \n" +
-	"\x1eDeleteManagedConnectorResponse\"\x94\x02\n" +
+	"\x1eDeleteManagedConnectorResponse\"-\n" +
+	"\x1bStarManagedConnectorRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\x1e\n" +
+	"\x1cStarManagedConnectorResponse\"/\n" +
+	"\x1dUnstarManagedConnectorRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\" \n" +
+	"\x1eUnstarManagedConnectorResponse\"\x94\x02\n" +
 	"\n" +
 	"Repository\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
@@ -2387,14 +2574,16 @@ const file_synclet_publicapi_registry_v1_registry_proto_rawDesc = "" +
 	"!RELEASE_STAGE_GENERALLY_AVAILABLE\x10\x01\x12\x16\n" +
 	"\x12RELEASE_STAGE_BETA\x10\x02\x12\x17\n" +
 	"\x13RELEASE_STAGE_ALPHA\x10\x03\x12\x18\n" +
-	"\x14RELEASE_STAGE_CUSTOM\x10\x042\x88\x10\n" +
+	"\x14RELEASE_STAGE_CUSTOM\x10\x042\xbe\x12\n" +
 	"\x18ConnectorRegistryService\x12\x83\x01\n" +
 	"\x0eListConnectors\x124.synclet.publicapi.registry.v1.ListConnectorsRequest\x1a5.synclet.publicapi.registry.v1.ListConnectorsResponse\"\x04\x88\xb5\x18\x01\x12\x89\x01\n" +
 	"\x10GetConnectorSpec\x126.synclet.publicapi.registry.v1.GetConnectorSpecRequest\x1a7.synclet.publicapi.registry.v1.GetConnectorSpecResponse\"\x04\x88\xb5\x18\x01\x12}\n" +
 	"\fAddConnector\x122.synclet.publicapi.registry.v1.AddConnectorRequest\x1a3.synclet.publicapi.registry.v1.AddConnectorResponse\"\x04\x88\xb5\x18\x02\x12\x8b\x01\n" +
 	"\x13GetManagedConnector\x129.synclet.publicapi.registry.v1.GetManagedConnectorRequest\x1a3.synclet.publicapi.registry.v1.ManagedConnectorInfo\"\x04\x88\xb5\x18\x01\x12\x98\x01\n" +
 	"\x15ListManagedConnectors\x12;.synclet.publicapi.registry.v1.ListManagedConnectorsRequest\x1a<.synclet.publicapi.registry.v1.ListManagedConnectorsResponse\"\x04\x88\xb5\x18\x01\x12\x9b\x01\n" +
-	"\x16DeleteManagedConnector\x12<.synclet.publicapi.registry.v1.DeleteManagedConnectorRequest\x1a=.synclet.publicapi.registry.v1.DeleteManagedConnectorResponse\"\x04\x88\xb5\x18\x02\x12\x80\x01\n" +
+	"\x16DeleteManagedConnector\x12<.synclet.publicapi.registry.v1.DeleteManagedConnectorRequest\x1a=.synclet.publicapi.registry.v1.DeleteManagedConnectorResponse\"\x04\x88\xb5\x18\x02\x12\x95\x01\n" +
+	"\x14StarManagedConnector\x12:.synclet.publicapi.registry.v1.StarManagedConnectorRequest\x1a;.synclet.publicapi.registry.v1.StarManagedConnectorResponse\"\x04\x88\xb5\x18\x02\x12\x9b\x01\n" +
+	"\x16UnstarManagedConnector\x12<.synclet.publicapi.registry.v1.UnstarManagedConnectorRequest\x1a=.synclet.publicapi.registry.v1.UnstarManagedConnectorResponse\"\x04\x88\xb5\x18\x02\x12\x80\x01\n" +
 	"\rAddRepository\x123.synclet.publicapi.registry.v1.AddRepositoryRequest\x1a4.synclet.publicapi.registry.v1.AddRepositoryResponse\"\x04\x88\xb5\x18\x03\x12\x89\x01\n" +
 	"\x10ListRepositories\x126.synclet.publicapi.registry.v1.ListRepositoriesRequest\x1a7.synclet.publicapi.registry.v1.ListRepositoriesResponse\"\x04\x88\xb5\x18\x01\x12\x89\x01\n" +
 	"\x10DeleteRepository\x126.synclet.publicapi.registry.v1.DeleteRepositoryRequest\x1a7.synclet.publicapi.registry.v1.DeleteRepositoryResponse\"\x04\x88\xb5\x18\x03\x12\x83\x01\n" +
@@ -2418,7 +2607,7 @@ func file_synclet_publicapi_registry_v1_registry_proto_rawDescGZIP() []byte {
 }
 
 var file_synclet_publicapi_registry_v1_registry_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
-var file_synclet_publicapi_registry_v1_registry_proto_msgTypes = make([]protoimpl.MessageInfo, 35)
+var file_synclet_publicapi_registry_v1_registry_proto_msgTypes = make([]protoimpl.MessageInfo, 39)
 var file_synclet_publicapi_registry_v1_registry_proto_goTypes = []any{
 	(ConnectorType)(0),                             // 0: synclet.publicapi.registry.v1.ConnectorType
 	(RepositoryStatus)(0),                          // 1: synclet.publicapi.registry.v1.RepositoryStatus
@@ -2442,26 +2631,30 @@ var file_synclet_publicapi_registry_v1_registry_proto_goTypes = []any{
 	(*ManagedConnectorInfo)(nil),                   // 19: synclet.publicapi.registry.v1.ManagedConnectorInfo
 	(*DeleteManagedConnectorRequest)(nil),          // 20: synclet.publicapi.registry.v1.DeleteManagedConnectorRequest
 	(*DeleteManagedConnectorResponse)(nil),         // 21: synclet.publicapi.registry.v1.DeleteManagedConnectorResponse
-	(*Repository)(nil),                             // 22: synclet.publicapi.registry.v1.Repository
-	(*AddRepositoryRequest)(nil),                   // 23: synclet.publicapi.registry.v1.AddRepositoryRequest
-	(*AddRepositoryResponse)(nil),                  // 24: synclet.publicapi.registry.v1.AddRepositoryResponse
-	(*ListRepositoriesRequest)(nil),                // 25: synclet.publicapi.registry.v1.ListRepositoriesRequest
-	(*ListRepositoriesResponse)(nil),               // 26: synclet.publicapi.registry.v1.ListRepositoriesResponse
-	(*DeleteRepositoryRequest)(nil),                // 27: synclet.publicapi.registry.v1.DeleteRepositoryRequest
-	(*DeleteRepositoryResponse)(nil),               // 28: synclet.publicapi.registry.v1.DeleteRepositoryResponse
-	(*SyncRepositoryRequest)(nil),                  // 29: synclet.publicapi.registry.v1.SyncRepositoryRequest
-	(*SyncRepositoryResponse)(nil),                 // 30: synclet.publicapi.registry.v1.SyncRepositoryResponse
-	(*ListRepositoryConnectorsRequest)(nil),        // 31: synclet.publicapi.registry.v1.ListRepositoryConnectorsRequest
-	(*ListRepositoryConnectorsResponse)(nil),       // 32: synclet.publicapi.registry.v1.ListRepositoryConnectorsResponse
-	(*GetConnectorVersionsRequest)(nil),            // 33: synclet.publicapi.registry.v1.GetConnectorVersionsRequest
-	(*GetConnectorVersionsResponse)(nil),           // 34: synclet.publicapi.registry.v1.GetConnectorVersionsResponse
-	(*UpdateManagedConnectorRequest)(nil),          // 35: synclet.publicapi.registry.v1.UpdateManagedConnectorRequest
-	(*UpdateManagedConnectorResponse)(nil),         // 36: synclet.publicapi.registry.v1.UpdateManagedConnectorResponse
-	(*BatchUpdateConnectorsRequest)(nil),           // 37: synclet.publicapi.registry.v1.BatchUpdateConnectorsRequest
-	(*BatchUpdateConnectorsResponse)(nil),          // 38: synclet.publicapi.registry.v1.BatchUpdateConnectorsResponse
-	(*ListManagedConnectorsRequest_Filter)(nil),    // 39: synclet.publicapi.registry.v1.ListManagedConnectorsRequest.Filter
-	(*ListRepositoryConnectorsRequest_Filter)(nil), // 40: synclet.publicapi.registry.v1.ListRepositoryConnectorsRequest.Filter
-	(*v1.ConnectorSpecification)(nil),              // 41: synclet.protocol.v1.ConnectorSpecification
+	(*StarManagedConnectorRequest)(nil),            // 22: synclet.publicapi.registry.v1.StarManagedConnectorRequest
+	(*StarManagedConnectorResponse)(nil),           // 23: synclet.publicapi.registry.v1.StarManagedConnectorResponse
+	(*UnstarManagedConnectorRequest)(nil),          // 24: synclet.publicapi.registry.v1.UnstarManagedConnectorRequest
+	(*UnstarManagedConnectorResponse)(nil),         // 25: synclet.publicapi.registry.v1.UnstarManagedConnectorResponse
+	(*Repository)(nil),                             // 26: synclet.publicapi.registry.v1.Repository
+	(*AddRepositoryRequest)(nil),                   // 27: synclet.publicapi.registry.v1.AddRepositoryRequest
+	(*AddRepositoryResponse)(nil),                  // 28: synclet.publicapi.registry.v1.AddRepositoryResponse
+	(*ListRepositoriesRequest)(nil),                // 29: synclet.publicapi.registry.v1.ListRepositoriesRequest
+	(*ListRepositoriesResponse)(nil),               // 30: synclet.publicapi.registry.v1.ListRepositoriesResponse
+	(*DeleteRepositoryRequest)(nil),                // 31: synclet.publicapi.registry.v1.DeleteRepositoryRequest
+	(*DeleteRepositoryResponse)(nil),               // 32: synclet.publicapi.registry.v1.DeleteRepositoryResponse
+	(*SyncRepositoryRequest)(nil),                  // 33: synclet.publicapi.registry.v1.SyncRepositoryRequest
+	(*SyncRepositoryResponse)(nil),                 // 34: synclet.publicapi.registry.v1.SyncRepositoryResponse
+	(*ListRepositoryConnectorsRequest)(nil),        // 35: synclet.publicapi.registry.v1.ListRepositoryConnectorsRequest
+	(*ListRepositoryConnectorsResponse)(nil),       // 36: synclet.publicapi.registry.v1.ListRepositoryConnectorsResponse
+	(*GetConnectorVersionsRequest)(nil),            // 37: synclet.publicapi.registry.v1.GetConnectorVersionsRequest
+	(*GetConnectorVersionsResponse)(nil),           // 38: synclet.publicapi.registry.v1.GetConnectorVersionsResponse
+	(*UpdateManagedConnectorRequest)(nil),          // 39: synclet.publicapi.registry.v1.UpdateManagedConnectorRequest
+	(*UpdateManagedConnectorResponse)(nil),         // 40: synclet.publicapi.registry.v1.UpdateManagedConnectorResponse
+	(*BatchUpdateConnectorsRequest)(nil),           // 41: synclet.publicapi.registry.v1.BatchUpdateConnectorsRequest
+	(*BatchUpdateConnectorsResponse)(nil),          // 42: synclet.publicapi.registry.v1.BatchUpdateConnectorsResponse
+	(*ListManagedConnectorsRequest_Filter)(nil),    // 43: synclet.publicapi.registry.v1.ListManagedConnectorsRequest.Filter
+	(*ListRepositoryConnectorsRequest_Filter)(nil), // 44: synclet.publicapi.registry.v1.ListRepositoryConnectorsRequest.Filter
+	(*v1.ConnectorSpecification)(nil),              // 45: synclet.protocol.v1.ConnectorSpecification
 }
 var file_synclet_publicapi_registry_v1_registry_proto_depIdxs = []int32{
 	5,  // 0: synclet.publicapi.registry.v1.ConnectorInfo.release_stage:type_name -> synclet.publicapi.registry.v1.ReleaseStage
@@ -2472,20 +2665,20 @@ var file_synclet_publicapi_registry_v1_registry_proto_depIdxs = []int32{
 	0,  // 5: synclet.publicapi.registry.v1.ListConnectorsRequest.type:type_name -> synclet.publicapi.registry.v1.ConnectorType
 	5,  // 6: synclet.publicapi.registry.v1.ListConnectorsRequest.release_stage:type_name -> synclet.publicapi.registry.v1.ReleaseStage
 	6,  // 7: synclet.publicapi.registry.v1.ListConnectorsResponse.connectors:type_name -> synclet.publicapi.registry.v1.ConnectorInfo
-	41, // 8: synclet.publicapi.registry.v1.GetConnectorSpecResponse.spec:type_name -> synclet.protocol.v1.ConnectorSpecification
+	45, // 8: synclet.publicapi.registry.v1.GetConnectorSpecResponse.spec:type_name -> synclet.protocol.v1.ConnectorSpecification
 	11, // 9: synclet.publicapi.registry.v1.GetConnectorSpecResponse.external_documentation_urls:type_name -> synclet.publicapi.registry.v1.ExternalDocumentationUrl
 	0,  // 10: synclet.publicapi.registry.v1.AddConnectorRequest.connector_type:type_name -> synclet.publicapi.registry.v1.ConnectorType
-	39, // 11: synclet.publicapi.registry.v1.ListManagedConnectorsRequest.filter:type_name -> synclet.publicapi.registry.v1.ListManagedConnectorsRequest.Filter
+	43, // 11: synclet.publicapi.registry.v1.ListManagedConnectorsRequest.filter:type_name -> synclet.publicapi.registry.v1.ListManagedConnectorsRequest.Filter
 	19, // 12: synclet.publicapi.registry.v1.ListManagedConnectorsResponse.connectors:type_name -> synclet.publicapi.registry.v1.ManagedConnectorInfo
 	17, // 13: synclet.publicapi.registry.v1.UpdateInfo.breaking_changes:type_name -> synclet.publicapi.registry.v1.BreakingChange
 	0,  // 14: synclet.publicapi.registry.v1.ManagedConnectorInfo.connector_type:type_name -> synclet.publicapi.registry.v1.ConnectorType
 	18, // 15: synclet.publicapi.registry.v1.ManagedConnectorInfo.update_info:type_name -> synclet.publicapi.registry.v1.UpdateInfo
 	1,  // 16: synclet.publicapi.registry.v1.Repository.status:type_name -> synclet.publicapi.registry.v1.RepositoryStatus
-	22, // 17: synclet.publicapi.registry.v1.AddRepositoryResponse.repository:type_name -> synclet.publicapi.registry.v1.Repository
-	22, // 18: synclet.publicapi.registry.v1.ListRepositoriesResponse.repositories:type_name -> synclet.publicapi.registry.v1.Repository
-	22, // 19: synclet.publicapi.registry.v1.SyncRepositoryResponse.repository:type_name -> synclet.publicapi.registry.v1.Repository
+	26, // 17: synclet.publicapi.registry.v1.AddRepositoryResponse.repository:type_name -> synclet.publicapi.registry.v1.Repository
+	26, // 18: synclet.publicapi.registry.v1.ListRepositoriesResponse.repositories:type_name -> synclet.publicapi.registry.v1.Repository
+	26, // 19: synclet.publicapi.registry.v1.SyncRepositoryResponse.repository:type_name -> synclet.publicapi.registry.v1.Repository
 	0,  // 20: synclet.publicapi.registry.v1.ListRepositoryConnectorsRequest.type:type_name -> synclet.publicapi.registry.v1.ConnectorType
-	40, // 21: synclet.publicapi.registry.v1.ListRepositoryConnectorsRequest.filter:type_name -> synclet.publicapi.registry.v1.ListRepositoryConnectorsRequest.Filter
+	44, // 21: synclet.publicapi.registry.v1.ListRepositoryConnectorsRequest.filter:type_name -> synclet.publicapi.registry.v1.ListRepositoryConnectorsRequest.Filter
 	6,  // 22: synclet.publicapi.registry.v1.ListRepositoryConnectorsResponse.connectors:type_name -> synclet.publicapi.registry.v1.ConnectorInfo
 	19, // 23: synclet.publicapi.registry.v1.UpdateManagedConnectorResponse.connector:type_name -> synclet.publicapi.registry.v1.ManagedConnectorInfo
 	19, // 24: synclet.publicapi.registry.v1.BatchUpdateConnectorsResponse.updated_connectors:type_name -> synclet.publicapi.registry.v1.ManagedConnectorInfo
@@ -2498,30 +2691,34 @@ var file_synclet_publicapi_registry_v1_registry_proto_depIdxs = []int32{
 	14, // 31: synclet.publicapi.registry.v1.ConnectorRegistryService.GetManagedConnector:input_type -> synclet.publicapi.registry.v1.GetManagedConnectorRequest
 	15, // 32: synclet.publicapi.registry.v1.ConnectorRegistryService.ListManagedConnectors:input_type -> synclet.publicapi.registry.v1.ListManagedConnectorsRequest
 	20, // 33: synclet.publicapi.registry.v1.ConnectorRegistryService.DeleteManagedConnector:input_type -> synclet.publicapi.registry.v1.DeleteManagedConnectorRequest
-	23, // 34: synclet.publicapi.registry.v1.ConnectorRegistryService.AddRepository:input_type -> synclet.publicapi.registry.v1.AddRepositoryRequest
-	25, // 35: synclet.publicapi.registry.v1.ConnectorRegistryService.ListRepositories:input_type -> synclet.publicapi.registry.v1.ListRepositoriesRequest
-	27, // 36: synclet.publicapi.registry.v1.ConnectorRegistryService.DeleteRepository:input_type -> synclet.publicapi.registry.v1.DeleteRepositoryRequest
-	29, // 37: synclet.publicapi.registry.v1.ConnectorRegistryService.SyncRepository:input_type -> synclet.publicapi.registry.v1.SyncRepositoryRequest
-	31, // 38: synclet.publicapi.registry.v1.ConnectorRegistryService.ListRepositoryConnectors:input_type -> synclet.publicapi.registry.v1.ListRepositoryConnectorsRequest
-	33, // 39: synclet.publicapi.registry.v1.ConnectorRegistryService.GetConnectorVersions:input_type -> synclet.publicapi.registry.v1.GetConnectorVersionsRequest
-	35, // 40: synclet.publicapi.registry.v1.ConnectorRegistryService.UpdateManagedConnector:input_type -> synclet.publicapi.registry.v1.UpdateManagedConnectorRequest
-	37, // 41: synclet.publicapi.registry.v1.ConnectorRegistryService.BatchUpdateConnectors:input_type -> synclet.publicapi.registry.v1.BatchUpdateConnectorsRequest
-	8,  // 42: synclet.publicapi.registry.v1.ConnectorRegistryService.ListConnectors:output_type -> synclet.publicapi.registry.v1.ListConnectorsResponse
-	10, // 43: synclet.publicapi.registry.v1.ConnectorRegistryService.GetConnectorSpec:output_type -> synclet.publicapi.registry.v1.GetConnectorSpecResponse
-	13, // 44: synclet.publicapi.registry.v1.ConnectorRegistryService.AddConnector:output_type -> synclet.publicapi.registry.v1.AddConnectorResponse
-	19, // 45: synclet.publicapi.registry.v1.ConnectorRegistryService.GetManagedConnector:output_type -> synclet.publicapi.registry.v1.ManagedConnectorInfo
-	16, // 46: synclet.publicapi.registry.v1.ConnectorRegistryService.ListManagedConnectors:output_type -> synclet.publicapi.registry.v1.ListManagedConnectorsResponse
-	21, // 47: synclet.publicapi.registry.v1.ConnectorRegistryService.DeleteManagedConnector:output_type -> synclet.publicapi.registry.v1.DeleteManagedConnectorResponse
-	24, // 48: synclet.publicapi.registry.v1.ConnectorRegistryService.AddRepository:output_type -> synclet.publicapi.registry.v1.AddRepositoryResponse
-	26, // 49: synclet.publicapi.registry.v1.ConnectorRegistryService.ListRepositories:output_type -> synclet.publicapi.registry.v1.ListRepositoriesResponse
-	28, // 50: synclet.publicapi.registry.v1.ConnectorRegistryService.DeleteRepository:output_type -> synclet.publicapi.registry.v1.DeleteRepositoryResponse
-	30, // 51: synclet.publicapi.registry.v1.ConnectorRegistryService.SyncRepository:output_type -> synclet.publicapi.registry.v1.SyncRepositoryResponse
-	32, // 52: synclet.publicapi.registry.v1.ConnectorRegistryService.ListRepositoryConnectors:output_type -> synclet.publicapi.registry.v1.ListRepositoryConnectorsResponse
-	34, // 53: synclet.publicapi.registry.v1.ConnectorRegistryService.GetConnectorVersions:output_type -> synclet.publicapi.registry.v1.GetConnectorVersionsResponse
-	36, // 54: synclet.publicapi.registry.v1.ConnectorRegistryService.UpdateManagedConnector:output_type -> synclet.publicapi.registry.v1.UpdateManagedConnectorResponse
-	38, // 55: synclet.publicapi.registry.v1.ConnectorRegistryService.BatchUpdateConnectors:output_type -> synclet.publicapi.registry.v1.BatchUpdateConnectorsResponse
-	42, // [42:56] is the sub-list for method output_type
-	28, // [28:42] is the sub-list for method input_type
+	22, // 34: synclet.publicapi.registry.v1.ConnectorRegistryService.StarManagedConnector:input_type -> synclet.publicapi.registry.v1.StarManagedConnectorRequest
+	24, // 35: synclet.publicapi.registry.v1.ConnectorRegistryService.UnstarManagedConnector:input_type -> synclet.publicapi.registry.v1.UnstarManagedConnectorRequest
+	27, // 36: synclet.publicapi.registry.v1.ConnectorRegistryService.AddRepository:input_type -> synclet.publicapi.registry.v1.AddRepositoryRequest
+	29, // 37: synclet.publicapi.registry.v1.ConnectorRegistryService.ListRepositories:input_type -> synclet.publicapi.registry.v1.ListRepositoriesRequest
+	31, // 38: synclet.publicapi.registry.v1.ConnectorRegistryService.DeleteRepository:input_type -> synclet.publicapi.registry.v1.DeleteRepositoryRequest
+	33, // 39: synclet.publicapi.registry.v1.ConnectorRegistryService.SyncRepository:input_type -> synclet.publicapi.registry.v1.SyncRepositoryRequest
+	35, // 40: synclet.publicapi.registry.v1.ConnectorRegistryService.ListRepositoryConnectors:input_type -> synclet.publicapi.registry.v1.ListRepositoryConnectorsRequest
+	37, // 41: synclet.publicapi.registry.v1.ConnectorRegistryService.GetConnectorVersions:input_type -> synclet.publicapi.registry.v1.GetConnectorVersionsRequest
+	39, // 42: synclet.publicapi.registry.v1.ConnectorRegistryService.UpdateManagedConnector:input_type -> synclet.publicapi.registry.v1.UpdateManagedConnectorRequest
+	41, // 43: synclet.publicapi.registry.v1.ConnectorRegistryService.BatchUpdateConnectors:input_type -> synclet.publicapi.registry.v1.BatchUpdateConnectorsRequest
+	8,  // 44: synclet.publicapi.registry.v1.ConnectorRegistryService.ListConnectors:output_type -> synclet.publicapi.registry.v1.ListConnectorsResponse
+	10, // 45: synclet.publicapi.registry.v1.ConnectorRegistryService.GetConnectorSpec:output_type -> synclet.publicapi.registry.v1.GetConnectorSpecResponse
+	13, // 46: synclet.publicapi.registry.v1.ConnectorRegistryService.AddConnector:output_type -> synclet.publicapi.registry.v1.AddConnectorResponse
+	19, // 47: synclet.publicapi.registry.v1.ConnectorRegistryService.GetManagedConnector:output_type -> synclet.publicapi.registry.v1.ManagedConnectorInfo
+	16, // 48: synclet.publicapi.registry.v1.ConnectorRegistryService.ListManagedConnectors:output_type -> synclet.publicapi.registry.v1.ListManagedConnectorsResponse
+	21, // 49: synclet.publicapi.registry.v1.ConnectorRegistryService.DeleteManagedConnector:output_type -> synclet.publicapi.registry.v1.DeleteManagedConnectorResponse
+	23, // 50: synclet.publicapi.registry.v1.ConnectorRegistryService.StarManagedConnector:output_type -> synclet.publicapi.registry.v1.StarManagedConnectorResponse
+	25, // 51: synclet.publicapi.registry.v1.ConnectorRegistryService.UnstarManagedConnector:output_type -> synclet.publicapi.registry.v1.UnstarManagedConnectorResponse
+	28, // 52: synclet.publicapi.registry.v1.ConnectorRegistryService.AddRepository:output_type -> synclet.publicapi.registry.v1.AddRepositoryResponse
+	30, // 53: synclet.publicapi.registry.v1.ConnectorRegistryService.ListRepositories:output_type -> synclet.publicapi.registry.v1.ListRepositoriesResponse
+	32, // 54: synclet.publicapi.registry.v1.ConnectorRegistryService.DeleteRepository:output_type -> synclet.publicapi.registry.v1.DeleteRepositoryResponse
+	34, // 55: synclet.publicapi.registry.v1.ConnectorRegistryService.SyncRepository:output_type -> synclet.publicapi.registry.v1.SyncRepositoryResponse
+	36, // 56: synclet.publicapi.registry.v1.ConnectorRegistryService.ListRepositoryConnectors:output_type -> synclet.publicapi.registry.v1.ListRepositoryConnectorsResponse
+	38, // 57: synclet.publicapi.registry.v1.ConnectorRegistryService.GetConnectorVersions:output_type -> synclet.publicapi.registry.v1.GetConnectorVersionsResponse
+	40, // 58: synclet.publicapi.registry.v1.ConnectorRegistryService.UpdateManagedConnector:output_type -> synclet.publicapi.registry.v1.UpdateManagedConnectorResponse
+	42, // 59: synclet.publicapi.registry.v1.ConnectorRegistryService.BatchUpdateConnectors:output_type -> synclet.publicapi.registry.v1.BatchUpdateConnectorsResponse
+	44, // [44:60] is the sub-list for method output_type
+	28, // [28:44] is the sub-list for method input_type
 	28, // [28:28] is the sub-list for extension type_name
 	28, // [28:28] is the sub-list for extension extendee
 	0,  // [0:28] is the sub-list for field type_name
@@ -2532,14 +2729,14 @@ func file_synclet_publicapi_registry_v1_registry_proto_init() {
 	if File_synclet_publicapi_registry_v1_registry_proto != nil {
 		return
 	}
-	file_synclet_publicapi_registry_v1_registry_proto_msgTypes[33].OneofWrappers = []any{}
+	file_synclet_publicapi_registry_v1_registry_proto_msgTypes[37].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_synclet_publicapi_registry_v1_registry_proto_rawDesc), len(file_synclet_publicapi_registry_v1_registry_proto_rawDesc)),
 			NumEnums:      6,
-			NumMessages:   35,
+			NumMessages:   39,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

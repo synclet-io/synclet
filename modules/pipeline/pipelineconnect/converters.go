@@ -247,12 +247,14 @@ func managedConnectorToProto(connector *pipelineservice.ManagedConnector) *regis
 		Name:          connector.Name,
 		ConnectorType: managedConnectorTypeToProto(connector.ConnectorType),
 		RepositoryId:  uuidPtrToString(connector.RepositoryID),
+		Starred:       connector.Starred,
 	}
 }
 
 // managedConnectorWithUpdateInfoToProto converts a domain ManagedConnectorWithUpdateInfo to proto.
 func managedConnectorWithUpdateInfoToProto(item *pipelineconnectors.ManagedConnectorWithUpdateInfo) *registryv1.ManagedConnectorInfo {
 	info := managedConnectorToProto(item.Connector)
+	info.Used = item.Used
 
 	if item.UpdateInfo != nil {
 		breakingChanges := make([]*registryv1.BreakingChange, len(item.UpdateInfo.BreakingChanges))

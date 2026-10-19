@@ -67,6 +67,12 @@ service ConnectorRegistryService {
   rpc DeleteManagedConnector(DeleteManagedConnectorRequest) returns (DeleteManagedConnectorResponse) {
     option (synclet.options.v1.required_role) = REQUIRED_ROLE_EDITOR;
   }
+  rpc StarManagedConnector(StarManagedConnectorRequest) returns (StarManagedConnectorResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_EDITOR;
+  }
+  rpc UnstarManagedConnector(UnstarManagedConnectorRequest) returns (UnstarManagedConnectorResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_EDITOR;
+  }
   rpc AddRepository(AddRepositoryRequest) returns (AddRepositoryResponse) {
     option (synclet.options.v1.required_role) = REQUIRED_ROLE_ADMIN;
   }
@@ -182,6 +188,10 @@ message ManagedConnectorInfo {
   reserved 6; // was ConnectorStatus status
   string repository_id = 7;
   UpdateInfo update_info = 8;
+  // Workspace-wide mark set by any member who may create sources and destinations.
+  bool starred = 9;
+  // True when at least one source or destination of the workspace is built on this connector.
+  bool used = 10;
 }
 
 message DeleteManagedConnectorRequest {
@@ -189,6 +199,18 @@ message DeleteManagedConnectorRequest {
 }
 
 message DeleteManagedConnectorResponse {}
+
+message StarManagedConnectorRequest {
+  string id = 1;
+}
+
+message StarManagedConnectorResponse {}
+
+message UnstarManagedConnectorRequest {
+  string id = 1;
+}
+
+message UnstarManagedConnectorResponse {}
 
 message Repository {
   string id = 1;

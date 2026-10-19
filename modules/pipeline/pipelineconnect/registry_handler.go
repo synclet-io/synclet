@@ -88,6 +88,7 @@ type RegistryHandler struct {
 	batchUpdate                  batchUpdateConnectorsUC
 	listConnectorsWithUpdateInfo listConnectorsWithUpdateInfoUC
 	getConnectorWithUpdateInfo   getConnectorWithUpdateInfoUC
+	setConnectorStarred          *pipelineconnectors.SetConnectorStarred
 }
 
 // NewRegistryHandler creates a new registry handler.
@@ -107,6 +108,7 @@ func NewRegistryHandler(
 	batchUpdate *pipelineconnectors.BatchUpdateConnectors,
 	listConnectorsWithUpdateInfo *pipelineconnectors.ListConnectorsWithUpdateInfo,
 	getConnectorWithUpdateInfo *pipelineconnectors.GetConnectorWithUpdateInfo,
+	setConnectorStarred *pipelineconnectors.SetConnectorStarred,
 ) *RegistryHandler {
 	return &RegistryHandler{
 		addConnector:                 addConnector,
@@ -124,6 +126,7 @@ func NewRegistryHandler(
 		batchUpdate:                  batchUpdate,
 		listConnectorsWithUpdateInfo: listConnectorsWithUpdateInfo,
 		getConnectorWithUpdateInfo:   getConnectorWithUpdateInfo,
+		setConnectorStarred:          setConnectorStarred,
 	}
 }
 
@@ -289,6 +292,46 @@ func (h *RegistryHandler) DeleteManagedConnector(ctx context.Context, req *conne
 	}
 
 	return connect.NewResponse(&registryv1.DeleteManagedConnectorResponse{}), nil
+}
+
+// StarManagedConnector stars a managed connector for the whole workspace.
+func (h *RegistryHandler) StarManagedConnector(ctx context.Context, req *connect.Request[registryv1.StarManagedConnectorRequest]) (*connect.Response[registryv1.StarManagedConnectorResponse], error) {
+	if err := h.setStarred(ctx, req.Msg.GetId(), true); err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(&registryv1.StarManagedConnectorResponse{}), nil
+}
+
+// UnstarManagedConnector removes the workspace-wide star of a managed connector.
+func (h *RegistryHandler) UnstarManagedConnector(ctx context.Context, req *connect.Request[registryv1.UnstarManagedConnectorRequest]) (*connect.Response[registryv1.UnstarManagedConnectorResponse], error) {
+	if err := h.setStarred(ctx, req.Msg.GetId(), false); err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(&registryv1.UnstarManagedConnectorResponse{}), nil
+}
+
+func (h *RegistryHandler) setStarred(ctx context.Context, rawID string, starred bool) error {
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
+	if err != nil {
+		return err
+	}
+
+	id, err := uuid.Parse(rawID)
+	if err != nil {
+		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid connector id: %w", err))
+	}
+
+	if _, err := h.setConnectorStarred.Execute(ctx, pipelineconnectors.SetConnectorStarredParams{
+		ConnectorID: id,
+		WorkspaceID: workspaceID,
+		Starred:     starred,
+	}); err != nil {
+		return mapError(err)
+	}
+
+	return nil
 }
 
 // AddRepository creates a new connector repository (admin-only).
