@@ -8,10 +8,16 @@
 #   EXTRA_VALUES=<file> extra values file for the Synclet release
 #   CHART_PROBES=1      keep the chart's /live and /ready probes; by default they call
 #                       /health on the public port, which images up to 0.4.0 serve
-#   EG_VERSION          Envoy Gateway chart version (default v1.4.2)
-#   SYNC=1              also build the e2e test connectors (images that run as root),
-#                       serve them from a throwaway local registry container and run a
-#                       sync through the API; the run fails unless the job completes
+#   EG_VERSION          Envoy Gateway chart version (default: the version of a gateway-helm
+#                       release already on the cluster, whose CRDs an older chart cannot
+#                       replace, else v1.4.2)
+#   SYNC=1              build the Synclet image from the working tree (Dockerfile) and the
+#                       e2e test connectors (images that run as root), serve them from a
+#                       throwaway local registry container, install the chart with that
+#                       image for the server and the coordinator, and run a sync through the
+#                       API; the run fails unless the job completes. Takes about 10-15
+#                       minutes, most of it the first image build (later builds hit the
+#                       Docker cache); without SYNC the chart pulls its default image
 #   SYNC_SOURCE=<image:tag>, SYNC_DEST=<image:tag>
 #                       with SYNC=1, use this connector image (pulled from its registry)
 #                       instead of the test source or destination
@@ -24,7 +30,6 @@
 set -euo pipefail
 
 CTX=orbstack
-EG_VERSION=${EG_VERSION:-v1.4.2}
 RUN=sct-$(openssl rand -hex 3)
 APP_NS=$RUN
 EG_NS=$RUN-eg
@@ -47,6 +52,7 @@ log() { printf '\n==> %s\n' "$*"; }
 source "$ROOT/scripts/cluster-snapshot.sh"
 
 [[ $(kubectl config get-contexts -o name) == *"$CTX"* ]] || { echo "context $CTX not found" >&2; exit 1; }
+EG_VERSION=${EG_VERSION:-$(h list -A -o json | jq -r '[.[] | select(.chart | startswith("gateway-helm-")) | .chart | ltrimstr("gateway-helm-")][0] // "v1.4.2"')}
 
 cleanup() {
   local rc=$?
@@ -78,7 +84,7 @@ cleanup() {
   fi
   if [[ ${SYNC:-} == 1 ]]; then
     docker rm -f "$REGISTRY" >/dev/null 2>&1
-    docker rmi "$REG/synclet-test-source:$RUN" "$REG/synclet-test-dest:$RUN" >/dev/null 2>&1
+    docker rmi "$REG/synclet:$RUN" "$REG/synclet-test-source:$RUN" "$REG/synclet-test-dest:$RUN" >/dev/null 2>&1
   fi
   rm -rf "$WORK"
   exit "$rc"
@@ -90,9 +96,12 @@ trap cleanup EXIT
 if [[ ${SYNC:-} == 1 ]]; then
   # Sync pods pull connector images with PullAlways, so they are served from a registry
   # the orbstack node reaches on localhost.
-  log "test connectors in registry $REG"
+  log "working-tree Synclet image and test connectors in registry $REG"
   docker run -d --name "$REGISTRY" -p "127.0.0.1:$REG_PORT:5000" registry:2 >/dev/null
   for _ in $(seq 30); do curl -sf "http://$REG/v2/" >/dev/null && break; sleep 1; done
+  docker build -q -t "$REG/synclet:$RUN" --build-arg "VERSION=$(git -C "$ROOT" describe --tags --always --dirty)" "$ROOT" >/dev/null
+  docker push -q "$REG/synclet:$RUN" >/dev/null
+  echo "synclet image: $REG/synclet:$RUN"
   for c in source:source destination:dest; do
     image=$REG/synclet-test-${c#*:}:$RUN
     docker build -q -t "$image" -f "$ROOT/tests/e2e/testconnector/${c%%:*}/Dockerfile" "$ROOT/tests/e2e/testconnector" >/dev/null
@@ -169,11 +178,15 @@ args=(-f "$WORK/values.yaml")
   args+=(--set "server.$p.path=/health" --set "server.$p.port=public")
 done
 [[ ${GARAGE:-} == 1 ]] && args+=(--set logArchive.garage.enabled=true)
+if [[ ${SYNC:-} == 1 ]]; then
+  printf 'image:\n  registry: %s\n  repository: synclet\n  tag: %s\n' "$REG" "$RUN" >"$WORK/image.yaml"
+  args+=(-f "$WORK/image.yaml")
+fi
 [[ -n ${EXTRA_VALUES:-} ]] && args+=(-f "$EXTRA_VALUES")
 
 log "Synclet chart in $APP_NS"
 h install synclet "$CHART" -n "$APP_NS" "${args[@]}" --wait --timeout 8m
-k get pods -n "$APP_NS"
+k get pods -n "$APP_NS" -o custom-columns='NAME:.metadata.name,STATUS:.status.phase,IMAGE:.spec.containers[*].image'
 
 log "route status"
 conds=
@@ -226,7 +239,7 @@ wait_task() {
 # split_image_ref sets ref_image and ref_tag from REF: the tag follows the last ':' after the
 # last '/', so a registry port stays in the image; a digest stays on the tag (tag@sha256:...).
 split_image_ref() {
-  local ref=$1 digest= name
+  local ref=$1 digest='' name
   if [[ $ref == *@* ]]; then
     digest=@${ref#*@} ref=${ref%%@*}
   fi
