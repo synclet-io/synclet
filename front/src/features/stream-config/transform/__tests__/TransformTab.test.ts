@@ -136,6 +136,19 @@ describe('transformTab', () => {
     document.body.innerHTML = ''
   })
 
+  it('links the expression reference from the steps and the filter', async () => {
+    const wrapper = mountTab(row())
+    await addStep(wrapper, 'filter')
+
+    const links = wrapper.findAll('a[data-testid="expression-help"]')
+    expect(links).toHaveLength(2)
+    for (const link of links) {
+      expect(link.attributes('href')).toBe('https://synclet-io.github.io/synclet-site/docs/guides/transforms/')
+      expect(link.attributes('target')).toBe('_blank')
+      expect(link.attributes('rel')).toContain('noopener')
+    }
+  })
+
   it('adds a step of every mapper kind and saves its form to the stream', async () => {
     const wrapper = mountTab(row())
     for (const kind of ['rename', 'cast', 'set', 'hash', 'mask', 'filter'] as MapperKind[])

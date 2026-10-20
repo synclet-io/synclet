@@ -7,6 +7,7 @@ import { SBadge, SButton, SDropdown } from '@shared/ui'
 import { AlertCircle, AlertTriangle, KeyRound, Plus } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
 import { schemaColumns, schemaType, walkColumns } from './columns'
+import ExpressionHelp from './ExpressionHelp.vue'
 import { addStep, fromStepJson, MAPPER_KINDS, MAPPER_LABELS, moveStep, removeStep, toStepJson, updateStep } from './model'
 import StepCard from './StepCard.vue'
 import TestPanel from './TestPanel.vue'
@@ -171,8 +172,9 @@ const drag = useStepDrag({
 
     <section class="space-y-2 min-w-0">
       <div class="flex items-center justify-between gap-2">
-        <h4 class="text-sm font-semibold text-heading">
+        <h4 class="flex items-center gap-1.5 text-sm font-semibold text-heading">
           Steps
+          <ExpressionHelp />
         </h4>
         <SDropdown :items="addItems" align="right" @select="onAdd">
           <template #trigger="{ attrs }">

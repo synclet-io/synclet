@@ -5,8 +5,9 @@ import { Plus, X } from 'lucide-vue-next'
 import { computed, useId } from 'vue'
 import CastOptions from './CastOptions.vue'
 import CelInput from './CelInput.vue'
+import ExpressionHelp from './ExpressionHelp.vue'
 import { CAST_TARGETS, newEntry } from './model'
-import { fieldClass, labelClass } from './styles'
+import { fieldClass } from './styles'
 
 const props = defineProps<{
   step: StepDraft
@@ -72,7 +73,7 @@ function value(e: Event): string {
 
     <template v-if="step.kind === 'filter'">
       <label class="block">
-        <span :class="labelClass">Keep records where</span>
+        <span class="flex items-center gap-1 text-xs font-medium text-text-secondary mb-1">Keep records where <ExpressionHelp /></span>
         <CelInput
           data-testid="filter-expr"
           class="w-full"
