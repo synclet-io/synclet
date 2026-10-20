@@ -76,7 +76,7 @@ func Compile(input Input) (*Chain, *Result) {
 
 	cmp := &compiler{
 		in:      input,
-		result:  &Result{PrimaryKey: clonePaths(input.PrimaryKey)},
+		result:  &Result{PrimaryKey: clonePaths(input.PrimaryKey), CursorField: slices.Clone(input.CursorField)},
 		created: map[string]int{},
 		renamed: map[string]int{},
 		dropped: map[string]int{},
@@ -356,8 +356,8 @@ func isSource(renames map[string]string, field string) bool {
 	return ok
 }
 
-// renameReferences rewrites the primary key and required names of one rename
-// step, each looked up once against the names before the step.
+// renameReferences rewrites the primary key, cursor field and required names
+// of one rename step, each looked up once against the names before the step.
 func (c *compiler) renameReferences(pairs [][2]string) {
 	targets := make(map[string]string, len(pairs))
 	for _, pair := range pairs {
@@ -371,6 +371,12 @@ func (c *compiler) renameReferences(pairs [][2]string) {
 
 		if to, ok := targets[path[0]]; ok {
 			path[0] = to
+		}
+	}
+
+	if cursor := c.result.CursorField; len(cursor) > 0 {
+		if to, ok := targets[cursor[0]]; ok {
+			cursor[0] = to
 		}
 	}
 
@@ -543,7 +549,7 @@ func (c *compiler) drop(idx int, fields []string) []string {
 
 		seen[field] = true
 
-		if c.ref(idx, field) && c.dropKey(idx, field) {
+		if c.ref(idx, field) && c.dropKey(idx, field) && c.dropCursor(idx, field) {
 			out = append(out, field)
 		}
 	}
@@ -580,6 +586,25 @@ func (c *compiler) dropKey(idx int, field string) bool {
 	}
 
 	return ok
+}
+
+// dropCursor reports whether a field may be dropped given the cursor field: the
+// cursor fails in incremental mode and is cleared in full refresh.
+func (c *compiler) dropCursor(idx int, field string) bool {
+	cursor := c.result.CursorField
+	if len(cursor) == 0 || cursor[0] != field {
+		return true
+	}
+
+	if c.in.SyncMode == protocol.SyncModeIncremental {
+		c.fail(idx, field, fmt.Sprintf("cursor field %q cannot be dropped in incremental mode; choose another cursor in the stream settings or keep the field", strings.Join(cursor, ".")))
+
+		return false
+	}
+
+	c.result.CursorField = nil
+
+	return true
 }
 
 func (c *compiler) filter(idx int, expr string, isCDC bool) cel.Program {

@@ -35,12 +35,17 @@ const primaryKey = computed(() => props.stream.sourceDefinedPrimaryKey.length > 
   ? props.stream.sourceDefinedPrimaryKey
   : props.stream.primaryKey)
 
+const cursorField = computed(() => props.stream.sourceDefinedCursor
+  ? props.stream.defaultCursorField
+  : props.stream.cursorField)
+
 const walk = computed(() => walkColumns(
   inputColumns.value,
   steps.value,
   props.stream.selectedFields,
   primaryKey.value,
   props.stream.destinationSyncMode,
+  { field: cursorField.value, syncMode: props.stream.syncMode },
 ))
 
 const hasBrowserErrors = computed(() => walk.value.issues.some(i => i.severity === 'error'))

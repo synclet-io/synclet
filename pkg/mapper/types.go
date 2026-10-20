@@ -20,17 +20,21 @@ type Input struct {
 	Steps               []Step
 	SelectedFields      []protocol.SelectedField
 	PrimaryKey          [][]string
+	CursorField         []string
+	SyncMode            protocol.SyncMode
 	DestinationSyncMode protocol.DestinationSyncMode
 	Salt                []byte
 	CostLimit           uint64
 }
 
-// Result is the output of Compile: the output schema and primary key, or the issues found.
+// Result is the output of Compile: the output schema, primary key and cursor
+// field, or the issues found. CursorField is nil when a step dropped the cursor.
 type Result struct {
-	Schema     json.RawMessage
-	PrimaryKey [][]string
-	Errors     []Issue
-	Warnings   []Issue
+	Schema      json.RawMessage
+	PrimaryKey  [][]string
+	CursorField []string
+	Errors      []Issue
+	Warnings    []Issue
 }
 
 // Issue is a problem found in one step, or in the field selection when Step is SelectionStep.

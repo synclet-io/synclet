@@ -350,4 +350,12 @@ describe('transformTab', () => {
     expect(issues.map(i => [i.attributes('data-severity'), i.text()])).toEqual([['warning', message]])
     expect(card(wrapper, 1).findAll('[data-testid="step-issue"]')).toHaveLength(0)
   })
+
+  it('flags a drop of the source-defined cursor of an incremental stream on its card', async () => {
+    const wrapper = mountTab(row({ syncMode: 'incremental', sourceDefinedCursor: true, defaultCursorField: ['created_at'], mappers: [{ drop: ['created_at'] }] }))
+    const issues = card(wrapper, 0).findAll('[data-testid="step-issue"]')
+    expect(issues.map(i => [i.attributes('data-severity'), i.text()])).toEqual([
+      ['error', 'cursor field "created_at" cannot be dropped in incremental mode; choose another cursor in the stream settings or keep the field'],
+    ])
+  })
 })

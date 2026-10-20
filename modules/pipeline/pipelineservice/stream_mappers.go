@@ -25,34 +25,13 @@ func CompileStreamMappers(stream *protocol.ConfiguredAirbyteStream, schema json.
 		Steps:               steps,
 		SelectedFields:      stream.SelectedFields,
 		PrimaryKey:          stream.PrimaryKey,
+		CursorField:         stream.CursorField,
+		SyncMode:            stream.SyncMode,
 		DestinationSyncMode: stream.DestinationSyncMode,
 		Salt:                salt,
 	})
 
 	return chain, result, nil
-}
-
-// RenamedCursorField returns the stream's cursor field as the mappers' renames
-// leave it, each rename step looked up once against the names before it.
-func RenamedCursorField(stream *protocol.ConfiguredAirbyteStream) ([]string, error) {
-	if len(stream.CursorField) == 0 {
-		return stream.CursorField, nil
-	}
-
-	var steps []mapper.Step
-	if err := json.Unmarshal(stream.Mappers, &steps); err != nil {
-		return nil, fmt.Errorf("decoding mappers: %w", err)
-	}
-
-	cursor := append([]string(nil), stream.CursorField...)
-
-	for _, step := range steps {
-		if to, ok := step.Rename[cursor[0]]; ok {
-			cursor[0] = to
-		}
-	}
-
-	return cursor, nil
 }
 
 // HasMappers reports whether the stream has at least one mapper step.

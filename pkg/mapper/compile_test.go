@@ -2,6 +2,7 @@ package mapper
 
 import (
 	"encoding/json"
+	"slices"
 	"strings"
 	"testing"
 
@@ -603,4 +604,52 @@ func TestCompileCatchType(t *testing.T) {
 		Steps:  steps(t, `[{"set":{"x":"catch(int(r.s), 0)"}}]`),
 	})
 	require.JSONEq(t, `{"type":"object","properties":{"s":{"type":"string"},"x":{"type":"integer"}}}`, string(res.Schema))
+}
+
+func TestCompileCursorDrop(t *testing.T) {
+	t.Parallel()
+
+	cursorMessage := func(field string) string {
+		return `cursor field "` + field + `" cannot be dropped in incremental mode; choose another cursor in the stream settings or keep the field`
+	}
+
+	tests := []struct {
+		name   string
+		steps  string
+		cursor []string
+		mode   protocol.SyncMode
+		issue  *Issue
+		want   []string
+	}{
+		{"incremental drop of the cursor", `[{"drop":["status"]}]`, []string{"status"}, protocol.SyncModeIncremental, &Issue{0, "status", cursorMessage("status")}, nil},
+		{"incremental drop of the renamed cursor", `[{"rename":{"status":"state"}},{"drop":["state"]}]`, []string{"status"}, protocol.SyncModeIncremental, &Issue{1, "state", cursorMessage("state")}, nil},
+		{"incremental drop of a nested cursor's parent", `[{"drop":["address"]}]`, []string{"address", "zip"}, protocol.SyncModeIncremental, &Issue{0, "address", cursorMessage("address.zip")}, nil},
+		{"full refresh drop of the cursor", `[{"drop":["status"]}]`, []string{"status"}, protocol.SyncModeFullRefresh, nil, nil},
+		{"incremental drop of another field", `[{"drop":["code"]}]`, []string{"status"}, protocol.SyncModeIncremental, nil, []string{"status"}},
+		{"rename moves the cursor", `[{"rename":{"address":"addr"}}]`, []string{"address", "zip"}, protocol.SyncModeIncremental, nil, []string{"addr", "zip"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			in := Input{
+				Schema:      json.RawMessage(ordersSchema),
+				Steps:       steps(t, tt.steps),
+				CursorField: slices.Clone(tt.cursor),
+				SyncMode:    tt.mode,
+			}
+
+			if tt.issue != nil {
+				chain, res := Compile(in)
+				require.Nil(t, chain)
+				require.Equal(t, []Issue{*tt.issue}, res.Errors)
+
+				return
+			}
+
+			_, res := mustCompile(t, in)
+			require.Equal(t, tt.want, res.CursorField)
+		})
+	}
 }

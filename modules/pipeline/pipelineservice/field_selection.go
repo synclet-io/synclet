@@ -137,8 +137,9 @@ func FilterRecordData(data json.RawMessage, selectedFields []protocol.SelectedFi
 
 // BuildDestinationCatalog creates a copy of the catalog for the destination.
 // A stream with mappers gets the mappers' output schema, primary key and
-// renamed cursor field and loses the mappers; a stream with selected fields gets its JSON schema
-// filtered by them; other streams are passed through unchanged.
+// cursor field (renamed, or empty when dropped) and loses the mappers; a
+// stream with selected fields gets its JSON schema filtered by them; other
+// streams are passed through unchanged.
 func BuildDestinationCatalog(catalog *protocol.ConfiguredAirbyteCatalog) (*protocol.ConfiguredAirbyteCatalog, error) {
 	dest := &protocol.ConfiguredAirbyteCatalog{
 		Streams: make([]protocol.ConfiguredAirbyteStream, len(catalog.Streams)),
@@ -158,14 +159,9 @@ func BuildDestinationCatalog(catalog *protocol.ConfiguredAirbyteCatalog) (*proto
 				return nil, fmt.Errorf("stream %q: mappers do not compile: %s", stream.Stream.Name, FormatMapperIssues(result.Errors))
 			}
 
-			cursor, err := RenamedCursorField(&stream)
-			if err != nil {
-				return nil, fmt.Errorf("stream %q: %w", stream.Stream.Name, err)
-			}
-
 			dest.Streams[i].Stream.JSONSchema = result.Schema
 			dest.Streams[i].PrimaryKey = result.PrimaryKey
-			dest.Streams[i].CursorField = cursor
+			dest.Streams[i].CursorField = result.CursorField
 
 			continue
 		}

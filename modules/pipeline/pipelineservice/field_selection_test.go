@@ -276,3 +276,19 @@ func TestBuildDestinationCatalogRenamedCursor(t *testing.T) {
 	assert.Equal(t, []string{"amount"}, catalog.Streams[0].CursorField, "configured catalog must not be mutated")
 	assert.Equal(t, []string{"amount"}, BuildSourceCatalog(catalog).Streams[0].CursorField)
 }
+
+func TestBuildDestinationCatalogDroppedCursor(t *testing.T) {
+	catalog := &protocol.ConfiguredAirbyteCatalog{Streams: []protocol.ConfiguredAirbyteStream{{
+		Stream:              protocol.AirbyteStream{Name: "orders", JSONSchema: json.RawMessage(ordersSchema)},
+		SyncMode:            protocol.SyncModeFullRefresh,
+		DestinationSyncMode: protocol.DestinationSyncModeOverwrite,
+		CursorField:         []string{"amount"},
+		Mappers:             json.RawMessage(`[{"drop":["amount"]}]`),
+	}}}
+
+	dest, err := BuildDestinationCatalog(catalog)
+	require.NoError(t, err)
+	assert.Empty(t, dest.Streams[0].CursorField)
+	assert.NotContains(t, string(dest.Streams[0].Stream.JSONSchema), `"amount"`)
+	assert.Equal(t, []string{"amount"}, catalog.Streams[0].CursorField, "configured catalog must not be mutated")
+}

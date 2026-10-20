@@ -1,4 +1,4 @@
-import type { DestinationSyncMode, SelectedField } from '@entities/connection'
+import type { DestinationSyncMode, SelectedField, SyncMode } from '@entities/connection'
 import type { Column } from '../columns'
 import type { StepJson } from '../model'
 import { describe, expect, it } from 'vitest'
@@ -13,8 +13,8 @@ const input: Column[] = [
   { name: 'status', type: 'string' },
 ]
 
-function walk(steps: StepJson[], opts: { selected?: SelectedField[], pk?: string[][], mode?: DestinationSyncMode, columns?: Column[] } = {}) {
-  return walkColumns(opts.columns ?? input, steps.map(fromStepJson), opts.selected ?? [], opts.pk ?? [['id']], opts.mode ?? 'overwrite')
+function walk(steps: StepJson[], opts: { selected?: SelectedField[], pk?: string[][], mode?: DestinationSyncMode, columns?: Column[], cursor?: string[], syncMode?: SyncMode } = {}) {
+  return walkColumns(opts.columns ?? input, steps.map(fromStepJson), opts.selected ?? [], opts.pk ?? [['id']], opts.mode ?? 'overwrite', { field: opts.cursor ?? [], syncMode: opts.syncMode ?? 'full_refresh' })
 }
 
 function errors(steps: StepJson[], opts: Parameters<typeof walk>[1] = {}) {
@@ -193,6 +193,16 @@ describe('walkColumns', () => {
     const appended = walk([{ drop: ['id'] }, { set: { id: '1' } }], { mode: 'append' })
     expect(appended.issues).toEqual([])
     expect(appended.output.find(c => c.name === 'id')?.primaryKey).toBe(false)
+  })
+
+  it('flags a drop of the cursor field of an incremental stream', () => {
+    const message = (field: string) => `cursor field "${field}" cannot be dropped in incremental mode; choose another cursor in the stream settings or keep the field`
+    expect(errors([{ drop: ['status'] }], { cursor: ['status'], syncMode: 'incremental' }))
+      .toEqual([{ step: 0, field: 'status', message: message('status') }])
+    expect(errors([{ rename: { status: 'state' } }, { drop: ['state'] }], { cursor: ['status'], syncMode: 'incremental' }))
+      .toEqual([{ step: 1, field: 'state', message: message('state') }])
+    expect(errors([{ drop: ['status'] }], { cursor: ['status'], syncMode: 'full_refresh' })).toEqual([])
+    expect(errors([{ drop: ['email'] }], { cursor: ['status'], syncMode: 'incremental' })).toEqual([])
   })
 
   it('warns about a filter on a dedup stream and on a CDC stream', () => {

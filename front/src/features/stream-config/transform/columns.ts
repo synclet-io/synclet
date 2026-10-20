@@ -1,4 +1,4 @@
-import type { DestinationSyncMode, SelectedField } from '@entities/connection'
+import type { DestinationSyncMode, SelectedField, SyncMode } from '@entities/connection'
 import type { StepDraft, StepEntry } from './model'
 
 export interface Column {
@@ -20,6 +20,11 @@ export interface TransformIssue {
   field: string
   message: string
   severity: 'error' | 'warning'
+}
+
+export interface StreamCursor {
+  field: string[]
+  syncMode: SyncMode
 }
 
 export interface ColumnWalk {
@@ -95,7 +100,7 @@ class Walker {
   dropped = new Map<string, number>()
   issues: TransformIssue[] = []
 
-  constructor(input: Column[]) {
+  constructor(input: Column[], public cursor: StreamCursor) {
     for (const c of input)
       this.cols.set(c.name, { type: c.type, fields: c.fields, source: c.name, written: false, retyped: false })
   }
@@ -178,6 +183,14 @@ class Walker {
           this.fail(idx, e.field, `primary key field "${path.join('.')}" cannot be dropped in append_dedup mode`)
         continue
       }
+      const cursor = this.cursor.field
+      if (cursor.length > 0 && cursor[0] === e.field) {
+        if (this.cursor.syncMode === 'incremental') {
+          this.fail(idx, e.field, `cursor field "${cursor.join('.')}" cannot be dropped in incremental mode; choose another cursor in the stream settings or keep the field`)
+          continue
+        }
+        cursor.length = 0
+      }
       for (const path of keyPaths)
         path.length = 0
       fields.push(e.field)
@@ -246,7 +259,7 @@ class Walker {
       this.renamed.set(from, idx)
       this.renamed.delete(to)
     }
-    for (const path of pk) {
+    for (const path of [...pk, this.cursor.field]) {
       const to = path.length > 0 ? targetOf.get(path[0]) : undefined
       if (to !== undefined)
         path[0] = to
@@ -321,8 +334,9 @@ export function walkColumns(
   selectedFields: SelectedField[],
   primaryKey: string[][],
   destinationSyncMode: DestinationSyncMode,
+  cursor: StreamCursor = { field: [], syncMode: 'full_refresh' },
 ): ColumnWalk {
-  const walker = new Walker(input)
+  const walker = new Walker(input, { field: [...cursor.field], syncMode: cursor.syncMode })
   const dedup = destinationSyncMode === 'append_dedup'
   const keyed = dedup || isCdcStream(input)
   const pk = primaryKey.map(p => [...p])
