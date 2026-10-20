@@ -251,6 +251,63 @@ describe('jsonSchemaForm', () => {
     })
   })
 
+  describe('string array fields', () => {
+    const arraySchema = {
+      type: 'object',
+      properties: { schemas: { type: 'array', items: { type: 'string' } } },
+    }
+
+    function mountBound(modelValue: Record<string, unknown> = {}) {
+      const w = mount(JsonSchemaForm, {
+        props: {
+          'schema': arraySchema,
+          modelValue,
+          'onUpdate:modelValue': (v: Record<string, unknown>) => w.setProps({ modelValue: v }),
+        },
+      })
+      return w
+    }
+
+    function lastEmitted(w: ReturnType<typeof mountBound>) {
+      return w.emitted('update:modelValue')!.at(-1)![0] as Record<string, unknown>
+    }
+
+    it('keeps a trailing comma while typing and emits every value', async () => {
+      const w = mountBound()
+      const input = w.find('input[type="text"]')
+
+      await input.setValue('public,')
+      expect((input.element as HTMLInputElement).value).toBe('public,')
+      expect(lastEmitted(w).schemas).toEqual(['public'])
+
+      await input.setValue('public, sales')
+      expect((input.element as HTMLInputElement).value).toBe('public, sales')
+      expect(lastEmitted(w).schemas).toEqual(['public', 'sales'])
+    })
+
+    it('preserves the case of values', async () => {
+      const w = mountBound()
+      await w.find('input[type="text"]').setValue('MySchema, Other')
+      expect(lastEmitted(w).schemas).toEqual(['MySchema', 'Other'])
+    })
+
+    it('normalises the text on blur', async () => {
+      const w = mountBound()
+      const input = w.find('input[type="text"]')
+      await input.setValue('public, ,sales,')
+      await input.trigger('blur')
+      expect((input.element as HTMLInputElement).value).toBe('public, sales')
+    })
+
+    it('shows a value set from outside after editing', async () => {
+      const w = mountBound()
+      const input = w.find('input[type="text"]')
+      await input.setValue('public,')
+      await w.setProps({ modelValue: { schemas: ['reset'] } })
+      expect((input.element as HTMLInputElement).value).toBe('reset')
+    })
+  })
+
   describe('validation', () => {
     it('shows error for empty required field on blur', async () => {
       const w = mountForm({

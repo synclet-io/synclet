@@ -121,16 +121,38 @@ function handleOneOfSubfieldUpdate(key: string, subValue: Record<string, unknown
 }
 
 // Array of strings handling
+const arrayDrafts = ref<Record<string, string>>({})
+
+function parseArrayText(text: string): string[] {
+  return text.split(',').map(s => s.trim()).filter(Boolean)
+}
+
+function joinArray(val: unknown): string {
+  return Array.isArray(val) ? val.join(', ') : ''
+}
+
+watch(
+  () => props.modelValue,
+  (value) => {
+    for (const [key, draft] of Object.entries(arrayDrafts.value)) {
+      if (joinArray(parseArrayText(draft)) !== joinArray(value[key]))
+        delete arrayDrafts.value[key]
+    }
+  },
+)
+
 function getArrayValue(key: string): string {
-  const val = props.modelValue[key]
-  if (Array.isArray(val))
-    return val.join(', ')
-  return ''
+  return arrayDrafts.value[key] ?? joinArray(props.modelValue[key])
 }
 
 function updateArrayField(key: string, text: string) {
-  const arr = text ? text.split(',').map(s => s.trim()).filter(Boolean) : []
-  updateField(key, arr)
+  arrayDrafts.value[key] = text
+  updateField(key, parseArrayText(text))
+}
+
+function commitArrayField(key: string) {
+  delete arrayDrafts.value[key]
+  markTouched(key)
 }
 
 // Nested object handling
@@ -266,7 +288,7 @@ const labelClass = 'block text-sm font-medium text-heading mb-1'
               :placeholder="getPlaceholder(resolvedSchema.properties[key]) || 'Comma-separated values'"
               :class="getError(key, resolvedSchema.properties[key]) ? inputErrorClass : inputClass"
               @input="updateArrayField(key, ($event.target as HTMLInputElement).value)"
-              @blur="markTouched(key)"
+              @blur="commitArrayField(key)"
             >
             <p v-if="resolvedSchema.properties[key].description" class="text-xs text-text-muted mt-1 [&_a]:text-primary [&_a]:underline" v-html="DOMPurify.sanitize(resolvedSchema.properties[key].description)" />
             <p v-if="getError(key, resolvedSchema.properties[key])" class="text-xs text-danger mt-1">
