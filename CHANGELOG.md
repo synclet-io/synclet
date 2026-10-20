@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.10.0](https://github.com/synclet-io/synclet/compare/synclet-v0.9.0...synclet-v0.10.0) (2026-10-20)
+
+
+### Features
+
+* **front:** edit connection tags and filter the connections list by them ([60abd56](https://github.com/synclet-io/synclet/commit/60abd565f176c5124634a6d417ded374bb294c7b))
+
+
+### Bug Fixes
+
+* **docker:** static distroless base, moby client and dependency bumps clear the image's HIGH and MEDIUM CVEs ([b1a7670](https://github.com/synclet-io/synclet/commit/b1a767040681ccaa4b1c0d42b76bfbc2588f82ac))
+
 ## [0.9.0](https://github.com/synclet-io/synclet/compare/synclet-v0.8.0...synclet-v0.9.0) (2026-10-20)
 
 
