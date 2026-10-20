@@ -33,7 +33,7 @@ Run Airbyte connectors without Airbyte: one Go binary, one PostgreSQL. Synclet i
 - **API Keys & Webhooks** -- Programmatic access with workspace API keys, outbound webhooks on sync events
 - **Config Import/Export** -- YAML-based workspace backup and restore
 - **Dark Mode** -- System-aware theme switching
-- **Synclet connectors** -- MIT source and destination connectors written in Go on synclet-go-sdk, in [synclet-io/connectors](https://github.com/synclet-io/connectors); see [Writing your own connector](#writing-your-own-connector)
+- **Synclet connectors** -- MIT source and destination connectors written in Go on synclet-go-sdk, published as Docker images that implement the Airbyte Protocol; the list lives in [synclet-io/connectors](https://github.com/synclet-io/connectors), and [Writing your own connector](#writing-your-own-connector) shows how to add one
 
 ## Screenshots
 
@@ -464,19 +464,6 @@ A connector is a Go program on [synclet-go-sdk](https://github.com/synclet-io/sy
 - [Publishing a connector](https://synclet-io.github.io/synclet-site/docs/connector-development/publishing-a-connector/): the release tag, the GHCR image, the registry, and the template for your own connectors repository
 
 Show what you built in [Show and tell](https://github.com/synclet-io/synclet/discussions/categories/show-and-tell).
-
-## Native Connectors
-
-Synclet's own Go connectors, built on [synclet-go-sdk](https://github.com/synclet-io/synclet-go-sdk), live in [synclet-io/connectors](https://github.com/synclet-io/connectors) and ship as Docker images:
-
-| Connector | Type | Directory |
-|-----------|------|-----------|
-| Google Sheets | Source | [`source-google-sheets`](https://github.com/synclet-io/connectors/tree/main/connectors/source-google-sheets) |
-| Google Sheets | Destination | [`destination-google-sheets`](https://github.com/synclet-io/connectors/tree/main/connectors/destination-google-sheets) |
-| MySQL | Source | [`source-mysql`](https://github.com/synclet-io/connectors/tree/main/connectors/source-mysql) |
-| BigQuery | Destination | [`destination-bigquery`](https://github.com/synclet-io/connectors/tree/main/connectors/destination-bigquery) |
-
-Native connectors implement the same Airbyte Protocol and can be used interchangeably with their Docker-based counterparts.
 
 ## Tested with
 
