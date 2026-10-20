@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/synclet-io/synclet/compare/synclet-helm-v0.6.0...synclet-helm-v0.7.0) (2026-10-20)
+
+
+### Features
+
+* **helm:** request and backend timeouts on the HTTPRoute ([b0fd6b4](https://github.com/synclet-io/synclet/commit/b0fd6b4e74f6bd4d5f72e9120506a396f755d30a))
+
 ## [0.6.0](https://github.com/synclet-io/synclet/compare/synclet-helm-v0.5.0...synclet-helm-v0.6.0) (2026-10-20)
 
 
