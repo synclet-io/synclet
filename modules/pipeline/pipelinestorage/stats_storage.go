@@ -258,7 +258,8 @@ func (s *StatsStorage) QueryWorkspaceRollup(ctx context.Context, workspaceID uui
 	return totals, nil
 }
 
-// QueryTopConnections returns top connections by records synced for a workspace.
+// QueryTopConnections returns the workspace's existing connections with the most records synced;
+// a deleted connection's rollups still count in the workspace totals but not here.
 func (s *StatsStorage) QueryTopConnections(ctx context.Context, workspaceID uuid.UUID, bucketSize pipelinesvc.BucketSize, from, to time.Time, limit int) ([]pipelinesvc.TopConnectionRow, error) {
 	var rows []pipelinesvc.TopConnectionRow
 
@@ -269,15 +270,16 @@ func (s *StatsStorage) QueryTopConnections(ctx context.Context, workspaceID uuid
 
 	if err := s.db.WithContext(ctx).Raw(`
 		SELECT
-			connection_id,
-			SUM(records_read) AS records_synced,
-			SUM(bytes_synced) AS bytes_synced
-		FROM pipeline.stats_rollups
-		WHERE workspace_id = ?
-			AND bucket_size = ?
-			AND bucket_start >= ?
-			AND bucket_start < ?
-		GROUP BY connection_id
+			r.connection_id,
+			SUM(r.records_read) AS records_synced,
+			SUM(r.bytes_synced) AS bytes_synced
+		FROM pipeline.stats_rollups r
+		JOIN pipeline.connections c ON c.id = r.connection_id
+		WHERE r.workspace_id = ?
+			AND r.bucket_size = ?
+			AND r.bucket_start >= ?
+			AND r.bucket_start < ?
+		GROUP BY r.connection_id
 		ORDER BY records_synced DESC
 		LIMIT ?
 	`, workspaceID, dbBucketSize, from, to, limit).Scan(&rows).Error; err != nil {

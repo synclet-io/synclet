@@ -220,3 +220,26 @@ func TestRollupQueriesEqualAttemptSums(t *testing.T) {
 		})
 	}
 }
+
+func TestTopConnectionsSkipDeletedConnections(t *testing.T) {
+	ctx := context.Background()
+	f := setup(t, 2)
+	now := time.Now()
+	f.insert(t, now, seedAttempts)
+
+	stats := pipelinestorage.NewStatsStorage(f.db)
+	require.NoError(t, stats.UpsertRollups(ctx, pipelineservice.BucketSizeHourly, now.Add(-30*24*time.Hour), "hour"))
+
+	require.NoError(t, f.db.Exec(`DELETE FROM pipeline.connections WHERE id = ?`, f.connIDs[1]).Error)
+
+	from := now.Add(-24 * time.Hour)
+
+	top, err := stats.QueryTopConnections(ctx, f.workspaceID, pipelineservice.BucketSizeHourly, from, now, 5)
+	require.NoError(t, err)
+	require.Len(t, top, 1)
+	assert.Equal(t, f.connIDs[0], top[0].ConnectionID)
+
+	ws, err := stats.QueryWorkspaceRollup(ctx, f.workspaceID, pipelineservice.BucketSizeHourly, from, now)
+	require.NoError(t, err)
+	assert.Equal(t, sum(seedAttempts, -1).records, ws.RecordsRead, "the workspace totals keep the deleted connection's syncs")
+}
