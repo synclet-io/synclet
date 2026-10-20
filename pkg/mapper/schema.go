@@ -5,6 +5,7 @@ import (
 	"math"
 	"slices"
 	"strconv"
+	"strings"
 
 	"github.com/google/cel-go/common/types"
 )
@@ -28,9 +29,11 @@ var (
 
 // schemaNode is the part of a JSON schema the mapper reads.
 type schemaNode struct {
-	Type       any                        `json:"type"`
-	Properties map[string]json.RawMessage `json:"properties"`
-	Items      json.RawMessage            `json:"items"`
+	Type        any                        `json:"type"`
+	Format      string                     `json:"format"`
+	AirbyteType string                     `json:"airbyte_type"`
+	Properties  map[string]json.RawMessage `json:"properties"`
+	Items       json.RawMessage            `json:"items"`
 }
 
 func parseNode(raw json.RawMessage) schemaNode {
@@ -393,4 +396,23 @@ func numberOf(val int64, kind string) any {
 	}
 
 	return val
+}
+
+// dateKind names the date, time or date-time string a node holds by its format
+// or Airbyte type, or returns "" for any other node.
+func (n schemaNode) dateKind() string {
+	if n.singleType() != "string" {
+		return ""
+	}
+
+	switch {
+	case n.Format == "date-time", strings.HasPrefix(n.AirbyteType, "timestamp"):
+		return "date-time"
+	case n.Format == "date", n.AirbyteType == "date":
+		return "date"
+	case n.Format == "time", strings.HasPrefix(n.AirbyteType, "time_"):
+		return "time"
+	}
+
+	return ""
 }

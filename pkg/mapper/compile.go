@@ -559,6 +559,12 @@ func (c *compiler) expression(idx int, field string, env *cel.Env, expr string) 
 		return nil, nil, false
 	}
 
+	if msg := dateConversionProblem(checked, c.props); msg != "" {
+		c.fail(idx, field, msg)
+
+		return nil, nil, false
+	}
+
 	program, err := env.Program(checked, cel.CostLimit(c.in.CostLimit))
 	if err != nil {
 		c.fail(idx, field, err.Error())

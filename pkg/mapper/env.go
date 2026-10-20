@@ -300,3 +300,61 @@ func referencedFields(parsed *cel.Ast) []string {
 
 	return fields
 }
+
+// dateConversionProblem reports int(), uint() or double() applied to a record
+// field that holds a date, time or date-time string: CEL reads the string as a
+// number, so the conversion fails on every record.
+func dateConversionProblem(checked *cel.Ast, props map[string]json.RawMessage) string {
+	root := ast.NavigateAST(checked.NativeRep())
+
+	for _, conv := range []string{"int", "uint", "double"} {
+		for _, call := range ast.MatchDescendants(root, ast.FunctionMatcher(conv)) {
+			args := call.AsCall().Args()
+			if len(args) != 1 {
+				continue
+			}
+
+			path, ok := recordPath(args[0])
+			if !ok || len(path) == 0 {
+				continue
+			}
+
+			node, ok := pathNode(props, path)
+			if !ok {
+				continue
+			}
+
+			kind := node.dateKind()
+			if kind == "" {
+				continue
+			}
+
+			field := strings.Join(path, ".")
+			msg := fmt.Sprintf("%q is a %s string, %s() cannot read it", field, kind, conv)
+
+			if kind != "time" {
+				msg += fmt.Sprintf(`; use %s(parseTimestamp(r.%s, "iso8601")) for epoch seconds`, conv, field)
+			}
+
+			return msg
+		}
+	}
+
+	return ""
+}
+
+func pathNode(props map[string]json.RawMessage, path []string) (schemaNode, bool) {
+	var node schemaNode
+
+	for _, field := range path {
+		raw, ok := props[field]
+		if !ok {
+			return schemaNode{}, false
+		}
+
+		node = parseNode(raw)
+		props = node.Properties
+	}
+
+	return node, true
+}

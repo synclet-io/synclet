@@ -401,3 +401,48 @@ func TestCompileRenameSwapAndChain(t *testing.T) {
 		})
 	}
 }
+
+func TestCompileDateStringConversion(t *testing.T) {
+	t.Parallel()
+
+	const schema = `{
+  "type": "object",
+  "properties": {
+    "tstamp": {"type": "string", "format": "date-time", "airbyte_type": "timestamp_without_timezone"},
+    "day": {"type": ["null", "string"], "format": "date"},
+    "at": {"type": "string", "format": "time"},
+    "meta": {"type": "object", "properties": {"seen": {"type": "string", "format": "date-time"}}},
+    "qty": {"type": "string"}
+  }
+}`
+
+	tests := []struct {
+		name  string
+		steps string
+		issue *Issue
+	}{
+		{"int of a date-time", `[{"set":{"epoch":"int(r.tstamp)"}}]`, &Issue{0, "epoch", `"tstamp" is a date-time string, int() cannot read it; use int(parseTimestamp(r.tstamp, "iso8601")) for epoch seconds`}},
+		{"double of a nullable date", `[{"set":{"d":"double(r.day)"}}]`, &Issue{0, "d", `"day" is a date string, double() cannot read it; use double(parseTimestamp(r.day, "iso8601")) for epoch seconds`}},
+		{"uint of a nested date-time", `[{"set":{"s":"uint(r.meta.seen)"}}]`, &Issue{0, "s", `"meta.seen" is a date-time string, uint() cannot read it; use uint(parseTimestamp(r.meta.seen, "iso8601")) for epoch seconds`}},
+		{"int of a time", `[{"set":{"t":"int(r.at)"}}]`, &Issue{0, "t", `"at" is a time string, int() cannot read it`}},
+		{"inside a filter", `[{"filter":"int(r.tstamp) > 0"}]`, &Issue{0, "", `"tstamp" is a date-time string, int() cannot read it; use int(parseTimestamp(r.tstamp, "iso8601")) for epoch seconds`}},
+		{"int of a plain string", `[{"set":{"n":"int(r.qty)"}}]`, nil},
+		{"int of a parsed date-time", `[{"set":{"epoch":"int(parseTimestamp(r.tstamp, \"iso8601\"))"}}]`, nil},
+		{"string of a date-time", `[{"set":{"s":"string(r.tstamp)"}}]`, nil},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			_, res := Compile(Input{Schema: json.RawMessage(schema), Steps: steps(t, tt.steps)})
+			if tt.issue == nil {
+				require.Empty(t, res.Errors)
+
+				return
+			}
+
+			require.Equal(t, []Issue{*tt.issue}, res.Errors)
+		})
+	}
+}
