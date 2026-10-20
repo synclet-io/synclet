@@ -80,6 +80,15 @@ export function useBatchUpdateConnectors() {
   })
 }
 
+export function useDeleteManagedConnector() {
+  const qc = useQueryClient()
+  const { currentWorkspaceId } = useAuth()
+  return useMutation({
+    mutationFn: (id: string) => connectorApi.deleteManagedConnector(id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: connectorKeys.all(currentWorkspaceId.value ?? '') }) },
+  })
+}
+
 const STAR_MUTATION_KEY = ['connector-star'] as const
 
 export function useSetConnectorStar() {

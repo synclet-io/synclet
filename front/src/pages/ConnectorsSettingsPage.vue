@@ -2,7 +2,8 @@
 import type { ConnectorType, ManagedConnector } from '@entities/connector'
 import type { Repository } from '@entities/repository'
 import type { Column, Tab } from '@shared/ui'
-import { useAddConnector, useBatchUpdateConnectors, useManagedConnectors, useUpdateManagedConnector } from '@entities/connector'
+import { useAuth } from '@entities/auth'
+import { useAddConnector, useBatchUpdateConnectors, useDeleteManagedConnector, useManagedConnectors, useUpdateManagedConnector } from '@entities/connector'
 import { useAddRepository, useDeleteRepository, useRepositories, useSyncRepository } from '@entities/repository'
 import { ConnectorStarToggle } from '@features/connector-star'
 import { BreakingChangeDialog } from '@features/connector-update'
@@ -14,6 +15,12 @@ import { ArrowUpCircle, Container, Globe, RefreshCw, Trash2 } from 'lucide-vue-n
 import { computed, ref, watch } from 'vue'
 
 const toast = useToast()
+const auth = useAuth()
+
+const canEdit = computed(() => {
+  const role = auth.workspaces.value.find(w => w.workspaceId === auth.currentWorkspaceId.value)?.role
+  return role === 'editor' || role === 'admin'
+})
 
 // Filter state
 const repositoryFilter = ref('')
@@ -65,14 +72,37 @@ const pagedManaged = computed(() => {
   return filteredManaged.value.slice(start, start + PAGE_SIZE)
 })
 
-const columns: Column[] = [
+const columns = computed<Column[]>(() => [
   { key: 'star', label: '', width: '48px' },
   { key: 'name', label: 'Name' },
   { key: 'dockerImage', label: 'Docker Image' },
   { key: 'dockerTag', label: 'Tag', width: '100px' },
   { key: 'status', label: 'Status', width: '100px' },
   { key: 'update', label: 'Update', width: '160px' },
-]
+  ...(canEdit.value ? [{ key: 'actions', label: '', align: 'right' as const, width: '100px' }] : []),
+])
+
+const deleteConnectorMutation = useDeleteManagedConnector()
+const deleteConnectorTarget = ref<ManagedConnector | null>(null)
+const deleteConnectorLoading = ref(false)
+
+async function handleDeleteConnector() {
+  if (!deleteConnectorTarget.value)
+    return
+  const target = deleteConnectorTarget.value
+  deleteConnectorLoading.value = true
+  try {
+    await deleteConnectorMutation.mutateAsync(target.id)
+    toast.success(`${target.name} deleted`)
+    deleteConnectorTarget.value = null
+  }
+  catch (e: unknown) {
+    toast.error(getErrorMessage(e) || 'Failed to delete connector')
+  }
+  finally {
+    deleteConnectorLoading.value = false
+  }
+}
 
 function statusVariant(status: string) {
   const map: Record<string, 'success' | 'warning' | 'info' | 'gray'> = {
@@ -541,7 +571,25 @@ async function handleSyncRepo(repo: Repository) {
           </SButton>
         </div>
       </template>
+      <template #cell-actions="{ row }">
+        <div class="flex justify-end">
+          <SButton size="sm" variant="ghost" class="text-danger hover:text-danger" :aria-label="`Delete ${row.name}`" @click="deleteConnectorTarget = row">
+            <Trash2 class="w-3.5 h-3.5" /> Delete
+          </SButton>
+        </div>
+      </template>
     </STable>
+
+    <SConfirmDialog
+      :open="!!deleteConnectorTarget"
+      title="Delete Connector"
+      :message="`Are you sure you want to delete ${deleteConnectorTarget?.name ?? ''}? This cannot be undone.`"
+      confirm-text="Delete Connector"
+      variant="danger"
+      :loading="deleteConnectorLoading"
+      @cancel="deleteConnectorTarget = null"
+      @confirm="handleDeleteConnector"
+    />
 
     <SPagination
       :total="filteredManaged.length"

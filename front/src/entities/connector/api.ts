@@ -184,6 +184,10 @@ export async function batchUpdateConnectors(connectorIds: string[]): Promise<{ u
   }
 }
 
+export async function deleteManagedConnector(id: string): Promise<void> {
+  await registryClient.deleteManagedConnector({ id })
+}
+
 export async function starManagedConnector(id: string): Promise<void> {
   await registryClient.starManagedConnector({ id })
 }
