@@ -101,6 +101,7 @@ func (s *SyncScheduler) Execute(ctx context.Context) error {
 				Status:       pipelineservice.JobStatusScheduled,
 				JobType:      pipelineservice.JobTypeSync,
 				ScheduledAt:  now,
+				Attempt:      1,
 				MaxAttempts:  conn.MaxAttempts,
 			}
 

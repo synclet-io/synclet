@@ -209,8 +209,8 @@ func (h *JobHandler) DownloadJobLogs(ctx context.Context, req *connect.Request[p
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	if req.Msg.GetAttempt() < 1 {
-		return connect.NewError(connect.CodeInvalidArgument, errors.New("attempt must be at least 1"))
+	if req.Msg.GetAttempt() < 0 {
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("attempt must not be negative"))
 	}
 
 	out := bufio.NewWriterSize(&chunkSender{send: func(chunk []byte) error {

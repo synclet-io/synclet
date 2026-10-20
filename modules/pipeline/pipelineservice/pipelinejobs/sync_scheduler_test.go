@@ -161,6 +161,7 @@ func TestSyncScheduler_Execute(t *testing.T) {
 		for _, job := range mock.createdJobs {
 			assert.Equal(t, pipelineservice.JobStatusScheduled, job.Status)
 			assert.Equal(t, pipelineservice.JobTypeSync, job.JobType)
+			assert.Equal(t, 1, job.Attempt, "a scheduled job starts at attempt 1, as a manual one does")
 		}
 
 		assert.Len(t, mock.updatedConnections, 2, "should update next_scheduled_at for 2 connections")
