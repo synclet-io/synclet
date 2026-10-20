@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/docker/docker/api/types/container"
 	"github.com/go-pnp/go-pnp/logging"
+	"github.com/moby/moby/api/types/container"
 	"github.com/samber/lo"
 )
 

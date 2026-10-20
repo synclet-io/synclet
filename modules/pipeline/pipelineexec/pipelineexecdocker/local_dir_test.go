@@ -13,11 +13,11 @@ import (
 	"sync"
 	"testing"
 
-	dockercontainer "github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/mount"
-	"github.com/docker/docker/client"
 	"github.com/go-pnp/go-pnp/logging"
 	"github.com/google/uuid"
+	dockercontainer "github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/mount"
+	"github.com/moby/moby/client"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -97,9 +97,9 @@ func newHostConfigDaemon(t *testing.T, failAttach bool) (*hostConfigDaemon, *cli
 	}))
 	t.Cleanup(server.Close)
 
-	cli, err := client.NewClientWithOpts(
+	cli, err := client.New(
 		client.WithHost("tcp://"+strings.TrimPrefix(server.URL, "http://")),
-		client.WithVersion("1.47"),
+		client.WithAPIVersion("1.47"),
 	)
 	require.NoError(t, err)
 

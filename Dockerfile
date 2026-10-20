@@ -22,6 +22,6 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     go build -ldflags "-X github.com/synclet-io/synclet/pkg/buildinfo.version=${VERSION}" -o /synclet .
 
 # Stage 3: Runtime
-FROM gcr.io/distroless/base-debian12:nonroot
+FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=backend /synclet /usr/local/bin/synclet
 ENTRYPOINT ["synclet"]

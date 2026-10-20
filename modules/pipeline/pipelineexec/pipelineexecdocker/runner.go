@@ -13,12 +13,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	dockercontainer "github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/api/types/mount"
-	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/stdcopy"
+	"github.com/moby/moby/api/pkg/stdcopy"
+	dockercontainer "github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/mount"
+	"github.com/moby/moby/client"
 	"go.uber.org/multierr"
 
 	pkgcontainer "github.com/synclet-io/synclet/pkg/container"
@@ -140,7 +138,7 @@ type ContainerRunner struct {
 //
 // ownerID is stamped as the OwnerLabel on every container the runner creates.
 func NewContainerRunner(tempDirRoot, localRoot, ownerID string) (*ContainerRunner, error) {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	cli, err := client.New(client.FromEnv)
 	if err != nil {
 		return nil, fmt.Errorf("creating docker client: %w", err)
 	}
@@ -189,7 +187,7 @@ func (r *ContainerRunner) ResolveDigest(ctx context.Context, img string) (string
 
 // Pull pulls a Docker image, discarding progress output.
 func (r *ContainerRunner) Pull(ctx context.Context, img string) (rerr error) {
-	reader, err := r.client.ImagePull(ctx, img, image.PullOptions{})
+	reader, err := r.client.ImagePull(ctx, img, client.ImagePullOptions{})
 	if err != nil {
 		return fmt.Errorf("pulling image %s: %w", img, err)
 	}
@@ -322,7 +320,11 @@ func (r *ContainerRunner) Run(ctx context.Context, opts RunOptions) (*RunResult,
 	}
 
 	// Create container.
-	resp, err := r.client.ContainerCreate(ctx, containerCfg, hostCfg, nil, nil, opts.Name)
+	resp, err := r.client.ContainerCreate(ctx, client.ContainerCreateOptions{
+		Config:     containerCfg,
+		HostConfig: hostCfg,
+		Name:       opts.Name,
+	})
 	if err != nil {
 		cleanup()
 
@@ -332,7 +334,7 @@ func (r *ContainerRunner) Run(ctx context.Context, opts RunOptions) (*RunResult,
 	containerID := resp.ID
 
 	// Attach to container to get stdout/stderr streams.
-	attachResp, err := r.client.ContainerAttach(ctx, containerID, dockercontainer.AttachOptions{
+	attachResp, err := r.client.ContainerAttach(ctx, containerID, client.ContainerAttachOptions{
 		Stream: true,
 		Stdout: true,
 		Stderr: true,
@@ -340,7 +342,7 @@ func (r *ContainerRunner) Run(ctx context.Context, opts RunOptions) (*RunResult,
 	})
 	if err != nil {
 		// Use context.WithoutCancel so cleanup succeeds even if ctx was cancelled.
-		_ = r.client.ContainerRemove(context.WithoutCancel(ctx), containerID, dockercontainer.RemoveOptions{Force: true})
+		_, _ = r.client.ContainerRemove(context.WithoutCancel(ctx), containerID, client.ContainerRemoveOptions{Force: true})
 
 		cleanup()
 
@@ -348,10 +350,10 @@ func (r *ContainerRunner) Run(ctx context.Context, opts RunOptions) (*RunResult,
 	}
 
 	// Start container.
-	if err := r.client.ContainerStart(ctx, containerID, dockercontainer.StartOptions{}); err != nil {
+	if _, err := r.client.ContainerStart(ctx, containerID, client.ContainerStartOptions{}); err != nil {
 		attachResp.Close()
 
-		_ = r.client.ContainerRemove(context.WithoutCancel(ctx), containerID, dockercontainer.RemoveOptions{Force: true})
+		_, _ = r.client.ContainerRemove(context.WithoutCancel(ctx), containerID, client.ContainerRemoveOptions{Force: true})
 
 		cleanup()
 
@@ -387,17 +389,17 @@ func (r *ContainerRunner) Run(ctx context.Context, opts RunOptions) (*RunResult,
 	// the drain timeout. If waiting fails (ctx cancelled), the attach connection
 	// is closed at once.
 	go func() {
-		statusCh, errCh := r.client.ContainerWait(ctx, containerID, dockercontainer.WaitConditionNotRunning)
+		wait := r.client.ContainerWait(ctx, containerID, client.ContainerWaitOptions{Condition: dockercontainer.WaitConditionNotRunning})
 
 		waitFailed := false
 
 		select {
-		case err := <-errCh:
+		case err := <-wait.Error:
 			if err != nil {
 				result.ExitCode = -1
 				waitFailed = true
 			}
-		case status := <-statusCh:
+		case status := <-wait.Result:
 			result.ExitCode = int(status.StatusCode)
 		}
 
@@ -456,20 +458,20 @@ func (r *ContainerRunner) Run(ctx context.Context, opts RunOptions) (*RunResult,
 
 // ListByLabel returns all containers matching every given label filter.
 func (r *ContainerRunner) ListByLabel(ctx context.Context, labels ...string) ([]dockercontainer.Summary, error) {
-	filterArgs := filters.NewArgs()
-	for _, label := range labels {
-		filterArgs.Add("label", label)
+	list, err := r.client.ContainerList(ctx, client.ContainerListOptions{
+		All:     true,
+		Filters: make(client.Filters).Add("label", labels...),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("listing containers: %w", err)
 	}
 
-	return r.client.ContainerList(ctx, dockercontainer.ListOptions{
-		All:     true,
-		Filters: filterArgs,
-	})
+	return list.Items, nil
 }
 
 // Stop stops a running container with a default timeout.
 func (r *ContainerRunner) Stop(ctx context.Context, containerID string) error {
-	if err := r.client.ContainerStop(ctx, containerID, dockercontainer.StopOptions{}); err != nil {
+	if _, err := r.client.ContainerStop(ctx, containerID, client.ContainerStopOptions{}); err != nil {
 		return fmt.Errorf("stopping container %s: %w", containerID, err)
 	}
 
@@ -479,7 +481,7 @@ func (r *ContainerRunner) Stop(ctx context.Context, containerID string) error {
 // StopWithTimeout stops a container with a specific grace period.
 // Docker SDK handles SIGTERM -> wait timeout -> SIGKILL automatically.
 func (r *ContainerRunner) StopWithTimeout(ctx context.Context, containerID string, timeoutSeconds int) error {
-	if err := r.client.ContainerStop(ctx, containerID, dockercontainer.StopOptions{
+	if _, err := r.client.ContainerStop(ctx, containerID, client.ContainerStopOptions{
 		Timeout: &timeoutSeconds,
 	}); err != nil {
 		return fmt.Errorf("stopping container %s with %ds timeout: %w", containerID, timeoutSeconds, err)
@@ -490,7 +492,7 @@ func (r *ContainerRunner) StopWithTimeout(ctx context.Context, containerID strin
 
 // Remove removes a container. Use Force option if the container might still be running.
 func (r *ContainerRunner) Remove(ctx context.Context, containerID string) error {
-	if err := r.client.ContainerRemove(ctx, containerID, dockercontainer.RemoveOptions{
+	if _, err := r.client.ContainerRemove(ctx, containerID, client.ContainerRemoveOptions{
 		Force: true,
 	}); err != nil {
 		return fmt.Errorf("removing container %s: %w", containerID, err)

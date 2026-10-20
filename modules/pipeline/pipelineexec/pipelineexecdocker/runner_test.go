@@ -3,6 +3,7 @@ package pipelineexecdocker
 import (
 	"bufio"
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,10 +16,9 @@ import (
 	"testing"
 	"time"
 
-	dockercontainer "github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/stdcopy"
-
+	"github.com/moby/moby/api/pkg/stdcopy"
+	dockercontainer "github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/client"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -166,10 +166,10 @@ func TestContainerRunner_Run_StampsOwnerLabel(t *testing.T) {
 	}))
 	t.Cleanup(daemon.Close)
 
-	cli, err := client.NewClientWithOpts(
+	cli, err := client.New(
 		client.WithHost("tcp://"+strings.TrimPrefix(daemon.URL, "http://")),
 		client.WithHTTPClient(daemon.Client()),
-		client.WithVersion("1.47"),
+		client.WithAPIVersion("1.47"),
 	)
 	require.NoError(t, err)
 
@@ -231,13 +231,35 @@ func fakeAttachDaemon(t *testing.T, attach func(conn net.Conn, rw *bufio.ReadWri
 	}))
 	t.Cleanup(daemon.Close)
 
-	cli, err := client.NewClientWithOpts(
+	cli, err := client.New(
 		client.WithHost("tcp://"+strings.TrimPrefix(daemon.URL, "http://")),
-		client.WithVersion("1.47"),
+		client.WithAPIVersion("1.47"),
 	)
 	require.NoError(t, err)
 
 	return cli
+}
+
+// stdWriter frames each write as one multiplexed attach-stream message.
+type stdWriter struct {
+	w      io.Writer
+	stream stdcopy.StdType
+}
+
+func newStdWriter(w io.Writer, stream stdcopy.StdType) *stdWriter {
+	return &stdWriter{w: w, stream: stream}
+}
+
+func (s *stdWriter) Write(p []byte) (int, error) {
+	header := make([]byte, 8)
+	header[0] = byte(s.stream)
+	binary.BigEndian.PutUint32(header[4:], uint32(len(p)))
+
+	if _, err := s.w.Write(header); err != nil {
+		return 0, err
+	}
+
+	return s.w.Write(p)
 }
 
 func recordLines(from, to int) string {
@@ -251,7 +273,7 @@ func recordLines(from, to int) string {
 
 func TestContainerRunner_Run_DrainsOutputAfterExit(t *testing.T) {
 	cli := fakeAttachDaemon(t, func(_ net.Conn, rw *bufio.ReadWriter, exited <-chan struct{}) {
-		stdout := stdcopy.NewStdWriter(rw, stdcopy.Stdout)
+		stdout := newStdWriter(rw, stdcopy.Stdout)
 
 		_, _ = stdout.Write([]byte(recordLines(0, 10)))
 		_ = rw.Flush()
@@ -291,7 +313,7 @@ func TestContainerRunner_Run_OutputThatNeverEndsFailsAfterGracePeriod(t *testing
 	t.Cleanup(func() { close(release) })
 
 	cli := fakeAttachDaemon(t, func(_ net.Conn, rw *bufio.ReadWriter, _ <-chan struct{}) {
-		_, _ = stdcopy.NewStdWriter(rw, stdcopy.Stdout).Write([]byte(recordLines(0, 3)))
+		_, _ = newStdWriter(rw, stdcopy.Stdout).Write([]byte(recordLines(0, 3)))
 		_ = rw.Flush()
 
 		<-release
@@ -335,7 +357,7 @@ func TestContainerRunner_Run_SlowConsumerDrainsPastGracePeriod(t *testing.T) {
 	cli := fakeAttachDaemon(t, func(_ net.Conn, rw *bufio.ReadWriter, exited <-chan struct{}) {
 		<-exited
 
-		stdout := stdcopy.NewStdWriter(rw, stdcopy.Stdout)
+		stdout := newStdWriter(rw, stdcopy.Stdout)
 		for i := 0; i < 1000; i += 100 {
 			_, _ = stdout.Write([]byte(recordLines(i, i+100)))
 		}
