@@ -7,6 +7,8 @@
 
 # Synclet
 
+[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/synclet)](https://artifacthub.io/packages/search?repo=synclet)
+
 Run Airbyte connectors without Airbyte: one Go binary, one PostgreSQL. Synclet is a self-hosted control plane for connectors that implement the Airbyte Protocol, with schema discovery, incremental sync and monitoring.
 
 <p align="center">

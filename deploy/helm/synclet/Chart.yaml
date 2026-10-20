@@ -4,7 +4,9 @@ description: Data synchronization platform with Airbyte connector compatibility
 type: application
 version: 0.5.0
 appVersion: 0.8.0
+kubeVersion: ">=1.21.0-0"
 home: https://github.com/synclet-io/synclet
+icon: https://synclet-io.github.io/synclet-site/synclet-logo.svg
 sources:
   - https://github.com/synclet-io/synclet
 maintainers:
@@ -14,3 +16,14 @@ keywords:
   - data-sync
   - airbyte
   - etl
+annotations:
+  artifacthub.io/license: MIT
+  artifacthub.io/category: integration-delivery
+  artifacthub.io/prerelease: "false"
+  artifacthub.io/links: |
+    - name: Documentation
+      url: https://synclet-io.github.io/synclet-site/docs/deployment/kubernetes/
+    - name: Source
+      url: https://github.com/synclet-io/synclet/tree/main/deploy/helm/synclet
+    - name: support
+      url: https://github.com/synclet-io/synclet/issues

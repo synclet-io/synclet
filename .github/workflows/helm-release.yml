@@ -14,14 +14,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: oras-project/setup-oras@v1
+
       - name: Determine version from tag
         id: version
         run: echo "version=${GITHUB_REF#refs/tags/synclet-helm-v}" >> "$GITHUB_OUTPUT"
 
       - name: Log in to GHCR
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io --username ${{ github.actor }} --password-stdin
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io --username ${{ github.actor }} --password-stdin
+          echo "${{ secrets.GITHUB_TOKEN }}" | oras login ghcr.io --username ${{ github.actor }} --password-stdin
+
+      - name: Set Artifact Hub changes and images annotations
+        run: deploy/helm/artifacthub-annotations.sh deploy/helm/synclet
 
       - name: Package and push Helm chart
         run: |
           helm package deploy/helm/synclet
           helm push synclet-${{ steps.version.outputs.version }}.tgz oci://ghcr.io/${{ github.repository_owner }}/charts
+
+      - name: Push Artifact Hub repository metadata
+        working-directory: deploy/helm
+        run: |
+          oras push ghcr.io/${{ github.repository_owner }}/charts/synclet:artifacthub.io \
+            --config /dev/null:application/vnd.cncf.artifacthub.config.v1+yaml \
+            artifacthub-repo.yml:application/vnd.cncf.artifacthub.repository-metadata.layer.v1.yaml

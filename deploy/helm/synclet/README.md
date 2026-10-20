@@ -1,0 +1,95 @@
+# Synclet
+
+[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/synclet)](https://artifacthub.io/packages/search?repo=synclet)
+
+[Synclet](https://github.com/synclet-io/synclet) is an open-source data synchronization platform that moves data between sources and destinations with Airbyte-compatible connectors.
+On Kubernetes every sync runs as its own Kubernetes Job, so no Docker daemon is needed.
+
+## Prerequisites
+
+- Kubernetes 1.21+
+- Helm 3.8+ (OCI registry support)
+- A default StorageClass, for the bundled PostgreSQL, or an external PostgreSQL 16 database
+- An Ingress controller (the default class is `nginx`) or a Gateway API implementation to expose the UI
+- Optional: Prometheus Operator for `serviceMonitor`, Vault Secrets Operator for `vso`
+
+## Install
+
+```bash
+helm install synclet oci://ghcr.io/synclet-io/charts/synclet \
+  --namespace synclet --create-namespace \
+  -f values.yaml
+```
+
+Add `--version <chart version>` to pin a release.
+The JWT secret, the encryption key, the internal API secret and the PostgreSQL password are generated on first install and kept across upgrades when left empty.
+To set them yourself, generate each with `openssl rand -base64 32`:
+
+```yaml
+auth:
+  jwtSecret: "<at least 32 bytes>"
+encryption:
+  key: "<base64 of 32 bytes>"
+```
+
+## Upgrade
+
+```bash
+helm upgrade synclet oci://ghcr.io/synclet-io/charts/synclet \
+  --namespace synclet \
+  -f values.yaml
+```
+
+Read the [CHANGELOG](https://github.com/synclet-io/synclet/blob/main/deploy/helm/synclet/CHANGELOG.md) before upgrading.
+Charts before 0.4.0 ran the executor as a Deployment: in distributed mode, delete it first with `kubectl delete deployment <fullname>-executor`.
+
+## Uninstall
+
+```bash
+helm uninstall synclet --namespace synclet
+```
+
+The PostgreSQL volume, and the bundled Garage volume and Secret, are kept.
+
+## Modes
+
+**Standalone** (`mode: standalone`, the default): one server pod runs the API, the scheduler and the executor.
+The simplest setup, suited to small and medium workloads.
+
+**Distributed** (`mode: distributed`): the server and jobs Deployments and an executor StatefulSet run separately.
+The API scales on its own, and a failing sync cannot take it down.
+Set `executor.enabled: false` to run the executor outside the chart.
+
+In both modes the executor launches each sync as a Kubernetes Job in `k8s.namespace`, the release namespace when empty.
+A namespace set there must exist before install.
+
+## Main values
+
+| Value | Description | Default |
+|-------|-------------|---------|
+| `mode` | `standalone` or `distributed` | `standalone` |
+| `image.registry`, `image.repository`, `image.tag` | Synclet image; an empty tag uses the chart's `appVersion` | `ghcr.io`, `synclet-io/synclet`, `""` |
+| `server.ingress.enabled` | Create an Ingress | `true` |
+| `server.ingress.hostname`, `server.ingress.ingressClassName` | Ingress host and class | `synclet.local`, `nginx` |
+| `server.ingress.tls` | TLS on the Ingress, with the `<fullname>-tls` Secret | `false` |
+| `server.gateway.enabled` | Create a Gateway API HTTPRoute attached to `server.gateway.parentRefs` | `false` |
+| `server.publicUrl` | URL users reach Synclet at; required when both Ingress and HTTPRoute are enabled | derived |
+| `postgresql.enabled` | Run the bundled PostgreSQL, meant for development and testing | `true` |
+| `externalDatabase.*` | External database (host, port, user, password, database, sslmode) or `existingSecret` with a full DSN | empty |
+| `cors.*` | CORS of the public API (`allowAllOrigins`, `allowedOrigins`, `allowedOriginGlobs`, ...); unset keys keep server defaults | unset |
+| `extraEnv` | Extra env vars of every Synclet container; `server.extraEnv`, `jobs.extraEnv` and `executor.extraEnv` add to one component | `[]` |
+| `executor.enabled` | Run the executor StatefulSet in distributed mode | `true` |
+| `executor.replicaCount` | Executor replicas in distributed mode | `1` |
+| `k8s.namespace` | Namespace of the sync Jobs | release namespace |
+| `logArchive.backend` | Where finished job logs go: `none` (stay in PostgreSQL), `filesystem`, `s3`, `gcs` | `none` |
+| `logArchive.garage.enabled` | Run a bundled single-node Garage S3 store for log archives | `false` |
+
+`values.yaml` documents every value.
+
+## Documentation
+
+- [Kubernetes deployment](https://synclet-io.github.io/synclet-site/docs/deployment/kubernetes/)
+- [Production checklist](https://synclet-io.github.io/synclet-site/docs/deployment/production/)
+- [Configuration](https://synclet-io.github.io/synclet-site/docs/getting-started/configuration/)
+- [Environment variables](https://synclet-io.github.io/synclet-site/docs/reference/environment-variables/)
+- [Source and issues](https://github.com/synclet-io/synclet)
