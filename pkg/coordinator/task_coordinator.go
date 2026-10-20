@@ -215,8 +215,23 @@ func extractTaskResult(taskType string, messages []*protocol.AirbyteMessage, red
 	}
 }
 
+// retryPolicy bounds the retries of one report: exponential backoff from
+// initial up to max, until total has passed since the first attempt.
+type retryPolicy struct {
+	initial time.Duration
+	max     time.Duration
+	total   time.Duration
+}
+
+// taskReportRetry outlasts a server restart and stays inside the server's
+// default connector task running timeout (5m).
+//
+//nolint:gochecknoglobals // tests shorten it
+var taskReportRetry = retryPolicy{initial: time.Second, max: 30 * time.Second, total: 4 * time.Minute}
+
 // reportTaskResult sends the task result to the server via gRPC, with config
-// secrets masked in the error message.
+// secrets masked in the error message. A failure the server may recover from
+// is retried; a rejected result is not.
 func reportTaskResult(cfg TaskConfig, success bool, errMsg string, result []byte) error {
 	clientOpts, err := clientOptions(cfg.SecretsDir)
 	if err != nil {
@@ -236,18 +251,49 @@ func reportTaskResult(cfg TaskConfig, success bool, errMsg string, result []byte
 		Result:       result,
 	})
 
+	deadline := time.Now().Add(taskReportRetry.total)
+	backoff := taskReportRetry.initial
+
+	for attempt := 1; ; attempt++ {
+		err = sendTaskResult(client, req)
+		if err == nil {
+			slog.Info("task coordinator: result reported", "task_id", cfg.TaskID, "success", success)
+
+			return nil
+		}
+
+		if !retryableReport(err) || time.Now().Add(backoff).After(deadline) {
+			slog.Error("task coordinator: failed to report result", "error", err, "task_id", cfg.TaskID, "attempts", attempt)
+
+			return fmt.Errorf("reporting task result: %w", err)
+		}
+
+		slog.Warn("task coordinator: report failed, retrying", "error", err, "task_id", cfg.TaskID, "attempt", attempt, "backoff", backoff)
+		time.Sleep(backoff)
+
+		backoff = min(backoff*2, taskReportRetry.max)
+	}
+}
+
+func sendTaskResult(client executorv1connect.ExecutorServiceClient, req *connect.Request[executorv1.ReportConnectorTaskResultRequest]) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	if _, err := client.ReportConnectorTaskResult(ctx, req); err != nil {
-		slog.Error("task coordinator: failed to report result", "error", err, "task_id", cfg.TaskID)
+	_, err := client.ReportConnectorTaskResult(ctx, req)
 
-		return fmt.Errorf("reporting task result: %w", err)
+	return err //nolint:wrapcheck // wrapped once by reportTaskResult
+}
+
+// retryableReport reports whether a failed report may succeed when sent again:
+// the server was unreachable, overloaded or restarting, not a rejection.
+func retryableReport(err error) bool {
+	switch connect.CodeOf(err) {
+	case connect.CodeUnavailable, connect.CodeDeadlineExceeded, connect.CodeResourceExhausted,
+		connect.CodeAborted, connect.CodeInternal, connect.CodeUnknown:
+		return true
+	default:
+		return false
 	}
-
-	slog.Info("task coordinator: result reported", "task_id", cfg.TaskID, "success", success)
-
-	return nil
 }
 
 // reportTaskError is a convenience function for reporting errors before result extraction.
