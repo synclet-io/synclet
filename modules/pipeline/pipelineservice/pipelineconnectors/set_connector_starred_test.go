@@ -30,7 +30,7 @@ func TestSetConnectorStarred(t *testing.T) {
 
 		require.Len(t, audit.events, 1)
 		event := audit.events[0]
-		assert.Equal(t, "star", event.Action)
+		assert.Equal(t, "update", event.Action)
 		assert.Equal(t, "connector", event.ResourceType)
 		assert.Equal(t, workspaceID, event.WorkspaceID)
 		assert.Equal(t, mc.ID, event.ResourceID)
@@ -73,7 +73,7 @@ func TestSetConnectorStarred(t *testing.T) {
 		assert.False(t, store.managedConnectors.connectors[mc.ID].Starred)
 
 		require.Len(t, audit.events, 1)
-		assert.Equal(t, "unstar", audit.events[0].Action)
+		assert.Equal(t, "update", audit.events[0].Action)
 		assert.Equal(t, true, auditField(audit.events[0].Before, "starred"))
 		assert.Equal(t, false, auditField(audit.events[0].After, "starred"))
 	})

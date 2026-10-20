@@ -49,14 +49,9 @@ func (uc *SetConnectorStarred) Execute(ctx context.Context, params SetConnectorS
 	updated.Starred = params.Starred
 	updated.UpdatedAt = time.Now()
 
-	action := "unstar"
-	if params.Starred {
-		action = "star"
-	}
-
 	uc.audit.Record(ctx, pipelineservice.AuditEvent{
 		WorkspaceID:   params.WorkspaceID,
-		Action:        action,
+		Action:        "update",
 		ResourceType:  "connector",
 		ResourceID:    updated.ID,
 		ResourceLabel: updated.Name,
