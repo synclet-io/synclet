@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/synclet-io/synclet/compare/synclet-helm-v0.5.0...synclet-helm-v0.6.0) (2026-10-20)
+
+
+### Features
+
+* **helm:** Artifact Hub metadata, chart README and per-release change notes ([2cdea6d](https://github.com/synclet-io/synclet/commit/2cdea6da65d8e01ba72938304a8e2b3e26218614))
+
 ## [0.5.0](https://github.com/synclet-io/synclet/compare/synclet-helm-v0.4.0...synclet-helm-v0.5.0) (2026-10-20)
 
 
