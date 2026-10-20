@@ -18,7 +18,7 @@ Run Airbyte connectors without Airbyte: one Go binary, one PostgreSQL. Synclet i
 ## Features
 
 - **Airbyte Protocol connectors** -- Runs source and destination images that implement the Airbyte Protocol; see [Tested with](#tested-with) for the pairs and versions tested
-- **Multiple Execution Modes** -- Docker, Kubernetes, or CLI
+- **Multiple Execution Modes** -- Docker or Kubernetes executors, in the server process or as separate processes
 - **Stream Configuration** -- Field selection, namespace rewriting, primary key overrides
 - **Transforms** -- Per-stream steps (rename, cast, set, hash, mask, filter, drop) with CEL expressions, checked against the stream schema and tried on a sample record before saving; see the [Transforms guide](https://synclet-io.github.io/synclet-site/docs/guides/transforms/)
 - **Connection Tags** -- Tag connections and filter the connection list by tags, with the filter kept in the URL
@@ -117,7 +117,7 @@ The API server runs on `http://localhost:8086` and the frontend dev server on `h
 
 ### Production Deployment
 
-Outside `ENVIRONMENT=development` the process refuses to start without `AUTH_JWT_SECRET` and `SECRET_ENCRYPTION_KEY`; generate each with `openssl rand -base64 32` and back up the encryption key, since stored connector secrets cannot be decrypted without it.
+Outside `ENVIRONMENT=development`, and inside any container, the process refuses to start without `AUTH_JWT_SECRET` and `SECRET_ENCRYPTION_KEY`; generate each with `openssl rand -base64 32` and back up the encryption key, since stored connector secrets cannot be decrypted without it.
 
 **Binary.** Each [GitHub release](https://github.com/synclet-io/synclet/releases) tagged `synclet-v<version>` carries `synclet-v<version>-<os>-<arch>.tar.gz` for `linux/amd64`, `linux/arm64`, `darwin/amd64` and `darwin/arm64`, plus `SHA256SUMS` over every archive. The binary serves the frontend, so it needs only PostgreSQL and Docker:
 ```bash
@@ -135,8 +135,12 @@ cd synclet-v<version>-linux-amd64
 ```bash
 docker build -t synclet .
 docker run --rm --env-file .env synclet migrate up
-docker run -p 8080:8080 --env-file .env -v /var/run/docker.sock:/var/run/docker.sock synclet server --standalone
+docker run -p 8080:8080 --env-file .env --user 0:0 \
+  -e DOCKER_EXECUTOR_TEMP_DIR_ROOT=/tmp/synclet -v /tmp/synclet:/tmp/synclet \
+  -v /var/run/docker.sock:/var/run/docker.sock synclet server --standalone
 ```
+
+The image runs as a non-root user, so, as in the compose file, the standalone server runs as root to reach the Docker socket and keeps its scratch directory at the same path on the host, where the host daemon can bind-mount it into connector containers.
 
 `server` alone serves the API only; `--standalone` also runs the scheduler, event consumers and an executor in the same process. Without it, run `synclet jobs` and `synclet docker-executor` (or `k8s-executor`) as separate processes.
 
@@ -155,6 +159,7 @@ By default the chart creates an `Ingress` (`server.ingress.*`, class `nginx`). O
 | `server.gateway.parentRefs` | Gateways the route attaches to: `name` (required), `namespace`, `sectionName` (listener), `port` | `[]` |
 | `server.gateway.hostnames` | Hostnames the route matches; empty matches every hostname of the listener | `[]` |
 | `server.gateway.paths` | Path matches (`type`, `value`) | `PathPrefix /` |
+| `server.gateway.timeouts` | `request` and `backendRequest` timeouts of the route's rule; raise them when connector checks or discovers that pull an image outlast the Gateway's default (Envoy Gateway: 15s) | `{}` (Gateway default) |
 | `server.gateway.tls` | The Gateway listener terminates TLS; makes the derived public URL `https` | `false` |
 | `server.gateway.labels`, `server.gateway.annotations` | Extra metadata on the route | `{}` |
 | `server.publicUrl` | URL users reach Synclet at; default for `frontend.url` (invite links) and `oidc.callbackBaseURL` | empty |
@@ -296,7 +301,7 @@ executor:
 | `SECRET_ENCRYPTION_KEY_PREVIOUS` | Previous key, kept during key rotation | empty |
 | `PUBLIC_HTTP_SERVER_ADDR` | Public API and UI listen address | `0.0.0.0:8080` |
 | `INTERNAL_HTTP_SERVER_ADDR` | Executor API and the `/live`, `/ready` probes | `0.0.0.0:8081` |
-| `PUBLIC_HTTP_SERVER_CORS_ALLOWED_ORIGINS` | Comma-separated hostnames whose browser origins may call the API | empty |
+| `PUBLIC_HTTP_SERVER_CORS_ALLOWED_ORIGINS` | Comma-separated hostnames whose browser origins may call the API (Helm: `cors.*`) | empty |
 | `AUTH_REGISTRATION_ENABLED` | Allow email/password sign-up | `true` |
 | `AUTH_SECURE_COOKIES` | Mark auth cookies HTTPS-only | `false` |
 | `AUTH_PASSWORD_RESET_COOLDOWN` | Minimum time between two password reset emails for one user | `2m` |
@@ -324,7 +329,7 @@ executor:
 | `DOCKER_EXECUTOR_OWNER_ID` | Owner label that scopes orphan container cleanup to this executor. Executors sharing one Docker daemon need distinct values; two standalone servers on one machine must set it explicitly. A containerised executor needs a stable hostname (the compose file sets `hostname: synclet`) or an explicit value, since a container's default hostname changes on recreation. Containers without the label (from earlier versions) are left alone; remove them by hand once | hostname |
 | `K8S_EXECUTOR_NAMESPACE` | Namespace for connector pods | empty |
 | `K8S_EXECUTOR_LOCAL_VOLUME_CLAIM` | Existing PersistentVolumeClaim mounted at `/local` in the connector containers (Helm: `k8s.localVolume`). Empty mounts a per-pod `emptyDir` | empty |
-| `K8S_EXECUTOR_OWNER_ID` | Owner label on the Jobs and Secrets the Kubernetes executor creates; its reconciler handles only those carrying it, so executors sharing one namespace need distinct values. The default is the pod name: the Helm chart runs the executor as a StatefulSet (stable names `<release>-executor-0`, `-1`, ...), so a restarted replica reclaims its own leftovers, and in standalone mode, where the server runs it in a Deployment, the chart sets the release fullname (`k8s.ownerId` overrides both). Jobs without the label (from earlier versions) are left alone; remove them by hand once | hostname |
+| `K8S_EXECUTOR_OWNER_ID` | Owner label on the Jobs and Secrets the Kubernetes executor creates; its reconciler handles only those carrying it, so executors sharing one namespace need distinct values. The default is the pod name: the Helm chart runs the executor as a StatefulSet (stable names `<fullname>-executor-0`, `-1`, ...), so a restarted replica reclaims its own leftovers, and in standalone mode, where the server runs it in a Deployment, the chart sets the release fullname (`k8s.ownerId` overrides both). Jobs without the label (from earlier versions) are left alone; remove them by hand once | hostname |
 | `EXECUTOR_API_URL` | Internal server URL used by distributed executors | empty |
 | `EXECUTOR_API_TOKEN` | Token distributed executors present to the internal server | empty |
 | `WATERMILL_TRANSPORT` | Event bus transport | `sql` |
@@ -373,7 +378,7 @@ gcloud iam service-accounts add-iam-policy-binding <gsa>@<project>.iam.gservicea
   --member "serviceAccount:<project>.svc.id.goog[<namespace>/<ksa>]"
 ```
 
-`<ksa>` is the chart's service account (`<release>-synclet` unless `serviceAccount.name` is set). Then:
+`<ksa>` is the chart's service account (`<fullname>` unless `serviceAccount.name` is set). Then:
 
 ```yaml
 serviceAccount:
@@ -387,14 +392,14 @@ logArchive:
 
 Outside Workload Identity, store a service account key in a Secret and set `logArchive.gcs.credentialsSecret` (key `key.json` by default); it is mounted only into the server and jobs pods.
 
-The executor deployment (distributed mode) and connector pods run under accounts of their own, so they get no bucket access; see below.
+The executor (distributed mode) and connector pods run under accounts of their own, so they get no bucket access; see below.
 
 #### Service accounts (Helm)
 
 The chart's `serviceAccount` is meant for the server and jobs pods, which archive job logs and so may hold bucket permissions through Workload Identity. Two other workloads run under accounts of their own:
 
-- **Executor** (`executor.serviceAccount`, distributed mode). The executor launches connector pods, so it needs the connector-runner Role, but it never touches the log archive: it sends log lines to the server through the executor API and only the server archives them. With `create: true` (the default) the chart renders `<release>-synclet-executor` and binds it to the connector-runner Role and nothing else. Set `create: false` with a `name` to use an existing account (the chart still binds it), or leave both unset to keep the executor on the chart's account.
-- **Connector pods** (`pipeline.serviceAccount`). Every pod the executor creates (sync, check, spec, discover) runs in `k8s.namespace` under the account in `PIPELINE_RUNTIME_SERVICE_ACCOUNT_NAME`, or that namespace's default account when it is empty. With `create: true` the chart renders `<release>-synclet-connector` in `k8s.namespace` with the given annotations and sets that variable to its name. A source or destination overrides it with `service_account_name` in its runtime config; a sync pod takes the source's override, else the destination's, else the global default. A check or discover pod of a saved source or destination takes that entity's override, else the global default, so a Workload Identity source can be tested before it syncs; a spec pod, or a check of a config not saved yet, has no entity and takes the global default. The account gets no RBAC.
+- **Executor** (`executor.serviceAccount`, distributed mode). The executor launches connector pods, so it needs the connector-runner Role, but it never touches the log archive: it sends log lines to the server through the executor API and only the server archives them. With `create: true` (the default) the chart renders `<fullname>-executor` and binds it to the connector-runner Role and nothing else. Set `create: false` with a `name` to use an existing account (the chart still binds it), or leave both unset to keep the executor on the chart's account.
+- **Connector pods** (`pipeline.serviceAccount`). Every pod the executor creates (sync, check, spec, discover) runs in `k8s.namespace` under the account in `PIPELINE_RUNTIME_SERVICE_ACCOUNT_NAME`, or that namespace's default account when it is empty. With `create: true` the chart renders `<fullname>-connector` in `k8s.namespace` with the given annotations and sets that variable to its name. A source or destination overrides it with `service_account_name` in its runtime config; a sync pod takes the source's override, else the destination's, else the global default. A check or discover pod of a saved source or destination takes that entity's override, else the global default, so a Workload Identity source can be tested before it syncs; a spec pod, or a check of a config not saved yet, has no entity and takes the global default. The account gets no RBAC.
 
 Connector images are third-party code, so a connector pod gets no Kubernetes API token unless `pipeline.serviceAccount` names or creates an account for it, `pipeline.resources.serviceAccountName` names an existing one, or a runtime config sets `service_account_name`: a pod without an account name runs with `automountServiceAccountToken: false`, and its coordinator container still reaches the control plane through `EXECUTOR_API_URL` with the per-job token. A connector account exists to carry cloud identity annotations (IRSA on EKS, Workload Identity on GKE), not cluster rights; a pod running under one keeps the cluster's default token mount, so do not bind it to any Role. The chart itself renders no ClusterRole or ClusterRoleBinding: its only Role is the namespaced connector-runner Role in `k8s.namespace`.
 
@@ -414,7 +419,7 @@ pipeline:
       # eks.amazonaws.com/role-arn: arn:aws:iam::<account>:role/<role>
 ```
 
-On GKE, grant `roles/iam.workloadIdentityUser` to `serviceAccount:<project>.svc.id.goog[<k8s.namespace>/<release>-synclet-connector]` as in the log-archive example above. On EKS, the role's trust policy must allow `system:serviceaccount:<k8s.namespace>:<release>-synclet-connector`.
+On GKE, grant `roles/iam.workloadIdentityUser` to `serviceAccount:<project>.svc.id.goog[<k8s.namespace>/<fullname>-connector]` as in the log-archive example above. On EKS, the role's trust policy must allow `system:serviceaccount:<k8s.namespace>:<fullname>-connector`.
 
 #### Bundled Garage (Helm)
 
@@ -467,7 +472,7 @@ Show what you built in [Show and tell](https://github.com/synclet-io/synclet/dis
 
 ## Tested with
 
-These pairs were run end to end through Synclet 0.6.0 (`main` at `b7d946b`) on 2026-10-19: Docker executor, PostgreSQL 16, two runs per pair so the second run starts from the saved state. A connector that is not listed here may work; it has not been tested.
+These pairs were run end to end through Synclet `main` at `b7d946b` (after 0.6.0, before 0.7.0) on 2026-10-19: Docker executor, PostgreSQL 16, two runs per pair so the second run starts from the saved state. A connector that is not listed here may work; it has not been tested.
 
 | Source | Destination | Streams and mode | Result |
 |---|---|---|---|
@@ -491,9 +496,17 @@ Services:
 - `SourceService` -- CRUD for source instances, connection testing, schema discovery
 - `DestinationService` -- CRUD for destination instances, connection testing
 - `ConnectionService` -- CRUD for connections, stream configuration, state management, config import/export
+- `ConnectorTaskService` -- Results of asynchronous spec, check and discover tasks
 - `JobService` -- Sync triggering, job monitoring, log retrieval
 - `StatsService` -- Workspace and connection statistics
 - `ConnectorRegistryService` -- Repository and connector management
+- `AuthService` -- Sign-in, sessions, password reset, API keys
+- `WorkspaceService` -- Workspaces, members, invites
+- `NotificationService` -- Notification channels and rules
+- `WebhookService` -- Outbound webhooks
+- `AuditService` -- Audit events and retention
+
+The executor API (`ExecutorService`, `proto/synclet/internalapi/`) is served on the internal port 8081.
 
 ## Project Structure
 
