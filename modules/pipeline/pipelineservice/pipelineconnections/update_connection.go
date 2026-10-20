@@ -22,6 +22,8 @@ type UpdateConnectionParams struct {
 	NamespaceDefinition   *pipelineservice.NamespaceDefinition
 	CustomNamespaceFormat **string
 	StreamPrefix          **string
+	// Tags replaces the connection's tags when set, even to an empty list.
+	Tags *[]string
 }
 
 // UpdateConnection updates an existing connection within a workspace.
@@ -79,6 +81,15 @@ func (uc *UpdateConnection) Execute(ctx context.Context, params UpdateConnection
 
 	if params.StreamPrefix != nil {
 		conn.StreamPrefix = emptyToNil(*params.StreamPrefix)
+	}
+
+	if params.Tags != nil {
+		tags, err := NormalizeTags(*params.Tags)
+		if err != nil {
+			return nil, err
+		}
+
+		conn.Tags = tags
 	}
 
 	conn.UpdatedAt = time.Now()

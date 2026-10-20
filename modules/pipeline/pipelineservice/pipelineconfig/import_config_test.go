@@ -517,3 +517,67 @@ func TestImportConfig_InvalidDocumentIsValidationError(t *testing.T) {
 		require.ErrorAs(t, err, &validationErr, doc)
 	}
 }
+
+func TestImportConfig_ExportRoundTripRecreatesTags(t *testing.T) {
+	target := newFixture()
+
+	exportWorkspace := uuid.New()
+	src := &pipelineservice.Source{ID: uuid.New(), WorkspaceID: exportWorkspace, Name: "pg", ManagedConnectorID: target.connector.ID, Config: `{"host":"db"}`}
+	dst := &pipelineservice.Destination{ID: uuid.New(), WorkspaceID: exportWorkspace, Name: "bq", ManagedConnectorID: target.connector.ID, Config: `{"host":"wh"}`}
+	exportStore := &fakeStore{
+		destinations: &fakeDestinations{records: []*pipelineservice.Destination{dst}},
+		connections: &fakeConnections{records: []*pipelineservice.Connection{{
+			ID:            uuid.New(),
+			WorkspaceID:   exportWorkspace,
+			Name:          "pg -> bq",
+			Status:        pipelineservice.ConnectionStatusActive,
+			SourceID:      src.ID,
+			DestinationID: dst.ID,
+			MaxAttempts:   3,
+			Tags:          []string{"finance", "prod"},
+		}}},
+		connectors: &fakeConnectors{},
+	}
+	exportStore.sources = &fakeSources{store: exportStore, records: []*pipelineservice.Source{src}}
+
+	exported, err := pipelineconfig.NewExportConfig(exportStore).Execute(context.Background(), pipelineconfig.ExportConfigParams{WorkspaceID: exportWorkspace})
+	require.NoError(t, err)
+	assert.Contains(t, string(exported), "tags:")
+
+	result := target.run(t, string(exported))
+	require.Empty(t, result.Errors)
+	require.Len(t, target.store.connections.records, 1)
+	assert.Equal(t, []string{"finance", "prod"}, target.store.connections.records[0].Tags)
+}
+
+func TestImportConfig_UpdateReplacesTagsOnlyWhenListed(t *testing.T) {
+	f := newFixture()
+	src := &pipelineservice.Source{ID: uuid.New(), WorkspaceID: f.workspaceID, Name: "pg"}
+	dst := &pipelineservice.Destination{ID: uuid.New(), WorkspaceID: f.workspaceID, Name: "bq"}
+	conn := &pipelineservice.Connection{
+		ID: uuid.New(), WorkspaceID: f.workspaceID, Name: "c", Status: pipelineservice.ConnectionStatusActive,
+		SourceID: src.ID, DestinationID: dst.ID, MaxAttempts: 3, Tags: []string{"old"},
+	}
+	f.store.sources.records = []*pipelineservice.Source{src}
+	f.store.destinations.records = []*pipelineservice.Destination{dst}
+	f.store.connections.records = []*pipelineservice.Connection{conn}
+
+	result := f.run(t, `version: "1"
+connections:
+  - source: pg
+    destination: bq
+    enabled: true
+`)
+	require.Empty(t, result.Errors)
+	assert.Equal(t, []string{"old"}, f.store.connections.records[0].Tags)
+
+	result = f.run(t, `version: "1"
+connections:
+  - source: pg
+    destination: bq
+    enabled: true
+    tags: [Prod, finance]
+`)
+	require.Empty(t, result.Errors)
+	assert.Equal(t, []string{"finance", "prod"}, f.store.connections.records[0].Tags)
+}

@@ -37,6 +37,8 @@ type ConnectionHandler struct {
 	getConnection    *pipelineconnections.GetConnection
 	listConnections  *pipelineconnections.ListConnections
 
+	listConnectionTags *pipelineconnections.ListConnectionTags
+
 	resolveConnectionEndpoints *pipelineconnections.ResolveConnectionEndpoints
 
 	// Composite connection use cases (with workspace verification)
@@ -76,6 +78,7 @@ func NewConnectionHandler(
 	deleteConnection *pipelineconnections.DeleteConnection,
 	getConnection *pipelineconnections.GetConnection,
 	listConnections *pipelineconnections.ListConnections,
+	listConnectionTags *pipelineconnections.ListConnectionTags,
 	resolveConnectionEndpoints *pipelineconnections.ResolveConnectionEndpoints,
 	enableConnection *pipelineconnections.EnableConnection,
 	disableConnection *pipelineconnections.DisableConnection,
@@ -101,6 +104,7 @@ func NewConnectionHandler(
 		deleteConnection:                  deleteConnection,
 		getConnection:                     getConnection,
 		listConnections:                   listConnections,
+		listConnectionTags:                listConnectionTags,
 		resolveConnectionEndpoints:        resolveConnectionEndpoints,
 		enableConnection:                  enableConnection,
 		disableConnection:                 disableConnection,
@@ -170,6 +174,7 @@ func (h *ConnectionHandler) CreateConnection(ctx context.Context, req *connect.R
 		NamespaceDefinition:   protoToNamespaceDefinition(req.Msg.GetNamespaceDefinition()),
 		CustomNamespaceFormat: stringPtrFromProto(req.Msg.GetCustomNamespaceFormat()),
 		StreamPrefix:          stringPtrFromProto(req.Msg.GetStreamPrefix()),
+		Tags:                  req.Msg.GetTags(),
 	})
 	if err != nil {
 		return nil, mapError(err)
@@ -239,6 +244,11 @@ func (h *ConnectionHandler) UpdateConnection(ctx context.Context, req *connect.R
 	if req.Msg.StreamPrefix != nil {
 		v := stringPtrFromProto(req.Msg.GetStreamPrefix())
 		params.StreamPrefix = &v
+	}
+
+	if req.Msg.GetTags() != nil {
+		tags := req.Msg.GetTags().GetValues()
+		params.Tags = &tags
 	}
 
 	conn, err := h.updateConnection.Execute(ctx, params)
@@ -321,6 +331,7 @@ func (h *ConnectionHandler) ListConnections(ctx context.Context, req *connect.Re
 		WorkspaceID:   workspaceID,
 		SourceID:      sourceID,
 		DestinationID: destinationID,
+		Tags:          req.Msg.GetTags(),
 	})
 	if err != nil {
 		return nil, mapError(err)
@@ -357,6 +368,24 @@ func (h *ConnectionHandler) ListConnections(ctx context.Context, req *connect.Re
 	return connect.NewResponse(&pipelinev1.ListConnectionsResponse{
 		Connections: protoConns,
 		Total:       total,
+	}), nil
+}
+
+func (h *ConnectionHandler) ListConnectionTags(ctx context.Context, _ *connect.Request[pipelinev1.ListConnectionTagsRequest]) (*connect.Response[pipelinev1.ListConnectionTagsResponse], error) {
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	tags, err := h.listConnectionTags.Execute(ctx, pipelineconnections.ListConnectionTagsParams{WorkspaceID: workspaceID})
+	if err != nil {
+		return nil, mapError(err)
+	}
+
+	return connect.NewResponse(&pipelinev1.ListConnectionTagsResponse{
+		Tags: lo.Map(tags, func(t pipelineservice.TagCount, _ int) *pipelinev1.ConnectionTag {
+			return &pipelinev1.ConnectionTag{Tag: t.Tag, ConnectionCount: int32(t.ConnectionCount)}
+		}),
 	}), nil
 }
 
@@ -859,6 +888,7 @@ func connectionToProto(conn *pipelineservice.Connection) *pipelinev1.Connection 
 		StreamPrefix:          stringPtrOrEmpty(conn.StreamPrefix),
 		NextScheduledAt:       timestampPtrOrNil(conn.NextScheduledAt),
 		StatusReason:          stringPtrOrEmpty(conn.StatusReason),
+		Tags:                  conn.Tags,
 	}
 }
 

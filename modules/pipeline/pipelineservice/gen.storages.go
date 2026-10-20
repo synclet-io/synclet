@@ -57,6 +57,9 @@ type ConnectionsStorage interface {
 	dbutil.EntityStorage[Connection, ConnectionFilter]
 	// user code 'Connection metods'
 	FindDueConnections(ctx context.Context, limit int) ([]DueConnection, error)
+	// ListTagCounts returns every tag used by the workspace's connections with the
+	// number of connections carrying it, ordered by tag.
+	ListTagCounts(ctx context.Context, workspaceID uuid.UUID) ([]TagCount, error)
 	// end user code 'Connection metods'
 }
 
@@ -69,6 +72,12 @@ type DueConnection struct {
 	DestinationID uuid.UUID
 	Schedule      string
 	MaxAttempts   int
+}
+
+// TagCount is a connection tag and the number of connections that carry it.
+type TagCount struct {
+	Tag             string
+	ConnectionCount int
 }
 
 // end user code 'Connection definitions'

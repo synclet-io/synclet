@@ -226,3 +226,44 @@ type createConnStreamGenerationsStorage struct {
 	pipelineservice.StreamGenerationsStorage
 	records map[string]*pipelineservice.StreamGeneration
 }
+
+func TestCreateConnection_StoresNormalizedTags(t *testing.T) {
+	workspaceID := uuid.New()
+	sourceID := uuid.New()
+	destID := uuid.New()
+	store := newCreateConnStore(workspaceID, sourceID, destID)
+
+	uc := pipelineconnections.NewCreateConnection(store, pipelineservice.Config{DefaultMaxAttempts: 3}, pipelineservice.NoopAuditRecorder{})
+	created, err := uc.Execute(context.Background(), pipelineconnections.CreateConnectionParams{
+		WorkspaceID:   workspaceID,
+		Name:          "tagged",
+		SourceID:      sourceID,
+		DestinationID: destID,
+		Tags:          []string{" Prod", "prod", "finance"},
+	})
+	require.NoError(t, err)
+	assert.Equal(t, []string{"finance", "prod"}, created.Tags)
+	assert.Equal(t, []string{"finance", "prod"}, store.connections.records[created.ID].Tags)
+}
+
+func TestCreateConnection_InvalidTagIsValidationError(t *testing.T) {
+	workspaceID := uuid.New()
+	sourceID := uuid.New()
+	destID := uuid.New()
+	store := newCreateConnStore(workspaceID, sourceID, destID)
+
+	uc := pipelineconnections.NewCreateConnection(store, pipelineservice.Config{DefaultMaxAttempts: 3}, pipelineservice.NoopAuditRecorder{})
+	_, err := uc.Execute(context.Background(), pipelineconnections.CreateConnectionParams{
+		WorkspaceID:   workspaceID,
+		Name:          "bad",
+		SourceID:      sourceID,
+		DestinationID: destID,
+		Tags:          []string{"fin ance"},
+	})
+
+	var validationErr *pipelineservice.ValidationError
+	require.ErrorAs(t, err, &validationErr)
+	assert.Equal(t, "tags", validationErr.Field)
+	assert.Contains(t, err.Error(), `"fin ance"`)
+	assert.Empty(t, store.connections.records)
+}

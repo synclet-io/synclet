@@ -150,6 +150,10 @@ service ConnectionService {
   rpc ListConnections(ListConnectionsRequest) returns (ListConnectionsResponse) {
     option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
   }
+  // Lists the tags used by the workspace's connections with the number of connections carrying each.
+  rpc ListConnectionTags(ListConnectionTagsRequest) returns (ListConnectionTagsResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
+  }
   rpc EnableConnection(EnableConnectionRequest) returns (EnableConnectionResponse) {
     option (synclet.options.v1.required_role) = REQUIRED_ROLE_EDITOR;
   }
@@ -507,6 +511,8 @@ message Connection {
   // Why the connection was paused by Synclet, such as a mapper that no longer
   // compiles after a schema change. Empty when the status was set by a user.
   string status_reason = 22;
+  // Tags of the connection, normalised to lowercase and sorted.
+  repeated string tags = 23;
 }
 
 message CreateConnectionRequest {
@@ -521,6 +527,9 @@ message CreateConnectionRequest {
   NamespaceDefinition namespace_definition = 9;
   string custom_namespace_format = 10;
   string stream_prefix = 11;
+  // Tags of the connection: 1-32 characters of a-z, 0-9, '_', '.', ':' or '-',
+  // starting with a letter or digit; at most 20. Trimmed, lowercased and deduplicated.
+  repeated string tags = 12;
 }
 
 message CreateConnectionResponse {
@@ -537,6 +546,12 @@ message UpdateConnectionRequest {
   optional NamespaceDefinition namespace_definition = 7;
   optional string custom_namespace_format = 8;
   optional string stream_prefix = 9;
+  // Replaces the connection's tags when set, even to an empty list; unset keeps them.
+  TagList tags = 10;
+}
+
+message TagList {
+  repeated string values = 1;
 }
 
 message UpdateConnectionResponse {
@@ -567,11 +582,24 @@ message ListConnectionsRequest {
   string source_id = 5;
   // Restricts the result to connections writing to this destination. Empty means any destination.
   string destination_id = 6;
+  // Returns only connections that have all of these tags.
+  repeated string tags = 7;
 }
 
 message ListConnectionsResponse {
   repeated Connection connections = 1;
   int32 total = 2;
+}
+
+message ListConnectionTagsRequest {}
+
+message ListConnectionTagsResponse {
+  repeated ConnectionTag tags = 1;
+}
+
+message ConnectionTag {
+  string tag = 1;
+  int32 connection_count = 2;
 }
 
 message EnableConnectionRequest {

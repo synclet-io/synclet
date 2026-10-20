@@ -279,6 +279,7 @@ types:
         - { name: Schedule, type: "*string" }
         - { name: SchemaChangePolicy, type: SchemaChangePolicy }
         - { name: MaxAttempts, type: int }
+        - { name: Tags, type: "[]string", filterable: true }
 
         - { name: NamespaceDefinition, type: NamespaceDefinition }
         - { name: CustomNamespaceFormat, type: "*string" }

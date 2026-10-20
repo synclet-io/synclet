@@ -701,23 +701,24 @@ func convertDestinationFromJsonModel(src *jsonDestination) (*pipelineservice.Des
 }
 
 type jsonConnection struct {
-	ID                    uuid.UUID  `json:"id"`
-	WorkspaceID           uuid.UUID  `json:"workspace_id"`
-	Name                  string     `json:"name"`
-	Status                string     `json:"status"`
-	StatusReason          *string    `json:"status_reason"`
-	MapperSalt            string     `json:"mapper_salt"`
-	SourceID              uuid.UUID  `json:"source_id"`
-	DestinationID         uuid.UUID  `json:"destination_id"`
-	Schedule              *string    `json:"schedule"`
-	SchemaChangePolicy    string     `json:"schema_change_policy"`
-	MaxAttempts           int        `json:"max_attempts"`
-	NamespaceDefinition   string     `json:"namespace_definition"`
-	CustomNamespaceFormat *string    `json:"custom_namespace_format"`
-	StreamPrefix          *string    `json:"stream_prefix"`
-	NextScheduledAt       *time.Time `json:"next_scheduled_at"`
-	CreatedAt             time.Time  `json:"created_at"`
-	UpdatedAt             time.Time  `json:"updated_at"`
+	ID                    uuid.UUID        `json:"id"`
+	WorkspaceID           uuid.UUID        `json:"workspace_id"`
+	Name                  string           `json:"name"`
+	Status                string           `json:"status"`
+	StatusReason          *string          `json:"status_reason"`
+	MapperSalt            string           `json:"mapper_salt"`
+	SourceID              uuid.UUID        `json:"source_id"`
+	DestinationID         uuid.UUID        `json:"destination_id"`
+	Schedule              *string          `json:"schedule"`
+	SchemaChangePolicy    string           `json:"schema_change_policy"`
+	MaxAttempts           int              `json:"max_attempts"`
+	Tags                  stringSliceValue `json:"tags"`
+	NamespaceDefinition   string           `json:"namespace_definition"`
+	CustomNamespaceFormat *string          `json:"custom_namespace_format"`
+	StreamPrefix          *string          `json:"stream_prefix"`
+	NextScheduledAt       *time.Time       `json:"next_scheduled_at"`
+	CreatedAt             time.Time        `json:"created_at"`
+	UpdatedAt             time.Time        `json:"updated_at"`
 }
 
 func (c *jsonConnection) Scan(value any) error {
@@ -757,11 +758,16 @@ func convertConnectionToJsonModel(src *pipelineservice.Connection) (*jsonConnect
 	}
 	result.SchemaChangePolicy = tmp11
 	result.MaxAttempts = src.MaxAttempts
-	tmp13, err := convertNamespaceDefinitionToDB(src.NamespaceDefinition)
+	tmp13 := make(stringSliceValue, 0, len(src.Tags))
+	for _, el := range src.Tags {
+		tmp13 = append(tmp13, el)
+	}
+	result.Tags = tmp13
+	tmp15, err := convertNamespaceDefinitionToDB(src.NamespaceDefinition)
 	if err != nil {
 		return nil, err
 	}
-	result.NamespaceDefinition = tmp13
+	result.NamespaceDefinition = tmp15
 	if src.CustomNamespaceFormat == nil {
 		result.CustomNamespaceFormat = nil
 	} else {
@@ -787,11 +793,11 @@ func convertConnectionFromJsonModel(src *jsonConnection) (*pipelineservice.Conne
 	result.ID = src.ID
 	result.WorkspaceID = src.WorkspaceID
 	result.Name = src.Name
-	tmp25, err := convertConnectionStatusFromDB(src.Status)
+	tmp27, err := convertConnectionStatusFromDB(src.Status)
 	if err != nil {
 		return nil, err
 	}
-	result.Status = tmp25
+	result.Status = tmp27
 	if src.StatusReason == nil {
 		result.StatusReason = nil
 	} else {
@@ -805,17 +811,23 @@ func convertConnectionFromJsonModel(src *jsonConnection) (*pipelineservice.Conne
 	} else {
 		result.Schedule = toPtr(fromPtr(src.Schedule))
 	}
-	tmp33, err := convertSchemaChangePolicyFromDB(src.SchemaChangePolicy)
+	tmp35, err := convertSchemaChangePolicyFromDB(src.SchemaChangePolicy)
 	if err != nil {
 		return nil, err
 	}
-	result.SchemaChangePolicy = tmp33
+	result.SchemaChangePolicy = tmp35
 	result.MaxAttempts = src.MaxAttempts
-	tmp35, err := convertNamespaceDefinitionFromDB(src.NamespaceDefinition)
+	tmp37 := make([]string, 0, len(src.Tags))
+	for _, el := range src.Tags {
+
+		tmp37 = append(tmp37, el)
+	}
+	result.Tags = tmp37
+	tmp39, err := convertNamespaceDefinitionFromDB(src.NamespaceDefinition)
 	if err != nil {
 		return nil, err
 	}
-	result.NamespaceDefinition = tmp35
+	result.NamespaceDefinition = tmp39
 	if src.CustomNamespaceFormat == nil {
 		result.CustomNamespaceFormat = nil
 	} else {

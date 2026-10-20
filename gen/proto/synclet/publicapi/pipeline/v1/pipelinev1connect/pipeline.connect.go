@@ -106,6 +106,9 @@ const (
 	// ConnectionServiceListConnectionsProcedure is the fully-qualified name of the ConnectionService's
 	// ListConnections RPC.
 	ConnectionServiceListConnectionsProcedure = "/synclet.publicapi.pipeline.v1.ConnectionService/ListConnections"
+	// ConnectionServiceListConnectionTagsProcedure is the fully-qualified name of the
+	// ConnectionService's ListConnectionTags RPC.
+	ConnectionServiceListConnectionTagsProcedure = "/synclet.publicapi.pipeline.v1.ConnectionService/ListConnectionTags"
 	// ConnectionServiceEnableConnectionProcedure is the fully-qualified name of the ConnectionService's
 	// EnableConnection RPC.
 	ConnectionServiceEnableConnectionProcedure = "/synclet.publicapi.pipeline.v1.ConnectionService/EnableConnection"
@@ -719,6 +722,8 @@ type ConnectionServiceClient interface {
 	DeleteConnection(context.Context, *connect.Request[v1.DeleteConnectionRequest]) (*connect.Response[v1.DeleteConnectionResponse], error)
 	GetConnection(context.Context, *connect.Request[v1.GetConnectionRequest]) (*connect.Response[v1.GetConnectionResponse], error)
 	ListConnections(context.Context, *connect.Request[v1.ListConnectionsRequest]) (*connect.Response[v1.ListConnectionsResponse], error)
+	// Lists the tags used by the workspace's connections with the number of connections carrying each.
+	ListConnectionTags(context.Context, *connect.Request[v1.ListConnectionTagsRequest]) (*connect.Response[v1.ListConnectionTagsResponse], error)
 	EnableConnection(context.Context, *connect.Request[v1.EnableConnectionRequest]) (*connect.Response[v1.EnableConnectionResponse], error)
 	DisableConnection(context.Context, *connect.Request[v1.DisableConnectionRequest]) (*connect.Response[v1.DisableConnectionResponse], error)
 	DiscoverSchema(context.Context, *connect.Request[v1.DiscoverSchemaRequest]) (*connect.Response[v1.DiscoverSchemaResponse], error)
@@ -779,6 +784,12 @@ func NewConnectionServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			httpClient,
 			baseURL+ConnectionServiceListConnectionsProcedure,
 			connect.WithSchema(connectionServiceMethods.ByName("ListConnections")),
+			connect.WithClientOptions(opts...),
+		),
+		listConnectionTags: connect.NewClient[v1.ListConnectionTagsRequest, v1.ListConnectionTagsResponse](
+			httpClient,
+			baseURL+ConnectionServiceListConnectionTagsProcedure,
+			connect.WithSchema(connectionServiceMethods.ByName("ListConnectionTags")),
 			connect.WithClientOptions(opts...),
 		),
 		enableConnection: connect.NewClient[v1.EnableConnectionRequest, v1.EnableConnectionResponse](
@@ -887,6 +898,7 @@ type connectionServiceClient struct {
 	deleteConnection       *connect.Client[v1.DeleteConnectionRequest, v1.DeleteConnectionResponse]
 	getConnection          *connect.Client[v1.GetConnectionRequest, v1.GetConnectionResponse]
 	listConnections        *connect.Client[v1.ListConnectionsRequest, v1.ListConnectionsResponse]
+	listConnectionTags     *connect.Client[v1.ListConnectionTagsRequest, v1.ListConnectionTagsResponse]
 	enableConnection       *connect.Client[v1.EnableConnectionRequest, v1.EnableConnectionResponse]
 	disableConnection      *connect.Client[v1.DisableConnectionRequest, v1.DisableConnectionResponse]
 	discoverSchema         *connect.Client[v1.DiscoverSchemaRequest, v1.DiscoverSchemaResponse]
@@ -928,6 +940,11 @@ func (c *connectionServiceClient) GetConnection(ctx context.Context, req *connec
 // ListConnections calls synclet.publicapi.pipeline.v1.ConnectionService.ListConnections.
 func (c *connectionServiceClient) ListConnections(ctx context.Context, req *connect.Request[v1.ListConnectionsRequest]) (*connect.Response[v1.ListConnectionsResponse], error) {
 	return c.listConnections.CallUnary(ctx, req)
+}
+
+// ListConnectionTags calls synclet.publicapi.pipeline.v1.ConnectionService.ListConnectionTags.
+func (c *connectionServiceClient) ListConnectionTags(ctx context.Context, req *connect.Request[v1.ListConnectionTagsRequest]) (*connect.Response[v1.ListConnectionTagsResponse], error) {
+	return c.listConnectionTags.CallUnary(ctx, req)
 }
 
 // EnableConnection calls synclet.publicapi.pipeline.v1.ConnectionService.EnableConnection.
@@ -1021,6 +1038,8 @@ type ConnectionServiceHandler interface {
 	DeleteConnection(context.Context, *connect.Request[v1.DeleteConnectionRequest]) (*connect.Response[v1.DeleteConnectionResponse], error)
 	GetConnection(context.Context, *connect.Request[v1.GetConnectionRequest]) (*connect.Response[v1.GetConnectionResponse], error)
 	ListConnections(context.Context, *connect.Request[v1.ListConnectionsRequest]) (*connect.Response[v1.ListConnectionsResponse], error)
+	// Lists the tags used by the workspace's connections with the number of connections carrying each.
+	ListConnectionTags(context.Context, *connect.Request[v1.ListConnectionTagsRequest]) (*connect.Response[v1.ListConnectionTagsResponse], error)
 	EnableConnection(context.Context, *connect.Request[v1.EnableConnectionRequest]) (*connect.Response[v1.EnableConnectionResponse], error)
 	DisableConnection(context.Context, *connect.Request[v1.DisableConnectionRequest]) (*connect.Response[v1.DisableConnectionResponse], error)
 	DiscoverSchema(context.Context, *connect.Request[v1.DiscoverSchemaRequest]) (*connect.Response[v1.DiscoverSchemaResponse], error)
@@ -1076,6 +1095,12 @@ func NewConnectionServiceHandler(svc ConnectionServiceHandler, opts ...connect.H
 		ConnectionServiceListConnectionsProcedure,
 		svc.ListConnections,
 		connect.WithSchema(connectionServiceMethods.ByName("ListConnections")),
+		connect.WithHandlerOptions(opts...),
+	)
+	connectionServiceListConnectionTagsHandler := connect.NewUnaryHandler(
+		ConnectionServiceListConnectionTagsProcedure,
+		svc.ListConnectionTags,
+		connect.WithSchema(connectionServiceMethods.ByName("ListConnectionTags")),
 		connect.WithHandlerOptions(opts...),
 	)
 	connectionServiceEnableConnectionHandler := connect.NewUnaryHandler(
@@ -1186,6 +1211,8 @@ func NewConnectionServiceHandler(svc ConnectionServiceHandler, opts ...connect.H
 			connectionServiceGetConnectionHandler.ServeHTTP(w, r)
 		case ConnectionServiceListConnectionsProcedure:
 			connectionServiceListConnectionsHandler.ServeHTTP(w, r)
+		case ConnectionServiceListConnectionTagsProcedure:
+			connectionServiceListConnectionTagsHandler.ServeHTTP(w, r)
 		case ConnectionServiceEnableConnectionProcedure:
 			connectionServiceEnableConnectionHandler.ServeHTTP(w, r)
 		case ConnectionServiceDisableConnectionProcedure:
@@ -1245,6 +1272,10 @@ func (UnimplementedConnectionServiceHandler) GetConnection(context.Context, *con
 
 func (UnimplementedConnectionServiceHandler) ListConnections(context.Context, *connect.Request[v1.ListConnectionsRequest]) (*connect.Response[v1.ListConnectionsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("synclet.publicapi.pipeline.v1.ConnectionService.ListConnections is not implemented"))
+}
+
+func (UnimplementedConnectionServiceHandler) ListConnectionTags(context.Context, *connect.Request[v1.ListConnectionTagsRequest]) (*connect.Response[v1.ListConnectionTagsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("synclet.publicapi.pipeline.v1.ConnectionService.ListConnectionTags is not implemented"))
 }
 
 func (UnimplementedConnectionServiceHandler) EnableConnection(context.Context, *connect.Request[v1.EnableConnectionRequest]) (*connect.Response[v1.EnableConnectionResponse], error) {

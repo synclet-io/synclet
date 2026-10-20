@@ -368,6 +368,10 @@ func buildConnectionFilterExpr(filter *pipelineservice.ConnectionFilter, options
 			Column: opts.columnPrefix + "destination_id",
 			Filter: filter.DestinationID,
 		},
+		dbutil.ColumnArrayFilter[string]{
+			Column: opts.columnPrefix + "tags",
+			Filter: filter.Tags,
+		},
 		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
 			if filter.Or == nil {
 				return nil, nil

@@ -1237,6 +1237,25 @@ func NewTableGenerators() table.GeneratorList {
 				}
 				return values
 			}
+			info.AddField("Tags", "tags", db.Text)
+			info.FieldSortable()
+			info.FieldFilterable(types.FilterType{
+				FormType: form.Code,
+			},
+			)
+			formList.AddField("Tags", "tags", db.Text, form.Code)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
 			info.AddField("NamespaceDefinition", "namespace_definition", db.Enum)
 			info.FieldSortable()
 			formList.AddField("NamespaceDefinition", "namespace_definition", db.Enum, form.SelectSingle)

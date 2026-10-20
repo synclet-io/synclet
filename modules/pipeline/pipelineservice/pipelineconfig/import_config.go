@@ -347,6 +347,7 @@ func (r *importRun) importConnection(ctx context.Context, entry ConnectionConfig
 			MaxAttempts:         entry.MaxAttempts,
 			NamespaceDefinition: pipelineservice.NamespaceDefinitionSource,
 			Status:              status,
+			Tags:                entry.Tags,
 		}); err != nil {
 			r.fail("creating connection %s: %v", label, err)
 
@@ -368,6 +369,10 @@ func (r *importRun) importConnection(ctx context.Context, entry ConnectionConfig
 
 	if entry.MaxAttempts > 0 {
 		update.MaxAttempts = &entry.MaxAttempts
+	}
+
+	if entry.Tags != nil {
+		update.Tags = &entry.Tags
 	}
 
 	if _, err := r.uc.updateConnection.Execute(ctx, update); err != nil {

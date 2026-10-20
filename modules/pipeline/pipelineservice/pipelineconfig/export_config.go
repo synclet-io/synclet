@@ -44,11 +44,12 @@ type DestinationConfig struct {
 
 // ConnectionConfig is a connection entry in the export YAML.
 type ConnectionConfig struct {
-	Source      string `yaml:"source"`
-	Destination string `yaml:"destination"`
-	Schedule    string `yaml:"schedule,omitempty"`
-	MaxAttempts int    `yaml:"max_attempts,omitempty"`
-	Enabled     bool   `yaml:"enabled"`
+	Source      string   `yaml:"source"`
+	Destination string   `yaml:"destination"`
+	Schedule    string   `yaml:"schedule,omitempty"`
+	MaxAttempts int      `yaml:"max_attempts,omitempty"`
+	Enabled     bool     `yaml:"enabled"`
+	Tags        []string `yaml:"tags,omitempty"`
 }
 
 // ExportConfigParams holds parameters for exporting workspace config.
@@ -143,6 +144,7 @@ func (uc *ExportConfig) Execute(ctx context.Context, params ExportConfigParams) 
 			Schedule:    schedule,
 			MaxAttempts: conn.MaxAttempts,
 			Enabled:     conn.Status == pipelineservice.ConnectionStatusActive,
+			Tags:        conn.Tags,
 		}
 		cfg.Connections = append(cfg.Connections, connConfig)
 	}

@@ -80,6 +80,7 @@ func pipelineUseCasesModule() fx.Option {
 			pipelineconnections.NewDeleteConnection,
 			pipelineconnections.NewGetConnection,
 			pipelineconnections.NewListConnections,
+			pipelineconnections.NewListConnectionTags,
 			pipelineconnections.NewResolveConnectionEndpoints,
 			pipelineconnections.NewUpdateConnectionStatus,
 			pipelineconnections.NewEnableConnection,

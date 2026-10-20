@@ -15,6 +15,8 @@ type ListConnectionsParams struct {
 	WorkspaceID   uuid.UUID
 	SourceID      *uuid.UUID
 	DestinationID *uuid.UUID
+	// Tags narrows the list to connections that have every one of these tags.
+	Tags []string
 }
 
 // ListConnections lists all connections within a workspace.
@@ -27,8 +29,8 @@ func NewListConnections(storage pipelineservice.Storage) *ListConnections {
 	return &ListConnections{storage: storage}
 }
 
-// Execute returns the workspace's connections, narrowed to the given source
-// and destination when set.
+// Execute returns the workspace's connections, narrowed to the given source,
+// destination and tags when set.
 func (uc *ListConnections) Execute(ctx context.Context, params ListConnectionsParams) ([]*pipelineservice.Connection, error) {
 	connFilter := &pipelineservice.ConnectionFilter{
 		WorkspaceID: filter.Equals(params.WorkspaceID),
@@ -39,6 +41,15 @@ func (uc *ListConnections) Execute(ctx context.Context, params ListConnectionsPa
 
 	if params.DestinationID != nil {
 		connFilter.DestinationID = filter.Equals(*params.DestinationID)
+	}
+
+	if len(params.Tags) > 0 {
+		tags, err := NormalizeTags(params.Tags)
+		if err != nil {
+			return nil, err
+		}
+
+		connFilter.Tags = filter.ArrayContains(tags)
 	}
 
 	conns, err := uc.storage.Connections().Find(ctx, connFilter)

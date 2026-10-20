@@ -354,23 +354,24 @@ func (a dbDestination) TableName() string {
 }
 
 type dbConnection struct {
-	ID                    uuid.UUID  `gorm:"column:id"`
-	WorkspaceID           uuid.UUID  `gorm:"column:workspace_id"`
-	Name                  string     `gorm:"column:name;type:text"`
-	Status                string     `gorm:"column:status;type:text"`
-	StatusReason          *string    `gorm:"column:status_reason;type:text"`
-	MapperSalt            string     `gorm:"column:mapper_salt;type:text"`
-	SourceID              uuid.UUID  `gorm:"column:source_id"`
-	DestinationID         uuid.UUID  `gorm:"column:destination_id"`
-	Schedule              *string    `gorm:"column:schedule;type:text"`
-	SchemaChangePolicy    string     `gorm:"column:schema_change_policy;type:text"`
-	MaxAttempts           int        `gorm:"column:max_attempts"`
-	NamespaceDefinition   string     `gorm:"column:namespace_definition;type:text"`
-	CustomNamespaceFormat *string    `gorm:"column:custom_namespace_format;type:text"`
-	StreamPrefix          *string    `gorm:"column:stream_prefix;type:text"`
-	NextScheduledAt       *time.Time `gorm:"column:next_scheduled_at"`
-	CreatedAt             time.Time  `gorm:"column:created_at"`
-	UpdatedAt             time.Time  `gorm:"column:updated_at"`
+	ID                    uuid.UUID        `gorm:"column:id"`
+	WorkspaceID           uuid.UUID        `gorm:"column:workspace_id"`
+	Name                  string           `gorm:"column:name;type:text"`
+	Status                string           `gorm:"column:status;type:text"`
+	StatusReason          *string          `gorm:"column:status_reason;type:text"`
+	MapperSalt            string           `gorm:"column:mapper_salt;type:text"`
+	SourceID              uuid.UUID        `gorm:"column:source_id"`
+	DestinationID         uuid.UUID        `gorm:"column:destination_id"`
+	Schedule              *string          `gorm:"column:schedule;type:text"`
+	SchemaChangePolicy    string           `gorm:"column:schema_change_policy;type:text"`
+	MaxAttempts           int              `gorm:"column:max_attempts"`
+	Tags                  stringSliceValue `gorm:"column:tags"`
+	NamespaceDefinition   string           `gorm:"column:namespace_definition;type:text"`
+	CustomNamespaceFormat *string          `gorm:"column:custom_namespace_format;type:text"`
+	StreamPrefix          *string          `gorm:"column:stream_prefix;type:text"`
+	NextScheduledAt       *time.Time       `gorm:"column:next_scheduled_at"`
+	CreatedAt             time.Time        `gorm:"column:created_at"`
+	UpdatedAt             time.Time        `gorm:"column:updated_at"`
 }
 
 func convertConnectionToDB(src *pipelineservice.Connection) (*dbConnection, error) {
@@ -402,11 +403,16 @@ func convertConnectionToDB(src *pipelineservice.Connection) (*dbConnection, erro
 	}
 	result.SchemaChangePolicy = tmp11
 	result.MaxAttempts = src.MaxAttempts
-	tmp13, err := convertNamespaceDefinitionToDB(src.NamespaceDefinition)
+	tmp13 := make(stringSliceValue, 0, len(src.Tags))
+	for _, el := range src.Tags {
+		tmp13 = append(tmp13, el)
+	}
+	result.Tags = tmp13
+	tmp15, err := convertNamespaceDefinitionToDB(src.NamespaceDefinition)
 	if err != nil {
 		return nil, err
 	}
-	result.NamespaceDefinition = tmp13
+	result.NamespaceDefinition = tmp15
 	if src.CustomNamespaceFormat == nil {
 		result.CustomNamespaceFormat = nil
 	} else {
@@ -432,11 +438,11 @@ func convertConnectionFromDB(src *dbConnection) (*pipelineservice.Connection, er
 	result.ID = src.ID
 	result.WorkspaceID = src.WorkspaceID
 	result.Name = src.Name
-	tmp25, err := convertConnectionStatusFromDB(src.Status)
+	tmp27, err := convertConnectionStatusFromDB(src.Status)
 	if err != nil {
 		return nil, err
 	}
-	result.Status = tmp25
+	result.Status = tmp27
 	if src.StatusReason == nil {
 		result.StatusReason = nil
 	} else {
@@ -450,17 +456,23 @@ func convertConnectionFromDB(src *dbConnection) (*pipelineservice.Connection, er
 	} else {
 		result.Schedule = toPtr(fromPtr(src.Schedule))
 	}
-	tmp33, err := convertSchemaChangePolicyFromDB(src.SchemaChangePolicy)
+	tmp35, err := convertSchemaChangePolicyFromDB(src.SchemaChangePolicy)
 	if err != nil {
 		return nil, err
 	}
-	result.SchemaChangePolicy = tmp33
+	result.SchemaChangePolicy = tmp35
 	result.MaxAttempts = src.MaxAttempts
-	tmp35, err := convertNamespaceDefinitionFromDB(src.NamespaceDefinition)
+	tmp37 := make([]string, 0, len(src.Tags))
+	for _, el := range src.Tags {
+
+		tmp37 = append(tmp37, el)
+	}
+	result.Tags = tmp37
+	tmp39, err := convertNamespaceDefinitionFromDB(src.NamespaceDefinition)
 	if err != nil {
 		return nil, err
 	}
-	result.NamespaceDefinition = tmp35
+	result.NamespaceDefinition = tmp39
 	if src.CustomNamespaceFormat == nil {
 		result.CustomNamespaceFormat = nil
 	} else {

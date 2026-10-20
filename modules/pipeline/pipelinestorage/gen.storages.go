@@ -285,6 +285,7 @@ func NewConnectionsStorage(db *gorm.DB, logger *logging.Logger) pipelinesvc.Conn
 				pipelinesvc.ConnectionFieldSchedule:              {Name: "schedule"},
 				pipelinesvc.ConnectionFieldSchemaChangePolicy:    {Name: "schema_change_policy"},
 				pipelinesvc.ConnectionFieldMaxAttempts:           {Name: "max_attempts"},
+				pipelinesvc.ConnectionFieldTags:                  {Name: "tags"},
 				pipelinesvc.ConnectionFieldNamespaceDefinition:   {Name: "namespace_definition"},
 				pipelinesvc.ConnectionFieldCustomNamespaceFormat: {Name: "custom_namespace_format"},
 				pipelinesvc.ConnectionFieldStreamPrefix:          {Name: "stream_prefix"},

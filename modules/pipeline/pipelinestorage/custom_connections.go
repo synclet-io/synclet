@@ -59,3 +59,33 @@ func (s *ConnectionsStorage) FindDueConnections(ctx context.Context, limit int) 
 
 	return connections, nil
 }
+
+// ListTagCounts returns every tag used by the workspace's connections with the
+// number of connections carrying it, ordered by tag.
+func (s *ConnectionsStorage) ListTagCounts(ctx context.Context, workspaceID uuid.UUID) ([]pipelinesvc.TagCount, error) {
+	type row struct {
+		Tag             string `gorm:"column:tag"`
+		ConnectionCount int    `gorm:"column:connection_count"`
+	}
+
+	var rows []row
+
+	result := s.DB.WithContext(ctx).
+		Raw(`SELECT tag, COUNT(*) AS connection_count
+		     FROM pipeline.connections c, unnest(c.tags) AS tag
+		     WHERE c.workspace_id = ?
+		     GROUP BY tag
+		     ORDER BY tag`,
+			workspaceID).
+		Scan(&rows)
+	if result.Error != nil {
+		return nil, fmt.Errorf("listing connection tag counts: %w", result.Error)
+	}
+
+	counts := make([]pipelinesvc.TagCount, len(rows))
+	for i, row := range rows {
+		counts[i] = pipelinesvc.TagCount{Tag: row.Tag, ConnectionCount: row.ConnectionCount}
+	}
+
+	return counts, nil
+}

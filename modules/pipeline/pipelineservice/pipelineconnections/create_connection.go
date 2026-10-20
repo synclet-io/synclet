@@ -24,6 +24,7 @@ type CreateConnectionParams struct {
 	NamespaceDefinition   pipelineservice.NamespaceDefinition
 	CustomNamespaceFormat *string
 	StreamPrefix          *string
+	Tags                  []string
 	// Status defaults to active when not a valid connection status.
 	Status pipelineservice.ConnectionStatus
 }
@@ -68,6 +69,11 @@ func (uc *CreateConnection) Execute(ctx context.Context, params CreateConnection
 		return nil, err
 	}
 
+	tags, err := NormalizeTags(params.Tags)
+	if err != nil {
+		return nil, err
+	}
+
 	now := time.Now()
 
 	policy := params.SchemaChangePolicy
@@ -101,6 +107,7 @@ func (uc *CreateConnection) Execute(ctx context.Context, params CreateConnection
 		Schedule:              schedule,
 		SchemaChangePolicy:    policy,
 		MaxAttempts:           maxAttempts,
+		Tags:                  tags,
 		NamespaceDefinition:   nsDef,
 		CustomNamespaceFormat: emptyToNil(params.CustomNamespaceFormat),
 		StreamPrefix:          emptyToNil(params.StreamPrefix),
@@ -143,6 +150,7 @@ func connectionToAuditPayload(conn *pipelineservice.Connection) map[string]any {
 		"schema_change_policy": conn.SchemaChangePolicy.String(),
 		"max_attempts":         conn.MaxAttempts,
 		"namespace_definition": conn.NamespaceDefinition.String(),
+		"tags":                 append([]string{}, conn.Tags...),
 	}
 	if conn.Schedule != nil {
 		payload["schedule"] = *conn.Schedule

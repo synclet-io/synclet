@@ -1241,6 +1241,7 @@ const (
 	ConnectionFieldSchedule
 	ConnectionFieldSchemaChangePolicy
 	ConnectionFieldMaxAttempts
+	ConnectionFieldTags
 	ConnectionFieldNamespaceDefinition
 	ConnectionFieldCustomNamespaceFormat
 	ConnectionFieldStreamPrefix
@@ -1256,6 +1257,7 @@ type ConnectionFilter struct {
 	Status        filter.Filter[ConnectionStatus]
 	SourceID      filter.Filter[uuid.UUID]
 	DestinationID filter.Filter[uuid.UUID]
+	Tags          filter.ArrayFilter[string]
 	Or            []*ConnectionFilter
 	And           []*ConnectionFilter
 }
@@ -1273,6 +1275,7 @@ type Connection struct {
 	Schedule              *string
 	SchemaChangePolicy    SchemaChangePolicy
 	MaxAttempts           int
+	Tags                  []string
 	NamespaceDefinition   NamespaceDefinition
 	CustomNamespaceFormat *string
 	StreamPrefix          *string
@@ -1305,21 +1308,28 @@ func (c *Connection) Copy() Connection {
 	}
 	result.SchemaChangePolicy = c.SchemaChangePolicy // enum
 	result.MaxAttempts = c.MaxAttempts
+	tmp2 := make([]string, 0, len(c.Tags))
+	for _, i := range c.Tags {
+		var itemCopy string
+		itemCopy = i
+		tmp2 = append(tmp2, itemCopy)
+	}
+	result.Tags = tmp2
 	result.NamespaceDefinition = c.NamespaceDefinition // enum
 	if c.CustomNamespaceFormat != nil {
-		var tmp2 string
-		tmp2 = (*c.CustomNamespaceFormat)
-		result.CustomNamespaceFormat = &tmp2
+		var tmp3 string
+		tmp3 = (*c.CustomNamespaceFormat)
+		result.CustomNamespaceFormat = &tmp3
 	}
 	if c.StreamPrefix != nil {
-		var tmp3 string
-		tmp3 = (*c.StreamPrefix)
-		result.StreamPrefix = &tmp3
+		var tmp4 string
+		tmp4 = (*c.StreamPrefix)
+		result.StreamPrefix = &tmp4
 	}
 	if c.NextScheduledAt != nil {
-		var tmp4 time.Time
-		tmp4 = (*c.NextScheduledAt)
-		result.NextScheduledAt = &tmp4
+		var tmp5 time.Time
+		tmp5 = (*c.NextScheduledAt)
+		result.NextScheduledAt = &tmp5
 	}
 	result.CreatedAt = c.CreatedAt
 	result.UpdatedAt = c.UpdatedAt
@@ -1375,6 +1385,14 @@ func (c *Connection) Equals(to *Connection) bool {
 	}
 	if c.MaxAttempts != to.MaxAttempts {
 		return false
+	}
+	if len(c.Tags) != len(to.Tags) {
+		return false
+	}
+	for idx := range c.Tags {
+		if c.Tags[idx] != to.Tags[idx] {
+			return false
+		}
 	}
 	if c.NamespaceDefinition != to.NamespaceDefinition {
 		return false
