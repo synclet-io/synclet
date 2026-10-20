@@ -11,52 +11,62 @@ import (
 )
 
 func TestComputeHealthStatus(t *testing.T) {
-	// Use an hourly cron so that last-sync-on-the-hour gives a deterministic
-	// 1-hour interval regardless of phase quirks in cron.Schedule.Next.
 	now := time.Date(2026, 5, 17, 12, 0, 0, 0, time.UTC)
 	hourlyCron := "0 * * * *"
+	at := func(d time.Duration) *time.Time {
+		v := now.Add(d)
 
-	t.Run("manual connection with a completed last sync is healthy however long ago it ran", func(t *testing.T) {
-		got := pipelinestats.ComputeHealthStatus("completed", "", now.Add(-30*24*time.Hour), now)
+		return &v
+	}
+
+	t.Run("manual connection with a completed last sync is healthy", func(t *testing.T) {
+		got := pipelinestats.ComputeHealthStatus("completed", "", nil, now)
 		assert.Equal(t, pipelineservice.HealthHealthy, got)
 	})
 
 	t.Run("manual connection with a failed last sync is failing", func(t *testing.T) {
-		got := pipelinestats.ComputeHealthStatus("failed", "", now.Add(-time.Hour), now)
+		got := pipelinestats.ComputeHealthStatus("failed", "", nil, now)
 		assert.Equal(t, pipelineservice.HealthFailing, got)
 	})
 
 	t.Run("last job failed produces failing regardless of timing", func(t *testing.T) {
-		got := pipelinestats.ComputeHealthStatus("Failed", hourlyCron, now.Add(-10*time.Minute), now)
+		got := pipelinestats.ComputeHealthStatus("Failed", hourlyCron, at(time.Hour), now)
 		assert.Equal(t, pipelineservice.HealthFailing, got)
 	})
 
 	t.Run("invalid cron expression produces warning", func(t *testing.T) {
-		got := pipelinestats.ComputeHealthStatus("completed", "every blue moon", now.Add(-time.Hour), now)
+		got := pipelinestats.ComputeHealthStatus("completed", "every blue moon", at(time.Hour), now)
 		assert.Equal(t, pipelineservice.HealthWarning, got)
 	})
 
-	t.Run("within one expected interval is healthy", func(t *testing.T) {
-		// Last sync 30 minutes ago on an hourly schedule — well inside one interval.
-		got := pipelinestats.ComputeHealthStatus("completed", hourlyCron, now.Add(-30*time.Minute), now)
+	t.Run("next run still ahead is healthy", func(t *testing.T) {
+		got := pipelinestats.ComputeHealthStatus("completed", hourlyCron, at(30*time.Minute), now)
 		assert.Equal(t, pipelineservice.HealthHealthy, got)
 	})
 
-	t.Run("elapsed between 2× and 3× the interval is warning", func(t *testing.T) {
-		// 2h30m elapsed on a 1h schedule — 2.5× the interval. Last sync at 09:30
-		// gives sched.Next(09:30)=10:00 → interval=30m, elapsed=2h30m → 5× ✗.
-		// Use 09:00 (on a boundary) so interval comes out as a full 1h.
-		lastSync := time.Date(2026, 5, 17, 9, 0, 0, 0, time.UTC)
-		nowAt := lastSync.Add(2*time.Hour + 30*time.Minute) // 2.5× interval
-		got := pipelinestats.ComputeHealthStatus("completed", hourlyCron, lastSync, nowAt)
+	t.Run("a schedule just set on a connection last synced long ago is healthy", func(t *testing.T) {
+		got := pipelinestats.ComputeHealthStatus("completed", "*/5 * * * *", at(5*time.Minute), now)
+		assert.Equal(t, pipelineservice.HealthHealthy, got)
+	})
+
+	t.Run("next run late by up to one interval is healthy", func(t *testing.T) {
+		got := pipelinestats.ComputeHealthStatus("completed", hourlyCron, at(-time.Hour), now)
+		assert.Equal(t, pipelineservice.HealthHealthy, got)
+	})
+
+	t.Run("next run late by more than one interval is warning", func(t *testing.T) {
+		got := pipelinestats.ComputeHealthStatus("completed", hourlyCron, at(-2*time.Hour), now)
 		assert.Equal(t, pipelineservice.HealthWarning, got)
 	})
 
-	t.Run("elapsed beyond 3× the interval is failing", func(t *testing.T) {
-		lastSync := time.Date(2026, 5, 17, 8, 0, 0, 0, time.UTC)
-		nowAt := lastSync.Add(4 * time.Hour) // 4× interval
-		got := pipelinestats.ComputeHealthStatus("completed", hourlyCron, lastSync, nowAt)
+	t.Run("next run late by more than two intervals is failing", func(t *testing.T) {
+		got := pipelinestats.ComputeHealthStatus("completed", hourlyCron, at(-3*time.Hour), now)
 		assert.Equal(t, pipelineservice.HealthFailing, got)
+	})
+
+	t.Run("scheduled connection without a next run is healthy", func(t *testing.T) {
+		got := pipelinestats.ComputeHealthStatus("completed", hourlyCron, nil, now)
+		assert.Equal(t, pipelineservice.HealthHealthy, got)
 	})
 }
 

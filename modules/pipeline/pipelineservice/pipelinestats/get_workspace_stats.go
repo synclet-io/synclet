@@ -135,11 +135,7 @@ func (uc *GetWorkspaceStats) computeConnectionHealths(ctx context.Context, conne
 		health := pipelineservice.HealthDisabled
 
 		if conn.Status == pipelineservice.ConnectionStatusActive {
-			if lastSyncAt != nil {
-				health = ComputeHealthStatus(lastStatus, schedule, *lastSyncAt, time.Now())
-			} else {
-				health = pipelineservice.HealthHealthy // New connection, not yet synced.
-			}
+			health = ComputeHealthStatus(lastStatus, schedule, conn.NextScheduledAt, time.Now())
 		}
 
 		healthItems = append(healthItems, pipelineservice.ConnectionHealthItem{

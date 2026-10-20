@@ -12,9 +12,11 @@ import (
 var cronParser = cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
 
 // ComputeHealthStatus determines an active connection's health badge from its last job status,
-// cron schedule expression, and time of last sync. A manual connection (empty schedule) is never
-// overdue, so only its last job status counts. This is a pure function for testability.
-func ComputeHealthStatus(lastJobStatus, schedule string, lastSyncAt, now time.Time) pipelineservice.Health {
+// cron schedule expression, and the time its next scheduled run is due. A failed last job is
+// failing. A scheduled connection is overdue only when its next run is late: by more than one
+// interval it is a warning, by more than two it is failing. A manual connection (empty
+// schedule) is never overdue. This is a pure function for testability.
+func ComputeHealthStatus(lastJobStatus, schedule string, nextScheduledAt *time.Time, now time.Time) pipelineservice.Health {
 	if strings.EqualFold(lastJobStatus, "failed") {
 		return pipelineservice.HealthFailing
 	}
@@ -29,19 +31,18 @@ func ComputeHealthStatus(lastJobStatus, schedule string, lastSyncAt, now time.Ti
 		return pipelineservice.HealthWarning
 	}
 
-	// Determine expected interval between syncs.
-	expectedNext := sched.Next(lastSyncAt)
-	interval := expectedNext.Sub(lastSyncAt)
+	if nextScheduledAt == nil {
+		return pipelineservice.HealthHealthy
+	}
 
-	elapsed := now.Sub(lastSyncAt)
+	interval := sched.Next(*nextScheduledAt).Sub(*nextScheduledAt)
+	late := now.Sub(*nextScheduledAt)
 
-	// More than 3x the expected interval -- failing.
-	if elapsed > 3*interval {
+	if late > 2*interval {
 		return pipelineservice.HealthFailing
 	}
 
-	// More than 2x the expected interval -- warning (overdue).
-	if elapsed > 2*interval {
+	if late > interval {
 		return pipelineservice.HealthWarning
 	}
 

@@ -102,8 +102,7 @@ func (uc *GetConnectionStats) Execute(ctx context.Context, params pipelineservic
 
 	if conn.Status != pipelineservice.ConnectionStatusActive {
 		result.Health = pipelineservice.HealthDisabled
-	} else if lastSyncAt != nil {
-		// Get last job status.
+	} else {
 		lastJobInfo, err := uc.statsStorage.QueryLastJobInfo(ctx, params.ConnectionID)
 		if err != nil {
 			return nil, fmt.Errorf("querying last job info: %w", err)
@@ -114,9 +113,7 @@ func (uc *GetConnectionStats) Execute(ctx context.Context, params pipelineservic
 			lastStatus = lastJobInfo.Status
 		}
 
-		result.Health = ComputeHealthStatus(lastStatus, schedule, *lastSyncAt, now)
-	} else {
-		result.Health = pipelineservice.HealthHealthy
+		result.Health = ComputeHealthStatus(lastStatus, schedule, conn.NextScheduledAt, now)
 	}
 
 	// Duration chart: last 20 jobs with duration.
