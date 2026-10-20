@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.5.0](https://github.com/synclet-io/synclet/compare/synclet-helm-v0.4.0...synclet-helm-v0.5.0) (2026-10-20)
+
+
+### Features
+
+* **helm:** executor metrics Service and ServiceMonitor ([8a6449d](https://github.com/synclet-io/synclet/commit/8a6449d3dd7ce1e1035725e94f1356a5436ebd17))
+* **helm:** full CORS config and extraEnv from values ([69095a6](https://github.com/synclet-io/synclet/commit/69095a6d2a165c10ac291951aa96e52976574e70))
+
+
+### Bug Fixes
+
+* **helm:** legacy jobs and executor probes, reuse-values defaults match values.yaml, 0.4.0 values ([5749ab6](https://github.com/synclet-io/synclet/commit/5749ab63c213529b8cf95511eff3fb811b025d48))
+* **helm:** reject a serviceMonitor port the Service lacks, document annotations ([4395aab](https://github.com/synclet-io/synclet/commit/4395aab1be0c47a08a21ccf959af8ca05bdc48e5))
+* **helm:** templates render over values reused from older releases ([f218574](https://github.com/synclet-io/synclet/commit/f218574d6d9ca87ae964909ec9e1d8264b96b3f2))
+* **notify:** default empty SMTP TLS mode to implicit, expose it in the chart ([2e6a79b](https://github.com/synclet-io/synclet/commit/2e6a79bae0cce8f4fdb2cc2ef3cf60afd7901ae1))
+* **notify:** default SMTP port to 465 to match implicit TLS ([baf2723](https://github.com/synclet-io/synclet/commit/baf27231da56c294a8f8f61c99404cbcc1b51bce))
+
 ## [0.4.0](https://github.com/synclet-io/synclet/compare/synclet-helm-v0.3.0...synclet-helm-v0.4.0) (2026-10-19)
 
 
