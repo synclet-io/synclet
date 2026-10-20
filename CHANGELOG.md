@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.11.0](https://github.com/synclet-io/synclet/compare/synclet-v0.10.0...synclet-v0.11.0) (2026-10-20)
+
+
+### Features
+
+* **helm:** request and backend timeouts on the HTTPRoute ([b0fd6b4](https://github.com/synclet-io/synclet/commit/b0fd6b4e74f6bd4d5f72e9120506a396f755d30a))
+
+
+### Bug Fixes
+
+* **front:** allow commas in array fields of connector forms ([c5dc3b3](https://github.com/synclet-io/synclet/commit/c5dc3b3aae23ea445abc752e6db6484eb81e177d))
+* **pipeline:** audit connector star changes as updates instead of dropping them ([18061ad](https://github.com/synclet-io/synclet/commit/18061ad4ec66ce576384fae47f814ddc9c0cdca5))
+
 ## [0.10.0](https://github.com/synclet-io/synclet/compare/synclet-v0.9.0...synclet-v0.10.0) (2026-10-20)
 
 
