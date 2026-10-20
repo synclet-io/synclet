@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.9.0](https://github.com/synclet-io/synclet/compare/synclet-v0.8.0...synclet-v0.9.0) (2026-10-20)
+
+
+### Features
+
+* **helm:** Artifact Hub metadata, chart README and per-release change notes ([2cdea6d](https://github.com/synclet-io/synclet/commit/2cdea6da65d8e01ba72938304a8e2b3e26218614))
+* **pipeline:** tags on connections and a tag filter ([3720358](https://github.com/synclet-io/synclet/commit/3720358b95fc19415b52d1d8b8c2c87f63a51742))
+
+
+### Bug Fixes
+
+* **auth:** log why an OIDC login or callback failed ([d26191b](https://github.com/synclet-io/synclet/commit/d26191be9f69447bdbec2923b617b1cd19afdd02))
+
 ## [0.8.0](https://github.com/synclet-io/synclet/compare/synclet-v0.7.0...synclet-v0.8.0) (2026-10-20)
 
 
