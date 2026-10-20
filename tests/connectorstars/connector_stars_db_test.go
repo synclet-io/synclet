@@ -178,8 +178,8 @@ func TestStarIsWorkspaceWide(t *testing.T) {
 	assert.Equal(t, flags{}, f.list(t, workspaceID)[starredID])
 
 	require.Len(t, audit.events, 2)
-	assert.Equal(t, "star", audit.events[0].Action)
-	assert.Equal(t, "unstar", audit.events[1].Action)
+	assert.Equal(t, "update", audit.events[0].Action)
+	assert.Equal(t, "update", audit.events[1].Action)
 	assert.Equal(t, starredID, audit.events[1].ResourceID)
 	assert.Equal(t, "connector", audit.events[1].ResourceType)
 }
