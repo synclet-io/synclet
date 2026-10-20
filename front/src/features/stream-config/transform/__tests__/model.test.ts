@@ -14,6 +14,7 @@ describe('step model', () => {
     ['hash', { hash: ['email', 'phone'] }],
     ['mask', { mask: { card: { keep_last: 4 }, phone: { keep_first: 2, keep_last: 2 } } }],
     ['filter', { filter: 'r.status != \'test\'', on_error: 'skip' }],
+    ['drop', { drop: ['email', 'status'] }],
   ])('round-trips a %s step', (_kind, json) => {
     expect(roundTrip(json)).toEqual(json)
   })
@@ -44,6 +45,11 @@ describe('step model', () => {
     const step = fromStepJson({ cast: { amount: { to: 'number' } } })
     step.entries[0].cast = { ...step.entries[0].cast!, format: '', trim: false, trueValues: [], source: '' }
     expect(toStepJson(step)).toEqual({ cast: { amount: 'number' } })
+  })
+
+  it('writes a drop step without on_error', () => {
+    const step = fromStepJson({ drop: ['email'] })
+    expect(toStepJson({ ...step, onError: 'skip' })).toEqual({ drop: ['email'] })
   })
 
   it('adds, moves, updates and removes steps without changing the input list', () => {

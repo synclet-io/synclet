@@ -41,6 +41,7 @@ type Step struct {
 	Hash    []string            `json:"hash,omitempty"`
 	Mask    map[string]MaskSpec `json:"mask,omitempty"`
 	Filter  *string             `json:"filter,omitempty"`
+	Drop    []string            `json:"drop,omitempty"`
 	OnError string              `json:"on_error,omitempty"`
 }
 
@@ -117,6 +118,11 @@ func (s *Step) kind() (name string, kinds int) {
 	if s.Filter != nil {
 		kinds++
 		name = "filter"
+	}
+
+	if s.Drop != nil {
+		kinds++
+		name = "drop"
 	}
 
 	return name, kinds

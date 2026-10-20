@@ -1,4 +1,4 @@
-export type MapperKind = 'rename' | 'cast' | 'set' | 'hash' | 'mask' | 'filter'
+export type MapperKind = 'rename' | 'cast' | 'set' | 'hash' | 'mask' | 'filter' | 'drop'
 
 export type StepJson = Record<string, unknown>
 
@@ -34,7 +34,7 @@ export interface StepDraft {
   onError?: string
 }
 
-export const MAPPER_KINDS: MapperKind[] = ['rename', 'cast', 'set', 'hash', 'mask', 'filter']
+export const MAPPER_KINDS: MapperKind[] = ['rename', 'cast', 'set', 'hash', 'mask', 'filter', 'drop']
 
 export const MAPPER_LABELS: Record<MapperKind, string> = {
   rename: 'Rename',
@@ -43,6 +43,7 @@ export const MAPPER_LABELS: Record<MapperKind, string> = {
   hash: 'Hash',
   mask: 'Mask',
   filter: 'Filter',
+  drop: 'Drop',
 }
 
 export const CAST_TARGETS = ['string', 'integer', 'number', 'boolean', 'timestamp', 'date', 'object', 'array']
@@ -123,6 +124,7 @@ export function fromStepJson(json: StepJson): StepDraft {
       step.entries = Object.entries(map).map(([field, expr]) => ({ field, expr: String(expr ?? '') }))
       break
     case 'hash':
+    case 'drop':
       step.entries = (Array.isArray(value) ? value : []).map(field => ({ field: String(field) }))
       break
     case 'mask':
@@ -148,6 +150,7 @@ export function toStepJson(step: StepDraft): StepJson {
       value = Object.fromEntries(step.entries.map(e => [e.field, e.expr ?? '']))
       break
     case 'hash':
+    case 'drop':
       value = step.entries.map(e => e.field)
       break
     case 'mask':
@@ -165,7 +168,7 @@ export function toStepJson(step: StepDraft): StepJson {
       break
   }
   const json: StepJson = { [step.kind]: value }
-  if (step.onError && step.kind !== 'rename')
+  if (step.onError && step.kind !== 'rename' && step.kind !== 'drop')
     json.on_error = step.onError
   return json
 }

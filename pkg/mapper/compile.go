@@ -32,6 +32,7 @@ type compiledStep struct {
 	sets    []compiledSet
 	casts   []compiledCast
 	fields  []string
+	drops   []string
 	masks   map[string]MaskSpec
 	filter  cel.Program
 }
@@ -58,6 +59,8 @@ type compiler struct {
 	props    map[string]json.RawMessage
 	created  map[string]int
 	renamed  map[string]int
+	dropped  map[string]int
+	sources  map[string]string
 	written  map[string]bool
 	origin   map[string]string
 	required []string
@@ -76,6 +79,8 @@ func Compile(input Input) (*Chain, *Result) {
 		result:  &Result{PrimaryKey: clonePaths(input.PrimaryKey)},
 		created: map[string]int{},
 		renamed: map[string]int{},
+		dropped: map[string]int{},
+		sources: map[string]string{},
 		written: map[string]bool{},
 		origin:  map[string]string{},
 	}
@@ -166,6 +171,8 @@ func (c *compiler) step(idx int, step *Step, isCDC bool) {
 		compiled.masks = c.mask(idx, step.Mask, compiled.onError)
 	case "filter":
 		compiled.filter = c.filter(idx, *step.Filter, isCDC)
+	case "drop":
+		compiled.drops = c.drop(idx, step.Drop)
 	}
 
 	c.steps = append(c.steps, compiled)
@@ -173,7 +180,7 @@ func (c *compiler) step(idx int, step *Step, isCDC bool) {
 
 func onErrorAllowed(kind, onError string) bool {
 	switch kind {
-	case "rename":
+	case "rename", "drop":
 		return onError == ""
 	case "filter":
 		return onError == "" || onError == OnErrorFail || onError == OnErrorSkip
@@ -196,13 +203,26 @@ func (c *compiler) ref(idx int, field string) bool {
 		return true
 	}
 
-	if by, ok := c.renamed[field]; ok {
-		c.fail(idx, field, fmt.Sprintf("field %q was renamed by step %d", field, by))
+	if msg, ok := c.goneMessage(field); ok {
+		c.fail(idx, field, msg)
 	} else {
 		c.fail(idx, field, fmt.Sprintf("field %q does not exist", field))
 	}
 
 	return false
+}
+
+// goneMessage describes a field an earlier step renamed or dropped.
+func (c *compiler) goneMessage(field string) (string, bool) {
+	if by, ok := c.dropped[field]; ok {
+		return fmt.Sprintf("field %q was dropped by step %d", field, by), true
+	}
+
+	if by, ok := c.renamed[field]; ok {
+		return fmt.Sprintf("field %q was renamed by step %d", field, by), true
+	}
+
+	return "", false
 }
 
 // create reports whether the step may write a field: a valid name not created by another step.
@@ -230,6 +250,7 @@ func (c *compiler) write(idx int, field string, schema json.RawMessage) {
 	c.props[field] = schema
 	c.written[field] = true
 	delete(c.renamed, field)
+	delete(c.dropped, field)
 	delete(c.origin, field)
 }
 
@@ -293,8 +314,10 @@ func (c *compiler) rename(idx int, renames map[string]string) [][2]string {
 
 	moved := map[string]json.RawMessage{}
 	origins := map[string]string{}
+	carried := map[string]string{}
 
 	for _, pair := range out {
+		carried[pair[1]] = c.sourceOf(pair[0])
 		moved[pair[1]] = c.props[pair[0]]
 		origins[pair[1]] = pair[0]
 
@@ -307,6 +330,7 @@ func (c *compiler) rename(idx int, renames map[string]string) [][2]string {
 		delete(c.props, pair[0])
 		delete(c.created, pair[0])
 		delete(c.origin, pair[0])
+		delete(c.sources, pair[0])
 		c.renamed[pair[0]] = idx
 	}
 
@@ -317,6 +341,8 @@ func (c *compiler) rename(idx int, renames map[string]string) [][2]string {
 		if source, ok := origins[pair[1]]; ok {
 			c.origin[pair[1]] = source
 		}
+
+		c.sources[pair[1]] = carried[pair[1]]
 	}
 
 	c.renameReferences(out)
@@ -380,6 +406,7 @@ func (c *compiler) set(idx int, sets map[string]string, onError string) []compil
 
 	for _, field := range sortedKeys(results) {
 		c.write(idx, field, results[field])
+		c.sources[field] = ""
 	}
 
 	return out
@@ -402,6 +429,10 @@ func (c *compiler) cast(idx int, casts map[string]CastSpec, stepOnError string) 
 
 	for _, field := range sortedKeys(results) {
 		c.write(idx, field, results[field])
+
+		if casts[field].Source != "" {
+			c.sources[field] = ""
+		}
 	}
 
 	return out
@@ -499,6 +530,58 @@ func (c *compiler) mask(idx int, masks map[string]MaskSpec, onError string) map[
 	return out
 }
 
+func (c *compiler) drop(idx int, fields []string) []string {
+	out := make([]string, 0, len(fields))
+	seen := map[string]bool{}
+
+	for _, field := range fields {
+		if seen[field] {
+			c.fail(idx, field, fmt.Sprintf("field %q is listed twice", field))
+
+			continue
+		}
+
+		seen[field] = true
+
+		if c.ref(idx, field) && c.dropKey(idx, field) {
+			out = append(out, field)
+		}
+	}
+
+	for _, field := range out {
+		delete(c.props, field)
+		delete(c.created, field)
+		delete(c.written, field)
+		delete(c.origin, field)
+		delete(c.sources, field)
+		c.dropped[field] = idx
+		c.required = slices.DeleteFunc(c.required, func(name string) bool { return name == field })
+	}
+
+	return out
+}
+
+// dropKey reports whether a field may be dropped given the primary key: a key
+// field fails in a keyed mode and leaves the key in any other mode.
+func (c *compiler) dropKey(idx int, field string) bool {
+	keyed := keyedMode(c.in.DestinationSyncMode)
+	ok := true
+
+	for _, path := range c.result.PrimaryKey {
+		if keyed && len(path) > 0 && path[0] == field {
+			c.fail(idx, field, fmt.Sprintf("primary key field %q cannot be dropped in %s mode", strings.Join(path, "."), c.in.DestinationSyncMode))
+
+			ok = false
+		}
+	}
+
+	if ok && !keyed {
+		c.result.PrimaryKey = slices.DeleteFunc(c.result.PrimaryKey, func(path []string) bool { return len(path) > 0 && path[0] == field })
+	}
+
+	return ok
+}
+
 func (c *compiler) filter(idx int, expr string, isCDC bool) cel.Program {
 	env, _ := c.env(idx)
 	if env == nil {
@@ -546,7 +629,7 @@ func (c *compiler) env(idx int) (*cel.Env, *recordTypes) {
 func (c *compiler) expression(idx int, field string, env *cel.Env, expr string) (cel.Program, *types.Type, bool) {
 	checked, iss := env.Compile(expr)
 	if iss.Err() != nil {
-		if !c.renamedReference(idx, env, expr) {
+		if !c.goneReference(idx, env, expr) {
 			c.fail(idx, field, coalesceMessage(iss.Err().Error()))
 		}
 
@@ -565,6 +648,8 @@ func (c *compiler) expression(idx int, field string, env *cel.Env, expr string) 
 		return nil, nil, false
 	}
 
+	c.warnUnselected(idx, checked)
+
 	program, err := env.Program(checked, cel.CostLimit(c.in.CostLimit))
 	if err != nil {
 		c.fail(idx, field, err.Error())
@@ -577,7 +662,7 @@ func (c *compiler) expression(idx int, field string, env *cel.Env, expr string) 
 	return program, typ, typ.Kind() != types.BoolKind && readsNullable(checked, c.props)
 }
 
-func (c *compiler) renamedReference(idx int, env *cel.Env, expr string) bool {
+func (c *compiler) goneReference(idx int, env *cel.Env, expr string) bool {
 	parsed, iss := env.Parse(expr)
 	if iss.Err() != nil {
 		return false
@@ -586,14 +671,58 @@ func (c *compiler) renamedReference(idx int, env *cel.Env, expr string) bool {
 	found := false
 
 	for _, field := range referencedFields(parsed) {
-		if by, ok := c.renamed[field]; ok && !c.has(field) {
-			c.fail(idx, field, fmt.Sprintf("field %q was renamed by step %d", field, by))
+		if msg, ok := c.goneMessage(field); ok && !c.has(field) {
+			c.fail(idx, field, msg)
 
 			found = true
 		}
 	}
 
 	return found
+}
+
+// sourceOf returns the source field a field's value comes from, or "" when
+// a step computed it.
+func (c *compiler) sourceOf(field string) string {
+	if source, ok := c.sources[field]; ok {
+		return source
+	}
+
+	return field
+}
+
+// warnUnselected warns about each source field an expression reads that the
+// field selection leaves out.
+func (c *compiler) warnUnselected(idx int, checked *cel.Ast) {
+	if len(c.in.SelectedFields) == 0 {
+		return
+	}
+
+	for _, field := range referencedFields(checked) {
+		source := c.sourceOf(field)
+		if source == "" || topLevelSelected(c.in.SelectedFields, source) {
+			continue
+		}
+
+		issue := Issue{
+			Step:    idx,
+			Field:   source,
+			Message: fmt.Sprintf("field %q is not selected; sources that honour field selection will not send it — select it and drop it after use", source),
+		}
+		if !slices.Contains(c.result.Warnings, issue) {
+			c.result.Warnings = append(c.result.Warnings, issue)
+		}
+	}
+}
+
+func topLevelSelected(selected []protocol.SelectedField, field string) bool {
+	for _, sel := range selected {
+		if len(sel.FieldPath) > 0 && sel.FieldPath[0] == field {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (c *compiler) checkPrimaryKey() {

@@ -136,6 +136,10 @@ func (s *compiledStep) run(cur, syncVal map[string]any, salt []byte) (next map[s
 		delete(out, pair[0])
 	}
 
+	for _, field := range s.drops {
+		delete(out, field)
+	}
+
 	for _, pair := range s.renames {
 		if val, ok := cur[pair[0]]; ok {
 			out[pair[1]] = val

@@ -70,7 +70,7 @@ function lastMappers(wrapper: Wrapper) {
   return events.at(-1)![0].mappers
 }
 
-const labels: Record<MapperKind, string> = { rename: 'Rename', cast: 'Cast', set: 'Set', hash: 'Hash', mask: 'Mask', filter: 'Filter' }
+const labels: Record<MapperKind, string> = { rename: 'Rename', cast: 'Cast', set: 'Set', hash: 'Hash', mask: 'Mask', filter: 'Filter', drop: 'Drop' }
 
 async function addStep(wrapper: Wrapper, kind: MapperKind) {
   await wrapper.get('[data-testid="add-step"]').trigger('click')
@@ -151,7 +151,7 @@ describe('transformTab', () => {
 
   it('adds a step of every mapper kind and saves its form to the stream', async () => {
     const wrapper = mountTab(row())
-    for (const kind of ['rename', 'cast', 'set', 'hash', 'mask', 'filter'] as MapperKind[])
+    for (const kind of ['rename', 'cast', 'set', 'hash', 'mask', 'filter', 'drop'] as MapperKind[])
       await addStep(wrapper, kind)
 
     await card(wrapper, 0).get('input[data-testid="entry-field"]').setValue('cust_id')
@@ -167,6 +167,8 @@ describe('transformTab', () => {
     setCel(card(wrapper, 5).get('[data-testid="filter-expr"]'), 'r.status != \'test\'')
     await nextTick()
     await card(wrapper, 5).get('select[data-testid="step-on-error"]').setValue('skip')
+    await card(wrapper, 6).get('input[data-testid="entry-field"]').setValue('status')
+    expect(card(wrapper, 6).find('select[data-testid="step-on-error"]').exists()).toBe(false)
 
     expect(lastMappers(wrapper)).toEqual([
       { rename: { cust_id: 'customer_id' } },
@@ -175,6 +177,7 @@ describe('transformTab', () => {
       { hash: ['email'] },
       { mask: { card: { keep_last: 4 } } },
       { filter: 'r.status != \'test\'', on_error: 'skip' },
+      { drop: ['status'] },
     ])
   })
 
@@ -327,5 +330,24 @@ describe('transformTab', () => {
     const issues = card(wrapper, 1).findAll('[data-testid="step-issue"]')
     expect(issues.map(i => [i.attributes('data-severity'), i.text()])).toEqual([['warning', 'Rows filtered out later stay in the destination']])
     expect(card(wrapper, 0).findAll('[data-testid="step-issue"]')).toHaveLength(0)
+  })
+
+  it('shows a server warning on its step card', async () => {
+    const message = 'field "status" is not selected; sources that honour field selection will not send it — select it and drop it after use'
+    vi.mocked(validateMappers).mockResolvedValue({
+      errors: [],
+      warnings: [{ step: 0, field: 'status', message }],
+      outputSchema: { properties: {} },
+      outputPrimaryKey: [],
+      sampleOutput: undefined,
+      sampleKept: true,
+      sampleError: '',
+    })
+    const wrapper = mountTab(row({ selectedFields: [{ fieldPath: ['id'] }], mappers: [{ set: { x: 'r.status' } }, { drop: ['x'] }] }))
+    await vi.advanceTimersByTimeAsync(1000)
+
+    const issues = card(wrapper, 0).findAll('[data-testid="step-issue"]')
+    expect(issues.map(i => [i.attributes('data-severity'), i.text()])).toEqual([['warning', message]])
+    expect(card(wrapper, 1).findAll('[data-testid="step-issue"]')).toHaveLength(0)
   })
 })

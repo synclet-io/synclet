@@ -95,6 +95,12 @@ func TestRunMappers(t *testing.T) {
 			map[string]any{"code": "abc"},
 		},
 		{
+			"drop",
+			`[{"drop":["email","code"]}]`,
+			`{"id":1,"email":"a@b.c","code":"x"}`,
+			map[string]any{"id": int64(1)},
+		},
+		{
 			"filter keeps",
 			`[{"filter":"r.status != 'test'"}]`,
 			`{"status":"live"}`,
@@ -395,4 +401,68 @@ func TestRunHashNumberAsJSONText(t *testing.T) {
 	out, _, err := runOne(t, ordersSchema, `[{"hash":["amount"]}]`, `{"amount":1e21}`)
 	require.NoError(t, err)
 	require.Equal(t, hexHash("s1e+21"), out["amount"])
+}
+
+func TestRunDropKeepsInput(t *testing.T) {
+	t.Parallel()
+
+	rec := record(t, `{"id":1,"email":"a@b.c"}`)
+	chain, _ := mustCompile(t, Input{Schema: json.RawMessage(ordersSchema), Steps: steps(t, `[{"drop":["email"]}]`)})
+
+	out, keep, err := chain.Run(rec, testSync)
+	require.NoError(t, err)
+	require.True(t, keep)
+	require.Equal(t, map[string]any{"id": int64(1)}, out)
+	require.Equal(t, "a@b.c", rec["email"])
+}
+
+func TestRunCatch(t *testing.T) {
+	t.Parallel()
+
+	const schema = `{"type":"object","properties":{"s":{"type":"string"},"n":{"type":"integer"}}}`
+
+	tests := []struct {
+		name string
+		expr string
+		rec  string
+		want any
+	}{
+		{"bad conversion falls back", `catch(int(r.s), 0)`, `{"s":" asd"}`, int64(0)},
+		{"missing field falls back", `catch(r.n * 2, -1)`, `{}`, int64(-1)},
+		{"division by zero falls back", `catch(10 / r.n, 0)`, `{"n":0}`, int64(0)},
+		{"success returns the value", `catch(int(r.s), 0)`, `{"s":"42"}`, int64(42)},
+		{"composes in a larger expression", `catch(int(" asd"), 0) + 10`, `{}`, int64(10)},
+		{"nested catch", `catch(int(r.s), catch(r.n, 7))`, `{"s":"x"}`, int64(7)},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			out, keep, err := runOne(t, schema, `[{"set":{"x":`+mustJSON(t, tt.expr)+`}}]`, tt.rec)
+			require.NoError(t, err)
+			require.True(t, keep)
+			require.Equal(t, tt.want, out["x"])
+		})
+	}
+
+	t.Run("error in the fallback propagates", func(t *testing.T) {
+		t.Parallel()
+
+		_, _, err := runOne(t, schema, `[{"set":{"x":"catch(int(r.s), 1 / r.n)"}}]`, `{"s":"x","n":0}`)
+
+		var stepErr *StepError
+		require.ErrorAs(t, err, &stepErr)
+		require.Equal(t, "x", stepErr.Field)
+		require.Contains(t, err.Error(), "division by zero")
+	})
+}
+
+func mustJSON(t *testing.T, value any) string {
+	t.Helper()
+
+	out, err := json.Marshal(value)
+	require.NoError(t, err)
+
+	return string(out)
 }

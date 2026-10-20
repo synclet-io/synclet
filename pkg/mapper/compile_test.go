@@ -63,6 +63,15 @@ func TestCompileErrors(t *testing.T) {
 		{"on_error null on filter", `[{"filter":"true","on_error":"null"}]`, Issue{0, "", `on_error "null" is not allowed on filter`}, false},
 		{"unknown on_error on set", `[{"set":{"x":"1"},"on_error":"retry"}]`, Issue{0, "", `on_error "retry" is not allowed on set`}, false},
 		{"negative mask", `[{"mask":{"code":{"keep_last":-1}}}]`, Issue{0, "code", "keep_first and keep_last must not be negative"}, false},
+		{"drop of missing field", `[{"drop":["nope"]}]`, Issue{0, "nope", `field "nope" does not exist`}, false},
+		{"drop of field renamed away", `[{"rename":{"email":"mail"}},{"drop":["email"]}]`, Issue{1, "email", `field "email" was renamed by step 0`}, false},
+		{"field listed twice in a drop", `[{"drop":["email","email"]}]`, Issue{0, "email", `field "email" is listed twice`}, false},
+		{"dropped field used in expression", `[{"drop":["amount"]},{"set":{"x":"r.amount * 2.0"}}]`, Issue{1, "amount", `field "amount" was dropped by step 0`}, false},
+		{"dropped field used in filter", `[{"drop":["status"]},{"filter":"r.status == 'x'"}]`, Issue{1, "status", `field "status" was dropped by step 0`}, false},
+		{"dropped field used by hash", `[{"drop":["email"]},{"hash":["email"]}]`, Issue{1, "email", `field "email" was dropped by step 0`}, false},
+		{"dropped field dropped again", `[{"drop":["email"]},{"drop":["email"]}]`, Issue{1, "email", `field "email" was dropped by step 0`}, false},
+		{"on_error on drop", `[{"drop":["code"],"on_error":"skip"}]`, Issue{0, "", `on_error "skip" is not allowed on drop`}, false},
+		{"catch arguments of different types", `[{"set":{"x":"catch(int(r.code), 'n/a')"}}]`, Issue{0, "x", "no matching overload for 'catch'"}, true},
 		{"empty step", `[{}]`, Issue{0, "", "step must hold exactly one mapper"}, false},
 		{"two mappers in a step", `[{"set":{"x":"1"},"filter":"true"}]`, Issue{0, "", "step must hold exactly one mapper"}, false},
 	}
@@ -104,6 +113,33 @@ func TestCompilePrimaryKey(t *testing.T) {
 			require.Nil(t, chain)
 			require.Equal(t, []Issue{{SelectionStep, "id", `primary key field "id" is not selected`}}, res.Errors)
 		}
+	})
+
+	t.Run("drop of a primary key in a keyed mode", func(t *testing.T) {
+		t.Parallel()
+
+		for _, mode := range []protocol.DestinationSyncMode{protocol.DestinationSyncModeAppendDedup, protocol.DestinationSyncModeUpdate, protocol.DestinationSyncModeSoftDelete} {
+			chain, res := Compile(Input{
+				Schema:              json.RawMessage(ordersSchema),
+				Steps:               steps(t, `[{"rename":{"address":"addr"}},{"drop":["addr"]}]`),
+				PrimaryKey:          [][]string{{"address", "zip"}},
+				DestinationSyncMode: mode,
+			})
+			require.Nil(t, chain)
+			require.Equal(t, []Issue{{1, "addr", `primary key field "addr.zip" cannot be dropped in ` + string(mode) + ` mode`}}, res.Errors)
+		}
+	})
+
+	t.Run("drop of a primary key outside keyed modes removes it from the key", func(t *testing.T) {
+		t.Parallel()
+
+		_, res := mustCompile(t, Input{
+			Schema:              json.RawMessage(ordersSchema),
+			Steps:               steps(t, `[{"drop":["id"]}]`),
+			PrimaryKey:          [][]string{{"id"}, {"address", "zip"}},
+			DestinationSyncMode: protocol.DestinationSyncModeAppend,
+		})
+		require.Equal(t, [][]string{{"address", "zip"}}, res.PrimaryKey)
 	})
 
 	t.Run("unselected primary key outside dedup", func(t *testing.T) {
@@ -445,4 +481,126 @@ func TestCompileDateStringConversion(t *testing.T) {
 			require.Equal(t, []Issue{*tt.issue}, res.Errors)
 		})
 	}
+}
+
+func TestCompileDrop(t *testing.T) {
+	t.Parallel()
+
+	const schema = `{"type":"object","required":["id","amount"],"properties":{
+		"id":{"type":"integer"},
+		"amount":{"type":"number"},
+		"status":{"type":"string"}
+	}}`
+
+	tests := []struct {
+		name     string
+		steps    string
+		selected []protocol.SelectedField
+		schema   string
+		want     map[string]any
+	}{
+		{
+			"no selection",
+			`[{"set":{"total":"r.amount * 2.0"}},{"drop":["amount","status"]}]`,
+			nil,
+			`{"type":"object","required":["id"],"properties":{"id":{"type":"integer"},"total":{"type":"number"}}}`,
+			map[string]any{"id": int64(1), "total": 3.0},
+		},
+		{
+			"dropped field selected",
+			`[{"set":{"total":"r.amount * 2.0"}},{"drop":["amount"]}]`,
+			[]protocol.SelectedField{{FieldPath: []string{"id"}}, {FieldPath: []string{"amount"}}},
+			`{"type":"object","required":["id"],"properties":{"id":{"type":"integer"},"total":{"type":"number"}}}`,
+			map[string]any{"id": int64(1), "total": 3.0},
+		},
+		{
+			"dropped field written by an earlier step",
+			`[{"set":{"tmp":"r.amount * 2.0"}},{"set":{"total":"r.tmp + 1.0"}},{"drop":["tmp"]}]`,
+			[]protocol.SelectedField{{FieldPath: []string{"id"}}, {FieldPath: []string{"amount"}}},
+			`{"type":"object","required":["id","amount"],"properties":{"id":{"type":"integer"},"amount":{"type":"number"},"total":{"type":"number"}}}`,
+			map[string]any{"id": int64(1), "amount": 1.5, "total": 4.0},
+		},
+		{
+			"dropped renamed field",
+			`[{"rename":{"status":"state"}},{"drop":["state"]}]`,
+			nil,
+			`{"type":"object","required":["id","amount"],"properties":{"id":{"type":"integer"},"amount":{"type":"number"}}}`,
+			map[string]any{"id": int64(1), "amount": 1.5},
+		},
+		{
+			"set recreates a dropped name",
+			`[{"drop":["status"]},{"set":{"status":"'new'"}}]`,
+			[]protocol.SelectedField{{FieldPath: []string{"id"}}, {FieldPath: []string{"status"}}},
+			`{"type":"object","required":["id"],"properties":{"id":{"type":"integer"},"status":{"type":"string"}}}`,
+			map[string]any{"id": int64(1), "status": "new"},
+		},
+		{
+			"drop every field",
+			`[{"drop":["id","amount","status"]}]`,
+			nil,
+			`{"type":"object","required":[],"properties":{}}`,
+			map[string]any{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			chain, res := mustCompile(t, Input{Schema: json.RawMessage(schema), Steps: steps(t, tt.steps), SelectedFields: tt.selected})
+			require.JSONEq(t, tt.schema, string(res.Schema))
+
+			out, keep, err := chain.Run(record(t, `{"id":1,"amount":1.5,"status":"old"}`), testSync)
+			require.NoError(t, err)
+			require.True(t, keep)
+			require.Equal(t, tt.want, out)
+		})
+	}
+}
+
+func TestCompileUnselectedFieldWarning(t *testing.T) {
+	t.Parallel()
+
+	selectID := []protocol.SelectedField{{FieldPath: []string{"id"}}}
+
+	tests := []struct {
+		name     string
+		steps    string
+		selected []protocol.SelectedField
+		want     []Issue
+	}{
+		{"set reads an unselected field", `[{"set":{"x":"r.status + '!'"}}]`, selectID, []Issue{{0, "status", unselectedMessage("status")}}},
+		{"filter reads an unselected field", `[{"set":{"x":"1"}},{"filter":"r.status == 'a'"}]`, selectID, []Issue{{1, "status", unselectedMessage("status")}}},
+		{"cast source reads an unselected field", `[{"cast":{"n":{"to":"integer","source":"r.code"}}}]`, selectID, []Issue{{0, "code", unselectedMessage("code")}}},
+		{"one warning per field and step", `[{"set":{"x":"r.status","y":"r.status + r.code"}}]`, selectID, []Issue{{0, "status", unselectedMessage("status")}, {0, "code", unselectedMessage("code")}}},
+		{"renamed unselected field names its source", `[{"rename":{"status":"state"}},{"set":{"x":"r.state"}}]`, selectID, []Issue{{1, "status", unselectedMessage("status")}}},
+		{"selected field", `[{"set":{"x":"r.status"}}]`, []protocol.SelectedField{{FieldPath: []string{"id"}}, {FieldPath: []string{"status"}}}, nil},
+		{"nested selection covers its parent", `[{"set":{"x":"r.address.city"}}]`, []protocol.SelectedField{{FieldPath: []string{"address", "city"}}}, nil},
+		{"field created by an earlier step", `[{"set":{"x":"1"}},{"set":{"y":"r.x + 1"}}]`, selectID, nil},
+		{"field recomputed by an earlier step", `[{"set":{"status":"'a'"}},{"set":{"y":"r.status"}}]`, selectID, nil},
+		{"no selection", `[{"set":{"x":"r.status"}}]`, nil, nil},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			_, res := mustCompile(t, Input{Schema: json.RawMessage(ordersSchema), Steps: steps(t, tt.steps), SelectedFields: tt.selected})
+			require.Equal(t, tt.want, res.Warnings)
+		})
+	}
+}
+
+func unselectedMessage(field string) string {
+	return `field "` + field + `" is not selected; sources that honour field selection will not send it — select it and drop it after use`
+}
+
+func TestCompileCatchType(t *testing.T) {
+	t.Parallel()
+
+	_, res := mustCompile(t, Input{
+		Schema: json.RawMessage(`{"type":"object","properties":{"s":{"type":"string"}}}`),
+		Steps:  steps(t, `[{"set":{"x":"catch(int(r.s), 0)"}}]`),
+	})
+	require.JSONEq(t, `{"type":"object","properties":{"s":{"type":"string"},"x":{"type":"integer"}}}`, string(res.Schema))
 }

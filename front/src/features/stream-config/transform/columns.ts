@@ -1,5 +1,5 @@
 import type { DestinationSyncMode, SelectedField } from '@entities/connection'
-import type { StepDraft } from './model'
+import type { StepDraft, StepEntry } from './model'
 
 export interface Column {
   name: string
@@ -92,6 +92,7 @@ class Walker {
   cols = new Map<string, ColState>()
   created = new Map<string, number>()
   renamed = new Map<string, number>()
+  dropped = new Map<string, number>()
   issues: TransformIssue[] = []
 
   constructor(input: Column[]) {
@@ -107,16 +108,23 @@ class Walker {
     return Array.from(this.cols, ([name, c]) => (c.fields ? { name, type: c.type, fields: c.fields } : { name, type: c.type }))
   }
 
+  goneMessage(field: string): string | undefined {
+    const droppedBy = this.dropped.get(field)
+    if (droppedBy !== undefined)
+      return `field "${field}" was dropped by step ${droppedBy + 1}`
+    const renamedBy = this.renamed.get(field)
+    if (renamedBy !== undefined)
+      return `field "${field}" was renamed by step ${renamedBy + 1}`
+    return undefined
+  }
+
   ref(idx: number, field: string): boolean {
     if (this.cols.has(field))
       return true
-    const by = this.renamed.get(field)
     if (field === '')
       this.fail(idx, field, 'field name is empty')
-    else if (by !== undefined)
-      this.fail(idx, field, `field "${field}" was renamed by step ${by + 1}`)
     else
-      this.fail(idx, field, `field "${field}" does not exist`)
+      this.fail(idx, field, this.goneMessage(field) ?? `field "${field}" does not exist`)
     return false
   }
 
@@ -148,13 +156,37 @@ class Walker {
       existing.written = true
     }
     this.renamed.delete(field)
+    this.dropped.delete(field)
   }
 
   expression(idx: number, expr: string) {
     for (const field of expressionFields(expr)) {
-      const by = this.renamed.get(field)
-      if (by !== undefined && !this.cols.has(field))
-        this.fail(idx, field, `field "${field}" was renamed by step ${by + 1}`)
+      const message = this.cols.has(field) ? undefined : this.goneMessage(field)
+      if (message)
+        this.fail(idx, field, message)
+    }
+  }
+
+  drop(idx: number, entries: StepEntry[], pk: string[][], keyed: boolean) {
+    const fields: string[] = []
+    for (const e of entries) {
+      if (!this.ref(idx, e.field))
+        continue
+      const keyPaths = pk.filter(path => path.length > 0 && path[0] === e.field)
+      if (keyed && keyPaths.length > 0) {
+        for (const path of keyPaths)
+          this.fail(idx, e.field, `primary key field "${path.join('.')}" cannot be dropped in append_dedup mode`)
+        continue
+      }
+      for (const path of keyPaths)
+        path.length = 0
+      fields.push(e.field)
+    }
+    for (const field of fields) {
+      this.cols.delete(field)
+      this.created.delete(field)
+      this.renamed.delete(field)
+      this.dropped.set(field, idx)
     }
   }
 
@@ -221,7 +253,7 @@ class Walker {
     }
   }
 
-  step(idx: number, step: StepDraft, pk: string[][], keyed: boolean) {
+  step(idx: number, step: StepDraft, pk: string[][], keyed: boolean, dedup: boolean) {
     const skip = this.duplicates(idx, step)
     const entries = step.entries.filter((_, i) => !skip.has(i))
     switch (step.kind) {
@@ -268,6 +300,9 @@ class Walker {
         if (keyed)
           this.issues.push({ step: idx, field: '', message: FILTER_WARNING, severity: 'warning' })
         break
+      case 'drop':
+        this.drop(idx, entries, pk, dedup)
+        break
     }
   }
 }
@@ -295,7 +330,7 @@ export function walkColumns(
 
   steps.forEach((step, idx) => {
     stepInputs.push(walker.snapshot())
-    walker.step(idx, step, pk, keyed)
+    walker.step(idx, step, pk, keyed, dedup)
   })
 
   if (dedup && selectedFields.length > 0) {

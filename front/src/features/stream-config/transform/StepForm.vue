@@ -24,6 +24,7 @@ const columnListId = useId()
 const onErrorOptions = computed(() => {
   switch (props.step.kind) {
     case 'rename':
+    case 'drop':
       return []
     case 'filter':
       return [{ value: 'skip', label: 'Skip the record' }]

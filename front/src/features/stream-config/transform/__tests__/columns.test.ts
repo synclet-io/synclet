@@ -161,6 +161,40 @@ describe('walkColumns', () => {
     expect(errors([{ set: { [name]: '1' } }])).toEqual([{ step: 0, field: name, message }])
   })
 
+  it('removes dropped columns from later steps and the output', () => {
+    const result = walk([{ set: { total: 'r.amount' } }, { drop: ['amount', 'status'] }, { filter: 'true' }], { selected: [{ fieldPath: ['id'] }, { fieldPath: ['amount'] }] })
+    expect(result.issues).toEqual([])
+    expect(result.stepInputs[2].map(c => c.name)).toEqual(['id', 'cust_id', 'email', 'total'])
+    expect(result.output.map(c => c.name)).toEqual(['id', 'cust_id', 'email', 'total'])
+  })
+
+  it('flags the use of a field an earlier step dropped', () => {
+    expect(errors([{ drop: ['cust_id'] }, { hash: ['cust_id'] }, { filter: 'r.cust_id > 0' }, { drop: ['cust_id'] }])).toEqual([
+      { step: 1, field: 'cust_id', message: 'field "cust_id" was dropped by step 1' },
+      { step: 2, field: 'cust_id', message: 'field "cust_id" was dropped by step 1' },
+      { step: 3, field: 'cust_id', message: 'field "cust_id" was dropped by step 1' },
+    ])
+  })
+
+  it('lets a later set write a dropped name again', () => {
+    const result = walk([{ drop: ['status'] }, { set: { status: '\'new\'' } }])
+    expect(result.issues).toEqual([])
+    expect(result.output.find(c => c.name === 'status')?.marks).toEqual(['new'])
+  })
+
+  it('flags a drop of a missing field', () => {
+    expect(errors([{ drop: ['nope'] }])).toEqual([{ step: 0, field: 'nope', message: 'field "nope" does not exist' }])
+  })
+
+  it('flags a drop of the primary key in a dedup mode and drops it from the key otherwise', () => {
+    expect(errors([{ rename: { id: 'key' } }, { drop: ['key'] }], { mode: 'append_dedup' }))
+      .toEqual([{ step: 1, field: 'key', message: 'primary key field "key" cannot be dropped in append_dedup mode' }])
+
+    const appended = walk([{ drop: ['id'] }, { set: { id: '1' } }], { mode: 'append' })
+    expect(appended.issues).toEqual([])
+    expect(appended.output.find(c => c.name === 'id')?.primaryKey).toBe(false)
+  })
+
   it('warns about a filter on a dedup stream and on a CDC stream', () => {
     const warning = { step: 0, field: '', message: 'Rows filtered out later stay in the destination', severity: 'warning' }
     expect(walk([{ filter: 'true' }], { mode: 'append_dedup' }).issues).toEqual([warning])

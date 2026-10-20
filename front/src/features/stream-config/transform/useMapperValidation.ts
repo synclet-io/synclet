@@ -34,6 +34,8 @@ function writtenFields(step: StepDraft): string[] {
     return ['']
   if (step.kind === 'rename')
     return step.entries.map(e => e.target ?? '')
+  if (step.kind === 'drop')
+    return []
   return step.entries.map(e => e.field)
 }
 

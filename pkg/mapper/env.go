@@ -141,6 +141,11 @@ func newEnv(provider *recordTypes, recordType *types.Type) (*cel.Env, error) {
 					return value
 				})),
 		),
+		cel.Function("catch",
+			cel.Overload("catch_T_T", []*cel.Type{coalesceParam, coalesceParam}, coalesceParam,
+				cel.OverloadIsNonStrict(),
+				cel.BinaryBinding(catchVal)),
+		),
 		cel.Function("now",
 			cel.Overload("now_timestamp", []*cel.Type{}, cel.TimestampType,
 				cel.FunctionBinding(func(...ref.Val) ref.Val {
@@ -153,6 +158,16 @@ func newEnv(provider *recordTypes, recordType *types.Type) (*cel.Env, error) {
 	}
 
 	return env, nil
+}
+
+// catchVal returns value, or fallback when evaluating value failed; an
+// unknown value stays unknown.
+func catchVal(value, fallback ref.Val) ref.Val {
+	if types.IsError(value) {
+		return fallback
+	}
+
+	return value
 }
 
 func parseTimestampVal(value, format, timezone ref.Val) ref.Val {
