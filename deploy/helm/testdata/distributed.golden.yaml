@@ -62,7 +62,6 @@ data:
   ENVIRONMENT: "production"
   LOG_LEVEL: "info"
   PUBLIC_HTTP_SERVER_ADDR: "0.0.0.0:8080"
-  PUBLIC_HTTP_SERVER_CORS_ALLOW_ALL_ORIGINS: "false"
   INTERNAL_HTTP_SERVER_ADDR: "0.0.0.0:8081"
   ## Auth
   AUTH_REGISTRATION_ENABLED: "true"
@@ -408,26 +407,23 @@ spec:
             - name: AUTH_JWT_SECRET
               valueFrom:
                 secretKeyRef:
-                  
-                  name: t-synclet-secrets
                   key: jwt-secret
+                  name: t-synclet-secrets
             - name: SECRET_ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:
-                  
-                  name: t-synclet-secrets
                   key: encryption-key
+                  name: t-synclet-secrets
             - name: PIPELINE_EXECUTOR_API_TOKEN
               valueFrom:
                 secretKeyRef:
-                  
-                  name: t-synclet-secrets
                   key: internal-api-secret
+                  name: t-synclet-secrets
             - name: DB_DSN
               valueFrom:
                 secretKeyRef:
-                  name: t-synclet-secrets
                   key: db-dsn
+                  name: t-synclet-secrets
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -460,26 +456,23 @@ spec:
             - name: AUTH_JWT_SECRET
               valueFrom:
                 secretKeyRef:
-                  
-                  name: t-synclet-secrets
                   key: jwt-secret
+                  name: t-synclet-secrets
             - name: SECRET_ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:
-                  
-                  name: t-synclet-secrets
                   key: encryption-key
+                  name: t-synclet-secrets
             - name: PIPELINE_EXECUTOR_API_TOKEN
               valueFrom:
                 secretKeyRef:
-                  
-                  name: t-synclet-secrets
                   key: internal-api-secret
+                  name: t-synclet-secrets
             - name: DB_DSN
               valueFrom:
                 secretKeyRef:
-                  name: t-synclet-secrets
                   key: db-dsn
+                  name: t-synclet-secrets
           livenessProbe:
             httpGet:
               path: /live
@@ -577,26 +570,23 @@ spec:
             - name: AUTH_JWT_SECRET
               valueFrom:
                 secretKeyRef:
-                  
-                  name: t-synclet-secrets
                   key: jwt-secret
+                  name: t-synclet-secrets
             - name: SECRET_ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:
-                  
-                  name: t-synclet-secrets
                   key: encryption-key
+                  name: t-synclet-secrets
             - name: PIPELINE_EXECUTOR_API_TOKEN
               valueFrom:
                 secretKeyRef:
-                  
-                  name: t-synclet-secrets
                   key: internal-api-secret
+                  name: t-synclet-secrets
             - name: DB_DSN
               valueFrom:
                 secretKeyRef:
-                  name: t-synclet-secrets
                   key: db-dsn
+                  name: t-synclet-secrets
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -632,26 +622,23 @@ spec:
             - name: AUTH_JWT_SECRET
               valueFrom:
                 secretKeyRef:
-                  
-                  name: t-synclet-secrets
                   key: jwt-secret
+                  name: t-synclet-secrets
             - name: SECRET_ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:
-                  
-                  name: t-synclet-secrets
                   key: encryption-key
+                  name: t-synclet-secrets
             - name: PIPELINE_EXECUTOR_API_TOKEN
               valueFrom:
                 secretKeyRef:
-                  
-                  name: t-synclet-secrets
                   key: internal-api-secret
+                  name: t-synclet-secrets
             - name: DB_DSN
               valueFrom:
                 secretKeyRef:
-                  name: t-synclet-secrets
                   key: db-dsn
+                  name: t-synclet-secrets
           startupProbe:
             httpGet:
               path: /live
@@ -753,9 +740,8 @@ spec:
             - name: EXECUTOR_API_TOKEN
               valueFrom:
                 secretKeyRef:
-                  
-                  name: t-synclet-secrets
                   key: internal-api-secret
+                  name: t-synclet-secrets
           livenessProbe:
             httpGet:
               path: /live

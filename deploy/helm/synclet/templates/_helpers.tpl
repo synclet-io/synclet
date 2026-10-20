@@ -636,6 +636,57 @@ Secret env vars of executor pods: only the token they authenticate to the contro
 {{- end }}
 
 {{/*
+PUBLIC_HTTP_SERVER_CORS_* variables for the keys set under cors; the server
+defaults apply to the rest. corsAllowAllOrigins is the deprecated alias of
+cors.allowAllOrigins.
+*/}}
+{{- define "synclet.corsEnv" -}}
+{{- $cors := .Values.cors | default dict }}
+{{- $allowAll := .Values.corsAllowAllOrigins }}
+{{- if not (kindIs "invalid" $cors.allowAllOrigins) }}
+{{- $allowAll = $cors.allowAllOrigins }}
+{{- end }}
+{{- if not (kindIs "invalid" $allowAll) }}
+PUBLIC_HTTP_SERVER_CORS_ALLOW_ALL_ORIGINS: {{ $allowAll | quote }}
+{{- end }}
+{{- range $key, $name := dict "allowedOrigins" "ALLOWED_ORIGINS" "allowedOriginGlobs" "ALLOWED_ORIGIN_GLOBS" "allowedMethods" "ALLOWED_METHODS" "allowedHeaders" "ALLOWED_HEADERS" "exposedHeaders" "EXPOSED_HEADERS" }}
+{{- $value := index $cors $key }}
+{{- if not (kindIs "invalid" $value) }}
+PUBLIC_HTTP_SERVER_CORS_{{ $name }}: {{ join "," $value | quote }}
+{{- end }}
+{{- end }}
+{{- range $key, $name := dict "allowCredentials" "ALLOW_CREDENTIALS" "allowPrivateNetwork" "ALLOW_PRIVATE_NETWORK" }}
+{{- $value := index $cors $key }}
+{{- if not (kindIs "invalid" $value) }}
+PUBLIC_HTTP_SERVER_CORS_{{ $name }}: {{ $value | quote }}
+{{- end }}
+{{- end }}
+{{- if not (kindIs "invalid" $cors.maxAge) }}
+PUBLIC_HTTP_SERVER_CORS_MAX_AGE: {{ int $cors.maxAge | quote }}
+{{- end }}
+{{- end }}
+
+{{/*
+Container env: the chart's variables, then extraEnv, then the component's
+extraEnv. An entry replaces an earlier one of the same name.
+Call with (dict "ctx" $ "base" <rendered env list> "extraEnv" .Values.<component>.extraEnv).
+*/}}
+{{- define "synclet.env" -}}
+{{- $all := concat (fromYamlArray .base) (.ctx.Values.extraEnv | default list) (.extraEnv | default list) }}
+{{- $last := dict }}
+{{- range $i, $e := $all }}
+{{- $_ := set $last $e.name $i }}
+{{- end }}
+{{- $env := list }}
+{{- range $i, $e := $all }}
+{{- if eq (get $last $e.name) $i }}
+{{- $env = append $env $e }}
+{{- end }}
+{{- end }}
+{{- toYaml $env }}
+{{- end }}
+
+{{/*
 wait-postgres init container for pods that connect to the bundled PostgreSQL.
 Call with (dict "ctx" $ "securityContext" .Values.<component>.containerSecurityContext).
 */}}
@@ -657,7 +708,8 @@ Call with (dict "ctx" $ "securityContext" .Values.<component>.containerSecurityC
 {{/*
 migrate init container: applies pending migrations before the main container
 starts. Concurrent runs are safe, each module's migrations hold a Postgres
-advisory lock. Call with (dict "ctx" $ "securityContext" .Values.<component>.containerSecurityContext).
+advisory lock. Call with (dict "ctx" $ "securityContext" .Values.<component>.containerSecurityContext
+"extraEnv" .Values.<component>.extraEnv).
 */}}
 {{- define "synclet.migrateInitContainer" -}}
 - name: migrate
@@ -668,7 +720,7 @@ advisory lock. Call with (dict "ctx" $ "securityContext" .Values.<component>.con
     - configMapRef:
         name: {{ include "synclet.fullname" .ctx }}
   env:
-    {{- include "synclet.secretEnvVars" .ctx | nindent 4 }}
+    {{- include "synclet.env" (dict "ctx" .ctx "base" (include "synclet.secretEnvVars" .ctx) "extraEnv" .extraEnv) | nindent 4 }}
   {{- if .securityContext.enabled }}
   securityContext:
     allowPrivilegeEscalation: {{ .securityContext.allowPrivilegeEscalation }}

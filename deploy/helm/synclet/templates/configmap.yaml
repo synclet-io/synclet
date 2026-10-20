@@ -8,7 +8,7 @@ data:
   ENVIRONMENT: {{ .Values.environment | quote }}
   LOG_LEVEL: {{ .Values.logLevel | quote }}
   PUBLIC_HTTP_SERVER_ADDR: {{ printf "0.0.0.0:%v" .Values.server.containerPorts.public | quote }}
-  PUBLIC_HTTP_SERVER_CORS_ALLOW_ALL_ORIGINS: {{ .Values.corsAllowAllOrigins | quote }}
+  {{- with include "synclet.corsEnv" . }}{{ . | trim | nindent 2 }}{{ end }}
   INTERNAL_HTTP_SERVER_ADDR: {{ printf "0.0.0.0:%v" .Values.server.containerPorts.internal | quote }}
   ## Auth
   AUTH_REGISTRATION_ENABLED: {{ .Values.auth.registrationEnabled | quote }}

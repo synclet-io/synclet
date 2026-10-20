@@ -10,8 +10,46 @@ fullnameOverride: ""
 mode: standalone  # standalone | distributed
 environment: production
 logLevel: info
-corsAllowAllOrigins: false
+## Deprecated: use cors.allowAllOrigins, which takes precedence when both are set.
+# corsAllowAllOrigins: false
 revisionHistoryLimit: 3
+## Extra environment variables of every Synclet container: server, jobs, executor and
+## their migrate init containers, not the connector pods the executor launches. Entries
+## are Kubernetes EnvVar objects, so both value and valueFrom work. env takes precedence
+## over envFrom, so an entry here overrides a chart ConfigMap key or an extraEnvFrom source
+## of the same name; <component>.extraEnv comes after this list and wins on a duplicate name.
+extraEnv: []
+# - name: NO_PROXY
+#   value: .svc,.cluster.local
+# - name: HTTPS_PROXY
+#   valueFrom:
+#     secretKeyRef:
+#       name: synclet-proxy
+#       key: url
+
+## @section CORS parameters
+## CORS of the public HTTP API (PUBLIC_HTTP_SERVER_CORS_*), read by the server.
+## Only the keys set here are rendered; ~ leaves the server default.
+## Lists render comma-separated, so an entry cannot contain a comma.
+cors:
+  ## Accept every origin (default false).
+  allowAllOrigins: ~
+  ## Origin hostnames to accept, without scheme or port (e.g. ["app.example.com"]).
+  allowedOrigins: ~
+  ## Hostname globs to accept, "*" matching one dot-separated label (e.g. ["*.example.com"]).
+  allowedOriginGlobs: ~
+  ## Methods allowed in preflight requests (default GET, POST and HEAD).
+  allowedMethods: ~
+  ## Request headers allowed in preflight requests (default ["*"]).
+  allowedHeaders: ~
+  ## Response headers exposed to the browser (default none).
+  exposedHeaders: ~
+  ## Allow cookies and other credentials on cross-origin requests (default false).
+  allowCredentials: ~
+  ## Answer Private Network Access preflights (default false).
+  allowPrivateNetwork: ~
+  ## Seconds a browser caches a preflight response (default 0, no Access-Control-Max-Age header).
+  maxAge: ~
 
 ## @section Synclet image parameters
 image:
@@ -127,6 +165,7 @@ server:
     labels: {}          # extra labels on the ServiceMonitor resource
     annotations: {}
   extraEnvFrom: []      # additional envFrom entries (configMapRef, secretRef)
+  extraEnv: []          # EnvVar entries after the global extraEnv; see extraEnv above
   podAnnotations: {}
   priorityClassName: ""
   topologySpreadConstraints: []
@@ -172,6 +211,7 @@ jobs:
     initialDelaySeconds: 5
     periodSeconds: 10
   extraEnvFrom: []      # additional envFrom entries (configMapRef, secretRef)
+  extraEnv: []          # EnvVar entries after the global extraEnv; see extraEnv above
   podAnnotations: {}
   priorityClassName: ""
   topologySpreadConstraints: []
@@ -236,6 +276,7 @@ executor:
     labels: {}          # extra labels on the ServiceMonitor resource
     annotations: {}
   extraEnvFrom: []      # additional envFrom entries (configMapRef, secretRef)
+  extraEnv: []          # EnvVar entries after the global extraEnv; see extraEnv above
   podAnnotations: {}
   priorityClassName: ""
   topologySpreadConstraints: []

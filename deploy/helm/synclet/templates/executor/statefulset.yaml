@@ -64,7 +64,7 @@ spec:
             {{- toYaml . | nindent 12 }}
             {{- end }}
           env:
-            {{- include "synclet.executorSecretEnvVars" . | nindent 12 }}
+            {{- include "synclet.env" (dict "ctx" $ "base" (include "synclet.executorSecretEnvVars" .) "extraEnv" .Values.executor.extraEnv) | nindent 12 }}
           {{- if .Values.executor.livenessProbe.enabled }}
           livenessProbe:
             httpGet:

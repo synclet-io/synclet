@@ -66,10 +66,8 @@ type rbacRule struct {
 }
 
 type container struct {
-	Name string `yaml:"name"`
-	Env  []struct {
-		Name string `yaml:"name"`
-	} `yaml:"env"`
+	Name    string   `yaml:"name"`
+	Env     []envVar `yaml:"env"`
 	EnvFrom []struct {
 		ConfigMapRef *struct {
 			Name string `yaml:"name"`
@@ -78,6 +76,17 @@ type container struct {
 	StartupProbe   *probe `yaml:"startupProbe"`
 	LivenessProbe  *probe `yaml:"livenessProbe"`
 	ReadinessProbe *probe `yaml:"readinessProbe"`
+}
+
+type envVar struct {
+	Name      string `yaml:"name"`
+	Value     string `yaml:"value"`
+	ValueFrom *struct {
+		SecretKeyRef *struct {
+			Name string `yaml:"name"`
+			Key  string `yaml:"key"`
+		} `yaml:"secretKeyRef"`
+	} `yaml:"valueFrom"`
 }
 
 type probe struct {
@@ -390,6 +399,130 @@ func TestChart_ExecutorGetsOnlyExecutorSecrets(t *testing.T) {
 	assert.Contains(t, server, "DB_DSN")
 	assert.Contains(t, server, "PIPELINE_EXECUTOR_API_TOKEN")
 	assert.NotContains(t, server, "EXECUTOR_API_TOKEN")
+}
+
+func corsData(m manifest) map[string]string {
+	cors := map[string]string{}
+
+	for key, value := range m.Data {
+		if name, ok := strings.CutPrefix(key, "PUBLIC_HTTP_SERVER_CORS_"); ok {
+			cors[name] = value
+		}
+	}
+
+	return cors
+}
+
+func TestChart_CORS(t *testing.T) {
+	cors := func(args ...string) map[string]string {
+		return corsData(renderChart(t, args...).get(t, "ConfigMap", "t-synclet"))
+	}
+
+	assert.Empty(t, cors())
+	assert.Equal(t, map[string]string{"ALLOW_ALL_ORIGINS": "true"}, cors("--set", "corsAllowAllOrigins=true"))
+	assert.Equal(t, map[string]string{"ALLOW_ALL_ORIGINS": "false"},
+		cors("--set", "corsAllowAllOrigins=true", "--set", "cors.allowAllOrigins=false"))
+
+	assert.Equal(t, map[string]string{
+		"ALLOW_ALL_ORIGINS":     "false",
+		"ALLOWED_ORIGINS":       "app.example.com,admin.example.com",
+		"ALLOWED_ORIGIN_GLOBS":  "*.example.com",
+		"ALLOWED_METHODS":       "GET,POST",
+		"ALLOWED_HEADERS":       "Authorization,Content-Type",
+		"EXPOSED_HEADERS":       "Grpc-Status",
+		"ALLOW_CREDENTIALS":     "true",
+		"ALLOW_PRIVATE_NETWORK": "false",
+		"MAX_AGE":               "1000000",
+	}, cors(
+		"--set", "mode=distributed",
+		"--set", "cors.allowAllOrigins=false",
+		"--set", "cors.allowedOrigins={app.example.com,admin.example.com}",
+		"--set", "cors.allowedOriginGlobs={*.example.com}",
+		"--set", "cors.allowedMethods={GET,POST}",
+		"--set", "cors.allowedHeaders={Authorization,Content-Type}",
+		"--set", "cors.exposedHeaders={Grpc-Status}",
+		"--set", "cors.allowCredentials=true",
+		"--set", "cors.allowPrivateNetwork=false",
+		"--set", "cors.maxAge=1000000",
+	))
+
+	executor := renderChart(t, "--set", "mode=distributed", "--set", "cors.allowAllOrigins=true").
+		get(t, "ConfigMap", "t-synclet-executor")
+	assert.Empty(t, corsData(executor))
+}
+
+func TestChart_ExtraEnv(t *testing.T) {
+	values := filepath.Join(t.TempDir(), "values.yaml")
+	require.NoError(t, os.WriteFile(values, []byte(`
+mode: distributed
+extraEnv:
+  - name: HTTP_PROXY
+    value: http://proxy:3128
+  - name: SHARED
+    value: global
+  - name: S3_KEY
+    valueFrom:
+      secretKeyRef:
+        name: synclet-s3
+        key: access-key-id
+server:
+  extraEnv:
+    - name: SHARED
+      value: server
+    - name: DB_DSN
+      value: postgres://override
+jobs:
+  extraEnv:
+    - name: JOBS_ONLY
+      value: "1"
+executor:
+  extraEnv:
+    - name: SHARED
+      value: executor
+`), 0o600))
+
+	r := renderChart(t, "-f", values)
+
+	env := func(c container) map[string]envVar {
+		byName := make(map[string]envVar, len(c.Env))
+		for _, e := range c.Env {
+			_, dup := byName[e.Name]
+			assert.False(t, dup, "%s: %s rendered twice", c.Name, e.Name)
+
+			byName[e.Name] = e
+		}
+
+		return byName
+	}
+
+	server := r.get(t, "Deployment", "t-synclet-server")
+	jobs := r.get(t, "Deployment", "t-synclet-jobs")
+	executor := r.get(t, "StatefulSet", "t-synclet-executor")
+
+	for _, c := range []container{server.container(t, "synclet"), server.Spec.Template.Spec.InitContainers[1]} {
+		got := env(c)
+		assert.Equal(t, "http://proxy:3128", got["HTTP_PROXY"].Value, c.Name)
+		assert.Equal(t, "server", got["SHARED"].Value, c.Name)
+		assert.Equal(t, "postgres://override", got["DB_DSN"].Value, c.Name)
+		assert.Nil(t, got["DB_DSN"].ValueFrom, c.Name)
+		require.NotNil(t, got["S3_KEY"].ValueFrom, c.Name)
+		assert.Equal(t, "synclet-s3", got["S3_KEY"].ValueFrom.SecretKeyRef.Name, c.Name)
+		assert.Equal(t, "access-key-id", got["S3_KEY"].ValueFrom.SecretKeyRef.Key, c.Name)
+		assert.NotContains(t, got, "JOBS_ONLY", c.Name)
+	}
+
+	for _, c := range []container{jobs.container(t, "jobs"), jobs.Spec.Template.Spec.InitContainers[1]} {
+		got := env(c)
+		assert.Equal(t, "global", got["SHARED"].Value, c.Name)
+		assert.Equal(t, "1", got["JOBS_ONLY"].Value, c.Name)
+		assert.NotNil(t, got["DB_DSN"].ValueFrom, c.Name)
+	}
+
+	got := env(executor.container(t, "executor"))
+	assert.Equal(t, "executor", got["SHARED"].Value)
+	assert.Contains(t, got, "S3_KEY")
+	assert.Contains(t, got, "EXECUTOR_API_TOKEN")
+	assert.NotContains(t, got, "DB_DSN")
 }
 
 func TestChart_ExecutorStatefulSet(t *testing.T) {
