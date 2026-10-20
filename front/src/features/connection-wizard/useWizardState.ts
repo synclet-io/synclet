@@ -22,6 +22,8 @@ export interface WizardState {
   discoveredCatalog: Record<string, unknown> | null
   streams: ConfiguredStream[]
   streamsSkipped: boolean
+  // Step 5
+  tags: string[]
 }
 
 export const WIZARD_STEPS = [
@@ -48,6 +50,7 @@ export function useWizardState() {
     namespaceDefinition: 'source',
     customNamespaceFormat: '',
     streamPrefix: '',
+    tags: [],
     discoveredCatalog: null,
     streams: [],
     streamsSkipped: false,

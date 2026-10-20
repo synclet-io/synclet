@@ -1,17 +1,23 @@
 <script setup lang="ts">
 import type { WizardState } from './useWizardState'
+import { useConnectionTags } from '@entities/connection'
 import { useManagedConnector } from '@entities/connector'
-import { SButton, SCard } from '@shared/ui'
+import { SButton, SCard, STagInput } from '@shared/ui'
 import { computed } from 'vue'
 import { formatConnector } from './connectorLabel'
 
 const props = defineProps<{
   state: WizardState
+  tagsError?: string
 }>()
 
-defineEmits<{
-  goTo: [step: number]
+const emit = defineEmits<{
+  'goTo': [step: number]
+  'update:tags': [tags: string[]]
 }>()
+
+const { data: workspaceTags } = useConnectionTags()
+const tagSuggestions = computed(() => (workspaceTags.value ?? []).map(t => t.tag))
 
 const { data: sourceConnector } = useManagedConnector(computed(() => props.state.source?.managedConnectorId ?? ''))
 const { data: destinationConnector } = useManagedConnector(computed(() => props.state.destination?.managedConnectorId ?? ''))
@@ -179,6 +185,18 @@ function formatNamespace(ns: string): string {
       <p v-else class="text-sm text-heading">
         {{ state.streams.length }} streams enabled
       </p>
+    </SCard>
+
+    <!-- Tags -->
+    <SCard>
+      <STagInput
+        :model-value="state.tags"
+        :suggestions="tagSuggestions"
+        :error="tagsError"
+        label="Tags"
+        placeholder="Add a tag and press Enter"
+        @update:model-value="emit('update:tags', $event)"
+      />
     </SCard>
   </div>
 </template>

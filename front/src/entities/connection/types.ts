@@ -28,6 +28,12 @@ export interface Connection {
   destinationName: string
   sourceConnectorName: string
   destinationConnectorName: string
+  tags: string[]
+}
+
+export interface ConnectionTag {
+  tag: string
+  connectionCount: number
 }
 
 export interface ConfiguredStream {

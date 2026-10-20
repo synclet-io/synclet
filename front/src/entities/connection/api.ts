@@ -1,5 +1,5 @@
 import type { JsonObject } from '@bufbuild/protobuf'
-import type { ConfiguredStream, Connection, ConnectionStatus, DestinationSyncMode, NamespaceDefinition, SchemaChange, SchemaChangePolicy, SchemaChangeType, StateType, StreamStatesResult, SyncMode, ValidateMappersParams, ValidateMappersResult } from './types'
+import type { ConfiguredStream, Connection, ConnectionStatus, ConnectionTag, DestinationSyncMode, NamespaceDefinition, SchemaChange, SchemaChangePolicy, SchemaChangeType, StateType, StreamStatesResult, SyncMode, ValidateMappersParams, ValidateMappersResult } from './types'
 import type { Connection as ProtoConnection, SchemaChange as ProtoSchemaChange } from '@/gen/synclet/publicapi/pipeline/v1/pipeline_pb'
 import { ConfiguredStreamSchema, connectionClient, create } from '@shared/api/services'
 import { tsToDate } from '@shared/lib/formatting'
@@ -98,6 +98,7 @@ function mapConnection(proto: ProtoConnection): Connection {
     destinationName: proto.destinationName,
     sourceConnectorName: proto.sourceConnectorName,
     destinationConnectorName: proto.destinationConnectorName,
+    tags: proto.tags ?? [],
   }
 }
 
@@ -107,6 +108,7 @@ export interface ListConnectionsParams {
   includePendingSchemaChanges?: boolean
   sourceId?: string
   destinationId?: string
+  tags?: string[]
 }
 
 export async function listConnections(params: ListConnectionsParams = {}): Promise<{ items: Connection[], total: number }> {
@@ -116,11 +118,17 @@ export async function listConnections(params: ListConnectionsParams = {}): Promi
     includePendingSchemaChanges: params.includePendingSchemaChanges ?? false,
     sourceId: params.sourceId ?? '',
     destinationId: params.destinationId ?? '',
+    tags: params.tags ?? [],
   })
   return {
     items: (res.connections || []).map(mapConnection),
     total: Number(res.total),
   }
+}
+
+export async function listConnectionTags(): Promise<ConnectionTag[]> {
+  const res = await connectionClient.listConnectionTags({})
+  return (res.tags ?? []).map(t => ({ tag: t.tag, connectionCount: t.connectionCount }))
 }
 
 export async function getConnection(id: string): Promise<Connection | undefined> {
@@ -138,6 +146,7 @@ export async function createConnection(params: {
   namespaceDefinition?: NamespaceDefinition
   customNamespaceFormat?: string
   streamPrefix?: string
+  tags?: string[]
 }): Promise<Connection | undefined> {
   const res = await connectionClient.createConnection({
     name: params.name,
@@ -149,6 +158,7 @@ export async function createConnection(params: {
     namespaceDefinition: params.namespaceDefinition ? toProtoNamespaceDefinition(params.namespaceDefinition) : undefined,
     customNamespaceFormat: params.customNamespaceFormat || '',
     streamPrefix: params.streamPrefix || '',
+    tags: params.tags ?? [],
   })
   return res.connection ? mapConnection(res.connection) : undefined
 }
@@ -225,6 +235,7 @@ export async function updateConnection(params: {
   namespaceDefinition?: NamespaceDefinition
   customNamespaceFormat?: string
   streamPrefix?: string
+  tags?: string[]
 }): Promise<Connection | undefined> {
   const res = await connectionClient.updateConnection({
     id: params.id,
@@ -235,6 +246,7 @@ export async function updateConnection(params: {
     namespaceDefinition: params.namespaceDefinition ? toProtoNamespaceDefinition(params.namespaceDefinition) : undefined,
     customNamespaceFormat: params.customNamespaceFormat,
     streamPrefix: params.streamPrefix,
+    tags: params.tags ? { values: params.tags } : undefined,
   })
   return res.connection ? mapConnection(res.connection) : undefined
 }

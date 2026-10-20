@@ -29,6 +29,7 @@ export const connectionKeys = {
   all: (workspaceId: string) => ['connections', workspaceId] as const,
   list: (workspaceId: string) => [...connectionKeys.all(workspaceId), 'list'] as const,
   detail: (workspaceId: string, id: string) => [...connectionKeys.all(workspaceId), 'detail', id] as const,
+  tags: (workspaceId: string) => [...connectionKeys.all(workspaceId), 'tags'] as const,
   streamStates: (workspaceId: string, connectionId: string) =>
     [...connectionKeys.all(workspaceId), 'streamStates', connectionId] as const,
   schemaChanges: (workspaceId: string, connectionId: string) =>

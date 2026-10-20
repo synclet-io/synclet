@@ -52,6 +52,7 @@ function mkConn(id: string, name: string, srcId: string, destId: string, status:
     destinationName: '',
     sourceConnectorName: '',
     destinationConnectorName: '',
+    tags: [],
   }
 }
 

@@ -58,6 +58,7 @@ export function useConnections(options?: {
   includePendingSchemaChanges?: boolean
   sourceId?: MaybeRef<string>
   destinationId?: MaybeRef<string>
+  tags?: MaybeRef<string[]>
   enabled?: MaybeRef<boolean>
 }) {
   const { currentWorkspaceId } = useAuth()
@@ -66,20 +67,32 @@ export function useConnections(options?: {
   const includePendingSchemaChanges = options?.includePendingSchemaChanges ?? false
   const sourceId = computed(() => toValue(options?.sourceId) ?? '')
   const destinationId = computed(() => toValue(options?.destinationId) ?? '')
+  const tags = computed(() => toValue(options?.tags) ?? [])
   return useQuery({
     queryKey: computed(() => [
       ...connectionKeys.list(currentWorkspaceId.value ?? ''),
       page ? toValue(page) : 'all',
       ...(includePendingSchemaChanges ? ['pendingSchemaChanges'] : []),
       ...(sourceId.value || destinationId.value ? [{ sourceId: sourceId.value, destinationId: destinationId.value }] : []),
+      ...(tags.value.length ? [{ tags: tags.value }] : []),
     ]),
     queryFn: () => connectionApi.listConnections({
       ...(page ? { pageSize, offset: (toValue(page) - 1) * pageSize } : {}),
       includePendingSchemaChanges,
       sourceId: sourceId.value,
       destinationId: destinationId.value,
+      tags: tags.value,
     }),
     enabled: computed(() => !!currentWorkspaceId.value && toValue(options?.enabled ?? true)),
+  })
+}
+
+export function useConnectionTags() {
+  const { currentWorkspaceId } = useAuth()
+  return useQuery({
+    queryKey: computed(() => connectionKeys.tags(currentWorkspaceId.value ?? '')),
+    queryFn: () => connectionApi.listConnectionTags(),
+    enabled: computed(() => !!currentWorkspaceId.value),
   })
 }
 

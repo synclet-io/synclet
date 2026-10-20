@@ -2,6 +2,7 @@
 import { configuredCatalogToStreams, getConfiguredCatalog, getConnection, useConfigureStreams, useCreateConnection } from '@entities/connection'
 import { getDestination } from '@entities/destination/api'
 import { getSource } from '@entities/source/api'
+import { tagFieldError } from '@features/connection-tags/tagError'
 import StepReview from '@features/connection-wizard/StepReview.vue'
 import StepSelectDestination from '@features/connection-wizard/StepSelectDestination.vue'
 import StepSelectSource from '@features/connection-wizard/StepSelectSource.vue'
@@ -21,6 +22,7 @@ const createConnectionMutation = useCreateConnection()
 const configureStreamsMutation = useConfigureStreams()
 const submitting = ref(false)
 const error = ref('')
+const tagsError = ref('')
 const redirectTimer = ref<ReturnType<typeof setTimeout> | null>(null)
 const hydrating = ref(false)
 const skipLeaveGuard = ref(false)
@@ -77,6 +79,7 @@ onMounted(async () => {
       namespaceDefinition: src.namespaceDefinition,
       customNamespaceFormat: src.customNamespaceFormat,
       streamPrefix: src.streamPrefix,
+      tags: [...src.tags],
       discoveredCatalog: configuredCat ?? null,
       streams: configuredCatalogToStreams(configuredCat),
       streamsSkipped: false,
@@ -125,6 +128,7 @@ async function handleCreate() {
     return
   submitting.value = true
   error.value = ''
+  tagsError.value = ''
   try {
     const connection = await createConnectionMutation.mutateAsync({
       name: state.value.name,
@@ -136,6 +140,7 @@ async function handleCreate() {
       namespaceDefinition: state.value.namespaceDefinition,
       customNamespaceFormat: state.value.customNamespaceFormat || undefined,
       streamPrefix: state.value.streamPrefix || undefined,
+      tags: state.value.tags,
     })
     if (!connection)
       throw new Error('Failed to create connection')
@@ -161,9 +166,16 @@ async function handleCreate() {
     router.push(`/connections/${connection.id}`)
   }
   catch (e: unknown) {
-    error.value = getErrorMessage(e) || 'Failed to create connection. Please try again.'
+    tagsError.value = tagFieldError(e)
+    if (!tagsError.value)
+      error.value = getErrorMessage(e) || 'Failed to create connection. Please try again.'
     submitting.value = false
   }
+}
+
+function updateTags(tags: string[]) {
+  state.value.tags = tags
+  tagsError.value = ''
 }
 
 function handleSkipStreams() {
@@ -236,7 +248,9 @@ function handleSkipStreams() {
           <StepReview
             v-if="currentStep === 5"
             :state="state"
+            :tags-error="tagsError"
             @go-to="goTo"
+            @update:tags="updateTags"
           />
         </div>
 

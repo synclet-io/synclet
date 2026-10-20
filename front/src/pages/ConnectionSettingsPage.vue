@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import type { NamespaceDefinition, SchemaChangePolicy } from '@entities/connection'
-import { useConnection, useUpdateConnection } from '@entities/connection'
+import { useAuth } from '@entities/auth'
+import { useConnection, useConnectionTags, useUpdateConnection } from '@entities/connection'
+import { tagFieldError } from '@features/connection-tags/tagError'
 import { getErrorMessage } from '@shared/lib/errorUtils'
-import { SButton, SCard, SCronEditor, SInput, SSelect, useToast } from '@shared/ui'
+import { SButton, SCard, SCronEditor, SInput, SSelect, STagInput, useToast } from '@shared/ui'
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
@@ -12,6 +14,15 @@ const toast = useToast()
 
 const { data: connection } = useConnection(id)
 const updateMutation = useUpdateConnection()
+const { data: workspaceTags } = useConnectionTags()
+const tagSuggestions = computed(() => (workspaceTags.value ?? []).map(t => t.tag))
+const tagsError = ref('')
+
+const auth = useAuth()
+const canEditTags = computed(() => {
+  const role = auth.workspaces.value.find(w => w.workspaceId === auth.currentWorkspaceId.value)?.role
+  return role === 'editor' || role === 'admin'
+})
 
 const schemaChangePolicyOptions = [
   { label: 'Propagate changes', value: 'propagate' },
@@ -33,6 +44,7 @@ const editForm = ref({
   namespaceDefinition: 'source' as NamespaceDefinition,
   customNamespaceFormat: '',
   streamPrefix: '',
+  tags: [] as string[],
 })
 
 watch(() => connection.value, (conn) => {
@@ -45,11 +57,18 @@ watch(() => connection.value, (conn) => {
       namespaceDefinition: conn.namespaceDefinition || 'source',
       customNamespaceFormat: conn.customNamespaceFormat || '',
       streamPrefix: conn.streamPrefix || '',
+      tags: [...(conn.tags ?? [])],
     }
   }
 }, { immediate: true })
 
+function updateTags(tags: string[]) {
+  editForm.value.tags = tags
+  tagsError.value = ''
+}
+
 async function saveSettings() {
+  tagsError.value = ''
   try {
     await updateMutation.mutateAsync({
       id: id.value,
@@ -60,10 +79,14 @@ async function saveSettings() {
       namespaceDefinition: editForm.value.namespaceDefinition,
       customNamespaceFormat: editForm.value.customNamespaceFormat,
       streamPrefix: editForm.value.streamPrefix,
+      ...(canEditTags.value ? { tags: editForm.value.tags } : {}),
     })
     toast.success('Settings updated')
   }
   catch (e: unknown) {
+    tagsError.value = tagFieldError(e)
+    if (tagsError.value)
+      return
     toast.error(`Error: ${getErrorMessage(e)}`)
   }
 }
@@ -71,13 +94,21 @@ async function saveSettings() {
 
 <template>
   <div class="space-y-4">
-    <!-- Connection Name -->
-    <SCard title="Connection Name">
-      <div>
+    <SCard title="General">
+      <div class="space-y-4">
         <SInput
           v-model="editForm.name"
           label="Name"
           placeholder="Enter connection name"
+        />
+        <STagInput
+          :model-value="editForm.tags"
+          :suggestions="tagSuggestions"
+          :readonly="!canEditTags"
+          :error="tagsError"
+          label="Tags"
+          placeholder="Add a tag and press Enter"
+          @update:model-value="updateTags"
         />
       </div>
     </SCard>

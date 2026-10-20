@@ -14,21 +14,24 @@ const mocks = vi.hoisted(() => ({
   connections: [] as Array<Record<string, unknown>>,
 }))
 
-function conn(id: string, name: string, sourceId: string, destinationId: string) {
-  return { id, name, sourceId, destinationId, sourceName: '', destinationName: '', status: 'active', schedule: '', pendingSchemaChanges: 0 }
+function conn(id: string, name: string, sourceId: string, destinationId: string, tags: string[] = []) {
+  return { id, name, sourceId, destinationId, sourceName: '', destinationName: '', status: 'active', schedule: '', pendingSchemaChanges: 0, tags }
 }
 
 vi.mock('@entities/connection', () => ({
-  useConnections: (opts: { sourceId: unknown, destinationId: unknown }) => {
+  useConnections: (opts: { sourceId: unknown, destinationId: unknown, tags: unknown }) => {
     const data = computed(() => {
       const sourceId = toValue(opts.sourceId) as string
       const destinationId = toValue(opts.destinationId) as string
+      const tags = (toValue(opts.tags) ?? []) as string[]
       const items = mocks.connections.filter(c =>
-        (!sourceId || c.sourceId === sourceId) && (!destinationId || c.destinationId === destinationId))
+        (!sourceId || c.sourceId === sourceId) && (!destinationId || c.destinationId === destinationId)
+        && tags.every(t => (c.tags as string[]).includes(t)))
       return { items, total: items.length }
     })
     return { data, isLoading: ref(false), error: ref(null) }
   },
+  useConnectionTags: () => ({ data: ref([{ tag: 'eu', connectionCount: 1 }, { tag: 'prod', connectionCount: 2 }]) }),
 }))
 vi.mock('@entities/connection/api', () => ({
   deleteConnection: vi.fn(),
@@ -65,7 +68,7 @@ function makeRouter(): Router {
   })
 }
 
-async function mountAt(query: Record<string, string> = {}) {
+async function mountAt(query: Record<string, string | string[]> = {}) {
   const router = makeRouter()
   await router.push({ path: '/connections', query })
   const wrapper = mount(ConnectionsPage, { global: { plugins: [router] }, attachTo: document.body })
@@ -93,8 +96,8 @@ describe('connectionsPage filters', () => {
   beforeEach(() => {
     document.body.innerHTML = ''
     mocks.connections = [
-      conn('c1', 'PG to BQ', SRC_PG, DST_BQ),
-      conn('c2', 'MySQL to BQ', SRC_MYSQL, DST_BQ),
+      conn('c1', 'PG to BQ', SRC_PG, DST_BQ, ['prod']),
+      conn('c2', 'MySQL to BQ', SRC_MYSQL, DST_BQ, ['eu', 'prod']),
       conn('c3', 'PG to S3', SRC_PG, DST_S3),
     ]
   })
@@ -148,5 +151,77 @@ describe('connectionsPage filters', () => {
     expect(wrapper.text()).toContain('No connections match these filters')
     expect(wrapper.text()).not.toContain('No connections yet')
     expect(wrapper.find('input[role="combobox"]').exists()).toBe(true)
+  })
+})
+
+describe('connectionsPage tags', () => {
+  beforeEach(() => {
+    document.body.innerHTML = ''
+    mocks.connections = [
+      conn('c1', 'PG to BQ', SRC_PG, DST_BQ, ['prod']),
+      conn('c2', 'MySQL to BQ', SRC_MYSQL, DST_BQ, ['eu', 'prod']),
+      conn('c3', 'PG to S3', SRC_PG, DST_S3),
+    ]
+  })
+
+  function rowChips(wrapper: ReturnType<typeof mount>) {
+    return wrapper.findAll('tbody tr').map(tr => tr.findAll('button[aria-label^="Filter by tag"]').map(b => b.text()))
+  }
+
+  function tagFilterInput(wrapper: ReturnType<typeof mount>) {
+    const root = wrapper.findAll('label').find(l => l.text() === 'Tags')!.element.parentElement!.parentElement!
+    return wrapper.find(`#${CSS.escape(root.querySelector('input')!.id)}`)
+  }
+
+  it('shows each connection\'s tags as chips', async () => {
+    const { wrapper } = await mountAt()
+    expect(rowChips(wrapper)).toEqual([['prod'], ['eu', 'prod'], []])
+  })
+
+  it('clicking a chip adds the tag to the URL filter', async () => {
+    const { router, wrapper } = await mountAt({ page: '2' })
+
+    await wrapper.find('button[aria-label="Filter by tag eu"]').trigger('click')
+    await flushPromises()
+
+    expect(router.currentRoute.value.query).toEqual({ tags: ['eu'] })
+    expect(rowNames(wrapper)).toEqual(['MySQL to BQ'])
+
+    await wrapper.findAll('button[aria-label="Filter by tag prod"]')[0]!.trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.query).toEqual({ tags: ['eu', 'prod'] })
+  })
+
+  it('restores the tag filter from the URL on load', async () => {
+    const { wrapper } = await mountAt({ tags: 'prod' })
+
+    expect(rowNames(wrapper)).toEqual(['PG to BQ', 'MySQL to BQ'])
+    const filter = tagFilterInput(wrapper).element.closest('[data-tag-input]')!
+    expect(filter.querySelector('[data-tag="prod"]')).not.toBeNull()
+  })
+
+  it('picking a tag in the filter updates the URL', async () => {
+    const { router, wrapper } = await mountAt()
+
+    const input = tagFilterInput(wrapper)
+    await input.trigger('focus')
+    const option = wrapper.findAll('li[role="option"]').find(o => o.text() === 'eu')!
+    await option.trigger('click')
+    await flushPromises()
+
+    expect(router.currentRoute.value.query).toEqual({ tags: ['eu'] })
+    expect(rowNames(wrapper)).toEqual(['MySQL to BQ'])
+  })
+
+  it('removing a tag from the filter and clear filters drop it from the URL', async () => {
+    const { router, wrapper } = await mountAt({ tags: ['eu', 'prod'] })
+
+    await wrapper.find('button[aria-label="Remove tag eu"]').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.query).toEqual({ tags: ['prod'] })
+
+    await wrapper.findAll('button').find(b => b.text() === 'Clear filters')!.trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.query).toEqual({})
   })
 })

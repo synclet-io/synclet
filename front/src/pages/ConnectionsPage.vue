@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Column } from '@shared/ui'
 import { useAuth } from '@entities/auth'
-import { useConnections } from '@entities/connection'
+import { useConnections, useConnectionTags } from '@entities/connection'
 import * as connectionApi from '@entities/connection/api'
 import { useDestinations } from '@entities/destination'
 import { useSources } from '@entities/source'
@@ -11,7 +11,7 @@ import SchemaDriftBadge from '@features/schema-changes/SchemaDriftBadge.vue'
 import { getErrorMessage } from '@shared/lib/errorUtils'
 import { statusVariant } from '@shared/lib/format'
 import { connectionKeys } from '@shared/lib/queryKeys'
-import { PageHeader, SAlert, SBadge, SButton, SCheckbox, SCombobox, SConfirmDialog, SEmptyState, SPagination, STable, useToast } from '@shared/ui'
+import { PageHeader, SAlert, SBadge, SButton, SCheckbox, SCombobox, SConfirmDialog, SEmptyState, SPagination, STable, STagInput, useToast } from '@shared/ui'
 import { useQueryClient } from '@tanstack/vue-query'
 import { Copy, FilterX, Pause, Play, Plus, Trash2 } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
@@ -25,14 +25,20 @@ const listQuery = computed(() => parseConnectionListQuery(route.query))
 const currentPage = computed(() => listQuery.value.page)
 const sourceId = computed(() => listQuery.value.sourceId)
 const destinationId = computed(() => listQuery.value.destinationId)
-const hasFilters = computed(() => !!sourceId.value || !!destinationId.value)
+const tags = computed(() => listQuery.value.tags)
+const hasFilters = computed(() => !!sourceId.value || !!destinationId.value || tags.value.length > 0)
 
 function updateQuery(patch: Parameters<typeof buildConnectionListQuery>[1]) {
   router.replace({ query: buildConnectionListQuery(route.query, patch) })
 }
 
 function clearFilters() {
-  updateQuery({ sourceId: '', destinationId: '' })
+  updateQuery({ sourceId: '', destinationId: '', tags: [] })
+}
+
+function addTagFilter(tag: string) {
+  if (!tags.value.includes(tag))
+    updateQuery({ tags: [...tags.value, tag] })
 }
 
 const { data, isLoading: loading, error } = useConnections({
@@ -41,7 +47,10 @@ const { data, isLoading: loading, error } = useConnections({
   includePendingSchemaChanges: true,
   sourceId,
   destinationId,
+  tags,
 })
+const { data: workspaceTags } = useConnectionTags()
+const tagSuggestions = computed(() => (workspaceTags.value ?? []).map(t => t.tag))
 const { data: sources } = useSources()
 const { data: destinations } = useDestinations()
 
@@ -56,7 +65,7 @@ const toast = useToast()
 const selection = useConnectionSelection()
 const bulk = useBulkConnectionActions()
 
-watch([sourceId, destinationId], () => selection.clear())
+watch([sourceId, destinationId, () => tags.value.join(',')], () => selection.clear())
 
 const pageIds = computed(() => data.value?.items.map(c => c.id) ?? [])
 const allOnPageSelected = computed(() => selection.allSelected(pageIds.value))
@@ -139,6 +148,7 @@ async function resumeAll() {
 const columns: Column[] = [
   { key: 'select', label: '', width: '40px' },
   { key: 'name', label: 'Name' },
+  { key: 'tags', label: 'Tags' },
   { key: 'source', label: 'Source' },
   { key: 'destination', label: 'Destination' },
   { key: 'status', label: 'Status' },
@@ -200,6 +210,15 @@ const columns: Column[] = [
       class="w-56"
       @update:model-value="updateQuery({ destinationId: String($event) })"
     />
+    <STagInput
+      label="Tags"
+      :model-value="tags"
+      :suggestions="tagSuggestions"
+      :allow-create="false"
+      placeholder="All tags"
+      class="w-64"
+      @update:model-value="updateQuery({ tags: $event })"
+    />
     <SButton v-if="hasFilters" variant="ghost" @click="clearFilters">
       <FilterX class="w-4 h-4" /> Clear filters
     </SButton>
@@ -211,7 +230,7 @@ const columns: Column[] = [
         v-if="hasFilters"
         :icon="FilterX"
         title="No connections match these filters"
-        description="Filters are hiding all connections. Pick another source or destination, or clear the filters."
+        description="Filters are hiding all connections. Pick another source, destination or tags, or clear the filters."
       >
         <SButton variant="secondary" size="sm" @click="clearFilters">
           <FilterX class="w-4 h-4" /> Clear filters
@@ -258,6 +277,20 @@ const columns: Column[] = [
           {{ row.name }}
         </RouterLink>
         <SchemaDriftBadge :connection-id="row.id" :count="row.pendingSchemaChanges" />
+      </div>
+    </template>
+    <template #cell-tags="{ row }">
+      <div class="flex flex-wrap gap-1">
+        <button
+          v-for="tag in row.tags"
+          :key="tag"
+          type="button"
+          :aria-label="`Filter by tag ${tag}`"
+          class="rounded-md bg-surface-hover px-2 py-0.5 text-xs font-medium text-heading hover:bg-primary/10 hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+          @click="addTagFilter(tag)"
+        >
+          {{ tag }}
+        </button>
       </div>
     </template>
     <template #cell-source="{ row }">
