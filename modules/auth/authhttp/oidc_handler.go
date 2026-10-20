@@ -41,7 +41,7 @@ func (h *OIDCHTTPHandler) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	authURL, err := h.startOIDCLogin.Execute(r.Context(), provider)
 	if err != nil {
-		h.logger.Error(r.Context(), "OIDC login failed", "error", err, "provider", provider)
+		h.logger.WithError(err).WithField("provider", provider).Error(r.Context(), "OIDC login failed")
 		http.Error(w, "OIDC login failed", http.StatusBadRequest)
 
 		return
@@ -75,7 +75,7 @@ func (h *OIDCHTTPHandler) handleCallback(w http.ResponseWriter, r *http.Request)
 
 	tokens, err := h.handleOIDCCallback.Execute(r.Context(), provider, code, state)
 	if err != nil {
-		// Redirect to frontend login page with error.
+		h.logger.WithError(err).WithField("provider", provider).Error(r.Context(), "OIDC callback failed")
 		http.Redirect(w, r, h.frontendURL+"/login?error=oidc_failed", http.StatusFound)
 
 		return
