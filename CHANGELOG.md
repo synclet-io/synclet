@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.12.1](https://github.com/synclet-io/synclet/compare/synclet-v0.12.0...synclet-v0.12.1) (2026-10-20)
+
+
+### Bug Fixes
+
+* **pipeline:** connection health is overdue only when its next scheduled run is late ([53ec878](https://github.com/synclet-io/synclet/commit/53ec87856cd4aa267fa26742b833113fda4a7382))
+* **pipeline:** scheduled jobs start at attempt 1; logs of attempt 0 still download ([ffcdd75](https://github.com/synclet-io/synclet/commit/ffcdd757c50e211eff7ab39ba57f77c0e9c4e563))
+* **pipeline:** Top Connections leaves out deleted connections ([607a260](https://github.com/synclet-io/synclet/commit/607a260c0585725f9e4d128ed2ad4b18e0edb97c))
+
 ## [0.12.0](https://github.com/synclet-io/synclet/compare/synclet-v0.11.0...synclet-v0.12.0) (2026-10-20)
 
 
