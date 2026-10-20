@@ -1,0 +1,716 @@
+## @section Global parameters
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+  storageClass: ""
+
+## @section Common parameters
+nameOverride: ""
+fullnameOverride: ""
+mode: standalone  # standalone | distributed
+environment: production
+logLevel: info
+## Deprecated: use cors.allowAllOrigins, which takes precedence when both are set.
+# corsAllowAllOrigins: false
+revisionHistoryLimit: 3
+## Extra environment variables of every Synclet container: server, jobs, executor and
+## their migrate init containers, not the connector pods the executor launches. Entries
+## are Kubernetes EnvVar objects, so both value and valueFrom work. env takes precedence
+## over envFrom, so an entry here overrides a chart ConfigMap key or an extraEnvFrom source
+## of the same name; <component>.extraEnv comes after this list and wins on a duplicate name.
+extraEnv: []
+# - name: NO_PROXY
+#   value: .svc,.cluster.local
+# - name: HTTPS_PROXY
+#   valueFrom:
+#     secretKeyRef:
+#       name: synclet-proxy
+#       key: url
+
+## @section CORS parameters
+## CORS of the public HTTP API (PUBLIC_HTTP_SERVER_CORS_*), read by the server.
+## Only the keys set here are rendered; ~ leaves the server default.
+## Lists render comma-separated, so an entry cannot contain a comma.
+cors:
+  ## Accept every origin (default false).
+  allowAllOrigins: ~
+  ## Origin hostnames to accept, without scheme or port (e.g. ["app.example.com"]).
+  allowedOrigins: ~
+  ## Hostname globs to accept, "*" matching one dot-separated label (e.g. ["*.example.com"]).
+  allowedOriginGlobs: ~
+  ## Methods allowed in preflight requests (default GET, POST and HEAD).
+  allowedMethods: ~
+  ## Request headers allowed in preflight requests (default ["*"]).
+  allowedHeaders: ~
+  ## Response headers exposed to the browser (default none).
+  exposedHeaders: ~
+  ## Allow cookies and other credentials on cross-origin requests (default false).
+  allowCredentials: ~
+  ## Answer Private Network Access preflights (default false).
+  allowPrivateNetwork: ~
+  ## Seconds a browser caches a preflight response (default 0, no Access-Control-Max-Age header).
+  maxAge: ~
+
+## @section Synclet image parameters
+image:
+  registry: ghcr.io
+  repository: synclet-io/synclet
+  tag: ""  # defaults to .Chart.AppVersion
+  pullPolicy: IfNotPresent
+
+## @section Server parameters
+server:
+  replicaCount: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  containerPorts:
+    public: 8080
+    internal: 8081
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "2"
+      memory: 1Gi
+  podSecurityContext:
+    enabled: true
+    runAsNonRoot: true
+    runAsUser: 65534
+    fsGroup: 65534
+  containerSecurityContext:
+    enabled: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop: ["ALL"]
+  ## Probes hit the internal port by default. /live answers while the process
+  ## serves HTTP; /ready also requires the database, background jobs and the
+  ## event router. `port` is a container port name (public, internal) or number.
+  ## Older images serve only /health on the public port: set path: /health and
+  ## port: public on all three probes.
+  startupProbe:
+    enabled: true
+    path: /live
+    port: internal
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    failureThreshold: 30
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 10
+    periodSeconds: 15
+    path: /live
+    port: internal
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    path: /ready
+    port: internal
+  service:
+    type: ClusterIP
+    ports:
+      public: 80
+      internal: 8081
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hostname: synclet.local
+    tls: false
+    ## To use cert-manager, add annotation: cert-manager.io/cluster-issuer: your-issuer
+    ## and set tls: true. The chart creates a TLS entry referencing {fullname}-tls Secret.
+    tlsSecretName: ""  # override auto-generated TLS secret name
+    extraTls: []
+    annotations: {}
+  ## HTTPRoute (gateway.networking.k8s.io/v1) attached to an existing Gateway. It routes only to
+  ## the public Service; the internal executor API is never exposed. Can be enabled together with
+  ## ingress to migrate gradually, which then requires server.publicUrl.
+  gateway:
+    enabled: false
+    ## Gateways (and optionally listeners) the route attaches to. A Gateway in another namespace
+    ## must allow routes from this namespace in its listener's allowedRoutes.
+    parentRefs: []
+    # - name: synclet-gateway
+    #   namespace: gateway-system
+    #   sectionName: https
+    hostnames: []
+    # - synclet.example.com
+    paths:
+      - type: PathPrefix
+        value: /
+    ## The Gateway listener terminates TLS; selects https for the derived public URL.
+    tls: false
+    labels: {}
+    annotations: {}
+  ## Base URL users reach Synclet at (e.g. https://synclet.example.com), the default for
+  ## frontend.url and oidc.callbackBaseURL. Empty: derived from ingress.hostname when only the
+  ## Ingress is enabled, or from the first gateway hostname when only the HTTPRoute is.
+  ## Required when both are enabled.
+  publicUrl: ""
+  ## Enable PDB when running with replicaCount > 1 for high availability.
+  pdb:
+    enabled: false
+    minAvailable: 1
+    # maxUnavailable: 1  # alternative to minAvailable — uncomment and remove minAvailable
+  serviceMonitor:
+    enabled: false
+    port: internal      # scrape metrics from the internal service (not public)
+    interval: 30s
+    scrapeTimeout: 10s
+    path: /metrics
+    labels: {}          # extra labels on the ServiceMonitor resource
+    annotations: {}
+  extraEnvFrom: []      # additional envFrom entries (configMapRef, secretRef)
+  extraEnv: []          # EnvVar entries after the global extraEnv; see extraEnv above
+  podAnnotations: {}
+  priorityClassName: ""
+  topologySpreadConstraints: []
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+## @section Jobs parameters (distributed mode only)
+jobs:
+  replicaCount: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  podSecurityContext:
+    enabled: true
+    runAsNonRoot: true
+    runAsUser: 65534
+    fsGroup: 65534
+  containerSecurityContext:
+    enabled: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop: ["ALL"]
+  ## Jobs pods serve only /live and /ready, on server.containerPorts.internal.
+  livenessProbe:
+    enabled: true
+    path: /live
+    initialDelaySeconds: 10
+    periodSeconds: 15
+  readinessProbe:
+    enabled: true
+    path: /ready
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  extraEnvFrom: []      # additional envFrom entries (configMapRef, secretRef)
+  extraEnv: []          # EnvVar entries after the global extraEnv; see extraEnv above
+  podAnnotations: {}
+  priorityClassName: ""
+  topologySpreadConstraints: []
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+## @section Executor parameters (distributed mode only)
+## Set enabled: false if you run the executor outside the chart (e.g. external deployment).
+## The executor runs as a StatefulSet behind a headless Service: each pod keeps its name
+## (<fullname>-executor-0, -1, ...) across restarts, and that name is its owner id unless
+## k8s.ownerId is set. Pods update one at a time, highest ordinal first; after a scale-down
+## the Jobs a removed ordinal left behind wait until a pod with that ordinal runs again.
+## Executor pods start in parallel, since each replica claims jobs on its own and never waits for another.
+## Upgrading from a chart that ran the executor as a Deployment: delete the old Deployment
+## first (`kubectl delete deployment <fullname>-executor`), then run helm upgrade.
+## executor.strategy was renamed to executor.updateStrategy (StatefulSet update strategy:
+## type RollingUpdate or OnDelete, no maxSurge); a values file that still sets
+## executor.strategy fails to render.
+executor:
+  enabled: true
+  replicaCount: 1
+  updateStrategy:
+    type: RollingUpdate
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+  podSecurityContext:
+    enabled: true
+    runAsNonRoot: true
+    runAsUser: 65534
+    fsGroup: 65534
+  containerSecurityContext:
+    enabled: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop: ["ALL"]
+  livenessProbe:
+    enabled: false
+    path: /live
+    port: 8081
+    initialDelaySeconds: 10
+    periodSeconds: 15
+  readinessProbe:
+    enabled: false
+    path: /ready
+    port: 8081
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  # distributed mode: a metrics Service and a Prometheus Operator ServiceMonitor for the executor pods
+  serviceMonitor:
+    enabled: false
+    port: internal
+    interval: 30s
+    scrapeTimeout: 10s
+    path: /metrics
+    labels: {}          # extra labels on the ServiceMonitor resource
+    annotations: {}
+  extraEnvFrom: []      # additional envFrom entries (configMapRef, secretRef)
+  extraEnv: []          # EnvVar entries after the global extraEnv; see extraEnv above
+  podAnnotations: {}
+  priorityClassName: ""
+  topologySpreadConstraints: []
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  ## Least-privilege account of the executor deployment (distributed mode). It is bound
+  ## to the connector-runner Role and nothing else, so cloud permissions granted to the
+  ## chart's serviceAccount (e.g. the log-archive bucket) do not reach the executor.
+  ## create=false with name="" keeps the executor on the chart's serviceAccount.
+  serviceAccount:
+    create: true
+    ## Defaults to <fullname>-executor when create is true; with create=false, an existing account.
+    name: ""
+    annotations: {}
+
+## @section Kubernetes executor parameters
+## NOTE: The connector namespace (k8s.namespace) must be pre-created by the cluster admin.
+## Consider applying ResourceQuota and LimitRange to restrict connector resource usage.
+k8s:
+  namespace: ""
+  ## Owner label the Kubernetes executor stamps on its Jobs and Secrets; it reconciles and
+  ## removes only those carrying it. Empty uses the pod name of each executor replica
+  ## (distributed mode) or the release fullname (standalone mode). Executors sharing one
+  ## namespace, such as two releases, need distinct values; a set value is shared by all
+  ## executor replicas.
+  ownerId: ""
+  defaultMemory: 2Gi
+  defaultCPU: "1"
+  imagePullSecret: ""
+  ## Name of an existing PersistentVolumeClaim mounted read-write at /local in every connector
+  ## container, where file-writing destinations (duckdb, csv, local-json, sqlite) leave their files:
+  ## a destination path of /local/x.duckdb lands at x.duckdb on the volume. Shared by all jobs and
+  ## never cleaned. Connector pods may run on several nodes at once, so the claim needs
+  ## ReadWriteMany unless they all land on one node, and it must be writable by the connector
+  ## image's user. Empty mounts a per-pod emptyDir, removed with the pod.
+  localVolume: ""
+
+## @section Auth parameters
+auth:
+  ## Secret used to sign JWT access and refresh tokens. Auto-generated if empty.
+  ## Must be at least 32 bytes long (e.g. `openssl rand -base64 32`); the server refuses to start otherwise.
+  jwtSecret: ""
+  ## Use a pre-created K8s Secret instead of the chart-managed one.
+  existingSecret: ""
+  existingSecretKey: "jwt-secret"
+  ## Allow new users to register via email/password. Disable to restrict access to OIDC or invites only.
+  registrationEnabled: true
+  ## Set secure (HTTPS-only) flag on auth cookies. Enable when using TLS.
+  secureCookies: true
+  ## JWT access token lifetime.
+  accessTokenTTL: "15m"
+  ## JWT refresh token lifetime.
+  refreshTokenTTL: "168h"
+  ## OIDC state parameter time-to-live.
+  oidcStateTTL: "10m"
+  ## Minimum required password length for local accounts.
+  minPasswordLength: 8
+
+## @section Rate limit parameters
+rateLimit:
+  ## IPs or CIDR ranges of reverse proxies whose X-Forwarded-For / X-Real-IP headers
+  ## identify the client for login and register rate limits. Set to the pod CIDR of the
+  ## ingress controller and/or the Gateway data plane (e.g. the Envoy proxy pods) in front of
+  ## Synclet (e.g. ["10.42.0.0/16"]); empty keys limits on the TCP peer, which behind a proxy
+  ## is the proxy itself.
+  trustedProxies: []
+
+## @section OIDC parameters
+## Configure OpenID Connect providers for SSO login.
+## Each provider needs an issuer URL, OAuth client ID, and client secret.
+## Client secrets are stored in the chart-managed Secret (or reference existingSecret).
+oidc:
+  ## Base URL for OIDC callback redirects. Defaults to frontend.url, then server.publicUrl.
+  ## The callback path /auth/oidc/{slug}/callback is appended automatically.
+  callbackBaseURL: ""
+  ## Reference a pre-created K8s Secret containing OIDC client secrets.
+  ## Expected keys: oidc-{slug}-client-secret (e.g. oidc-google-client-secret).
+  existingSecret: ""
+  ## List of OIDC providers. Each entry configures one SSO provider.
+  providers: []
+  # - slug: google                           # unique identifier, used in callback URLs
+  #   issuer: https://accounts.google.com    # OIDC issuer URL (must support .well-known/openid-configuration)
+  #   clientID: ""                           # OAuth 2.0 client ID
+  #   clientSecret: ""                       # OAuth 2.0 client secret (stored in K8s Secret)
+  #   displayName: Google                    # human-readable name shown on login page
+  #   scopes: "openid,profile,email"         # comma-separated OAuth scopes to request
+  #   roleClaim: ""                          # JWT claim name containing the user's role
+  #   roleMapAdmin: ""                       # claim value that maps to admin role
+  #   roleMapEditor: ""                      # claim value that maps to editor role
+  #   roleMapViewer: ""                      # claim value that maps to viewer role
+  #   defaultRole: viewer                    # role assigned when no role claim matches
+  #   autoCreateUser: true                   # create user on first login (false = reject unknown users)
+  #   allowedDomains: ""                     # comma-separated email domains to allow (empty = all)
+
+## @section SMTP parameters
+## Configure SMTP for email delivery (invitations, notifications).
+## Leave host empty to disable email delivery (uses a no-op sender).
+smtp:
+  ## SMTP server hostname (e.g. smtp.gmail.com). Empty disables email.
+  host: ""
+  ## SMTP server port. 465 pairs with tls "implicit"; set 587 with "starttls".
+  port: 465
+  ## Connection encryption (NOTIFY_SMTP_TLS): "implicit" opens TLS from the first byte
+  ## (port 465), "starttls" upgrades a plain connection (port 587),
+  ## "none" sends in plain text, for local catchers such as Mailpit. Empty means implicit.
+  tls: "implicit"
+  ## SMTP authentication username.
+  user: ""
+  ## SMTP authentication password. Stored in the chart-managed Secret.
+  password: ""
+  ## Sender address for outgoing emails.
+  from: "noreply@synclet.io"
+  ## Use a pre-created K8s Secret for the SMTP password instead.
+  existingSecret: ""
+  existingSecretKey: "smtp-password"
+
+## @section Notification parameters
+notify:
+  ## HTTP client timeout for webhook, Slack, and Telegram delivery.
+  webhookHTTPTimeout: "10s"
+  ## Maximum retry attempts for failed webhook deliveries.
+  webhookMaxRetries: 3
+
+## @section Workspace parameters
+workspaces:
+  ## "single" — one shared workspace, all users join automatically.
+  ## "multi" — users create workspaces and invite members.
+  mode: single
+
+## @section Frontend & invite parameters
+frontend:
+  ## Base URL of the frontend app, used in invitation email links.
+  ## When empty, server.publicUrl (or the URL derived from the Ingress or HTTPRoute) is used.
+  url: ""
+
+invites:
+  ## How long invitation tokens remain valid before expiring.
+  ttl: "168h"
+
+## @section Pipeline parameters
+## Tune sync scheduling, worker polling, timeouts, and K8s resource defaults.
+pipeline:
+  ## Worker & scheduling intervals
+  ## How often the Kubernetes executor polls for queued sync jobs and connector tasks.
+  workerInterval: "5s"
+  ## How often the scheduler checks connections for due syncs and enqueues jobs.
+  schedulerInterval: "30s"
+  ## How often the watchdog checks for stale jobs with expired heartbeats.
+  watchdogInterval: "10s"
+  ## How often the Kubernetes executor removes connector pods and secrets left by finished or crashed syncs.
+  resourceCleanupInterval: "5m"
+
+  ## Sync limits
+  ## Maximum wall-clock time a single sync job is allowed to run before being killed.
+  maxSyncDuration: "24h"
+  ## Maximum number of sync jobs that can run concurrently across all connections.
+  maxConcurrentJobs: 10
+  ## If a sync receives no records for this duration, it's cancelled as idle.
+  idleTimeout: "10m"
+  ## Owner label the Docker executor stamps on its connector containers; orphan cleanup removes only its own.
+  ## Empty uses the pod hostname. Executors sharing one Docker daemon need distinct values.
+  dockerOwnerId: ""
+
+  ## Connector tasks
+  ## How long completed connector task results (spec/check/discover) are retained.
+  connectorTaskRetention: "24h"
+  ## How long a running connector task may go without finishing before it is failed.
+  connectorTaskRunningTimeout: "5m"
+  ## How long a connector task may wait for an executor to claim it before it is failed.
+  connectorTaskPendingTimeout: "1m"
+  ## Default max retry attempts for sync jobs when not configured per-connection.
+  defaultMaxAttempts: 3
+  ## Heartbeat interval for sync worker health reporting.
+  heartbeatInterval: "5s"
+  ## Timeout for connection check operations (spec/check/discover).
+  connectionCheckTimeout: "2m"
+  ## Poll interval for connector task result polling.
+  connectorTaskPollInterval: "500ms"
+  ## Timeout for async event emission (sync completed/failed notifications).
+  eventEmitTimeout: "30s"
+  ## Lookback window for hourly stats rollup computation.
+  statsRollupHourlyLookback: "2h"
+  ## Lookback window for daily stats rollup computation.
+  statsRollupDailyLookback: "48h"
+  ## HTTP timeout for fetching connector registry JSON.
+  registryFetchTimeout: "60s"
+  ## Stored log lines per job attempt; later lines are dropped and counted in one marker line. 0 disables the cap.
+  logMaxLinesPerAttempt: 100000
+
+  ## Default K8s resource requests/limits applied to connector pods when not overridden per-connection.
+  resources:
+    cpuRequest: ""
+    cpuLimit: ""
+    memoryRequest: ""
+    memoryLimit: ""
+    ## Existing K8s service account for connector pods; pipeline.serviceAccount takes precedence.
+    serviceAccountName: ""
+
+  ## Shared ServiceAccount of connector pods (sync, check, spec, discover), created in
+  ## k8s.namespace (the release namespace when empty). Its name becomes the global default
+  ## PIPELINE_RUNTIME_SERVICE_ACCOUNT_NAME; a source or destination overrides it with
+  ## service_account_name in its runtime config (a sync pod takes the source's, else the
+  ## destination's). Annotate it so connectors reach the cloud through Workload Identity:
+  ##   GKE: iam.gke.io/gcp-service-account: <gsa>@<project>.iam.gserviceaccount.com
+  ##   EKS: eks.amazonaws.com/role-arn: arn:aws:iam::<account>:role/<role>
+  ## With create=false and name="" (and pipeline.resources.serviceAccountName empty) connector pods
+  ## that set no service_account_name get no Kubernetes API token
+  ## (automountServiceAccountToken: false). An account named or created here is for cloud
+  ## identity annotations, not for cluster rights: the chart binds it to no Role, and its
+  ## pods keep the cluster's default token mount.
+  serviceAccount:
+    create: false
+    ## Defaults to <fullname>-connector when create is true; with create=false, an existing account.
+    name: ""
+    annotations: {}
+
+## @section Job log archive
+## Where the logs of finished jobs are stored. While a job runs its logs are always in Postgres.
+logArchive:
+  ## none: logs stay in Postgres. filesystem: files under dir. s3: any S3-compatible bucket.
+  ## gcs: Google Cloud Storage bucket. Keep none when garage.enabled is true.
+  backend: none
+  ## Base directory for the filesystem backend. Server and jobs pods must share it, so it
+  ## needs a ReadWriteMany volume: set persistence.existingClaim to a PVC created beforehand.
+  dir: /var/lib/synclet/job-logs
+  persistence:
+    ## Pre-created PVC mounted at dir in the server and jobs pods (required for filesystem).
+    existingClaim: ""
+  s3:
+    ## Endpoint for S3-compatible stores (MinIO, R2, GCS interoperability). Empty for AWS S3.
+    endpoint: ""
+    ## Bucket region; R2 uses "auto".
+    region: ""
+    bucket: ""
+    ## Key prefix inside the bucket.
+    prefix: ""
+    ## Path-style addressing, needed by MinIO and most self-hosted stores.
+    usePathStyle: false
+    ## Static credentials, stored in the chart-managed Secret. Leave empty to use the default
+    ## AWS credential chain (e.g. IRSA via serviceAccount annotations).
+    accessKeyID: ""
+    secretAccessKey: ""
+    ## Use a pre-created K8s Secret holding both keys instead.
+    existingSecret: ""
+    existingSecretAccessKeyIDKey: "log-archive-s3-access-key-id"
+    existingSecretSecretAccessKeyKey: "log-archive-s3-secret-access-key"
+  gcs:
+    bucket: ""
+    ## Object name prefix inside the bucket.
+    prefix: ""
+    ## On GKE with Workload Identity leave this empty: annotate serviceAccount with
+    ## iam.gke.io/gcp-service-account and the client uses Application Default Credentials
+    ## from the metadata server, no key file needed.
+    ## Otherwise name a pre-created Secret holding a service account JSON key; it is mounted
+    ## read-only into the server and jobs pods only.
+    credentialsSecret: ""
+    credentialsSecretKey: "key.json"
+  ## Bundled Garage (https://garagehq.deuxfleurs.fr), a single-node S3-compatible store run
+  ## by this chart, so archiving needs no external bucket. Enabling it selects the s3 backend
+  ## and wires its endpoint, bucket and credentials; leave backend at none and s3.* unset.
+  ## Garage creates the layout, the access key and the bucket itself on startup. Backups of
+  ## its volume are the operator's job; prefer a managed bucket for serious production.
+  garage:
+    enabled: false
+    bucket: synclet-logs
+    image:
+      registry: docker.io
+      repository: dxflrs/garage
+      tag: v2.4.1
+      pullPolicy: IfNotPresent
+    ## Pre-created Secret with keys rpc-secret (64 hex chars), admin-token, access-key-id
+    ## and secret-access-key. Empty: the chart generates them once and keeps them across
+    ## upgrades and uninstalls, because Garage refuses to start if the access key stored on
+    ## its volume no longer matches the Secret.
+    existingSecret: ""
+    persistence:
+      size: 10Gi
+      storageClass: ""
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        memory: 512Mi
+    podSecurityContext:
+      enabled: true
+      runAsNonRoot: true
+      runAsUser: 1000
+      runAsGroup: 1000
+      fsGroup: 1000
+    containerSecurityContext:
+      enabled: true
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop: ["ALL"]
+    service:
+      s3Port: 3900
+      adminPort: 3903
+
+## @section Secrets
+## Each secret supports 3 modes:
+## 1. Empty value -> auto-generated and persisted via lookup
+## 2. Inline value -> used directly (stored in chart-managed Secret)
+## 3. existingSecret -> reference a pre-created K8s Secret (chart does NOT create one)
+
+## Encryption keys for stored connector secrets. Each must be a standard base64-encoded
+## 32-byte key (e.g. `openssl rand -base64 32`); the server refuses to start otherwise.
+encryption:
+  key: ""
+  keyPrevious: ""
+  enableKeyPrevious: false  # set to true when using existingSecret/VSO and the secret contains encryption-key-previous
+  existingSecret: ""
+  existingSecretKeyKey: "encryption-key"
+  existingSecretKeyPreviousKey: "encryption-key-previous"
+
+# Secret for coordinator -> synclet communication
+internalApi:
+  secret: ""
+  existingSecret: ""
+  existingSecretKey: "internal-api-secret"
+
+## @section PostgreSQL parameters
+## WARNING: The built-in PostgreSQL is intended for development and testing only.
+## For production deployments, use an external managed PostgreSQL instance
+## (e.g., AWS RDS, GCP Cloud SQL, Azure Database) and set postgresql.enabled=false.
+postgresql:
+  enabled: true
+  image:
+    registry: docker.io
+    repository: library/postgres
+    tag: "16"
+  service:
+    type: ClusterIP
+    port: 5432
+    # nodePort: ""          # Set when type is NodePort
+    # loadBalancerClass: "" # Set when type is LoadBalancer
+  podSecurityContext:
+    enabled: true
+    runAsUser: 999       # postgres user in official image
+    runAsGroup: 999
+    fsGroup: 999
+  containerSecurityContext:
+    enabled: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop: ["ALL"]
+  auth:
+    username: synclet
+    password: ""
+    database: synclet
+    existingSecret: ""
+    existingSecretKey: "password"
+  primary:
+    persistence:
+      size: 10Gi
+      storageClass: ""
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: "1"
+        memory: 1Gi
+
+## @section External Database parameters
+## When postgresql.enabled=false, configure the external database here.
+## Option A: provide host/port/user/password/database and the chart builds the DSN.
+## Option B: set existingSecret to a K8s Secret that contains the full DSN string.
+externalDatabase:
+  host: ""
+  port: 5432
+  user: ""
+  password: ""
+  database: ""
+  sslmode: disable
+  existingSecret: ""        # Secret containing full DSN (key specified below)
+  existingSecretKey: "db-dsn"
+
+## @section Vault Secrets Operator (VSO)
+## Creates VaultStaticSecret resources that sync Vault secrets into K8s Secrets.
+## When enabled, the chart automatically wires the destination secrets into
+## the appropriate secretKeyRef fields — no need to set existingSecret manually.
+##
+## Prerequisites:
+##   - Vault Secrets Operator installed in the cluster
+##   - VaultAuth CR created in the release namespace
+##
+## Expected Vault keys for appSecrets:
+##   jwt-secret, encryption-key, internal-api-secret
+##   Optional: encryption-key-previous
+##
+## Expected Vault key for database:
+##   db-dsn (full PostgreSQL connection string)
+vso:
+  enabled: false
+  ## Reference an existing VaultAuth CR, OR let the chart create one below.
+  vaultAuthRef: ""          # if set, uses this existing VaultAuth; otherwise chart creates one
+  auth:
+    ## Set to true to have the chart create a VaultAuth resource.
+    create: false
+    vaultConnectionRef: ""  # name of VaultConnection CR (must exist)
+    method: kubernetes      # auth method (kubernetes, jwt, appRole)
+    mount: kubernetes       # Vault auth mount path
+    role: ""                # Vault role name
+    serviceAccount: ""      # K8s SA for auth (defaults to chart SA)
+  appSecrets:
+    mount: secret           # Vault secret engine mount path
+    path: ""                # Vault path, e.g. "synclet/app-secrets"
+    type: kv-v2             # kv-v1 or kv-v2
+    refreshAfter: 60s
+  database:
+    enabled: false          # opt-in separately — DB creds may live at a different path
+    mount: secret
+    path: ""                # Vault path, e.g. "synclet/database"
+    type: kv-v2
+    refreshAfter: 60s
+
+## @section Service Account
+## Used by the server and jobs deployments, and by the executor only when
+## executor.serviceAccount.create is false and no executor.serviceAccount.name is set.
+## Connector pods run in k8s.namespace under pipeline.serviceAccount (or that namespace's
+## default account), so they do not get this account's cloud permissions.
+serviceAccount:
+  create: true
+  name: ""
+  ## GKE Workload Identity for logArchive.backend=gcs:
+  ##   iam.gke.io/gcp-service-account: <gsa>@<project>.iam.gserviceaccount.com
+  ## EKS IRSA for logArchive.backend=s3:
+  ##   eks.amazonaws.com/role-arn: arn:aws:iam::<account>:role/<role>
+  annotations: {}
+
+## @section Misc
+## Every synclet process waits up to 110s for in-flight work on SIGTERM
+## (app.shutdownTimeout); keep this above that plus the server's 5s preStop sleep.
+terminationGracePeriodSeconds: 120
