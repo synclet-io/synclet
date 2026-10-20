@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.12.0](https://github.com/synclet-io/synclet/compare/synclet-v0.11.0...synclet-v0.12.0) (2026-10-20)
+
+
+### Features
+
+* **front:** delete installed connectors from settings ([54ba19a](https://github.com/synclet-io/synclet/commit/54ba19ade53aff93afaa53532d77fea960c8d669))
+
+
+### Bug Fixes
+
+* **coordinator:** retry a connector task's result report while the server is unreachable ([b1c2f54](https://github.com/synclet-io/synclet/commit/b1c2f542f2e9962d9d92e6ac08fb7839d174d068))
+
 ## [0.11.0](https://github.com/synclet-io/synclet/compare/synclet-v0.10.0...synclet-v0.11.0) (2026-10-20)
 
 
