@@ -20,11 +20,17 @@ Run Airbyte connectors without Airbyte: one Go binary, one PostgreSQL. Synclet i
 - **Airbyte Protocol connectors** -- Runs source and destination images that implement the Airbyte Protocol; see [Tested with](#tested-with) for the pairs and versions tested
 - **Multiple Execution Modes** -- Docker, Kubernetes, or CLI
 - **Stream Configuration** -- Field selection, namespace rewriting, primary key overrides
+- **Transforms** -- Per-stream steps (rename, cast, set, hash, mask, filter, drop) with CEL expressions, checked against the stream schema and tried on a sample record before saving; see the [Transforms guide](https://synclet-io.github.io/synclet-site/docs/guides/transforms/)
+- **Connection Tags** -- Tag connections and filter the connection list by tags, with the filter kept in the URL
 - **Secrets Management** -- AES-256-GCM encrypted configuration storage
 - **OIDC Authentication** -- SSO with any OpenID Connect provider
 - **Workspace Isolation** -- Multi-tenant with role-based access control (admin/editor/viewer)
 - **Notification Channels** -- Slack, Email, Telegram alerts on sync events
-- **Dashboard & Stats** -- Connection health, sync timeline, records/bytes metrics
+- **Dashboard & Stats** -- Connection health, sync timeline, records/bytes metrics, Prometheus metrics
+- **Job Logs** -- Combined connector logs per attempt, downloadable, with dropped lines reported
+- **Audit Log** -- Who changed what, with a before and after diff
+- **Connector Catalog** -- Star connectors and see the ones in use first when picking a source or destination
+- **API Keys & Webhooks** -- Programmatic access with workspace API keys, outbound webhooks on sync events
 - **Config Import/Export** -- YAML-based workspace backup and restore
 - **Dark Mode** -- System-aware theme switching
 - **Synclet connectors** -- MIT source and destination connectors written in Go on synclet-go-sdk, in [synclet-io/connectors](https://github.com/synclet-io/connectors); see [Writing your own connector](#writing-your-own-connector)
@@ -134,9 +140,9 @@ docker run -p 8080:8080 --env-file .env -v /var/run/docker.sock:/var/run/docker.
 
 `server` alone serves the API only; `--standalone` also runs the scheduler, event consumers and an executor in the same process. Without it, run `synclet jobs` and `synclet docker-executor` (or `k8s-executor`) as separate processes.
 
-**Helm (Kubernetes):**
+**Helm (Kubernetes):** the chart is published on [Artifact Hub](https://artifacthub.io/packages/search?repo=synclet) as an OCI chart:
 ```bash
-helm install synclet deploy/helm/synclet/ -f values.yaml
+helm install synclet oci://ghcr.io/synclet-io/charts/synclet -f values.yaml
 ```
 
 #### Exposing the server: Ingress or Gateway API (Helm)
