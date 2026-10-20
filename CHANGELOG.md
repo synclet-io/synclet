@@ -1,5 +1,63 @@
 # Changelog
 
+## [0.8.0](https://github.com/synclet-io/synclet/compare/synclet-v0.7.0...synclet-v0.8.0) (2026-10-20)
+
+
+### Features
+
+* **audit:** record registration and first login of users without a workspace ([6a1798a](https://github.com/synclet-io/synclet/commit/6a1798ad6b75f92ec45d9ba2c24ec3d88afa3f53))
+* **front:** CEL highlighting and completion in the transform builder ([9b52698](https://github.com/synclet-io/synclet/commit/9b52698c83fe039005be2c3700f38f32b83dd086))
+* **front:** connector picker with a used section, starred filter and star toggles ([3f55427](https://github.com/synclet-io/synclet/commit/3f554275876673a9551f1cbcc0ece918d76a5a3d))
+* **front:** download attempt logs and show dropped lines ([17e3202](https://github.com/synclet-io/synclet/commit/17e3202a1952a82f6e0359902dfba07836fcbf3a))
+* **front:** drag transform steps with a drop preview ([1283909](https://github.com/synclet-io/synclet/commit/1283909ef999e39b5c6234e5a01b4efa7b65fc7d))
+* **front:** link the expression reference from the transform builder ([5a43d64](https://github.com/synclet-io/synclet/commit/5a43d64dde38b9d86c2e25c9a655f54836d0619e))
+* **front:** offer catch() in expression completion ([ec9a938](https://github.com/synclet-io/synclet/commit/ec9a938dbd73bc88ed39c3639135413091ee62a2))
+* **front:** transform step builder in the stream settings ([1650780](https://github.com/synclet-io/synclet/commit/16507809371ad122516e3f8465a0255ca804748c))
+* **helm:** executor metrics Service and ServiceMonitor ([8a6449d](https://github.com/synclet-io/synclet/commit/8a6449d3dd7ce1e1035725e94f1356a5436ebd17))
+* **helm:** full CORS config and extraEnv from values ([69095a6](https://github.com/synclet-io/synclet/commit/69095a6d2a165c10ac291951aa96e52976574e70))
+* **mapper:** compile and run stream mappers with CEL ([50710b7](https://github.com/synclet-io/synclet/commit/50710b71a0816f57f6f78132d1760bd8adae7b26))
+* **mapper:** drop step and a warning for reading unselected fields ([0387630](https://github.com/synclet-io/synclet/commit/0387630babc973aa23a03531f1ea7e5cd7f3d98d))
+* **mapper:** reject dropping the cursor of an incremental stream ([80aadc3](https://github.com/synclet-io/synclet/commit/80aadc3344f2ef74e0042586f191b170f85adcc0))
+* **mapper:** typed coalesce ([0c7d80d](https://github.com/synclet-io/synclet/commit/0c7d80dfbc2283cc7a3c210aa21c6e239dc78849))
+* **pipeline:** download attempt logs and report dropped lines per attempt ([f7f1583](https://github.com/synclet-io/synclet/commit/f7f158333039dee6eac0da005a8684b4b61ea68a))
+* **pipeline:** find used connectors with one distinct query ([4db5997](https://github.com/synclet-io/synclet/commit/4db59978cdf98f7beb03fb2b2c14ecfaa82aa1aa))
+* **pipeline:** run check and discover pods under the entity's service account ([420c273](https://github.com/synclet-io/synclet/commit/420c27392b8fd5b94db76e54a93bd72538e8b94f))
+* **pipeline:** run stream mappers in the router ([7df2b93](https://github.com/synclet-io/synclet/commit/7df2b93d34213897500fc9f37670831453c02a83))
+* **pipeline:** starred and used flags for managed connectors ([18b655e](https://github.com/synclet-io/synclet/commit/18b655ef3cd18e5c4548661628f1280b5cad3279))
+* **pipeline:** stream mappers on configured streams ([04b5e70](https://github.com/synclet-io/synclet/commit/04b5e70e9cf24de2b2622b0705b13c8076ff63c8))
+
+
+### Bug Fixes
+
+* **audit:** adopt only registration and pre-membership logins, heal on login ([d0b1b6c](https://github.com/synclet-io/synclet/commit/d0b1b6c96e90d9df2f0307f61c9c7b46786a0f67))
+* **audit:** batch the deleted-actor lookup in the audit list ([319dc8b](https://github.com/synclet-io/synclet/commit/319dc8b05fdc15163d1c2f56694e1d61265bf5cc))
+* **auth:** read only user ids in the existing-users lookup ([4036d58](https://github.com/synclet-io/synclet/commit/4036d584b37acadc97198b8ee621b545c666c40b))
+* **connectutil:** refuse every IANA range that is not globally reachable ([0d52d5a](https://github.com/synclet-io/synclet/commit/0d52d5a4cd1faa9a2bd4413819cc5e6f09c7eff4))
+* **coordinator:** treat an empty exit code file as no exit code and write it atomically ([8a45d43](https://github.com/synclet-io/synclet/commit/8a45d4333e0194e09acacb6d8a9dc169d13791e9))
+* **db:** drop pre-squash schema_changes table and workspaces.max_jobs_per_workspace ([1922961](https://github.com/synclet-io/synclet/commit/19229619652bdf2253b46e1e31f712030567af93))
+* **executor:** give every k8s sync attempt its own secret ([bdf3a53](https://github.com/synclet-io/synclet/commit/bdf3a530ae3861abd5085393627feeb04d100322))
+* **front:** cap in-memory log downloads and revoke the URL after the click ([e2e76e4](https://github.com/synclet-io/synclet/commit/e2e76e45ab42eeeac72e15b538f329cc008187fd))
+* **front:** keep connector stars right under overlapping toggles ([c9e84e3](https://github.com/synclet-io/synclet/commit/c9e84e30efae53294a0217673a323a33403bd4e5))
+* **front:** set onto an existing column shows its new type ([9f9ac3e](https://github.com/synclet-io/synclet/commit/9f9ac3e7718b072bd9878682a6d99f7645c10ec2))
+* **helm:** legacy jobs and executor probes, reuse-values defaults match values.yaml, 0.4.0 values ([5749ab6](https://github.com/synclet-io/synclet/commit/5749ab63c213529b8cf95511eff3fb811b025d48))
+* **helm:** reject a serviceMonitor port the Service lacks, document annotations ([4395aab](https://github.com/synclet-io/synclet/commit/4395aab1be0c47a08a21ccf959af8ca05bdc48e5))
+* **helm:** released values guard accepts the release before the manifest's ([fa1e2e1](https://github.com/synclet-io/synclet/commit/fa1e2e1d5eff273074038c540a7492879931b779))
+* **helm:** templates render over values reused from older releases ([f218574](https://github.com/synclet-io/synclet/commit/f218574d6d9ca87ae964909ec9e1d8264b96b3f2))
+* **mapper:** reject int(), uint() and double() of a date or time string field ([e0f7231](https://github.com/synclet-io/synclet/commit/e0f7231b390f740484bb869eed489014d158068d))
+* **notify:** default empty SMTP TLS mode to implicit, expose it in the chart ([2e6a79b](https://github.com/synclet-io/synclet/commit/2e6a79bae0cce8f4fdb2cc2ef3cf60afd7901ae1))
+* **notify:** default SMTP port to 465 to match implicit TLS ([baf2723](https://github.com/synclet-io/synclet/commit/baf27231da56c294a8f8f61c99404cbcc1b51bce))
+* **notify:** refuse internal addresses when dialing webhooks ([4708707](https://github.com/synclet-io/synclet/commit/470870738906bf67251c5bcac230612e1ff1b7bf))
+* **notify:** send Slack notifications through the webhook client ([93b1e72](https://github.com/synclet-io/synclet/commit/93b1e72141f54c29a2776c8214d5661f9c6da1c5))
+* **pipeline:** keep one sync_id per job across retries ([1534c14](https://github.com/synclet-io/synclet/commit/1534c14a6e5637fd6b5e3cdd4f5907a3645457f5))
+* **pipeline:** replay the archive when an attempt is archived mid-download ([4ec3ce4](https://github.com/synclet-io/synclet/commit/4ec3ce495b548b2de1adfb7c024cac2f69ac0769))
+* **pipeline:** run update checks under the entity's service account and validate its name ([6381e93](https://github.com/synclet-io/synclet/commit/6381e9358419029089d50b4be94d5474614ef885))
+* **pipeline:** send COMPLETE stream status for streams the source left open ([7759c91](https://github.com/synclet-io/synclet/commit/7759c91d4c056c1fcb21b23dd26925e3418cb08e))
+* **pipeline:** star a connector without rewriting its spec ([2d8fb3d](https://github.com/synclet-io/synclet/commit/2d8fb3d15c0b5835fb90abaaa640c976b20fd10b))
+* **scripts:** orbstack chart test picks the right EG version and survives signals ([9fdb038](https://github.com/synclet-io/synclet/commit/9fdb038ceed9094266a640f8c91789ed9c3b9fd9))
+* **scripts:** orbstack chart test SYNC=1 runs the working-tree image ([81ddf70](https://github.com/synclet-io/synclet/commit/81ddf707b1ffebb385a9650482d6865ef600ae0b)), closes [#33](https://github.com/synclet-io/synclet/issues/33)
+* **workspace:** bootstrap default workspace in the API server process ([4f3cb7b](https://github.com/synclet-io/synclet/commit/4f3cb7bb35ee75096878ed4dcd957df32367f069))
+* **workspace:** create the default workspace and its event in one transaction ([cb57c4d](https://github.com/synclet-io/synclet/commit/cb57c4d51765bce28ed7c35ba7ea45228a65490a))
+
 ## [0.7.0](https://github.com/synclet-io/synclet/compare/synclet-v0.6.0...synclet-v0.7.0) (2026-10-19)
 
 
