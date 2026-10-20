@@ -142,6 +142,13 @@ server:
     paths:
       - type: PathPrefix
         value: /
+    ## Timeouts of the route's rule (Gateway API duration strings, e.g. "300s"). request covers the
+    ## whole request at the Gateway, backendRequest one request to the server and must not exceed
+    ## request. Gateways default to short timeouts (Envoy Gateway: 15s), which a connector check,
+    ## spec or discover that pulls an image can exceed. Empty keeps the Gateway's default.
+    timeouts: {}
+    #   request: 300s
+    #   backendRequest: 300s
     ## The Gateway listener terminates TLS; selects https for the derived public URL.
     tls: false
     labels: {}

@@ -864,3 +864,62 @@ func TestChart_ExecutorRoleGrantsVerbsTheCodeUses(t *testing.T) {
 		})
 	}
 }
+
+// routeTimeouts decodes the timeouts of every rule of the rendered HTTPRoute.
+func routeTimeouts(t *testing.T, args ...string) []map[string]string {
+	t.Helper()
+
+	dec := yaml.NewDecoder(bytes.NewReader(renderRaw(t, args...)))
+
+	for {
+		var route struct {
+			Kind string `yaml:"kind"`
+			Spec struct {
+				Rules []struct {
+					Timeouts map[string]string `yaml:"timeouts"`
+				} `yaml:"rules"`
+			} `yaml:"spec"`
+		}
+
+		err := dec.Decode(&route)
+		if errors.Is(err, io.EOF) {
+			break
+		}
+
+		require.NoError(t, err)
+
+		if route.Kind == "HTTPRoute" {
+			out := make([]map[string]string, 0, len(route.Spec.Rules))
+			for _, rule := range route.Spec.Rules {
+				out = append(out, rule.Timeouts)
+			}
+
+			return out
+		}
+	}
+
+	require.Fail(t, "HTTPRoute not rendered")
+
+	return nil
+}
+
+func TestChart_GatewayTimeouts(t *testing.T) {
+	route := []string{
+		"--set", "server.ingress.enabled=false",
+		"--set", "server.gateway.enabled=true",
+		"--set", "server.gateway.parentRefs[0].name=gw",
+		"--set", "server.gateway.hostnames[0]=synclet.example.com",
+	}
+
+	t.Run("unset renders no timeouts", func(t *testing.T) {
+		assert.Equal(t, []map[string]string{nil}, routeTimeouts(t, route...))
+	})
+
+	t.Run("request and backendRequest are rendered on the rule", func(t *testing.T) {
+		got := routeTimeouts(t, append(route,
+			"--set", "server.gateway.timeouts.request=300s",
+			"--set", "server.gateway.timeouts.backendRequest=290s",
+		)...)
+		assert.Equal(t, []map[string]string{{"request": "300s", "backendRequest": "290s"}}, got)
+	})
+}

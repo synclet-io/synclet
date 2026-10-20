@@ -43,4 +43,13 @@ spec:
       backendRefs:
         - name: {{ include "synclet.fullname" . }}
           port: {{ .Values.server.service.ports.public }}
+      {{- with .Values.server.gateway.timeouts }}
+      timeouts:
+        {{- with .request }}
+        request: {{ . | quote }}
+        {{- end }}
+        {{- with .backendRequest }}
+        backendRequest: {{ . | quote }}
+        {{- end }}
+      {{- end }}
 {{- end }}
