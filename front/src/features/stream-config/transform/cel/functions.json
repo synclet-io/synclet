@@ -13,6 +13,7 @@
   { "name": "duration", "signature": "duration(text) -> duration", "detail": "Parses a duration such as '1h30m'", "example": "timestamp('2026-01-01T00:00:00Z') + duration('1h')" },
   { "name": "has", "signature": "has(r.field) -> bool", "detail": "Whether the record has the field", "example": "has(r.opt)" },
   { "name": "coalesce", "signature": "coalesce(a, b, ...) -> T", "detail": "The first argument that is present and not null", "example": "coalesce(r.opt, 'none')" },
+  { "name": "catch", "signature": "catch(value, fallback) -> T", "detail": "The value, or the fallback when evaluating the value fails", "example": "catch(int(r.s), 0)" },
   { "name": "now", "signature": "now() -> timestamp", "detail": "The current time in UTC", "example": "now()" },
   { "name": "sha256", "signature": "sha256(string) -> string", "detail": "Hex-encoded SHA-256 of the string", "example": "sha256(r.s)" },
   { "name": "parseTimestamp", "signature": "parseTimestamp(value, format[, tz]) -> timestamp", "detail": "Parses a timestamp in a format such as 'dd.MM.yyyy HH:mm' or 'unix'", "example": "parseTimestamp('02.01.2026 10:00', 'dd.MM.yyyy HH:mm', 'Europe/Kyiv')" },

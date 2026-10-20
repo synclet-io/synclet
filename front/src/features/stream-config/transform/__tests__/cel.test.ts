@@ -114,7 +114,7 @@ describe('the CEL completion', () => {
   it('offers exactly the engine functions, each with a signature, plus r and sync', () => {
     const res = complete('', columns, true)
     const fns = (res?.options ?? []).filter(o => o.type === 'function' || o.type === 'method')
-    const expected = ['lowerAscii', 'upperAscii', 'trim', 'substring', 'split', 'replace', 'matches', 'int', 'double', 'string', 'timestamp', 'duration', 'has', 'coalesce', 'now', 'sha256', 'parseTimestamp', 'parseNumber']
+    const expected = ['lowerAscii', 'upperAscii', 'trim', 'substring', 'split', 'replace', 'matches', 'int', 'double', 'string', 'timestamp', 'duration', 'has', 'coalesce', 'catch', 'now', 'sha256', 'parseTimestamp', 'parseNumber']
     expect(fns.map(o => o.label).sort()).toEqual([...expected].sort())
     expect(functions.map(f => f.name).sort()).toEqual([...expected].sort())
     for (const f of fns)
