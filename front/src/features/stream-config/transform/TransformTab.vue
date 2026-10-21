@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { MapperTarget } from '@entities/connection'
 import type { DropdownItem } from '@shared/ui/types'
 import type { StreamRow } from '../catalogStreams'
 import type { ColumnMark, TransformIssue } from './columns'
@@ -16,7 +17,7 @@ import { useStepDrag } from './useStepDrag'
 
 const props = defineProps<{
   stream: StreamRow
-  connectionId: string
+  target: MapperTarget
 }>()
 
 const emit = defineEmits<{
@@ -75,7 +76,7 @@ const sampleParse = computed<{ record?: Record<string, unknown>, error: string }
 })
 
 const validation = useMapperValidation({
-  connectionId: () => props.connectionId,
+  target: () => props.target,
   namespace: () => props.stream.namespace,
   streamName: () => props.stream.name,
   steps: () => steps.value,

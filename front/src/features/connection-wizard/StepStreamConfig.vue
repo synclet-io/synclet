@@ -13,6 +13,7 @@ import { onMounted, ref, watch } from 'vue'
 
 const props = defineProps<{
   sourceId: string
+  connectionName: string
   streams: ConfiguredStream[]
   discoveredCatalog: Record<string, unknown> | null
 }>()
@@ -147,7 +148,7 @@ async function handleDiscoverSchema() {
         </SButton>
       </div>
 
-      <StreamConfigEditor ref="editor" v-model:streams="localStreams" />
+      <StreamConfigEditor ref="editor" v-model:streams="localStreams" :source-id="sourceId" :connection-name="connectionName" />
     </div>
   </div>
 </template>

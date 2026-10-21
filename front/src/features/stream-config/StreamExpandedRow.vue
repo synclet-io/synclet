@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { MapperTarget } from '@entities/connection'
 import type { StreamRow } from './catalogStreams'
 import type { StreamValidationError } from './useStreamValidation'
 import { STabs } from '@shared/ui'
@@ -14,6 +15,7 @@ const props = defineProps<{
   schema: Record<string, any>
   validationErrors: StreamValidationError[]
   connectionId: string
+  mapperTarget?: MapperTarget
   stateData: string | undefined
   stateUpdatedAt: Date | undefined
 }>()
@@ -22,11 +24,11 @@ const emit = defineEmits<{
   'update:stream': [stream: StreamRow]
 }>()
 
-// The Transform tab checks steps against a saved connection, so it is offered
-// only once the stream belongs to one.
+// The Transform tab is offered only when there is a connection, or a source
+// with a connection name, to check its steps against.
 const tabs = computed(() => [
   { name: 'Fields', value: 'fields' },
-  ...(props.connectionId ? [{ name: 'Transform', value: 'transform' }] : []),
+  ...(props.mapperTarget ? [{ name: 'Transform', value: 'transform' }] : []),
   { name: 'State', value: 'state' },
 ])
 const activeTab = ref('fields')
@@ -44,9 +46,9 @@ const activeTab = ref('fields')
       @update:stream="emit('update:stream', $event)"
     />
     <TransformTab
-      v-if="activeTab === 'transform'"
+      v-if="activeTab === 'transform' && mapperTarget"
       :stream="stream"
-      :connection-id="connectionId"
+      :target="mapperTarget"
       @update:stream="emit('update:stream', $event)"
     />
     <StreamStateTab

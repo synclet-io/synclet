@@ -1,5 +1,6 @@
 // Package pipelinefake is an in-memory pipelineservice.Storage for use-case
-// tests. It holds connections, jobs, workflows and their runs; every other
+// tests. It holds sources, catalog discoveries, connections, jobs, workflows
+// and their runs; every other
 // storage panics when used. Transactions run the callback on the same store
 // without rollback.
 package pipelinefake
@@ -22,6 +23,8 @@ import (
 type Storage struct {
 	pipelineservice.Storage
 
+	SourcesTable                  *Table[pipelineservice.Source, pipelineservice.SourceFilter]
+	CatalogDiscoveriesTable       *Table[pipelineservice.CatalogDiscovery, pipelineservice.CatalogDiscoveryFilter]
 	ConnectionsTable              *Table[pipelineservice.Connection, pipelineservice.ConnectionFilter]
 	JobsTable                     *Table[pipelineservice.Job, pipelineservice.JobFilter]
 	WorkflowsTable                *Table[pipelineservice.Workflow, pipelineservice.WorkflowFilter]
@@ -37,6 +40,10 @@ type Storage struct {
 // New returns an empty store.
 func New() *Storage {
 	return &Storage{
+		SourcesTable: newTable(pipelineservice.ErrSourceNotFound,
+			func(e *pipelineservice.Source) uuid.UUID { return e.ID }, matchSource),
+		CatalogDiscoveriesTable: newTable(pipelineservice.ErrCatalogDiscoveryNotFound,
+			func(e *pipelineservice.CatalogDiscovery) uuid.UUID { return e.ID }, matchCatalogDiscovery),
 		ConnectionsTable: newTable(pipelineservice.ErrConnectionNotFound,
 			func(e *pipelineservice.Connection) uuid.UUID { return e.ID }, matchConnection),
 		JobsTable: newTable(pipelineservice.ErrJobNotFound,
@@ -62,6 +69,12 @@ func (s *Storage) WithAdvisoryLock(_ context.Context, scope string, _ int64) err
 	s.Locks = append(s.Locks, scope)
 
 	return nil
+}
+
+func (s *Storage) Sources() pipelineservice.SourcesStorage { return s.SourcesTable }
+
+func (s *Storage) CatalogDiscoveries() pipelineservice.CatalogDiscoveriesStorage {
+	return s.CatalogDiscoveriesTable
 }
 
 func (s *Storage) Connections() pipelineservice.ConnectionsStorage {
@@ -342,6 +355,19 @@ func combine[F any, E any](row *E, or, and []*F, fields bool, match func(*F, *E)
 	}
 
 	return true
+}
+
+func matchSource(cond *pipelineservice.SourceFilter, row *pipelineservice.Source) bool {
+	return combine(row, cond.Or, cond.And,
+		value(cond.ID, row.ID) && value(cond.WorkspaceID, row.WorkspaceID) && value(cond.Name, row.Name) &&
+			value(cond.ManagedConnectorID, row.ManagedConnectorID),
+		matchSource)
+}
+
+func matchCatalogDiscovery(cond *pipelineservice.CatalogDiscoveryFilter, row *pipelineservice.CatalogDiscovery) bool {
+	return combine(row, cond.Or, cond.And,
+		value(cond.ID, row.ID) && value(cond.SourceID, row.SourceID) && value(cond.Version, row.Version),
+		matchCatalogDiscovery)
 }
 
 func matchConnection(cond *pipelineservice.ConnectionFilter, row *pipelineservice.Connection) bool {

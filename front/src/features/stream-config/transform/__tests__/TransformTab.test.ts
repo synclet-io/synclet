@@ -55,7 +55,7 @@ function mountTab(stream: StreamRow) {
   const wrapper = mount(TransformTab, {
     props: {
       'stream': stream,
-      'connectionId': 'conn-1',
+      'target': { connectionId: 'conn-1' },
       'onUpdate:stream': (s: StreamRow) => wrapper.setProps({ stream: s }),
     },
     attachTo: document.body,

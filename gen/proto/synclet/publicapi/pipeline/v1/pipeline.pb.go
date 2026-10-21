@@ -4677,6 +4677,8 @@ func (*ConfigureStreamsResponse) Descriptor() ([]byte, []int) {
 	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{66}
 }
 
+// ValidateMappersRequest names the stream's source either by connection_id or,
+// for a connection not created yet, by source_id with connection_name.
 type ValidateMappersRequest struct {
 	state               protoimpl.MessageState `protogen:"open.v1"`
 	ConnectionId        string                 `protobuf:"bytes,1,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty"`
@@ -4687,6 +4689,8 @@ type ValidateMappersRequest struct {
 	PrimaryKey          []*CompositeKey        `protobuf:"bytes,6,rep,name=primary_key,json=primaryKey,proto3" json:"primary_key,omitempty"`
 	DestinationSyncMode DestinationSyncMode    `protobuf:"varint,7,opt,name=destination_sync_mode,json=destinationSyncMode,proto3,enum=synclet.publicapi.pipeline.v1.DestinationSyncMode" json:"destination_sync_mode,omitempty"`
 	SampleRecord        *structpb.Struct       `protobuf:"bytes,8,opt,name=sample_record,json=sampleRecord,proto3,oneof" json:"sample_record,omitempty"`
+	SourceId            string                 `protobuf:"bytes,9,opt,name=source_id,json=sourceId,proto3" json:"source_id,omitempty"`
+	ConnectionName      string                 `protobuf:"bytes,10,opt,name=connection_name,json=connectionName,proto3" json:"connection_name,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -4775,6 +4779,20 @@ func (x *ValidateMappersRequest) GetSampleRecord() *structpb.Struct {
 		return x.SampleRecord
 	}
 	return nil
+}
+
+func (x *ValidateMappersRequest) GetSourceId() string {
+	if x != nil {
+		return x.SourceId
+	}
+	return ""
+}
+
+func (x *ValidateMappersRequest) GetConnectionName() string {
+	if x != nil {
+		return x.ConnectionName
+	}
+	return ""
 }
 
 // MapperIssue is a problem found in one mapper step; step is -1 for a problem
@@ -8918,7 +8936,7 @@ const file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDesc = "" +
 	"primaryKey\x12U\n" +
 	"\x0fselected_fields\x18\a \x03(\v2,.synclet.publicapi.pipeline.v1.SelectedFieldR\x0eselectedFields\x121\n" +
 	"\amappers\x18\b \x03(\v2\x17.google.protobuf.StructR\amappers\"\x1a\n" +
-	"\x18ConfigureStreamsResponse\"\x91\x04\n" +
+	"\x18ConfigureStreamsResponse\"\xd7\x04\n" +
 	"\x16ValidateMappersRequest\x12#\n" +
 	"\rconnection_id\x18\x01 \x01(\tR\fconnectionId\x12\x1c\n" +
 	"\tnamespace\x18\x02 \x01(\tR\tnamespace\x12\x1f\n" +
@@ -8929,7 +8947,10 @@ const file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDesc = "" +
 	"\vprimary_key\x18\x06 \x03(\v2+.synclet.publicapi.pipeline.v1.CompositeKeyR\n" +
 	"primaryKey\x12f\n" +
 	"\x15destination_sync_mode\x18\a \x01(\x0e22.synclet.publicapi.pipeline.v1.DestinationSyncModeR\x13destinationSyncMode\x12A\n" +
-	"\rsample_record\x18\b \x01(\v2\x17.google.protobuf.StructH\x00R\fsampleRecord\x88\x01\x01B\x10\n" +
+	"\rsample_record\x18\b \x01(\v2\x17.google.protobuf.StructH\x00R\fsampleRecord\x88\x01\x01\x12\x1b\n" +
+	"\tsource_id\x18\t \x01(\tR\bsourceId\x12'\n" +
+	"\x0fconnection_name\x18\n" +
+	" \x01(\tR\x0econnectionNameB\x10\n" +
 	"\x0e_sample_record\"Q\n" +
 	"\vMapperIssue\x12\x12\n" +
 	"\x04step\x18\x01 \x01(\x05R\x04step\x12\x14\n" +

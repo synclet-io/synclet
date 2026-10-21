@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { DestinationSyncMode, StreamState, SyncMode } from '@entities/connection'
+import type { DestinationSyncMode, MapperTarget, StreamState, SyncMode } from '@entities/connection'
 import type { StreamRow } from './catalogStreams'
 import type { StreamValidationError } from './useStreamValidation'
 import { SBadge, SButton, SInput, SSelect } from '@shared/ui'
@@ -16,12 +16,26 @@ interface NamespaceGroup {
   streams: StreamRow[]
 }
 
+// Transform steps are checked against connectionId, or, before the connection
+// exists, against sourceId and connectionName.
 const props = withDefaults(defineProps<{
   connectionId?: string
+  sourceId?: string
+  connectionName?: string
   streamStates?: StreamState[]
 }>(), {
   connectionId: '',
+  sourceId: '',
+  connectionName: '',
   streamStates: () => [],
+})
+
+const mapperTarget = computed<MapperTarget | undefined>(() => {
+  if (props.connectionId)
+    return { connectionId: props.connectionId }
+  if (props.sourceId && props.connectionName)
+    return { sourceId: props.sourceId, connectionName: props.connectionName }
+  return undefined
 })
 
 const streams = defineModel<StreamRow[]>('streams', { required: true })
@@ -333,6 +347,7 @@ function streamState(s: StreamRow): StreamState | undefined {
                       :schema="s.jsonSchema"
                       :validation-errors="errorsForStream(s)"
                       :connection-id="connectionId"
+                      :mapper-target="mapperTarget"
                       :state-data="streamState(s)?.stateData"
                       :state-updated-at="streamState(s)?.updatedAt"
                       @update:stream="editStream"

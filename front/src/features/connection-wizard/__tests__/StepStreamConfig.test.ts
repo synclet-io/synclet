@@ -1,3 +1,4 @@
+import { validateMappers } from '@entities/connection'
 import StreamConfigEditor from '@features/stream-config/StreamConfigEditor.vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
@@ -6,6 +7,10 @@ import StepStreamConfig from '../StepStreamConfig.vue'
 
 vi.mock('@entities/connector-task', () => ({
   useConnectorTaskResult: () => ({ data: ref(null), error: ref(null), timedOut: ref(false) }),
+}))
+vi.mock('@entities/connection', async importOriginal => ({
+  ...await importOriginal<typeof import('@entities/connection')>(),
+  validateMappers: vi.fn(async () => ({ errors: [], warnings: [], outputSchema: undefined, outputPrimaryKey: [], sampleOutput: undefined, sampleKept: true, sampleError: '' })),
 }))
 vi.mock('@entities/source', () => ({
   discoverSourceSchema: vi.fn(),
@@ -38,7 +43,7 @@ const catalog = {
 
 function mountStep(streams: unknown[] = []) {
   return mount(StepStreamConfig, {
-    props: { sourceId: 'src-1', streams: streams as never, discoveredCatalog: catalog },
+    props: { sourceId: 'src-1', connectionName: 'Orders', streams: streams as never, discoveredCatalog: catalog },
     global: { stubs: { StreamExpandedRow: true } },
   })
 }
@@ -109,5 +114,37 @@ describe('wizard streams step', () => {
     await flushPromises()
 
     expect(rowOf(wrapper, 'users').textContent).toContain('7/7 fields')
+  })
+})
+
+describe('wizard streams step transforms', () => {
+  it('offers the Transform tab and validates its steps against the selected source and the typed connection name', async () => {
+    const wrapper = mount(StepStreamConfig, {
+      props: {
+        sourceId: 'src-1',
+        connectionName: 'Orders',
+        discoveredCatalog: catalog,
+        streams: [{
+          streamName: 'users',
+          namespace: '',
+          syncMode: 'full_refresh',
+          destinationSyncMode: 'overwrite',
+          cursorField: [],
+          primaryKey: [],
+          selectedFields: [],
+          mappers: [{ filter: 'r.id != \'\'' }],
+        }],
+      },
+    })
+    await flushPromises()
+
+    await wrapper.get('button[aria-label="Expand stream users"]').trigger('click')
+    const transformTab = wrapper.findAll('[role="tab"]').find(t => t.text() === 'Transform')
+    expect(transformTab).toBeDefined()
+    await transformTab!.trigger('click')
+
+    await vi.waitFor(() => expect(validateMappers).toHaveBeenCalled())
+    expect(vi.mocked(validateMappers).mock.calls[0][0]).toEqual({ sourceId: 'src-1', connectionName: 'Orders' })
+    expect(vi.mocked(validateMappers).mock.calls[0][1]).toEqual(expect.objectContaining({ streamName: 'users', mappers: [{ filter: 'r.id != \'\'' }] }))
   })
 })

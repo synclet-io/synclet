@@ -1,4 +1,4 @@
-import type { ValidateMappersParams, ValidateMappersResult } from '@entities/connection'
+import type { MapperTarget, ValidateMappersParams, ValidateMappersResult } from '@entities/connection'
 import type { StreamRow } from '../../catalogStreams'
 import { validateMappers } from '@entities/connection'
 import { mount } from '@vue/test-utils'
@@ -43,7 +43,7 @@ describe('useMapperValidation', () => {
   })
 
   it('checks each prefix of the steps once and shows server issues, result types and samples on their steps', async () => {
-    vi.mocked(validateMappers).mockImplementation(async (_id: string, req: ValidateMappersParams) => {
+    vi.mocked(validateMappers).mockImplementation(async (_target: MapperTarget, req: ValidateMappersParams) => {
       if (req.mappers.length === 1) {
         return result({
           outputSchema: { properties: { id: { type: 'integer' }, amount: { type: 'number' }, cents: { type: 'integer' } } },
@@ -57,7 +57,7 @@ describe('useMapperValidation', () => {
     })
 
     const wrapper = mount(TransformTab, {
-      props: { stream: row([{ set: { cents: 'int(r.amount * 100.0)' } }, { filter: 'r.nope > 0' }]), connectionId: 'conn-1' },
+      props: { stream: row([{ set: { cents: 'int(r.amount * 100.0)' } }, { filter: 'r.nope > 0' }]), target: { connectionId: 'conn-1' } },
     })
     await wrapper.get('[data-testid="test-sample"]').setValue('{"id": 7, "amount": "1.5"}')
 
@@ -88,7 +88,7 @@ describe('useMapperValidation', () => {
       .mockResolvedValue(result({}))
 
     const wrapper = mount(TransformTab, {
-      props: { stream: row([{ filter: 'r.id > 0' }]), connectionId: 'conn-1' },
+      props: { stream: row([{ filter: 'r.id > 0' }]), target: { connectionId: 'conn-1' } },
     })
     await vi.advanceTimersByTimeAsync(400)
     await wrapper.setProps({ stream: row([{ filter: 'r.id > 1' }]) })
@@ -103,7 +103,7 @@ describe('useMapperValidation', () => {
   it('shows a record a filter drops as filtered out', async () => {
     vi.mocked(validateMappers).mockResolvedValue(result({ sampleKept: false }))
     const wrapper = mount(TransformTab, {
-      props: { stream: row([{ filter: 'r.id > 7' }]), connectionId: 'conn-1' },
+      props: { stream: row([{ filter: 'r.id > 7' }]), target: { connectionId: 'conn-1' } },
     })
     await wrapper.get('[data-testid="test-sample"]').setValue('{"id": 7}')
     await vi.advanceTimersByTimeAsync(400)
@@ -117,7 +117,7 @@ describe('useMapperValidation', () => {
       outputSchema: { properties: { id: { type: 'integer' }, amount: { type: 'boolean' } } },
     }))
     const wrapper = mount(TransformTab, {
-      props: { stream: row([{ set: { amount: 'true' } }]), connectionId: 'conn-1' },
+      props: { stream: row([{ set: { amount: 'true' } }]), target: { connectionId: 'conn-1' } },
     })
     await vi.advanceTimersByTimeAsync(400)
 
@@ -125,5 +125,15 @@ describe('useMapperValidation', () => {
     const amount = wrapper.findAll('[data-testid="output-column"]').find(c => c.text().startsWith('amount'))!
     expect(amount.text()).toContain('boolean')
     expect(amount.text()).toContain('type changed')
+  })
+
+  it('validates against a source and connection name before the connection exists', async () => {
+    vi.mocked(validateMappers).mockResolvedValue(result({}))
+    mount(TransformTab, {
+      props: { stream: row([{ filter: 'r.id > 0' }]), target: { sourceId: 'src-1', connectionName: 'Orders' } },
+    })
+    await vi.advanceTimersByTimeAsync(400)
+
+    expect(vi.mocked(validateMappers).mock.calls.map(c => c[0])).toEqual([{ sourceId: 'src-1', connectionName: 'Orders' }])
   })
 })

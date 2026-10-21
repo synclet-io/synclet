@@ -3,6 +3,7 @@ package pipelineconnect
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"connectrpc.com/connect"
@@ -12,7 +13,6 @@ import (
 
 	pipelinev1 "github.com/synclet-io/synclet/gen/proto/synclet/publicapi/pipeline/v1"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinecatalog"
-	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelineconnections"
 	"github.com/synclet-io/synclet/pkg/connectutil"
 	"github.com/synclet-io/synclet/pkg/mapper"
 	"github.com/synclet-io/synclet/pkg/protocol"
@@ -24,17 +24,9 @@ func (h *ConnectionHandler) ValidateMappers(ctx context.Context, req *connect.Re
 		return nil, err
 	}
 
-	connID, err := uuid.Parse(req.Msg.GetConnectionId())
+	params, err := mapperSourceParams(req.Msg)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
-	}
-
-	conn, err := h.getConnection.Execute(ctx, pipelineconnections.GetConnectionParams{
-		ID:          connID,
-		WorkspaceID: workspaceID,
-	})
-	if err != nil {
-		return nil, mapError(err)
 	}
 
 	mappers, err := mappersToJSON(req.Msg.GetMappers())
@@ -55,21 +47,20 @@ func (h *ConnectionHandler) ValidateMappers(ctx context.Context, req *connect.Re
 		selectedFields[i] = protocol.SelectedField{FieldPath: f.GetFieldPath()}
 	}
 
-	result, err := h.validateMappers.Execute(ctx, pipelinecatalog.ValidateMappersParams{
-		SourceID:       conn.SourceID,
-		ConnectionName: conn.Name,
-		Stream: protocol.ConfiguredAirbyteStream{
-			Stream: protocol.AirbyteStream{
-				Name:      req.Msg.GetStreamName(),
-				Namespace: req.Msg.GetNamespace(),
-			},
-			DestinationSyncMode: protoToDestinationSyncMode(req.Msg.GetDestinationSyncMode()),
-			PrimaryKey:          compositeKeysToPaths(req.Msg.GetPrimaryKey()),
-			SelectedFields:      selectedFields,
-			Mappers:             mappers,
+	params.WorkspaceID = workspaceID
+	params.Stream = protocol.ConfiguredAirbyteStream{
+		Stream: protocol.AirbyteStream{
+			Name:      req.Msg.GetStreamName(),
+			Namespace: req.Msg.GetNamespace(),
 		},
-		SampleRecord: sample,
-	})
+		DestinationSyncMode: protoToDestinationSyncMode(req.Msg.GetDestinationSyncMode()),
+		PrimaryKey:          compositeKeysToPaths(req.Msg.GetPrimaryKey()),
+		SelectedFields:      selectedFields,
+		Mappers:             mappers,
+	}
+	params.SampleRecord = sample
+
+	result, err := h.validateMappers.Execute(ctx, params)
 	if err != nil {
 		return nil, mapError(err)
 	}
@@ -101,6 +92,35 @@ func (h *ConnectionHandler) ValidateMappers(ctx context.Context, req *connect.Re
 	}
 
 	return connect.NewResponse(resp), nil
+}
+
+// mapperSourceParams reads which source the request validates against: a
+// connection id, or a source id with the name of the connection being created.
+func mapperSourceParams(msg *pipelinev1.ValidateMappersRequest) (pipelinecatalog.ValidateMappersParams, error) {
+	switch {
+	case msg.GetConnectionId() != "" && msg.GetSourceId() != "":
+		return pipelinecatalog.ValidateMappersParams{}, errors.New("set either connection_id or source_id, not both")
+	case msg.GetConnectionId() != "":
+		connID, err := uuid.Parse(msg.GetConnectionId())
+		if err != nil {
+			return pipelinecatalog.ValidateMappersParams{}, fmt.Errorf("invalid connection_id: %w", err)
+		}
+
+		return pipelinecatalog.ValidateMappersParams{ConnectionID: connID}, nil
+	case msg.GetSourceId() != "":
+		sourceID, err := uuid.Parse(msg.GetSourceId())
+		if err != nil {
+			return pipelinecatalog.ValidateMappersParams{}, fmt.Errorf("invalid source_id: %w", err)
+		}
+
+		if msg.GetConnectionName() == "" {
+			return pipelinecatalog.ValidateMappersParams{}, errors.New("connection_name is required with source_id")
+		}
+
+		return pipelinecatalog.ValidateMappersParams{SourceID: sourceID, ConnectionName: msg.GetConnectionName()}, nil
+	default:
+		return pipelinecatalog.ValidateMappersParams{}, errors.New("connection_id or source_id is required")
+	}
 }
 
 // mappersToJSON encodes the mapper steps as a JSON array, or nil when there are none.

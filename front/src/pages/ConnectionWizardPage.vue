@@ -246,6 +246,7 @@ function handleSkipStreams() {
             v-if="currentStep === 4"
             ref="streamStep"
             :source-id="state.sourceId"
+            :connection-name="state.name"
             :streams="state.streams"
             :discovered-catalog="state.discoveredCatalog"
             @update:streams="state.streams = $event"

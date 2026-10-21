@@ -1,4 +1,4 @@
-import type { DestinationSyncMode, SelectedField } from '@entities/connection'
+import type { DestinationSyncMode, MapperTarget, SelectedField } from '@entities/connection'
 import type { TransformIssue } from './columns'
 import type { StepDraft } from './model'
 import { validateMappers } from '@entities/connection'
@@ -17,7 +17,7 @@ export interface StepSample {
 }
 
 export interface MapperValidationSource {
-  connectionId: () => string
+  target: () => MapperTarget
   namespace: () => string
   streamName: () => string
   steps: () => StepDraft[]
@@ -92,7 +92,7 @@ export function useMapperValidation(source: MapperValidationSource) {
     loading.value = true
     try {
       const results = await Promise.all(mappers.map((_, i) =>
-        validateMappers(source.connectionId(), { ...base, mappers: mappers.slice(0, i + 1) })))
+        validateMappers(source.target(), { ...base, mappers: mappers.slice(0, i + 1) })))
       if (id !== generation)
         return
       const full = results.at(-1)!
@@ -117,7 +117,7 @@ export function useMapperValidation(source: MapperValidationSource) {
 
   watch(
     () => JSON.stringify([
-      source.connectionId(),
+      source.target(),
       source.steps().map(toStepJson),
       source.sample(),
       source.selectedFields(),

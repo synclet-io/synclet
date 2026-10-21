@@ -697,6 +697,8 @@ message ConfiguredStream {
 
 message ConfigureStreamsResponse {}
 
+// ValidateMappersRequest names the stream's source either by connection_id or,
+// for a connection not created yet, by source_id with connection_name.
 message ValidateMappersRequest {
   string connection_id = 1;
   string namespace = 2;
@@ -706,6 +708,8 @@ message ValidateMappersRequest {
   repeated CompositeKey primary_key = 6;
   DestinationSyncMode destination_sync_mode = 7;
   optional google.protobuf.Struct sample_record = 8;
+  string source_id = 9;
+  string connection_name = 10;
 }
 
 // MapperIssue is a problem found in one mapper step; step is -1 for a problem

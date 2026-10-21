@@ -17,8 +17,8 @@ func validateUsers(t *testing.T, f *configureFixture, mappers, sample string) *V
 	t.Helper()
 
 	params := ValidateMappersParams{
-		SourceID:       f.conn.SourceID,
-		ConnectionName: f.conn.Name,
+		WorkspaceID:  f.conn.WorkspaceID,
+		ConnectionID: f.conn.ID,
 		Stream: protocol.ConfiguredAirbyteStream{
 			Stream:              protocol.AirbyteStream{Namespace: "public", Name: "users"},
 			DestinationSyncMode: protocol.DestinationSyncModeAppendDedup,
@@ -108,8 +108,9 @@ func TestValidateMappers(t *testing.T) {
 		f := newConfigureFixture(t)
 
 		_, err := NewValidateMappers(f.store).Execute(context.Background(), ValidateMappersParams{
-			SourceID: f.conn.SourceID,
-			Stream:   protocol.ConfiguredAirbyteStream{Stream: protocol.AirbyteStream{Name: "nope"}, Mappers: json.RawMessage(`[]`)},
+			WorkspaceID:  f.conn.WorkspaceID,
+			ConnectionID: f.conn.ID,
+			Stream:       protocol.ConfiguredAirbyteStream{Stream: protocol.AirbyteStream{Name: "nope"}, Mappers: json.RawMessage(`[]`)},
 		})
 
 		var validationErr *pipelineservice.ValidationError

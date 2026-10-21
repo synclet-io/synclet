@@ -1,5 +1,5 @@
 import type { JsonObject } from '@bufbuild/protobuf'
-import type { ConfiguredStream, Connection, ConnectionStatus, ConnectionTag, DestinationSyncMode, NamespaceDefinition, SchemaChange, SchemaChangePolicy, SchemaChangeType, StateType, StreamStatesResult, SyncMode, ValidateMappersParams, ValidateMappersResult } from './types'
+import type { ConfiguredStream, Connection, ConnectionStatus, ConnectionTag, DestinationSyncMode, MapperTarget, NamespaceDefinition, SchemaChange, SchemaChangePolicy, SchemaChangeType, StateType, StreamStatesResult, SyncMode, ValidateMappersParams, ValidateMappersResult } from './types'
 import type { Connection as ProtoConnection, SchemaChange as ProtoSchemaChange } from '@/gen/synclet/publicapi/pipeline/v1/pipeline_pb'
 import { ConfiguredStreamSchema, connectionClient, create } from '@shared/api/services'
 import { tsToDate } from '@shared/lib/formatting'
@@ -204,9 +204,9 @@ export async function configureStreams(connectionId: string, streams: Configured
   await connectionClient.configureStreams({ connectionId, streams: protoStreams })
 }
 
-export async function validateMappers(connectionId: string, params: ValidateMappersParams): Promise<ValidateMappersResult> {
+export async function validateMappers(target: MapperTarget, params: ValidateMappersParams): Promise<ValidateMappersResult> {
   const res = await connectionClient.validateMappers({
-    connectionId,
+    ...target,
     namespace: params.namespace,
     streamName: params.streamName,
     mappers: params.mappers as JsonObject[],

@@ -5,7 +5,7 @@ import { defineComponent, onMounted, ref } from 'vue'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import ConnectionWizardPage from '../ConnectionWizardPage.vue'
 
-const mocks = vi.hoisted(() => ({ create: vi.fn() }))
+const mocks = vi.hoisted(() => ({ create: vi.fn(), configure: vi.fn() }))
 
 vi.mock('@entities/connection', () => ({
   getConnection: vi.fn(async () => ({
@@ -24,7 +24,7 @@ vi.mock('@entities/connection', () => ({
   getConfiguredCatalog: vi.fn(async () => undefined),
   configuredCatalogToStreams: () => [],
   useCreateConnection: () => ({ mutateAsync: mocks.create }),
-  useConfigureStreams: () => ({ mutateAsync: vi.fn() }),
+  useConfigureStreams: () => ({ mutateAsync: mocks.configure }),
   useConnectionTags: () => ({ data: ref([]) }),
 }))
 vi.mock('@entities/source/api', () => ({ getSource: vi.fn(async () => ({ id: 's1', name: 'Orders DB' })) }))
@@ -123,5 +123,56 @@ describe('connection wizard streams step', () => {
   it('goes on to the review once the streams are valid', async () => {
     const { button } = await nextFromStreams(true)
     expect(button('Create Connection')).toBeDefined()
+  })
+})
+
+describe('connection wizard transforms', () => {
+  const mappers = [{ set: { cents: 'int(r.amount * 100.0)' } }]
+  const seen: { sourceId?: string, connectionName?: string } = {}
+  const streamStep = defineComponent({
+    props: { sourceId: { type: String, default: '' }, connectionName: { type: String, default: '' } },
+    emits: ['update:streams'],
+    setup(props, { emit, expose }) {
+      expose({ validate: () => true })
+      onMounted(() => {
+        seen.sourceId = props.sourceId
+        seen.connectionName = props.connectionName
+        emit('update:streams', [{ streamName: 'orders', namespace: '', syncMode: 'full_refresh', destinationSyncMode: 'overwrite', cursorField: [], primaryKey: [], selectedFields: [], mappers }])
+      })
+      return {}
+    },
+    template: '<div />',
+  })
+
+  it('gives the streams step the source and connection name and sends the transform steps on create', async () => {
+    mocks.create.mockResolvedValue({ id: 'new-1' })
+    mocks.configure.mockResolvedValue(undefined)
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/connections/new', component: ConnectionWizardPage },
+        { path: '/:rest(.*)*', component: Empty },
+      ],
+    })
+    await router.push('/connections/new?cloneFrom=c1')
+    const wrapper = mount(ConnectionWizardPage, {
+      global: { plugins: [router], stubs: { StepSelectSource: true, StepSelectDestination: true, StepSettings: true, StepStreamConfig: streamStep, WizardStepper: true } },
+    })
+    await flushPromises()
+    const button = (text: string) => wrapper.findAll('button').find(b => b.text() === text)!
+    await button('Next').trigger('click')
+    await flushPromises()
+
+    expect(seen).toEqual({ sourceId: 's1', connectionName: 'Orders (copy)' })
+
+    await button('Next').trigger('click')
+    await flushPromises()
+    await button('Create Connection').trigger('click')
+    await flushPromises()
+
+    expect(mocks.configure).toHaveBeenCalledWith({
+      connectionId: 'new-1',
+      streams: [expect.objectContaining({ streamName: 'orders', mappers })],
+    })
   })
 })

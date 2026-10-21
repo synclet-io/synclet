@@ -8,15 +8,21 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/saturn4er/boilerplate-go/lib/filter"
 
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
 	"github.com/synclet-io/synclet/pkg/mapper"
 	"github.com/synclet-io/synclet/pkg/protocol"
 )
 
-// ValidateMappersParams holds an unsaved mapper list for one stream of a
-// connection, with an optional sample record to run through it.
+// ValidateMappersParams holds an unsaved mapper list for one stream, with an
+// optional sample record to run through it. The stream's source is the
+// connection's when ConnectionID is set, otherwise SourceID, with
+// ConnectionName standing for the name of a connection not created yet. Both
+// the connection and the source must belong to WorkspaceID.
 type ValidateMappersParams struct {
+	WorkspaceID    uuid.UUID
+	ConnectionID   uuid.UUID
 	SourceID       uuid.UUID
 	ConnectionName string
 	Stream         protocol.ConfiguredAirbyteStream
@@ -49,7 +55,12 @@ func NewValidateMappers(storage pipelineservice.Storage) *ValidateMappers {
 
 // Execute compiles the mapper list and runs the sample record through it.
 func (uc *ValidateMappers) Execute(ctx context.Context, params ValidateMappersParams) (*ValidateMappersResult, error) {
-	availableStreams, err := latestDiscoveredStreams(ctx, uc.storage, params.SourceID)
+	sourceID, connectionName, err := uc.resolveSource(ctx, params)
+	if err != nil {
+		return nil, err
+	}
+
+	availableStreams, err := latestDiscoveredStreams(ctx, uc.storage, sourceID)
 	if err != nil {
 		return nil, fmt.Errorf("getting latest catalog: %w", err)
 	}
@@ -107,7 +118,7 @@ func (uc *ValidateMappers) Execute(ctx context.Context, params ValidateMappersPa
 	out, kept, err := chain.Run(record, mapper.SyncInfo{
 		StartedAt:  time.Now(),
 		JobID:      "preview",
-		Connection: params.ConnectionName,
+		Connection: connectionName,
 	})
 	if err != nil {
 		var stepErr *mapper.StepError
@@ -130,4 +141,28 @@ func (uc *ValidateMappers) Execute(ctx context.Context, params ValidateMappersPa
 	}
 
 	return result, nil
+}
+
+func (uc *ValidateMappers) resolveSource(ctx context.Context, params ValidateMappersParams) (uuid.UUID, string, error) {
+	if params.ConnectionID != uuid.Nil {
+		conn, err := uc.storage.Connections().First(ctx, &pipelineservice.ConnectionFilter{
+			ID:          filter.Equals(params.ConnectionID),
+			WorkspaceID: filter.Equals(params.WorkspaceID),
+		})
+		if err != nil {
+			return uuid.Nil, "", fmt.Errorf("getting connection: %w", err)
+		}
+
+		return conn.SourceID, conn.Name, nil
+	}
+
+	src, err := uc.storage.Sources().First(ctx, &pipelineservice.SourceFilter{
+		ID:          filter.Equals(params.SourceID),
+		WorkspaceID: filter.Equals(params.WorkspaceID),
+	})
+	if err != nil {
+		return uuid.Nil, "", fmt.Errorf("getting source: %w", err)
+	}
+
+	return src.ID, params.ConnectionName, nil
 }

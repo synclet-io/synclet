@@ -60,6 +60,10 @@ export interface MapperIssue {
   message: string
 }
 
+// What ValidateMappers checks steps against: a saved connection, or the source
+// and name of a connection not created yet.
+export type MapperTarget = { connectionId: string } | { sourceId: string, connectionName: string }
+
 export interface ValidateMappersParams {
   namespace: string
   streamName: string
