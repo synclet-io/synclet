@@ -85,6 +85,23 @@ export function layoutWorkflowGraph(steps: WorkflowStepInput[], size: NodeSize =
 }
 
 /**
+ * The step runs in the order the graph shows their steps: by layer from left
+ * to right, then by position in the step list. Step runs whose step is not in
+ * steps come last, in their given order.
+ */
+export function sortStepRunsByGraph<T extends { connectionId: string }>(stepRuns: T[], steps: WorkflowStepInput[]): T[] {
+  const placed = new Map(layoutWorkflowGraph(steps).steps.map((s, index) => [s.connectionId, { x: s.x, index }]))
+  const known = stepRuns.filter(s => placed.has(s.connectionId))
+  const removed = stepRuns.filter(s => !placed.has(s.connectionId))
+  known.sort((a, b) => {
+    const pa = placed.get(a.connectionId)!
+    const pb = placed.get(b.connectionId)!
+    return pa.x - pb.x || pa.index - pb.index
+  })
+  return [...known, ...removed]
+}
+
+/**
  * A smooth SVG path along a route: straight to the middle of the first leg,
  * quadratic curves around each bend, straight into the last point.
  */

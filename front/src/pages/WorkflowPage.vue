@@ -13,7 +13,7 @@ import {
   useWorkflowRuns,
 } from '@entities/workflow'
 import { WorkflowStepsEditor } from '@features/workflow-editor'
-import { runStatusVariant, stepDisplayStatus, stepStatusVariant, WorkflowGraph } from '@features/workflow-graph'
+import { runStatusVariant, sortStepRunsByGraph, stepDisplayStatus, stepStatusVariant, WorkflowGraph } from '@features/workflow-graph'
 import { describeCron } from '@shared/lib/cron'
 import { getErrorMessage } from '@shared/lib/errorUtils'
 import { formatDuration } from '@shared/lib/format'
@@ -124,6 +124,8 @@ const shownRun = computed<WorkflowRun | undefined>(() => {
   const all = runs.value ?? []
   return all.find(r => r.id === selectedRunId.value) ?? all[0]
 })
+
+const shownStepRuns = computed(() => (shownRun.value ? sortStepRunsByGraph(shownRun.value.stepRuns, workflow.value?.steps ?? []) : []))
 
 function runLabel(run: WorkflowRun): string {
   return `${run.startedAt?.toLocaleString() ?? 'Not started'} · ${run.status}`
@@ -239,7 +241,7 @@ const title = computed(() => (isNew.value ? 'New workflow' : workflow.value?.nam
           v-if="shownRun"
           data-testid="step-runs"
           :columns="stepRunColumns"
-          :data="shownRun.stepRuns"
+          :data="shownStepRuns"
           empty-text="No steps in this run"
         >
           <template #cell-connection="{ row }">

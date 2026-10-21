@@ -1,6 +1,6 @@
 import type { WorkflowRun, WorkflowStepRunStatus } from '@entities/workflow'
 import { describe, expect, it } from 'vitest'
-import { edgePath, layoutWorkflowGraph, stepDisplayStatus, wouldCreateCycle } from '../graph'
+import { edgePath, layoutWorkflowGraph, sortStepRunsByGraph, stepDisplayStatus, wouldCreateCycle } from '../graph'
 
 const diamond = [
   { connectionId: 'a', afterConnectionIds: [] },
@@ -104,5 +104,24 @@ describe('stepDisplayStatus', () => {
   it('shows a step without a step run as not run', () => {
     expect(stepDisplayStatus(undefined, diamond[0]!)).toBe('not run')
     expect(stepDisplayStatus(run('succeeded', { a: 'succeeded' }), diamond[1]!)).toBe('not run')
+  })
+})
+
+describe('sortStepRunsByGraph', () => {
+  it('orders step runs by graph layer, then by the step list, with removed steps last', () => {
+    const stepRuns = ['removed', 'd', 'c', 'gone', 'a', 'b'].map(connectionId => ({ connectionId }))
+
+    expect(sortStepRunsByGraph(stepRuns, diamond).map(s => s.connectionId)).toEqual(['a', 'b', 'c', 'd', 'removed', 'gone'])
+  })
+
+  it('orders steps of the same layer as in the step list', () => {
+    const steps = [
+      { connectionId: 'c', afterConnectionIds: ['a'] },
+      { connectionId: 'b', afterConnectionIds: [] },
+      { connectionId: 'a', afterConnectionIds: [] },
+    ]
+    const stepRuns = ['c', 'a', 'b'].map(connectionId => ({ connectionId }))
+
+    expect(sortStepRunsByGraph(stepRuns, steps).map(s => s.connectionId)).toEqual(['b', 'a', 'c'])
   })
 })

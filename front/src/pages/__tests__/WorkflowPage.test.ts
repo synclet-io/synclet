@@ -255,6 +255,24 @@ describe('workflow page', () => {
     expect(mocks.push).not.toHaveBeenCalled()
   })
 
+  it('lists the step runs in graph order with steps no longer in the workflow last', async () => {
+    mocks.workflow = {
+      ...workflow,
+      steps: [
+        { id: 's3', connectionId: 'c', afterConnectionIds: ['a'] },
+        { id: 's1', connectionId: 'a', afterConnectionIds: [] },
+        { id: 's2', connectionId: 'b', afterConnectionIds: ['a'] },
+      ],
+    }
+    const base = run('r1', 'succeeded', 'succeeded', 'succeeded')
+    const stepRun = (connectionId: string): StepRun => ({ ...base.stepRuns[0]!, id: `r1-${connectionId}`, connectionId })
+    mocks.runs = [{ ...base, stepRuns: [stepRun('removed'), stepRun('b'), stepRun('c'), stepRun('a')] }]
+    const w = mountPage()
+    await flushPromises()
+
+    expect(stepRows(w).map(r => r.find('td').text())).toEqual(['Orders', 'Revenue', 'Customers', 'removed'])
+  })
+
   it('shows the run chosen in the run history in the graph and the step list', async () => {
     mocks.runs = [failedRun, succeededRun]
     const w = mountPage()
