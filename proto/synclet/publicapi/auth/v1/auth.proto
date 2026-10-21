@@ -28,6 +28,14 @@ service AuthService {
     option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
   }
   rpc GetOIDCProviders(GetOIDCProvidersRequest) returns (GetOIDCProvidersResponse);
+  // GetOAuthClient returns the client an authorization request names, for the
+  // consent page; the redirect URI must be one the client registered.
+  rpc GetOAuthClient(GetOAuthClientRequest) returns (GetOAuthClientResponse);
+  // AuthorizeOAuth issues an authorization code for the workspace in the
+  // Workspace-Id header and returns the URL to send the browser to.
+  rpc AuthorizeOAuth(AuthorizeOAuthRequest) returns (AuthorizeOAuthResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
+  }
 }
 
 message UserInfo {
@@ -114,6 +122,17 @@ message ResetPasswordRequest {
 
 message ResetPasswordResponse {}
 
+// OAuthAccessLevel limits what an OAuth client may do on /mcp.
+enum OAuthAccessLevel {
+  OAUTH_ACCESS_LEVEL_UNSPECIFIED = 0;
+  // Read tools only.
+  OAUTH_ACCESS_LEVEL_READ = 1;
+  // Read tools and actions (sync, cancel, pause, resume, run).
+  OAUTH_ACCESS_LEVEL_ACTIONS = 2;
+  // Every tool.
+  OAUTH_ACCESS_LEVEL_WRITE = 3;
+}
+
 message APIKeyInfo {
   string id = 1;
   string workspace_id = 2;
@@ -121,6 +140,35 @@ message APIKeyInfo {
   google.protobuf.Timestamp created_at = 4;
   google.protobuf.Timestamp expires_at = 5;
   google.protobuf.Timestamp last_used_at = 6;
+  // Set on a key issued to an OAuth client: the client's name.
+  string oauth_client_name = 7;
+  // Set on a key issued to an OAuth client.
+  OAuthAccessLevel oauth_level = 8;
+}
+
+message GetOAuthClientRequest {
+  string client_id = 1;
+  string redirect_uri = 2;
+}
+
+message GetOAuthClientResponse {
+  string client_id = 1;
+  string client_name = 2;
+}
+
+message AuthorizeOAuthRequest {
+  string client_id = 1;
+  string redirect_uri = 2;
+  string code_challenge = 3;
+  string code_challenge_method = 4;
+  OAuthAccessLevel level = 5;
+  // Returned to the client unchanged.
+  string state = 6;
+}
+
+message AuthorizeOAuthResponse {
+  // The redirect URI with the code and state added.
+  string redirect_url = 1;
 }
 
 message CreateAPIKeyRequest {

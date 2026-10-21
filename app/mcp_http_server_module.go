@@ -1,16 +1,24 @@
 package app
 
 import (
+	"context"
+	"fmt"
+	"strings"
+	"time"
+
 	"github.com/go-pnp/go-pnp/config/configutil"
 	"github.com/go-pnp/go-pnp/http/pnphttpserver"
 	"github.com/go-pnp/go-pnp/http/pnphttpserverrecovery"
 	"go.uber.org/fx"
+	"golang.org/x/time/rate"
 
 	"github.com/synclet-io/synclet/gen/proto/synclet/publicapi/pipeline/v1/pipelinev1connect"
 	"github.com/synclet-io/synclet/gen/proto/synclet/publicapi/registry/v1/registryv1connect"
 	"github.com/synclet-io/synclet/gen/proto/synclet/publicapi/stats/v1/statsv1connect"
 	"github.com/synclet-io/synclet/modules/app/appmcp"
 	"github.com/synclet-io/synclet/modules/auth/authadapt"
+	"github.com/synclet-io/synclet/modules/auth/authhttp"
+	"github.com/synclet-io/synclet/modules/auth/authservice"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineconnect"
 	"github.com/synclet-io/synclet/pkg/connectutil"
 )
@@ -55,6 +63,8 @@ func mcpHTTPServerModule(options *RunAppOptions) fx.Option {
 		fx.Provide(
 			pnphttpserver.HandlerMiddlewareProvider(newHTTPSecurityHeadersMiddleware),
 			pnphttpserver.MuxHandlerRegistrarProvider(newMCPHandler),
+			pnphttpserver.MuxHandlerRegistrarProvider(newOAuthHTTPHandler),
+			newOAuthRegisterLimiter,
 
 			fx.Annotate(pipelineconnect.NewSourceHandler, fx.As(new(pipelinev1connect.SourceServiceHandler))),
 			fx.Annotate(pipelineconnect.NewDestinationHandler, fx.As(new(pipelinev1connect.DestinationServiceHandler))),
@@ -99,6 +109,75 @@ func newMCPHandler(params mcpHandlerParams) *appmcp.Handler {
 			Registry:     params.Registry,
 		},
 		params.RoleInterceptor,
-		appmcp.NewAPIKeyAuthenticator(params.TokenValidator),
+		appmcp.NewAPIKeyAuthenticator(mcpKeyValidator{params.TokenValidator}),
+	)
+}
+
+// mcpKeyValidator adapts authadapt.TokenValidator to appmcp.APIKeyValidator.
+type mcpKeyValidator struct {
+	validator *authadapt.TokenValidator
+}
+
+func (v mcpKeyValidator) ValidateMCPKey(ctx context.Context, rawKey string) (appmcp.MCPKey, error) {
+	key, err := v.validator.ValidateMCPKey(ctx, rawKey)
+	if err != nil {
+		return appmcp.MCPKey{}, err
+	}
+
+	return appmcp.MCPKey{UserID: key.UserID, WorkspaceID: key.WorkspaceID, Level: key.Level, ExpiresAt: key.ExpiresAt}, nil
+}
+
+// newOAuthRegisterLimiter limits dynamic client registration, which needs no
+// credentials, to about 10 a minute per client IP.
+func newOAuthRegisterLimiter(lc fx.Lifecycle, cfg *rateLimitConfig) (*connectutil.RateLimitInterceptor, error) {
+	trustedProxies, err := connectutil.ParseTrustedProxies(cfg.TrustedProxies)
+	if err != nil {
+		return nil, fmt.Errorf("RATE_LIMIT_TRUSTED_PROXIES: %w", err)
+	}
+
+	limiter := connectutil.NewRateLimitInterceptor(
+		map[string]connectutil.RateLimitConfig{
+			authhttp.RegisterPath: {Rate: rate.Every(6 * time.Second), Burst: 10},
+		},
+		connectutil.WithTrustedProxies(trustedProxies),
+	)
+
+	lc.Append(fx.Hook{
+		OnStop: func(context.Context) error {
+			limiter.Stop()
+
+			return nil
+		},
+	})
+
+	return limiter, nil
+}
+
+type oauthHTTPHandlerParams struct {
+	fx.In
+
+	Config     *appmcp.Config
+	AuthConfig *authConfig
+	Limiter    *connectutil.RateLimitInterceptor
+	Register   *authservice.RegisterOAuthClient
+	Exchange   *authservice.ExchangeOAuthCode
+	Refresh    *authservice.RefreshOAuthToken
+}
+
+// newOAuthHTTPHandler serves the OAuth discovery, registration and token
+// endpoints on the MCP server. The consent page is on the main UI, at
+// MCP_UI_URL or else AUTH_OIDC_CALLBACK_BASE_URL.
+func newOAuthHTTPHandler(params oauthHTTPHandlerParams) *authhttp.OAuthHTTPHandler {
+	uiURL := params.Config.UIURL
+	if uiURL == "" {
+		uiURL = params.AuthConfig.OIDCCallbackBaseURL
+	}
+
+	return authhttp.NewOAuthHTTPHandler(
+		authhttp.OAuthURLs{Public: strings.TrimSuffix(params.Config.PublicURL, "/"), UI: strings.TrimSuffix(uiURL, "/")},
+		params.Limiter,
+		params.Register,
+		params.Exchange,
+		params.Refresh,
 	)
 }

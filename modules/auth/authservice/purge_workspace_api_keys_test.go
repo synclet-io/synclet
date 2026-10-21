@@ -12,7 +12,7 @@ import (
 )
 
 type purgeKeysStorage struct {
-	Storage
+	*fakeStorage
 	keys *purgeKeys
 }
 
@@ -36,7 +36,7 @@ func TestPurgeWorkspaceAPIKeys(t *testing.T) {
 	t.Run("deletes keys scoped to the workspace only", func(t *testing.T) {
 		keys := &purgeKeys{}
 
-		require.NoError(t, NewPurgeWorkspaceAPIKeys(&purgeKeysStorage{keys: keys}).Execute(context.Background(), workspaceID))
+		require.NoError(t, NewPurgeWorkspaceAPIKeys(&purgeKeysStorage{fakeStorage: newFakeStorage(), keys: keys}).Execute(context.Background(), workspaceID))
 
 		require.Len(t, keys.filters, 1)
 		assert.Equal(t, &APIKeyFilter{WorkspaceID: filter.Equals(workspaceID)}, keys.filters[0])
@@ -46,6 +46,6 @@ func TestPurgeWorkspaceAPIKeys(t *testing.T) {
 		errBoom := errors.New("boom")
 		keys := &purgeKeys{err: errBoom}
 
-		require.ErrorIs(t, NewPurgeWorkspaceAPIKeys(&purgeKeysStorage{keys: keys}).Execute(context.Background(), workspaceID), errBoom)
+		require.ErrorIs(t, NewPurgeWorkspaceAPIKeys(&purgeKeysStorage{fakeStorage: newFakeStorage(), keys: keys}).Execute(context.Background(), workspaceID), errBoom)
 	})
 }

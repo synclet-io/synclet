@@ -11,10 +11,15 @@ data:
   {{- with include "synclet.corsEnv" . }}{{ . | trim | nindent 2 }}{{ end }}
   INTERNAL_HTTP_SERVER_ADDR: {{ printf "0.0.0.0:%v" .Values.server.containerPorts.internal | quote }}
   {{- if include "synclet.mcpEnabled" . }}
+  {{- $mcp := include "synclet.mcp" . | fromYaml }}
   ## MCP
   MCP_ENABLED: "true"
-  MCP_WRITE_TOOLS: {{ .Values.mcp.writeTools | quote }}
-  MCP_HTTP_SERVER_ADDR: {{ printf "0.0.0.0:%v" .Values.mcp.containerPort | quote }}
+  MCP_WRITE_TOOLS: {{ $mcp.writeTools | quote }}
+  MCP_HTTP_SERVER_ADDR: {{ printf "0.0.0.0:%v" $mcp.containerPort | quote }}
+  {{- with $mcp.publicUrl }}
+  MCP_PUBLIC_URL: {{ . | quote }}
+  {{- end }}
+  MCP_UI_URL: {{ ($mcp.uiUrl | default (include "synclet.frontendURL" .)) | quote }}
   {{- end }}
   ## Auth
   AUTH_REGISTRATION_ENABLED: {{ .Values.auth.registrationEnabled | quote }}

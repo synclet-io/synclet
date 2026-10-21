@@ -21,9 +21,39 @@ func NewCreateAPIKey(storage Storage, audit AuditRecorder) *CreateAPIKey {
 	return &CreateAPIKey{storage: storage, audit: audit}
 }
 
+// CreateAPIKeyParams describes an API key to create. OAuthGrantID and
+// OAuthLevel are set on a key issued as an OAuth access token.
+type CreateAPIKeyParams struct {
+	WorkspaceID  uuid.UUID
+	UserID       uuid.UUID
+	Name         string
+	ExpiresAt    *time.Time
+	OAuthGrantID *uuid.UUID
+	OAuthLevel   *OAuthAccessLevel
+}
+
 // Execute generates a new API key, stores its hash, and returns the raw key and record.
-func (uc *CreateAPIKey) Execute(ctx context.Context, workspaceID, userID uuid.UUID, name string, expiresAt *time.Time) (string, *APIKey, error) {
-	if expiresAt != nil && !expiresAt.After(time.Now()) {
+func (uc *CreateAPIKey) Execute(ctx context.Context, params CreateAPIKeyParams) (string, *APIKey, error) {
+	rawKey, created, err := insertAPIKey(ctx, uc.storage, params)
+	if err != nil {
+		return "", nil, err
+	}
+
+	uc.audit.Record(ctx, AuditEvent{
+		WorkspaceID:   created.WorkspaceID,
+		ActorID:       params.UserID,
+		Action:        "create",
+		ResourceType:  "api_key",
+		ResourceID:    created.ID,
+		ResourceLabel: created.Name,
+		After:         map[string]any{"name": created.Name, "expires_at": created.ExpiresAt},
+	})
+
+	return rawKey, created, nil
+}
+
+func insertAPIKey(ctx context.Context, storage Storage, params CreateAPIKeyParams) (string, *APIKey, error) {
+	if params.ExpiresAt != nil && !params.ExpiresAt.After(time.Now()) {
 		return "", nil, &ValidationError{Message: "expiry must be in the future"}
 	}
 
@@ -32,32 +62,20 @@ func (uc *CreateAPIKey) Execute(ctx context.Context, workspaceID, userID uuid.UU
 		return "", nil, fmt.Errorf("generating key: %w", err)
 	}
 
-	keyHash := hashToken(rawKey)
-
-	apiKey := &APIKey{
-		ID:          uuid.New(),
-		WorkspaceID: workspaceID,
-		UserID:      userID,
-		Name:        name,
-		KeyHash:     keyHash,
-		ExpiresAt:   expiresAt,
-		CreatedAt:   time.Now(),
-	}
-
-	created, err := uc.storage.APIKeys().Create(ctx, apiKey)
+	created, err := storage.APIKeys().Create(ctx, &APIKey{
+		ID:           uuid.New(),
+		WorkspaceID:  params.WorkspaceID,
+		UserID:       params.UserID,
+		Name:         params.Name,
+		KeyHash:      hashToken(rawKey),
+		ExpiresAt:    params.ExpiresAt,
+		OAuthGrantID: params.OAuthGrantID,
+		OAuthLevel:   params.OAuthLevel,
+		CreatedAt:    time.Now(),
+	})
 	if err != nil {
 		return "", nil, fmt.Errorf("creating API key: %w", err)
 	}
-
-	uc.audit.Record(ctx, AuditEvent{
-		WorkspaceID:   created.WorkspaceID,
-		ActorID:       userID,
-		Action:        "create",
-		ResourceType:  "api_key",
-		ResourceID:    created.ID,
-		ResourceLabel: created.Name,
-		After:         map[string]any{"name": created.Name, "expires_at": created.ExpiresAt},
-	})
 
 	return rawKey, created, nil
 }

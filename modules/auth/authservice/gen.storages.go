@@ -14,6 +14,10 @@ type Storage interface {
 	RefreshTokens() RefreshTokensStorage
 	PasswordResetTokens() PasswordResetTokensStorage
 	APIKeys() APIKeysStorage
+	OAuthClients() OAuthClientsStorage
+	OAuthCodes() OAuthCodesStorage
+	OAuthGrants() OAuthGrantsStorage
+	OAuthRefreshTokens() OAuthRefreshTokensStorage
 	OIDCIdentities() OIDCIdentitiesStorage
 	OIDCStates() OIDCStatesStorage
 	IdempotencyKeys() idempotency.Storage
@@ -24,5 +28,9 @@ type UsersStorage dbutil.EntityStorage[User, UserFilter]
 type RefreshTokensStorage dbutil.EntityStorage[RefreshToken, RefreshTokenFilter]
 type PasswordResetTokensStorage dbutil.EntityStorage[PasswordResetToken, PasswordResetTokenFilter]
 type APIKeysStorage dbutil.EntityStorage[APIKey, APIKeyFilter]
+type OAuthClientsStorage dbutil.EntityStorage[OAuthClient, OAuthClientFilter]
+type OAuthCodesStorage dbutil.EntityStorage[OAuthCode, OAuthCodeFilter]
+type OAuthGrantsStorage dbutil.EntityStorage[OAuthGrant, OAuthGrantFilter]
+type OAuthRefreshTokensStorage dbutil.EntityStorage[OAuthRefreshToken, OAuthRefreshTokenFilter]
 type OIDCIdentitiesStorage dbutil.EntityStorage[OIDCIdentity, OIDCIdentityFilter]
 type OIDCStatesStorage dbutil.EntityStorage[OIDCState, OIDCStateFilter]

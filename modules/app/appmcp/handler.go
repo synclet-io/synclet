@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"connectrpc.com/connect"
 
@@ -40,36 +41,57 @@ type Handler struct {
 }
 
 // NewHandler serves the tools over Streamable HTTP without session state.
-// Every request needs a bearer token one of authenticators accepts, and every
-// tool call runs in that token's workspace, refused when the caller's role
-// does not allow its procedures. Write tools are listed only when
-// cfg.WriteTools is set.
+// Every request needs a bearer token one of authenticators accepts; one
+// without answers 401 pointing at the protected resource metadata under
+// cfg.PublicURL. Every tool call runs in that token's workspace, refused when
+// the caller's role does not allow its procedures. A token's access level
+// limits the tools it lists and calls: read lists the read tools, actions adds
+// the action tools. Write tools are listed only when cfg.WriteTools is set.
 func NewHandler(cfg Config, services Services, authorizer Authorizer, authenticators ...BearerAuthenticator) *Handler {
-	server := mcp.NewServer(&mcp.Implementation{Name: "synclet", Version: "v1"}, nil)
+	defs := toolDefs(services)
+	servers := map[string]*mcp.Server{}
 
-	for _, def := range toolDefs(services) {
-		if def.kind == kindWrite && !cfg.WriteTools {
-			continue
+	for _, level := range []string{LevelRead, LevelActions, LevelWrite} {
+		server := mcp.NewServer(&mcp.Implementation{Name: "synclet", Version: "v1"}, nil)
+
+		for _, def := range defs {
+			if def.kind == kindWrite && !cfg.WriteTools || !allows(level, def.kind) {
+				continue
+			}
+
+			server.AddTool(&mcp.Tool{
+				Name:        def.name,
+				Description: def.description,
+				InputSchema: def.schema,
+				Annotations: def.annotations(),
+			}, toolHandler(def, authorizer))
 		}
 
-		server.AddTool(&mcp.Tool{
-			Name:        def.name,
-			Description: def.description,
-			InputSchema: def.schema,
-			Annotations: def.annotations(),
-		}, toolHandler(def, authorizer))
+		servers[level] = server
 	}
 
 	endpoint := mcp.NewStreamableHTTPHandler(
-		func(*http.Request) *mcp.Server { return server },
+		func(r *http.Request) *mcp.Server {
+			if server, ok := servers[levelOf(r.Context())]; ok {
+				return server
+			}
+
+			return servers[LevelWrite]
+		},
 		&mcp.StreamableHTTPOptions{Stateless: true, JSONResponse: true},
 	)
 
-	return &Handler{endpoint: requireBearer(authenticators, endpoint)}
+	resourceMetadataURL := strings.TrimSuffix(cfg.PublicURL, "/") + "/.well-known/oauth-protected-resource"
+
+	return &Handler{endpoint: requireBearer(resourceMetadataURL, authenticators, endpoint)}
 }
 
 func toolHandler(def toolDef, authorizer Authorizer) mcp.ToolHandler {
 	return func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		if !allows(levelOf(ctx), def.kind) {
+			return errorResult(ctx, def.name, errAboveAccessLevel), nil
+		}
+
 		for _, procedure := range def.procedures {
 			if err := authorizer.Authorize(ctx, procedure); err != nil {
 				return errorResult(ctx, def.name, err), nil
@@ -85,6 +107,8 @@ func toolHandler(def toolDef, authorizer Authorizer) mcp.ToolHandler {
 	}
 }
 
+var errAboveAccessLevel = errors.New("this tool is above the access level granted to this client")
+
 // errorResult reports a failed call to the client: invalid arguments and API
 // errors with their code and message, anything else as an internal error.
 func errorResult(ctx context.Context, tool string, err error) *mcp.CallToolResult {
@@ -94,7 +118,7 @@ func errorResult(ctx context.Context, tool string, err error) *mcp.CallToolResul
 	)
 
 	switch {
-	case errors.Is(err, errInvalidArguments):
+	case errors.Is(err, errInvalidArguments), errors.Is(err, errAboveAccessLevel):
 		text = err.Error()
 	case errors.As(err, &connectErr):
 		text = fmt.Sprintf("%s: %s", connectErr.Code(), connectErr.Message())

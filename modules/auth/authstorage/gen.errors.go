@@ -88,6 +88,82 @@ func wrapAPIKeyQueryError(err error) error {
 
 	return err
 }
+func wrapOAuthClientQueryError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return errors.WithStack(errors1.Join(authsvc.ErrOAuthClientNotFound, err))
+	}
+
+	var pgErr *pgconn.PgError
+
+	if errors.As(err, &pgErr) {
+		if pgErr.Code == "23505" {
+			return errors.WithStack(errors1.Join(authsvc.ErrOAuthClientAlreadyExists, err))
+		}
+	}
+
+	return err
+}
+func wrapOAuthCodeQueryError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return errors.WithStack(errors1.Join(authsvc.ErrOAuthCodeNotFound, err))
+	}
+
+	var pgErr *pgconn.PgError
+
+	if errors.As(err, &pgErr) {
+		if pgErr.Code == "23505" {
+			return errors.WithStack(errors1.Join(authsvc.ErrOAuthCodeAlreadyExists, err))
+		}
+	}
+
+	return err
+}
+func wrapOAuthGrantQueryError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return errors.WithStack(errors1.Join(authsvc.ErrOAuthGrantNotFound, err))
+	}
+
+	var pgErr *pgconn.PgError
+
+	if errors.As(err, &pgErr) {
+		if pgErr.Code == "23505" {
+			return errors.WithStack(errors1.Join(authsvc.ErrOAuthGrantAlreadyExists, err))
+		}
+	}
+
+	return err
+}
+func wrapOAuthRefreshTokenQueryError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return errors.WithStack(errors1.Join(authsvc.ErrOAuthRefreshTokenNotFound, err))
+	}
+
+	var pgErr *pgconn.PgError
+
+	if errors.As(err, &pgErr) {
+		if pgErr.Code == "23505" {
+			return errors.WithStack(errors1.Join(authsvc.ErrOAuthRefreshTokenAlreadyExists, err))
+		}
+	}
+
+	return err
+}
 func wrapOIDCIdentityQueryError(err error) error {
 	if err == nil {
 		return nil

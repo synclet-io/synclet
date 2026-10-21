@@ -21,6 +21,10 @@ const (
 	ErrRegistrationDisabled    baseErr = "registration is disabled"
 	ErrPasswordResetCooldown   baseErr = "password reset requested too recently"
 	ErrInvalidResetToken       baseErr = "invalid or expired reset token" //nolint:gosec // error message, not a credential
+	// ErrInvalidGrant is the OAuth invalid_grant error: an authorization code
+	// or refresh token that is unknown, expired, already used or bound to
+	// another client, redirect URI or code verifier.
+	ErrInvalidGrant baseErr = "invalid grant"
 )
 
 // ValidationError represents an input validation error in the auth module.

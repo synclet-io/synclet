@@ -35,6 +35,22 @@ const (
 	ErrAPIKeyAlreadyExists = AlreadyExistsError("APIKey")
 )
 const (
+	ErrOAuthClientNotFound      = NotFoundError("OAuthClient")
+	ErrOAuthClientAlreadyExists = AlreadyExistsError("OAuthClient")
+)
+const (
+	ErrOAuthCodeNotFound      = NotFoundError("OAuthCode")
+	ErrOAuthCodeAlreadyExists = AlreadyExistsError("OAuthCode")
+)
+const (
+	ErrOAuthGrantNotFound      = NotFoundError("OAuthGrant")
+	ErrOAuthGrantAlreadyExists = AlreadyExistsError("OAuthGrant")
+)
+const (
+	ErrOAuthRefreshTokenNotFound      = NotFoundError("OAuthRefreshToken")
+	ErrOAuthRefreshTokenAlreadyExists = AlreadyExistsError("OAuthRefreshToken")
+)
+const (
 	ErrOIDCIdentityNotFound      = NotFoundError("OIDCIdentity")
 	ErrOIDCIdentityAlreadyExists = AlreadyExistsError("OIDCIdentity")
 )

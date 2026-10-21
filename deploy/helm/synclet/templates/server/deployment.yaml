@@ -63,7 +63,7 @@ spec:
               protocol: TCP
             {{- if include "synclet.mcpEnabled" . }}
             - name: mcp
-              containerPort: {{ .Values.mcp.containerPort }}
+              containerPort: {{ (include "synclet.mcp" . | fromYaml).containerPort }}
               protocol: TCP
             {{- end }}
           envFrom:

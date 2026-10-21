@@ -35,15 +35,16 @@ spec:
   {{- end }}
   rules:
     {{- if include "synclet.mcpShared" . }}
+    {{- $mcp := include "synclet.mcp" . | fromYaml }}
     - matches:
-        {{- range .Values.mcp.ingress.paths }}
+        {{- range $mcp.ingress.paths }}
         - path:
             type: PathPrefix
             value: {{ . | quote }}
         {{- end }}
       backendRefs:
         - name: {{ include "synclet.fullname" . }}-mcp
-          port: {{ .Values.mcp.service.port }}
+          port: {{ $mcp.service.port }}
     {{- end }}
     - matches:
         {{- range .Values.server.gateway.paths }}

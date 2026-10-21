@@ -68,6 +68,12 @@ const (
 	// AuthServiceGetOIDCProvidersProcedure is the fully-qualified name of the AuthService's
 	// GetOIDCProviders RPC.
 	AuthServiceGetOIDCProvidersProcedure = "/synclet.publicapi.auth.v1.AuthService/GetOIDCProviders"
+	// AuthServiceGetOAuthClientProcedure is the fully-qualified name of the AuthService's
+	// GetOAuthClient RPC.
+	AuthServiceGetOAuthClientProcedure = "/synclet.publicapi.auth.v1.AuthService/GetOAuthClient"
+	// AuthServiceAuthorizeOAuthProcedure is the fully-qualified name of the AuthService's
+	// AuthorizeOAuth RPC.
+	AuthServiceAuthorizeOAuthProcedure = "/synclet.publicapi.auth.v1.AuthService/AuthorizeOAuth"
 )
 
 // AuthServiceClient is a client for the synclet.publicapi.auth.v1.AuthService service.
@@ -85,6 +91,12 @@ type AuthServiceClient interface {
 	RevokeAPIKey(context.Context, *connect.Request[v1.RevokeAPIKeyRequest]) (*connect.Response[v1.RevokeAPIKeyResponse], error)
 	ListAPIKeys(context.Context, *connect.Request[v1.ListAPIKeysRequest]) (*connect.Response[v1.ListAPIKeysResponse], error)
 	GetOIDCProviders(context.Context, *connect.Request[v1.GetOIDCProvidersRequest]) (*connect.Response[v1.GetOIDCProvidersResponse], error)
+	// GetOAuthClient returns the client an authorization request names, for the
+	// consent page; the redirect URI must be one the client registered.
+	GetOAuthClient(context.Context, *connect.Request[v1.GetOAuthClientRequest]) (*connect.Response[v1.GetOAuthClientResponse], error)
+	// AuthorizeOAuth issues an authorization code for the workspace in the
+	// Workspace-Id header and returns the URL to send the browser to.
+	AuthorizeOAuth(context.Context, *connect.Request[v1.AuthorizeOAuthRequest]) (*connect.Response[v1.AuthorizeOAuthResponse], error)
 }
 
 // NewAuthServiceClient constructs a client for the synclet.publicapi.auth.v1.AuthService service.
@@ -176,6 +188,18 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(authServiceMethods.ByName("GetOIDCProviders")),
 			connect.WithClientOptions(opts...),
 		),
+		getOAuthClient: connect.NewClient[v1.GetOAuthClientRequest, v1.GetOAuthClientResponse](
+			httpClient,
+			baseURL+AuthServiceGetOAuthClientProcedure,
+			connect.WithSchema(authServiceMethods.ByName("GetOAuthClient")),
+			connect.WithClientOptions(opts...),
+		),
+		authorizeOAuth: connect.NewClient[v1.AuthorizeOAuthRequest, v1.AuthorizeOAuthResponse](
+			httpClient,
+			baseURL+AuthServiceAuthorizeOAuthProcedure,
+			connect.WithSchema(authServiceMethods.ByName("AuthorizeOAuth")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -194,6 +218,8 @@ type authServiceClient struct {
 	revokeAPIKey         *connect.Client[v1.RevokeAPIKeyRequest, v1.RevokeAPIKeyResponse]
 	listAPIKeys          *connect.Client[v1.ListAPIKeysRequest, v1.ListAPIKeysResponse]
 	getOIDCProviders     *connect.Client[v1.GetOIDCProvidersRequest, v1.GetOIDCProvidersResponse]
+	getOAuthClient       *connect.Client[v1.GetOAuthClientRequest, v1.GetOAuthClientResponse]
+	authorizeOAuth       *connect.Client[v1.AuthorizeOAuthRequest, v1.AuthorizeOAuthResponse]
 }
 
 // Register calls synclet.publicapi.auth.v1.AuthService.Register.
@@ -261,6 +287,16 @@ func (c *authServiceClient) GetOIDCProviders(ctx context.Context, req *connect.R
 	return c.getOIDCProviders.CallUnary(ctx, req)
 }
 
+// GetOAuthClient calls synclet.publicapi.auth.v1.AuthService.GetOAuthClient.
+func (c *authServiceClient) GetOAuthClient(ctx context.Context, req *connect.Request[v1.GetOAuthClientRequest]) (*connect.Response[v1.GetOAuthClientResponse], error) {
+	return c.getOAuthClient.CallUnary(ctx, req)
+}
+
+// AuthorizeOAuth calls synclet.publicapi.auth.v1.AuthService.AuthorizeOAuth.
+func (c *authServiceClient) AuthorizeOAuth(ctx context.Context, req *connect.Request[v1.AuthorizeOAuthRequest]) (*connect.Response[v1.AuthorizeOAuthResponse], error) {
+	return c.authorizeOAuth.CallUnary(ctx, req)
+}
+
 // AuthServiceHandler is an implementation of the synclet.publicapi.auth.v1.AuthService service.
 type AuthServiceHandler interface {
 	Register(context.Context, *connect.Request[v1.RegisterRequest]) (*connect.Response[v1.RegisterResponse], error)
@@ -276,6 +312,12 @@ type AuthServiceHandler interface {
 	RevokeAPIKey(context.Context, *connect.Request[v1.RevokeAPIKeyRequest]) (*connect.Response[v1.RevokeAPIKeyResponse], error)
 	ListAPIKeys(context.Context, *connect.Request[v1.ListAPIKeysRequest]) (*connect.Response[v1.ListAPIKeysResponse], error)
 	GetOIDCProviders(context.Context, *connect.Request[v1.GetOIDCProvidersRequest]) (*connect.Response[v1.GetOIDCProvidersResponse], error)
+	// GetOAuthClient returns the client an authorization request names, for the
+	// consent page; the redirect URI must be one the client registered.
+	GetOAuthClient(context.Context, *connect.Request[v1.GetOAuthClientRequest]) (*connect.Response[v1.GetOAuthClientResponse], error)
+	// AuthorizeOAuth issues an authorization code for the workspace in the
+	// Workspace-Id header and returns the URL to send the browser to.
+	AuthorizeOAuth(context.Context, *connect.Request[v1.AuthorizeOAuthRequest]) (*connect.Response[v1.AuthorizeOAuthResponse], error)
 }
 
 // NewAuthServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -363,6 +405,18 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(authServiceMethods.ByName("GetOIDCProviders")),
 		connect.WithHandlerOptions(opts...),
 	)
+	authServiceGetOAuthClientHandler := connect.NewUnaryHandler(
+		AuthServiceGetOAuthClientProcedure,
+		svc.GetOAuthClient,
+		connect.WithSchema(authServiceMethods.ByName("GetOAuthClient")),
+		connect.WithHandlerOptions(opts...),
+	)
+	authServiceAuthorizeOAuthHandler := connect.NewUnaryHandler(
+		AuthServiceAuthorizeOAuthProcedure,
+		svc.AuthorizeOAuth,
+		connect.WithSchema(authServiceMethods.ByName("AuthorizeOAuth")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/synclet.publicapi.auth.v1.AuthService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AuthServiceRegisterProcedure:
@@ -391,6 +445,10 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 			authServiceListAPIKeysHandler.ServeHTTP(w, r)
 		case AuthServiceGetOIDCProvidersProcedure:
 			authServiceGetOIDCProvidersHandler.ServeHTTP(w, r)
+		case AuthServiceGetOAuthClientProcedure:
+			authServiceGetOAuthClientHandler.ServeHTTP(w, r)
+		case AuthServiceAuthorizeOAuthProcedure:
+			authServiceAuthorizeOAuthHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -450,4 +508,12 @@ func (UnimplementedAuthServiceHandler) ListAPIKeys(context.Context, *connect.Req
 
 func (UnimplementedAuthServiceHandler) GetOIDCProviders(context.Context, *connect.Request[v1.GetOIDCProvidersRequest]) (*connect.Response[v1.GetOIDCProvidersResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("synclet.publicapi.auth.v1.AuthService.GetOIDCProviders is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) GetOAuthClient(context.Context, *connect.Request[v1.GetOAuthClientRequest]) (*connect.Response[v1.GetOAuthClientResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("synclet.publicapi.auth.v1.AuthService.GetOAuthClient is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) AuthorizeOAuth(context.Context, *connect.Request[v1.AuthorizeOAuthRequest]) (*connect.Response[v1.AuthorizeOAuthResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("synclet.publicapi.auth.v1.AuthService.AuthorizeOAuth is not implemented"))
 }

@@ -2,8 +2,8 @@
 // @generated from file synclet/publicapi/auth/v1/auth.proto (package synclet.publicapi.auth.v1, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
-import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
+import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import { file_synclet_options_v1_options } from "../../../options/v1/options_pb";
@@ -15,7 +15,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file synclet/publicapi/auth/v1/auth.proto.
  */
 export const file_synclet_publicapi_auth_v1_auth: GenFile = /*@__PURE__*/
-  fileDesc("CiRzeW5jbGV0L3B1YmxpY2FwaS9hdXRoL3YxL2F1dGgucHJvdG8SGXN5bmNsZXQucHVibGljYXBpLmF1dGgudjEiYwoIVXNlckluZm8SCgoCaWQYASABKAkSDQoFZW1haWwYAiABKAkSDAoEbmFtZRgDIAEoCRIuCgpjcmVhdGVkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJ9ChNXb3Jrc3BhY2VNZW1iZXJzaGlwEhQKDHdvcmtzcGFjZV9pZBgBIAEoCRIWCg53b3Jrc3BhY2VfbmFtZRgCIAEoCRI4CgRyb2xlGAMgASgOMiouc3luY2xldC5wdWJsaWNhcGkud29ya3NwYWNlLnYxLk1lbWJlclJvbGUiQAoPUmVnaXN0ZXJSZXF1ZXN0Eg0KBWVtYWlsGAEgASgJEhAKCHBhc3N3b3JkGAIgASgJEgwKBG5hbWUYAyABKAki9wEKEFJlZ2lzdGVyUmVzcG9uc2USLgoKZXhwaXJlc19hdBgBIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASMQoEdXNlchgCIAEoCzIjLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuVXNlckluZm8SPAoYcmVmcmVzaF90b2tlbl9leHBpcmVzX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBJCCgp3b3Jrc3BhY2VzGAQgAygLMi4uc3luY2xldC5wdWJsaWNhcGkuYXV0aC52MS5Xb3Jrc3BhY2VNZW1iZXJzaGlwIi8KDExvZ2luUmVxdWVzdBINCgVlbWFpbBgBIAEoCRIQCghwYXNzd29yZBgCIAEoCSL0AQoNTG9naW5SZXNwb25zZRIuCgpleHBpcmVzX2F0GAEgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIxCgR1c2VyGAIgASgLMiMuc3luY2xldC5wdWJsaWNhcGkuYXV0aC52MS5Vc2VySW5mbxI8ChhyZWZyZXNoX3Rva2VuX2V4cGlyZXNfYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEkIKCndvcmtzcGFjZXMYBCADKAsyLi5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLldvcmtzcGFjZU1lbWJlcnNoaXAiFQoTUmVmcmVzaFRva2VuUmVxdWVzdCKEAQoUUmVmcmVzaFRva2VuUmVzcG9uc2USLgoKZXhwaXJlc19hdBgBIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASPAoYcmVmcmVzaF90b2tlbl9leHBpcmVzX2F0GAIgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCIPCg1Mb2dvdXRSZXF1ZXN0IhAKDkxvZ291dFJlc3BvbnNlIhcKFUdldEN1cnJlbnRVc2VyUmVxdWVzdCKPAQoWR2V0Q3VycmVudFVzZXJSZXNwb25zZRIxCgR1c2VyGAEgASgLMiMuc3luY2xldC5wdWJsaWNhcGkuYXV0aC52MS5Vc2VySW5mbxJCCgp3b3Jrc3BhY2VzGAIgAygLMi4uc3luY2xldC5wdWJsaWNhcGkuYXV0aC52MS5Xb3Jrc3BhY2VNZW1iZXJzaGlwIiQKFFVwZGF0ZVByb2ZpbGVSZXF1ZXN0EgwKBG5hbWUYASABKAkiSgoVVXBkYXRlUHJvZmlsZVJlc3BvbnNlEjEKBHVzZXIYASABKAsyIy5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLlVzZXJJbmZvIkcKFUNoYW5nZVBhc3N3b3JkUmVxdWVzdBIYChBjdXJyZW50X3Bhc3N3b3JkGAEgASgJEhQKDG5ld19wYXNzd29yZBgCIAEoCSIYChZDaGFuZ2VQYXNzd29yZFJlc3BvbnNlIiwKG1JlcXVlc3RQYXNzd29yZFJlc2V0UmVxdWVzdBINCgVlbWFpbBgBIAEoCSIeChxSZXF1ZXN0UGFzc3dvcmRSZXNldFJlc3BvbnNlIjsKFFJlc2V0UGFzc3dvcmRSZXF1ZXN0Eg0KBXRva2VuGAEgASgJEhQKDG5ld19wYXNzd29yZBgCIAEoCSIXChVSZXNldFBhc3N3b3JkUmVzcG9uc2UizgEKCkFQSUtleUluZm8SCgoCaWQYASABKAkSFAoMd29ya3NwYWNlX2lkGAIgASgJEgwKBG5hbWUYAyABKAkSLgoKY3JlYXRlZF9hdBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLgoKZXhwaXJlc19hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASMAoMbGFzdF91c2VkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJpChNDcmVhdGVBUElLZXlSZXF1ZXN0EhQKDHdvcmtzcGFjZV9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEi4KCmV4cGlyZXNfYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIl8KFENyZWF0ZUFQSUtleVJlc3BvbnNlEg8KB3Jhd19rZXkYASABKAkSNgoHYXBpX2tleRgCIAEoCzIlLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuQVBJS2V5SW5mbyIhChNSZXZva2VBUElLZXlSZXF1ZXN0EgoKAmlkGAEgASgJIhYKFFJldm9rZUFQSUtleVJlc3BvbnNlIioKEkxpc3RBUElLZXlzUmVxdWVzdBIUCgx3b3Jrc3BhY2VfaWQYASABKAkiTgoTTGlzdEFQSUtleXNSZXNwb25zZRI3CghhcGlfa2V5cxgBIAMoCzIlLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuQVBJS2V5SW5mbyI2ChBPSURDUHJvdmlkZXJJbmZvEgwKBHNsdWcYASABKAkSFAoMZGlzcGxheV9uYW1lGAIgASgJIhkKF0dldE9JRENQcm92aWRlcnNSZXF1ZXN0IloKGEdldE9JRENQcm92aWRlcnNSZXNwb25zZRI+Cglwcm92aWRlcnMYASADKAsyKy5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLk9JRENQcm92aWRlckluZm8y3QsKC0F1dGhTZXJ2aWNlEmMKCFJlZ2lzdGVyEiouc3luY2xldC5wdWJsaWNhcGkuYXV0aC52MS5SZWdpc3RlclJlcXVlc3QaKy5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLlJlZ2lzdGVyUmVzcG9uc2USWgoFTG9naW4SJy5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLkxvZ2luUmVxdWVzdBooLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuTG9naW5SZXNwb25zZRJvCgxSZWZyZXNoVG9rZW4SLi5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLlJlZnJlc2hUb2tlblJlcXVlc3QaLy5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLlJlZnJlc2hUb2tlblJlc3BvbnNlEl0KBkxvZ291dBIoLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuTG9nb3V0UmVxdWVzdBopLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuTG9nb3V0UmVzcG9uc2USdQoOR2V0Q3VycmVudFVzZXISMC5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLkdldEN1cnJlbnRVc2VyUmVxdWVzdBoxLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuR2V0Q3VycmVudFVzZXJSZXNwb25zZRJyCg1VcGRhdGVQcm9maWxlEi8uc3luY2xldC5wdWJsaWNhcGkuYXV0aC52MS5VcGRhdGVQcm9maWxlUmVxdWVzdBowLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuVXBkYXRlUHJvZmlsZVJlc3BvbnNlEnUKDkNoYW5nZVBhc3N3b3JkEjAuc3luY2xldC5wdWJsaWNhcGkuYXV0aC52MS5DaGFuZ2VQYXNzd29yZFJlcXVlc3QaMS5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLkNoYW5nZVBhc3N3b3JkUmVzcG9uc2UShwEKFFJlcXVlc3RQYXNzd29yZFJlc2V0EjYuc3luY2xldC5wdWJsaWNhcGkuYXV0aC52MS5SZXF1ZXN0UGFzc3dvcmRSZXNldFJlcXVlc3QaNy5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLlJlcXVlc3RQYXNzd29yZFJlc2V0UmVzcG9uc2UScgoNUmVzZXRQYXNzd29yZBIvLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuUmVzZXRQYXNzd29yZFJlcXVlc3QaMC5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLlJlc2V0UGFzc3dvcmRSZXNwb25zZRJ1CgxDcmVhdGVBUElLZXkSLi5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLkNyZWF0ZUFQSUtleVJlcXVlc3QaLy5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLkNyZWF0ZUFQSUtleVJlc3BvbnNlIgSItRgBEnUKDFJldm9rZUFQSUtleRIuLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuUmV2b2tlQVBJS2V5UmVxdWVzdBovLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuUmV2b2tlQVBJS2V5UmVzcG9uc2UiBIi1GAEScgoLTGlzdEFQSUtleXMSLS5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLkxpc3RBUElLZXlzUmVxdWVzdBouLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuTGlzdEFQSUtleXNSZXNwb25zZSIEiLUYARJ7ChBHZXRPSURDUHJvdmlkZXJzEjIuc3luY2xldC5wdWJsaWNhcGkuYXV0aC52MS5HZXRPSURDUHJvdmlkZXJzUmVxdWVzdBozLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuR2V0T0lEQ1Byb3ZpZGVyc1Jlc3BvbnNlQvsBCh1jb20uc3luY2xldC5wdWJsaWNhcGkuYXV0aC52MUIJQXV0aFByb3RvUAFaSGdpdGh1Yi5jb20vc3luY2xldC1pby9zeW5jbGV0L2dlbi9wcm90by9zeW5jbGV0L3B1YmxpY2FwaS9hdXRoL3YxO2F1dGh2MaICA1NQQaoCGVN5bmNsZXQuUHVibGljYXBpLkF1dGguVjHKAhlTeW5jbGV0XFB1YmxpY2FwaVxBdXRoXFYx4gIlU3luY2xldFxQdWJsaWNhcGlcQXV0aFxWMVxHUEJNZXRhZGF0YeoCHFN5bmNsZXQ6OlB1YmxpY2FwaTo6QXV0aDo6VjFiBnByb3RvMw", [file_google_protobuf_timestamp, file_synclet_options_v1_options, file_synclet_publicapi_workspace_v1_workspace]);
+  fileDesc("CiRzeW5jbGV0L3B1YmxpY2FwaS9hdXRoL3YxL2F1dGgucHJvdG8SGXN5bmNsZXQucHVibGljYXBpLmF1dGgudjEiYwoIVXNlckluZm8SCgoCaWQYASABKAkSDQoFZW1haWwYAiABKAkSDAoEbmFtZRgDIAEoCRIuCgpjcmVhdGVkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJ9ChNXb3Jrc3BhY2VNZW1iZXJzaGlwEhQKDHdvcmtzcGFjZV9pZBgBIAEoCRIWCg53b3Jrc3BhY2VfbmFtZRgCIAEoCRI4CgRyb2xlGAMgASgOMiouc3luY2xldC5wdWJsaWNhcGkud29ya3NwYWNlLnYxLk1lbWJlclJvbGUiQAoPUmVnaXN0ZXJSZXF1ZXN0Eg0KBWVtYWlsGAEgASgJEhAKCHBhc3N3b3JkGAIgASgJEgwKBG5hbWUYAyABKAki9wEKEFJlZ2lzdGVyUmVzcG9uc2USLgoKZXhwaXJlc19hdBgBIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASMQoEdXNlchgCIAEoCzIjLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuVXNlckluZm8SPAoYcmVmcmVzaF90b2tlbl9leHBpcmVzX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBJCCgp3b3Jrc3BhY2VzGAQgAygLMi4uc3luY2xldC5wdWJsaWNhcGkuYXV0aC52MS5Xb3Jrc3BhY2VNZW1iZXJzaGlwIi8KDExvZ2luUmVxdWVzdBINCgVlbWFpbBgBIAEoCRIQCghwYXNzd29yZBgCIAEoCSL0AQoNTG9naW5SZXNwb25zZRIuCgpleHBpcmVzX2F0GAEgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIxCgR1c2VyGAIgASgLMiMuc3luY2xldC5wdWJsaWNhcGkuYXV0aC52MS5Vc2VySW5mbxI8ChhyZWZyZXNoX3Rva2VuX2V4cGlyZXNfYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEkIKCndvcmtzcGFjZXMYBCADKAsyLi5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLldvcmtzcGFjZU1lbWJlcnNoaXAiFQoTUmVmcmVzaFRva2VuUmVxdWVzdCKEAQoUUmVmcmVzaFRva2VuUmVzcG9uc2USLgoKZXhwaXJlc19hdBgBIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASPAoYcmVmcmVzaF90b2tlbl9leHBpcmVzX2F0GAIgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCIPCg1Mb2dvdXRSZXF1ZXN0IhAKDkxvZ291dFJlc3BvbnNlIhcKFUdldEN1cnJlbnRVc2VyUmVxdWVzdCKPAQoWR2V0Q3VycmVudFVzZXJSZXNwb25zZRIxCgR1c2VyGAEgASgLMiMuc3luY2xldC5wdWJsaWNhcGkuYXV0aC52MS5Vc2VySW5mbxJCCgp3b3Jrc3BhY2VzGAIgAygLMi4uc3luY2xldC5wdWJsaWNhcGkuYXV0aC52MS5Xb3Jrc3BhY2VNZW1iZXJzaGlwIiQKFFVwZGF0ZVByb2ZpbGVSZXF1ZXN0EgwKBG5hbWUYASABKAkiSgoVVXBkYXRlUHJvZmlsZVJlc3BvbnNlEjEKBHVzZXIYASABKAsyIy5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLlVzZXJJbmZvIkcKFUNoYW5nZVBhc3N3b3JkUmVxdWVzdBIYChBjdXJyZW50X3Bhc3N3b3JkGAEgASgJEhQKDG5ld19wYXNzd29yZBgCIAEoCSIYChZDaGFuZ2VQYXNzd29yZFJlc3BvbnNlIiwKG1JlcXVlc3RQYXNzd29yZFJlc2V0UmVxdWVzdBINCgVlbWFpbBgBIAEoCSIeChxSZXF1ZXN0UGFzc3dvcmRSZXNldFJlc3BvbnNlIjsKFFJlc2V0UGFzc3dvcmRSZXF1ZXN0Eg0KBXRva2VuGAEgASgJEhQKDG5ld19wYXNzd29yZBgCIAEoCSIXChVSZXNldFBhc3N3b3JkUmVzcG9uc2UiqwIKCkFQSUtleUluZm8SCgoCaWQYASABKAkSFAoMd29ya3NwYWNlX2lkGAIgASgJEgwKBG5hbWUYAyABKAkSLgoKY3JlYXRlZF9hdBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLgoKZXhwaXJlc19hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASMAoMbGFzdF91c2VkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIZChFvYXV0aF9jbGllbnRfbmFtZRgHIAEoCRJACgtvYXV0aF9sZXZlbBgIIAEoDjIrLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuT0F1dGhBY2Nlc3NMZXZlbCJAChVHZXRPQXV0aENsaWVudFJlcXVlc3QSEQoJY2xpZW50X2lkGAEgASgJEhQKDHJlZGlyZWN0X3VyaRgCIAEoCSJAChZHZXRPQXV0aENsaWVudFJlc3BvbnNlEhEKCWNsaWVudF9pZBgBIAEoCRITCgtjbGllbnRfbmFtZRgCIAEoCSLCAQoVQXV0aG9yaXplT0F1dGhSZXF1ZXN0EhEKCWNsaWVudF9pZBgBIAEoCRIUCgxyZWRpcmVjdF91cmkYAiABKAkSFgoOY29kZV9jaGFsbGVuZ2UYAyABKAkSHQoVY29kZV9jaGFsbGVuZ2VfbWV0aG9kGAQgASgJEjoKBWxldmVsGAUgASgOMisuc3luY2xldC5wdWJsaWNhcGkuYXV0aC52MS5PQXV0aEFjY2Vzc0xldmVsEg0KBXN0YXRlGAYgASgJIi4KFkF1dGhvcml6ZU9BdXRoUmVzcG9uc2USFAoMcmVkaXJlY3RfdXJsGAEgASgJImkKE0NyZWF0ZUFQSUtleVJlcXVlc3QSFAoMd29ya3NwYWNlX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSLgoKZXhwaXJlc19hdBgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiXwoUQ3JlYXRlQVBJS2V5UmVzcG9uc2USDwoHcmF3X2tleRgBIAEoCRI2CgdhcGlfa2V5GAIgASgLMiUuc3luY2xldC5wdWJsaWNhcGkuYXV0aC52MS5BUElLZXlJbmZvIiEKE1Jldm9rZUFQSUtleVJlcXVlc3QSCgoCaWQYASABKAkiFgoUUmV2b2tlQVBJS2V5UmVzcG9uc2UiKgoSTGlzdEFQSUtleXNSZXF1ZXN0EhQKDHdvcmtzcGFjZV9pZBgBIAEoCSJOChNMaXN0QVBJS2V5c1Jlc3BvbnNlEjcKCGFwaV9rZXlzGAEgAygLMiUuc3luY2xldC5wdWJsaWNhcGkuYXV0aC52MS5BUElLZXlJbmZvIjYKEE9JRENQcm92aWRlckluZm8SDAoEc2x1ZxgBIAEoCRIUCgxkaXNwbGF5X25hbWUYAiABKAkiGQoXR2V0T0lEQ1Byb3ZpZGVyc1JlcXVlc3QiWgoYR2V0T0lEQ1Byb3ZpZGVyc1Jlc3BvbnNlEj4KCXByb3ZpZGVycxgBIAMoCzIrLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuT0lEQ1Byb3ZpZGVySW5mbyqRAQoQT0F1dGhBY2Nlc3NMZXZlbBIiCh5PQVVUSF9BQ0NFU1NfTEVWRUxfVU5TUEVDSUZJRUQQABIbChdPQVVUSF9BQ0NFU1NfTEVWRUxfUkVBRBABEh4KGk9BVVRIX0FDQ0VTU19MRVZFTF9BQ1RJT05TEAISHAoYT0FVVEhfQUNDRVNTX0xFVkVMX1dSSVRFEAMy0Q0KC0F1dGhTZXJ2aWNlEmMKCFJlZ2lzdGVyEiouc3luY2xldC5wdWJsaWNhcGkuYXV0aC52MS5SZWdpc3RlclJlcXVlc3QaKy5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLlJlZ2lzdGVyUmVzcG9uc2USWgoFTG9naW4SJy5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLkxvZ2luUmVxdWVzdBooLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuTG9naW5SZXNwb25zZRJvCgxSZWZyZXNoVG9rZW4SLi5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLlJlZnJlc2hUb2tlblJlcXVlc3QaLy5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLlJlZnJlc2hUb2tlblJlc3BvbnNlEl0KBkxvZ291dBIoLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuTG9nb3V0UmVxdWVzdBopLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuTG9nb3V0UmVzcG9uc2USdQoOR2V0Q3VycmVudFVzZXISMC5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLkdldEN1cnJlbnRVc2VyUmVxdWVzdBoxLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuR2V0Q3VycmVudFVzZXJSZXNwb25zZRJyCg1VcGRhdGVQcm9maWxlEi8uc3luY2xldC5wdWJsaWNhcGkuYXV0aC52MS5VcGRhdGVQcm9maWxlUmVxdWVzdBowLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuVXBkYXRlUHJvZmlsZVJlc3BvbnNlEnUKDkNoYW5nZVBhc3N3b3JkEjAuc3luY2xldC5wdWJsaWNhcGkuYXV0aC52MS5DaGFuZ2VQYXNzd29yZFJlcXVlc3QaMS5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLkNoYW5nZVBhc3N3b3JkUmVzcG9uc2UShwEKFFJlcXVlc3RQYXNzd29yZFJlc2V0EjYuc3luY2xldC5wdWJsaWNhcGkuYXV0aC52MS5SZXF1ZXN0UGFzc3dvcmRSZXNldFJlcXVlc3QaNy5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLlJlcXVlc3RQYXNzd29yZFJlc2V0UmVzcG9uc2UScgoNUmVzZXRQYXNzd29yZBIvLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuUmVzZXRQYXNzd29yZFJlcXVlc3QaMC5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLlJlc2V0UGFzc3dvcmRSZXNwb25zZRJ1CgxDcmVhdGVBUElLZXkSLi5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLkNyZWF0ZUFQSUtleVJlcXVlc3QaLy5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLkNyZWF0ZUFQSUtleVJlc3BvbnNlIgSItRgBEnUKDFJldm9rZUFQSUtleRIuLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuUmV2b2tlQVBJS2V5UmVxdWVzdBovLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuUmV2b2tlQVBJS2V5UmVzcG9uc2UiBIi1GAEScgoLTGlzdEFQSUtleXMSLS5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLkxpc3RBUElLZXlzUmVxdWVzdBouLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuTGlzdEFQSUtleXNSZXNwb25zZSIEiLUYARJ7ChBHZXRPSURDUHJvdmlkZXJzEjIuc3luY2xldC5wdWJsaWNhcGkuYXV0aC52MS5HZXRPSURDUHJvdmlkZXJzUmVxdWVzdBozLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuR2V0T0lEQ1Byb3ZpZGVyc1Jlc3BvbnNlEnUKDkdldE9BdXRoQ2xpZW50EjAuc3luY2xldC5wdWJsaWNhcGkuYXV0aC52MS5HZXRPQXV0aENsaWVudFJlcXVlc3QaMS5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLkdldE9BdXRoQ2xpZW50UmVzcG9uc2USewoOQXV0aG9yaXplT0F1dGgSMC5zeW5jbGV0LnB1YmxpY2FwaS5hdXRoLnYxLkF1dGhvcml6ZU9BdXRoUmVxdWVzdBoxLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjEuQXV0aG9yaXplT0F1dGhSZXNwb25zZSIEiLUYAUL7AQodY29tLnN5bmNsZXQucHVibGljYXBpLmF1dGgudjFCCUF1dGhQcm90b1ABWkhnaXRodWIuY29tL3N5bmNsZXQtaW8vc3luY2xldC9nZW4vcHJvdG8vc3luY2xldC9wdWJsaWNhcGkvYXV0aC92MTthdXRodjGiAgNTUEGqAhlTeW5jbGV0LlB1YmxpY2FwaS5BdXRoLlYxygIZU3luY2xldFxQdWJsaWNhcGlcQXV0aFxWMeICJVN5bmNsZXRcUHVibGljYXBpXEF1dGhcVjFcR1BCTWV0YWRhdGHqAhxTeW5jbGV0OjpQdWJsaWNhcGk6OkF1dGg6OlYxYgZwcm90bzM", [file_google_protobuf_timestamp, file_synclet_options_v1_options, file_synclet_publicapi_workspace_v1_workspace]);
 
 /**
  * @generated from message synclet.publicapi.auth.v1.UserInfo
@@ -452,6 +452,20 @@ export type APIKeyInfo = Message<"synclet.publicapi.auth.v1.APIKeyInfo"> & {
    * @generated from field: google.protobuf.Timestamp last_used_at = 6;
    */
   lastUsedAt?: Timestamp;
+
+  /**
+   * Set on a key issued to an OAuth client: the client's name.
+   *
+   * @generated from field: string oauth_client_name = 7;
+   */
+  oauthClientName: string;
+
+  /**
+   * Set on a key issued to an OAuth client.
+   *
+   * @generated from field: synclet.publicapi.auth.v1.OAuthAccessLevel oauth_level = 8;
+   */
+  oauthLevel: OAuthAccessLevel;
 };
 
 /**
@@ -460,6 +474,113 @@ export type APIKeyInfo = Message<"synclet.publicapi.auth.v1.APIKeyInfo"> & {
  */
 export const APIKeyInfoSchema: GenMessage<APIKeyInfo> = /*@__PURE__*/
   messageDesc(file_synclet_publicapi_auth_v1_auth, 20);
+
+/**
+ * @generated from message synclet.publicapi.auth.v1.GetOAuthClientRequest
+ */
+export type GetOAuthClientRequest = Message<"synclet.publicapi.auth.v1.GetOAuthClientRequest"> & {
+  /**
+   * @generated from field: string client_id = 1;
+   */
+  clientId: string;
+
+  /**
+   * @generated from field: string redirect_uri = 2;
+   */
+  redirectUri: string;
+};
+
+/**
+ * Describes the message synclet.publicapi.auth.v1.GetOAuthClientRequest.
+ * Use `create(GetOAuthClientRequestSchema)` to create a new message.
+ */
+export const GetOAuthClientRequestSchema: GenMessage<GetOAuthClientRequest> = /*@__PURE__*/
+  messageDesc(file_synclet_publicapi_auth_v1_auth, 21);
+
+/**
+ * @generated from message synclet.publicapi.auth.v1.GetOAuthClientResponse
+ */
+export type GetOAuthClientResponse = Message<"synclet.publicapi.auth.v1.GetOAuthClientResponse"> & {
+  /**
+   * @generated from field: string client_id = 1;
+   */
+  clientId: string;
+
+  /**
+   * @generated from field: string client_name = 2;
+   */
+  clientName: string;
+};
+
+/**
+ * Describes the message synclet.publicapi.auth.v1.GetOAuthClientResponse.
+ * Use `create(GetOAuthClientResponseSchema)` to create a new message.
+ */
+export const GetOAuthClientResponseSchema: GenMessage<GetOAuthClientResponse> = /*@__PURE__*/
+  messageDesc(file_synclet_publicapi_auth_v1_auth, 22);
+
+/**
+ * @generated from message synclet.publicapi.auth.v1.AuthorizeOAuthRequest
+ */
+export type AuthorizeOAuthRequest = Message<"synclet.publicapi.auth.v1.AuthorizeOAuthRequest"> & {
+  /**
+   * @generated from field: string client_id = 1;
+   */
+  clientId: string;
+
+  /**
+   * @generated from field: string redirect_uri = 2;
+   */
+  redirectUri: string;
+
+  /**
+   * @generated from field: string code_challenge = 3;
+   */
+  codeChallenge: string;
+
+  /**
+   * @generated from field: string code_challenge_method = 4;
+   */
+  codeChallengeMethod: string;
+
+  /**
+   * @generated from field: synclet.publicapi.auth.v1.OAuthAccessLevel level = 5;
+   */
+  level: OAuthAccessLevel;
+
+  /**
+   * Returned to the client unchanged.
+   *
+   * @generated from field: string state = 6;
+   */
+  state: string;
+};
+
+/**
+ * Describes the message synclet.publicapi.auth.v1.AuthorizeOAuthRequest.
+ * Use `create(AuthorizeOAuthRequestSchema)` to create a new message.
+ */
+export const AuthorizeOAuthRequestSchema: GenMessage<AuthorizeOAuthRequest> = /*@__PURE__*/
+  messageDesc(file_synclet_publicapi_auth_v1_auth, 23);
+
+/**
+ * @generated from message synclet.publicapi.auth.v1.AuthorizeOAuthResponse
+ */
+export type AuthorizeOAuthResponse = Message<"synclet.publicapi.auth.v1.AuthorizeOAuthResponse"> & {
+  /**
+   * The redirect URI with the code and state added.
+   *
+   * @generated from field: string redirect_url = 1;
+   */
+  redirectUrl: string;
+};
+
+/**
+ * Describes the message synclet.publicapi.auth.v1.AuthorizeOAuthResponse.
+ * Use `create(AuthorizeOAuthResponseSchema)` to create a new message.
+ */
+export const AuthorizeOAuthResponseSchema: GenMessage<AuthorizeOAuthResponse> = /*@__PURE__*/
+  messageDesc(file_synclet_publicapi_auth_v1_auth, 24);
 
 /**
  * @generated from message synclet.publicapi.auth.v1.CreateAPIKeyRequest
@@ -486,7 +607,7 @@ export type CreateAPIKeyRequest = Message<"synclet.publicapi.auth.v1.CreateAPIKe
  * Use `create(CreateAPIKeyRequestSchema)` to create a new message.
  */
 export const CreateAPIKeyRequestSchema: GenMessage<CreateAPIKeyRequest> = /*@__PURE__*/
-  messageDesc(file_synclet_publicapi_auth_v1_auth, 21);
+  messageDesc(file_synclet_publicapi_auth_v1_auth, 25);
 
 /**
  * @generated from message synclet.publicapi.auth.v1.CreateAPIKeyResponse
@@ -508,7 +629,7 @@ export type CreateAPIKeyResponse = Message<"synclet.publicapi.auth.v1.CreateAPIK
  * Use `create(CreateAPIKeyResponseSchema)` to create a new message.
  */
 export const CreateAPIKeyResponseSchema: GenMessage<CreateAPIKeyResponse> = /*@__PURE__*/
-  messageDesc(file_synclet_publicapi_auth_v1_auth, 22);
+  messageDesc(file_synclet_publicapi_auth_v1_auth, 26);
 
 /**
  * @generated from message synclet.publicapi.auth.v1.RevokeAPIKeyRequest
@@ -525,7 +646,7 @@ export type RevokeAPIKeyRequest = Message<"synclet.publicapi.auth.v1.RevokeAPIKe
  * Use `create(RevokeAPIKeyRequestSchema)` to create a new message.
  */
 export const RevokeAPIKeyRequestSchema: GenMessage<RevokeAPIKeyRequest> = /*@__PURE__*/
-  messageDesc(file_synclet_publicapi_auth_v1_auth, 23);
+  messageDesc(file_synclet_publicapi_auth_v1_auth, 27);
 
 /**
  * @generated from message synclet.publicapi.auth.v1.RevokeAPIKeyResponse
@@ -538,7 +659,7 @@ export type RevokeAPIKeyResponse = Message<"synclet.publicapi.auth.v1.RevokeAPIK
  * Use `create(RevokeAPIKeyResponseSchema)` to create a new message.
  */
 export const RevokeAPIKeyResponseSchema: GenMessage<RevokeAPIKeyResponse> = /*@__PURE__*/
-  messageDesc(file_synclet_publicapi_auth_v1_auth, 24);
+  messageDesc(file_synclet_publicapi_auth_v1_auth, 28);
 
 /**
  * @generated from message synclet.publicapi.auth.v1.ListAPIKeysRequest
@@ -555,7 +676,7 @@ export type ListAPIKeysRequest = Message<"synclet.publicapi.auth.v1.ListAPIKeysR
  * Use `create(ListAPIKeysRequestSchema)` to create a new message.
  */
 export const ListAPIKeysRequestSchema: GenMessage<ListAPIKeysRequest> = /*@__PURE__*/
-  messageDesc(file_synclet_publicapi_auth_v1_auth, 25);
+  messageDesc(file_synclet_publicapi_auth_v1_auth, 29);
 
 /**
  * @generated from message synclet.publicapi.auth.v1.ListAPIKeysResponse
@@ -572,7 +693,7 @@ export type ListAPIKeysResponse = Message<"synclet.publicapi.auth.v1.ListAPIKeys
  * Use `create(ListAPIKeysResponseSchema)` to create a new message.
  */
 export const ListAPIKeysResponseSchema: GenMessage<ListAPIKeysResponse> = /*@__PURE__*/
-  messageDesc(file_synclet_publicapi_auth_v1_auth, 26);
+  messageDesc(file_synclet_publicapi_auth_v1_auth, 30);
 
 /**
  * @generated from message synclet.publicapi.auth.v1.OIDCProviderInfo
@@ -594,7 +715,7 @@ export type OIDCProviderInfo = Message<"synclet.publicapi.auth.v1.OIDCProviderIn
  * Use `create(OIDCProviderInfoSchema)` to create a new message.
  */
 export const OIDCProviderInfoSchema: GenMessage<OIDCProviderInfo> = /*@__PURE__*/
-  messageDesc(file_synclet_publicapi_auth_v1_auth, 27);
+  messageDesc(file_synclet_publicapi_auth_v1_auth, 31);
 
 /**
  * @generated from message synclet.publicapi.auth.v1.GetOIDCProvidersRequest
@@ -607,7 +728,7 @@ export type GetOIDCProvidersRequest = Message<"synclet.publicapi.auth.v1.GetOIDC
  * Use `create(GetOIDCProvidersRequestSchema)` to create a new message.
  */
 export const GetOIDCProvidersRequestSchema: GenMessage<GetOIDCProvidersRequest> = /*@__PURE__*/
-  messageDesc(file_synclet_publicapi_auth_v1_auth, 28);
+  messageDesc(file_synclet_publicapi_auth_v1_auth, 32);
 
 /**
  * @generated from message synclet.publicapi.auth.v1.GetOIDCProvidersResponse
@@ -624,7 +745,46 @@ export type GetOIDCProvidersResponse = Message<"synclet.publicapi.auth.v1.GetOID
  * Use `create(GetOIDCProvidersResponseSchema)` to create a new message.
  */
 export const GetOIDCProvidersResponseSchema: GenMessage<GetOIDCProvidersResponse> = /*@__PURE__*/
-  messageDesc(file_synclet_publicapi_auth_v1_auth, 29);
+  messageDesc(file_synclet_publicapi_auth_v1_auth, 33);
+
+/**
+ * OAuthAccessLevel limits what an OAuth client may do on /mcp.
+ *
+ * @generated from enum synclet.publicapi.auth.v1.OAuthAccessLevel
+ */
+export enum OAuthAccessLevel {
+  /**
+   * @generated from enum value: OAUTH_ACCESS_LEVEL_UNSPECIFIED = 0;
+   */
+  OAUTH_ACCESS_LEVEL_UNSPECIFIED = 0,
+
+  /**
+   * Read tools only.
+   *
+   * @generated from enum value: OAUTH_ACCESS_LEVEL_READ = 1;
+   */
+  OAUTH_ACCESS_LEVEL_READ = 1,
+
+  /**
+   * Read tools and actions (sync, cancel, pause, resume, run).
+   *
+   * @generated from enum value: OAUTH_ACCESS_LEVEL_ACTIONS = 2;
+   */
+  OAUTH_ACCESS_LEVEL_ACTIONS = 2,
+
+  /**
+   * Every tool.
+   *
+   * @generated from enum value: OAUTH_ACCESS_LEVEL_WRITE = 3;
+   */
+  OAUTH_ACCESS_LEVEL_WRITE = 3,
+}
+
+/**
+ * Describes the enum synclet.publicapi.auth.v1.OAuthAccessLevel.
+ */
+export const OAuthAccessLevelSchema: GenEnum<OAuthAccessLevel> = /*@__PURE__*/
+  enumDesc(file_synclet_publicapi_auth_v1_auth, 0);
 
 /**
  * @generated from service synclet.publicapi.auth.v1.AuthService
@@ -733,6 +893,28 @@ export const AuthService: GenService<{
     methodKind: "unary";
     input: typeof GetOIDCProvidersRequestSchema;
     output: typeof GetOIDCProvidersResponseSchema;
+  },
+  /**
+   * GetOAuthClient returns the client an authorization request names, for the
+   * consent page; the redirect URI must be one the client registered.
+   *
+   * @generated from rpc synclet.publicapi.auth.v1.AuthService.GetOAuthClient
+   */
+  getOAuthClient: {
+    methodKind: "unary";
+    input: typeof GetOAuthClientRequestSchema;
+    output: typeof GetOAuthClientResponseSchema;
+  },
+  /**
+   * AuthorizeOAuth issues an authorization code for the workspace in the
+   * Workspace-Id header and returns the URL to send the browser to.
+   *
+   * @generated from rpc synclet.publicapi.auth.v1.AuthService.AuthorizeOAuth
+   */
+  authorizeOAuth: {
+    methodKind: "unary";
+    input: typeof AuthorizeOAuthRequestSchema;
+    output: typeof AuthorizeOAuthResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_synclet_publicapi_auth_v1_auth, 0);

@@ -236,3 +236,15 @@ func extractIP(addr string) string {
 
 	return host
 }
+
+// AllowRequest reports whether a plain HTTP request to the endpoint key may
+// proceed, counting it against the bucket of the request's client IP. A key
+// with no configuration is not limited.
+func (r *RateLimitInterceptor) AllowRequest(key string, req *http.Request) bool {
+	cfg, ok := r.configs[key]
+	if !ok {
+		return true
+	}
+
+	return r.getLimiter(key+"|"+r.clientIP(req.RemoteAddr, req.Header), cfg).Allow()
+}

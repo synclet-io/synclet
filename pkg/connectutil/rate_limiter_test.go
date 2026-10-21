@@ -2,6 +2,7 @@ package connectutil
 
 import (
 	"net/http"
+	"net/http/httptest"
 	"net/netip"
 	"testing"
 	"time"
@@ -174,4 +175,35 @@ func TestParseTrustedProxies(t *testing.T) {
 
 	_, err = ParseTrustedProxies([]string{"not-an-ip"})
 	require.Error(t, err)
+}
+
+func TestRateLimitInterceptorAllowRequest(t *testing.T) {
+	proxies, err := ParseTrustedProxies([]string{"10.0.0.0/8"})
+	require.NoError(t, err)
+
+	limiter := NewRateLimitInterceptor(map[string]RateLimitConfig{"/oauth/register": {Rate: rate.Every(time.Hour), Burst: 2}}, WithTrustedProxies(proxies))
+	defer limiter.Stop()
+
+	request := func(remoteAddr, forwardedFor string) *http.Request {
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/oauth/register", nil)
+		req.RemoteAddr = remoteAddr
+
+		if forwardedFor != "" {
+			req.Header.Set("X-Forwarded-For", forwardedFor)
+		}
+
+		return req
+	}
+
+	assert.True(t, limiter.AllowRequest("/oauth/register", request("198.51.100.1:1000", "")))
+	assert.True(t, limiter.AllowRequest("/oauth/register", request("198.51.100.1:1001", "")))
+	assert.False(t, limiter.AllowRequest("/oauth/register", request("198.51.100.1:1002", "")), "burst spent")
+	assert.False(t, limiter.AllowRequest("/oauth/register", request("198.51.100.1:1003", "203.0.113.9")), "an untrusted peer cannot pick its IP")
+
+	assert.True(t, limiter.AllowRequest("/oauth/register", request("198.51.100.2:1000", "")), "another client has its own bucket")
+	assert.True(t, limiter.AllowRequest("/oauth/register", request("10.1.1.1:1000", "203.0.113.7")))
+	assert.True(t, limiter.AllowRequest("/oauth/register", request("10.1.1.2:1000", "203.0.113.7")))
+	assert.False(t, limiter.AllowRequest("/oauth/register", request("10.1.1.3:1000", "203.0.113.7")), "behind a trusted proxy the forwarded client is limited")
+
+	assert.True(t, limiter.AllowRequest("/other", request("198.51.100.1:1004", "")), "an unconfigured key is not limited")
 }

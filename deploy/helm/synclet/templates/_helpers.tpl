@@ -788,11 +788,38 @@ the main Ingress and HTTPRoute. It fails on an unknown mcp.ingress.mode.
 */}}
 {{- define "synclet.mcpShared" -}}
 {{- if include "synclet.mcpEnabled" . -}}
-{{- if not (has .Values.mcp.ingress.mode (list "shared" "separate")) -}}
+{{- $mode := (include "synclet.mcp" . | fromYaml).ingress.mode -}}
+{{- if not (has $mode (list "shared" "separate")) -}}
 {{- fail "mcp.ingress.mode must be shared or separate" -}}
 {{- end -}}
-{{- if eq .Values.mcp.ingress.mode "shared" -}}true{{- end -}}
+{{- if eq $mode "shared" -}}true{{- end -}}
 {{- end -}}
+{{- end -}}
+
+{{/*
+synclet.mcp renders the mcp values as YAML, each key missing from them taking
+its values.yaml default, so values reused from a release older than the mcp
+block render. Read it with: include "synclet.mcp" . | fromYaml
+*/}}
+{{- define "synclet.mcp" -}}
+{{- $mcp := .Values.mcp | default dict -}}
+{{- $ingress := dig "ingress" dict $mcp -}}
+{{- $paths := list "/mcp" "/.well-known/oauth-protected-resource" "/.well-known/oauth-authorization-server" "/oauth/register" "/oauth/token" -}}
+{{- dict
+  "containerPort" (dig "containerPort" 8082 $mcp)
+  "writeTools" (dig "writeTools" true $mcp)
+  "publicUrl" (dig "publicUrl" "" $mcp)
+  "uiUrl" (dig "uiUrl" "" $mcp)
+  "service" (dict "port" (dig "service" "port" 80 $mcp))
+  "ingress" (dict
+    "mode" (dig "mode" "shared" $ingress)
+    "paths" (dig "paths" $paths $ingress)
+    "hostname" (dig "hostname" "" $ingress)
+    "ingressClassName" (dig "ingressClassName" "nginx" $ingress)
+    "tls" (dig "tls" false $ingress)
+    "tlsSecretName" (dig "tlsSecretName" "" $ingress)
+    "annotations" (dig "annotations" dict $ingress))
+  | toYaml -}}
 {{- end -}}
 
 {{/*

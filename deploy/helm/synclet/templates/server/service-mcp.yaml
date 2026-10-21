@@ -1,4 +1,5 @@
 {{- if include "synclet.mcpEnabled" . }}
+{{- $mcp := include "synclet.mcp" . | fromYaml }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -8,7 +9,7 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-    - port: {{ .Values.mcp.service.port }}
+    - port: {{ $mcp.service.port }}
       targetPort: mcp
       protocol: TCP
       name: http

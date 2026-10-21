@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"slices"
@@ -11,6 +13,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
@@ -40,20 +43,37 @@ const (
 	editorKey  = "synclet_sk_editor"
 	expiredKey = "synclet_sk_expired"
 	unknownKey = "synclet_sk_unknown"
+
+	oauthReadKey    = "synclet_sk_oauth_read"
+	oauthActionsKey = "synclet_sk_oauth_actions"
+	oauthWriteKey   = "synclet_sk_oauth_write"
+
+	testPublicURL = "https://mcp.example.com"
 )
 
 type fakeKeys struct{}
 
-func (fakeKeys) ValidateAPIKey(_ context.Context, rawKey string) (userID, workspaceID string, err error) {
+func (fakeKeys) ValidateMCPKey(_ context.Context, rawKey string) (MCPKey, error) {
+	expiresAt := time.Now().Add(time.Hour)
+	oauthKey := func(level string) MCPKey {
+		return MCPKey{UserID: editorUserID.String(), WorkspaceID: testWorkspaceID.String(), Level: level, ExpiresAt: &expiresAt}
+	}
+
 	switch rawKey {
 	case viewerKey:
-		return viewerUserID.String(), testWorkspaceID.String(), nil
+		return MCPKey{UserID: viewerUserID.String(), WorkspaceID: testWorkspaceID.String()}, nil
 	case editorKey:
-		return editorUserID.String(), testWorkspaceID.String(), nil
+		return MCPKey{UserID: editorUserID.String(), WorkspaceID: testWorkspaceID.String()}, nil
+	case oauthReadKey:
+		return oauthKey(LevelRead), nil
+	case oauthActionsKey:
+		return oauthKey(LevelActions), nil
+	case oauthWriteKey:
+		return oauthKey(LevelWrite), nil
 	case expiredKey:
-		return "", "", fmt.Errorf("API key expired: %w", connectutil.ErrInvalidCredential)
+		return MCPKey{}, fmt.Errorf("API key expired: %w", connectutil.ErrInvalidCredential)
 	default:
-		return "", "", fmt.Errorf("unknown API key: %w", connectutil.ErrInvalidCredential)
+		return MCPKey{}, fmt.Errorf("unknown API key: %w", connectutil.ErrInvalidCredential)
 	}
 }
 
@@ -312,7 +332,7 @@ func newTestServer(t *testing.T, writeTools bool) (string, *fakeServices) {
 
 	fake := &fakeServices{}
 	handler := NewHandler(
-		Config{Enabled: true, WriteTools: writeTools},
+		Config{Enabled: true, WriteTools: writeTools, PublicURL: testPublicURL},
 		fake.services(),
 		connectutil.NewRoleInterceptor(fakeMembers{}),
 		NewAPIKeyAuthenticator(fakeKeys{}),
@@ -457,10 +477,16 @@ func TestMCP_Auth(t *testing.T) {
 			resp, err := http.DefaultClient.Do(req)
 			require.NoError(t, err)
 
+			body, err := io.ReadAll(resp.Body)
+			require.NoError(t, err)
+
 			_ = resp.Body.Close()
 
 			assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, name)
-			assert.Equal(t, "Bearer", resp.Header.Get("WWW-Authenticate"), name)
+			assert.NotContains(t, string(body), "expired", name)
+			assert.NotContains(t, string(body), "unknown", name)
+			assert.Equal(t, `Bearer resource_metadata="https://mcp.example.com/.well-known/oauth-protected-resource"`,
+				resp.Header.Get("WWW-Authenticate"), name)
 		}
 	})
 
@@ -679,4 +705,46 @@ func TestMCP_ToolSet(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestMCP_OAuthLevels(t *testing.T) {
+	endpoint, fake := newTestServer(t, true)
+
+	toolNames := func(t *testing.T, key string) []string {
+		t.Helper()
+
+		session, _ := connectClient(t, endpoint, key)
+
+		return slices.Sorted(maps.Keys(listTools(t, session)))
+	}
+	sorted := func(groups ...[]string) []string { return slices.Sorted(slices.Values(slices.Concat(groups...))) }
+
+	assert.Equal(t, sorted(readTools), toolNames(t, oauthReadKey))
+	assert.Equal(t, sorted(readTools, actionTools), toolNames(t, oauthActionsKey))
+	assert.Equal(t, sorted(readTools, actionTools, writeTools), toolNames(t, oauthWriteKey))
+	assert.Equal(t, sorted(readTools, actionTools, writeTools), toolNames(t, editorKey))
+
+	refused := func(t *testing.T, key, tool string, args map[string]any) {
+		t.Helper()
+
+		session, _ := connectClient(t, endpoint, key)
+		before := len(fake.methods())
+
+		res, err := session.CallTool(t.Context(), &mcp.CallToolParams{Name: tool, Arguments: args})
+		if err == nil {
+			assert.True(t, res.IsError, tool)
+		}
+
+		assert.Len(t, fake.methods(), before, "%s reached the API", tool)
+	}
+
+	refused(t, oauthReadKey, "trigger_sync", map[string]any{"connection_id": uuid.NewString()})
+	refused(t, oauthReadKey, "delete_source", map[string]any{"id": uuid.NewString()})
+	refused(t, oauthActionsKey, "delete_source", map[string]any{"id": uuid.NewString()})
+
+	session, _ := connectClient(t, endpoint, oauthActionsKey)
+	res := callTool(t, session, "trigger_sync", map[string]any{"connection_id": uuid.NewString()})
+	require.False(t, res.IsError, resultText(t, res))
+	assert.Equal(t, "TriggerSync", fake.last().method)
+	assert.Equal(t, editorUserID, fake.last().userID)
 }

@@ -218,28 +218,33 @@ const (
 	APIKeyFieldKeyHash
 	APIKeyFieldLastUsedAt
 	APIKeyFieldExpiresAt
+	APIKeyFieldOAuthGrantID
+	APIKeyFieldOAuthLevel
 	APIKeyFieldCreatedAt
 )
 
 type APIKeyFilter struct {
-	ID          filter.Filter[uuid.UUID]
-	WorkspaceID filter.Filter[uuid.UUID]
-	UserID      filter.Filter[uuid.UUID]
-	KeyHash     filter.Filter[string]
-	Or          []*APIKeyFilter
-	And         []*APIKeyFilter
+	ID           filter.Filter[uuid.UUID]
+	WorkspaceID  filter.Filter[uuid.UUID]
+	UserID       filter.Filter[uuid.UUID]
+	KeyHash      filter.Filter[string]
+	OAuthGrantID filter.Filter[*uuid.UUID]
+	Or           []*APIKeyFilter
+	And          []*APIKeyFilter
 }
 type APIKeyOrder order.Order[APIKeyField]
 
 type APIKey struct {
-	ID          uuid.UUID
-	WorkspaceID uuid.UUID
-	UserID      uuid.UUID
-	Name        string
-	KeyHash     string
-	LastUsedAt  *time.Time
-	ExpiresAt   *time.Time
-	CreatedAt   time.Time
+	ID           uuid.UUID
+	WorkspaceID  uuid.UUID
+	UserID       uuid.UUID
+	Name         string
+	KeyHash      string
+	LastUsedAt   *time.Time
+	ExpiresAt    *time.Time
+	OAuthGrantID *uuid.UUID
+	OAuthLevel   *OAuthAccessLevel
+	CreatedAt    time.Time
 }
 
 // user code 'APIKey methods'
@@ -261,6 +266,16 @@ func (a *APIKey) Copy() APIKey {
 		var tmp1 time.Time
 		tmp1 = (*a.ExpiresAt)
 		result.ExpiresAt = &tmp1
+	}
+	if a.OAuthGrantID != nil {
+		var tmp2 uuid.UUID
+		tmp2 = (*a.OAuthGrantID)
+		result.OAuthGrantID = &tmp2
+	}
+	if a.OAuthLevel != nil {
+		var tmp3 OAuthAccessLevel
+		tmp3 = (*a.OAuthLevel) // enum
+		result.OAuthLevel = &tmp3
 	}
 	result.CreatedAt = a.CreatedAt
 
@@ -304,7 +319,366 @@ func (a *APIKey) Equals(to *APIKey) bool {
 			return false
 		}
 	}
+	if (a.OAuthGrantID == nil) != (to.OAuthGrantID == nil) {
+		return false
+	}
+	if a.OAuthGrantID != nil && to.OAuthGrantID != nil {
+		if (*a.OAuthGrantID) != (*to.OAuthGrantID) {
+			return false
+		}
+	}
+	if (a.OAuthLevel == nil) != (to.OAuthLevel == nil) {
+		return false
+	}
+	if a.OAuthLevel != nil && to.OAuthLevel != nil {
+		if (*a.OAuthLevel) != (*to.OAuthLevel) {
+			return false
+		}
+	}
 	if a.CreatedAt != to.CreatedAt {
+		return false
+	}
+
+	return true
+}
+
+type OAuthClientField byte
+
+const (
+	OAuthClientFieldID OAuthClientField = iota + 1
+	OAuthClientFieldClientID
+	OAuthClientFieldName
+	OAuthClientFieldRedirectURIs
+	OAuthClientFieldLastGrantedAt
+	OAuthClientFieldCreatedAt
+)
+
+type OAuthClientFilter struct {
+	ID       filter.Filter[uuid.UUID]
+	ClientID filter.Filter[string]
+	Or       []*OAuthClientFilter
+	And      []*OAuthClientFilter
+}
+type OAuthClientOrder order.Order[OAuthClientField]
+
+type OAuthClient struct {
+	ID            uuid.UUID
+	ClientID      string
+	Name          string
+	RedirectURIs  []string
+	LastGrantedAt *time.Time
+	CreatedAt     time.Time
+}
+
+// user code 'OAuthClient methods'
+// end user code 'OAuthClient methods'
+
+func (o *OAuthClient) Copy() OAuthClient {
+	var result OAuthClient
+	result.ID = o.ID
+	result.ClientID = o.ClientID
+	result.Name = o.Name
+	tmp := make([]string, 0, len(o.RedirectURIs))
+	for _, i := range o.RedirectURIs {
+		var itemCopy string
+		itemCopy = i
+		tmp = append(tmp, itemCopy)
+	}
+	result.RedirectURIs = tmp
+	if o.LastGrantedAt != nil {
+		var tmp1 time.Time
+		tmp1 = (*o.LastGrantedAt)
+		result.LastGrantedAt = &tmp1
+	}
+	result.CreatedAt = o.CreatedAt
+
+	return result
+}
+func (o *OAuthClient) Equals(to *OAuthClient) bool {
+	if (o == nil) != (to == nil) {
+		return false
+	}
+	if o == nil && to == nil {
+		return true
+	}
+	if o.ID != to.ID {
+		return false
+	}
+	if o.ClientID != to.ClientID {
+		return false
+	}
+	if o.Name != to.Name {
+		return false
+	}
+	if len(o.RedirectURIs) != len(to.RedirectURIs) {
+		return false
+	}
+	for idx := range o.RedirectURIs {
+		if o.RedirectURIs[idx] != to.RedirectURIs[idx] {
+			return false
+		}
+	}
+	if (o.LastGrantedAt == nil) != (to.LastGrantedAt == nil) {
+		return false
+	}
+	if o.LastGrantedAt != nil && to.LastGrantedAt != nil {
+		if (*o.LastGrantedAt) != (*to.LastGrantedAt) {
+			return false
+		}
+	}
+	if o.CreatedAt != to.CreatedAt {
+		return false
+	}
+
+	return true
+}
+
+type OAuthCodeField byte
+
+const (
+	OAuthCodeFieldID OAuthCodeField = iota + 1
+	OAuthCodeFieldCodeHash
+	OAuthCodeFieldClientID
+	OAuthCodeFieldRedirectURI
+	OAuthCodeFieldCodeChallenge
+	OAuthCodeFieldUserID
+	OAuthCodeFieldWorkspaceID
+	OAuthCodeFieldLevel
+	OAuthCodeFieldExpiresAt
+	OAuthCodeFieldCreatedAt
+)
+
+type OAuthCodeFilter struct {
+	ID        filter.Filter[uuid.UUID]
+	CodeHash  filter.Filter[string]
+	ClientID  filter.Filter[string]
+	ExpiresAt filter.Filter[time.Time]
+	Or        []*OAuthCodeFilter
+	And       []*OAuthCodeFilter
+}
+type OAuthCodeOrder order.Order[OAuthCodeField]
+
+type OAuthCode struct {
+	ID            uuid.UUID
+	CodeHash      string
+	ClientID      string
+	RedirectURI   string
+	CodeChallenge string
+	UserID        uuid.UUID
+	WorkspaceID   uuid.UUID
+	Level         OAuthAccessLevel
+	ExpiresAt     time.Time
+	CreatedAt     time.Time
+}
+
+// user code 'OAuthCode methods'
+// end user code 'OAuthCode methods'
+
+func (o *OAuthCode) Copy() OAuthCode {
+	var result OAuthCode
+	result.ID = o.ID
+	result.CodeHash = o.CodeHash
+	result.ClientID = o.ClientID
+	result.RedirectURI = o.RedirectURI
+	result.CodeChallenge = o.CodeChallenge
+	result.UserID = o.UserID
+	result.WorkspaceID = o.WorkspaceID
+	result.Level = o.Level // enum
+	result.ExpiresAt = o.ExpiresAt
+	result.CreatedAt = o.CreatedAt
+
+	return result
+}
+func (o *OAuthCode) Equals(to *OAuthCode) bool {
+	if (o == nil) != (to == nil) {
+		return false
+	}
+	if o == nil && to == nil {
+		return true
+	}
+	if o.ID != to.ID {
+		return false
+	}
+	if o.CodeHash != to.CodeHash {
+		return false
+	}
+	if o.ClientID != to.ClientID {
+		return false
+	}
+	if o.RedirectURI != to.RedirectURI {
+		return false
+	}
+	if o.CodeChallenge != to.CodeChallenge {
+		return false
+	}
+	if o.UserID != to.UserID {
+		return false
+	}
+	if o.WorkspaceID != to.WorkspaceID {
+		return false
+	}
+	if o.Level != to.Level {
+		return false
+	}
+	if o.ExpiresAt != to.ExpiresAt {
+		return false
+	}
+	if o.CreatedAt != to.CreatedAt {
+		return false
+	}
+
+	return true
+}
+
+type OAuthGrantField byte
+
+const (
+	OAuthGrantFieldID OAuthGrantField = iota + 1
+	OAuthGrantFieldClientID
+	OAuthGrantFieldUserID
+	OAuthGrantFieldWorkspaceID
+	OAuthGrantFieldLevel
+	OAuthGrantFieldCreatedAt
+)
+
+type OAuthGrantFilter struct {
+	ID          filter.Filter[uuid.UUID]
+	ClientID    filter.Filter[string]
+	UserID      filter.Filter[uuid.UUID]
+	WorkspaceID filter.Filter[uuid.UUID]
+	Or          []*OAuthGrantFilter
+	And         []*OAuthGrantFilter
+}
+type OAuthGrantOrder order.Order[OAuthGrantField]
+
+type OAuthGrant struct {
+	ID          uuid.UUID
+	ClientID    string
+	UserID      uuid.UUID
+	WorkspaceID uuid.UUID
+	Level       OAuthAccessLevel
+	CreatedAt   time.Time
+}
+
+// user code 'OAuthGrant methods'
+// end user code 'OAuthGrant methods'
+
+func (o *OAuthGrant) Copy() OAuthGrant {
+	var result OAuthGrant
+	result.ID = o.ID
+	result.ClientID = o.ClientID
+	result.UserID = o.UserID
+	result.WorkspaceID = o.WorkspaceID
+	result.Level = o.Level // enum
+	result.CreatedAt = o.CreatedAt
+
+	return result
+}
+func (o *OAuthGrant) Equals(to *OAuthGrant) bool {
+	if (o == nil) != (to == nil) {
+		return false
+	}
+	if o == nil && to == nil {
+		return true
+	}
+	if o.ID != to.ID {
+		return false
+	}
+	if o.ClientID != to.ClientID {
+		return false
+	}
+	if o.UserID != to.UserID {
+		return false
+	}
+	if o.WorkspaceID != to.WorkspaceID {
+		return false
+	}
+	if o.Level != to.Level {
+		return false
+	}
+	if o.CreatedAt != to.CreatedAt {
+		return false
+	}
+
+	return true
+}
+
+type OAuthRefreshTokenField byte
+
+const (
+	OAuthRefreshTokenFieldID OAuthRefreshTokenField = iota + 1
+	OAuthRefreshTokenFieldGrantID
+	OAuthRefreshTokenFieldTokenHash
+	OAuthRefreshTokenFieldUsedAt
+	OAuthRefreshTokenFieldExpiresAt
+	OAuthRefreshTokenFieldCreatedAt
+)
+
+type OAuthRefreshTokenFilter struct {
+	ID        filter.Filter[uuid.UUID]
+	GrantID   filter.Filter[uuid.UUID]
+	TokenHash filter.Filter[string]
+	ExpiresAt filter.Filter[time.Time]
+	Or        []*OAuthRefreshTokenFilter
+	And       []*OAuthRefreshTokenFilter
+}
+type OAuthRefreshTokenOrder order.Order[OAuthRefreshTokenField]
+
+type OAuthRefreshToken struct {
+	ID        uuid.UUID
+	GrantID   uuid.UUID
+	TokenHash string
+	UsedAt    *time.Time
+	ExpiresAt time.Time
+	CreatedAt time.Time
+}
+
+// user code 'OAuthRefreshToken methods'
+// end user code 'OAuthRefreshToken methods'
+
+func (o *OAuthRefreshToken) Copy() OAuthRefreshToken {
+	var result OAuthRefreshToken
+	result.ID = o.ID
+	result.GrantID = o.GrantID
+	result.TokenHash = o.TokenHash
+	if o.UsedAt != nil {
+		var tmp time.Time
+		tmp = (*o.UsedAt)
+		result.UsedAt = &tmp
+	}
+	result.ExpiresAt = o.ExpiresAt
+	result.CreatedAt = o.CreatedAt
+
+	return result
+}
+func (o *OAuthRefreshToken) Equals(to *OAuthRefreshToken) bool {
+	if (o == nil) != (to == nil) {
+		return false
+	}
+	if o == nil && to == nil {
+		return true
+	}
+	if o.ID != to.ID {
+		return false
+	}
+	if o.GrantID != to.GrantID {
+		return false
+	}
+	if o.TokenHash != to.TokenHash {
+		return false
+	}
+	if (o.UsedAt == nil) != (to.UsedAt == nil) {
+		return false
+	}
+	if o.UsedAt != nil && to.UsedAt != nil {
+		if (*o.UsedAt) != (*to.UsedAt) {
+			return false
+		}
+	}
+	if o.ExpiresAt != to.ExpiresAt {
+		return false
+	}
+	if o.CreatedAt != to.CreatedAt {
 		return false
 	}
 

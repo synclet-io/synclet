@@ -189,6 +189,12 @@ mcp:
   ## false removes the tools that create, edit and delete sources, destinations, connections
   ## and workflows; read and operational tools (sync, cancel, pause, resume, run) stay.
   writeTools: true
+  ## Base URL AI clients reach the MCP server at (MCP_PUBLIC_URL): the OAuth protected
+  ## resource and authorization server issuer. Empty keeps the server default, http://localhost:8082.
+  publicUrl: ""
+  ## Base URL of the UI that serves the OAuth consent page (MCP_UI_URL). Empty takes
+  ## frontend.url, else server.publicUrl, else the URL derived from the Ingress or HTTPRoute.
+  uiUrl: ""
   service:
     port: 80
   ingress:
@@ -200,6 +206,8 @@ mcp:
       - /mcp
       - /.well-known/oauth-protected-resource
       - /.well-known/oauth-authorization-server
+      - /oauth/register
+      - /oauth/token
     ## The settings below apply to the separate Ingress only.
     hostname: ""
     ingressClassName: nginx

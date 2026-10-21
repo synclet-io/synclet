@@ -121,14 +121,16 @@ func convertPasswordResetTokenFromJsonModel(src *jsonPasswordResetToken) (*auths
 }
 
 type jsonAPIKey struct {
-	ID          uuid.UUID  `json:"id"`
-	WorkspaceID uuid.UUID  `json:"workspace_id"`
-	UserID      uuid.UUID  `json:"user_id"`
-	Name        string     `json:"name"`
-	KeyHash     string     `json:"key_hash"`
-	LastUsedAt  *time.Time `json:"last_used_at"`
-	ExpiresAt   *time.Time `json:"expires_at"`
-	CreatedAt   time.Time  `json:"created_at"`
+	ID           uuid.UUID  `json:"id"`
+	WorkspaceID  uuid.UUID  `json:"workspace_id"`
+	UserID       uuid.UUID  `json:"user_id"`
+	Name         string     `json:"name"`
+	KeyHash      string     `json:"key_hash"`
+	LastUsedAt   *time.Time `json:"last_used_at"`
+	ExpiresAt    *time.Time `json:"expires_at"`
+	OAuthGrantID *uuid.UUID `json:"o_auth_grant_id"`
+	OAuthLevel   *string    `json:"o_auth_level"`
+	CreatedAt    time.Time  `json:"created_at"`
 }
 
 func (a *jsonAPIKey) Scan(value any) error {
@@ -156,6 +158,20 @@ func convertAPIKeyToJsonModel(src *authservice.APIKey) (*jsonAPIKey, error) {
 	} else {
 		result.ExpiresAt = toPtr((fromPtr(src.ExpiresAt)).UTC())
 	}
+	if src.OAuthGrantID == nil {
+		result.OAuthGrantID = nil
+	} else {
+		result.OAuthGrantID = toPtr(fromPtr(src.OAuthGrantID))
+	}
+	if src.OAuthLevel == nil {
+		result.OAuthLevel = nil
+	} else {
+		tmp12, err := convertOAuthAccessLevelToDB(fromPtr(src.OAuthLevel))
+		if err != nil {
+			return nil, err
+		}
+		result.OAuthLevel = toPtr(tmp12)
+	}
 	result.CreatedAt = (src.CreatedAt).UTC()
 	return result, nil
 }
@@ -177,6 +193,229 @@ func convertAPIKeyFromJsonModel(src *jsonAPIKey) (*authservice.APIKey, error) {
 	} else {
 		result.ExpiresAt = toPtr(fromPtr(src.ExpiresAt))
 	}
+	if src.OAuthGrantID == nil {
+		result.OAuthGrantID = nil
+	} else {
+		result.OAuthGrantID = toPtr(fromPtr(src.OAuthGrantID))
+	}
+	if src.OAuthLevel == nil {
+		result.OAuthLevel = nil
+	} else {
+		tmp26, err := convertOAuthAccessLevelFromDB(fromPtr(src.OAuthLevel))
+		if err != nil {
+			return nil, err
+		}
+		result.OAuthLevel = toPtr(tmp26)
+	}
+	result.CreatedAt = src.CreatedAt
+	return result, nil
+}
+
+type jsonOAuthClient struct {
+	ID            uuid.UUID        `json:"id"`
+	ClientID      string           `json:"client_id"`
+	Name          string           `json:"name"`
+	RedirectURIs  stringSliceValue `json:"redirect_ur_is"`
+	LastGrantedAt *time.Time       `json:"last_granted_at"`
+	CreatedAt     time.Time        `json:"created_at"`
+}
+
+func (o *jsonOAuthClient) Scan(value any) error {
+	return json.Unmarshal(value.([]byte), o)
+}
+
+func (o jsonOAuthClient) Value() (driver.Value, error) {
+	return json.Marshal(o)
+}
+
+func convertOAuthClientToJsonModel(src *authservice.OAuthClient) (*jsonOAuthClient, error) {
+	result := &jsonOAuthClient{}
+	result.ID = src.ID
+	result.ClientID = src.ClientID
+	result.Name = src.Name
+	tmp3 := make(stringSliceValue, 0, len(src.RedirectURIs))
+	for _, el := range src.RedirectURIs {
+		tmp3 = append(tmp3, el)
+	}
+	result.RedirectURIs = tmp3
+	if src.LastGrantedAt == nil {
+		result.LastGrantedAt = nil
+	} else {
+		result.LastGrantedAt = toPtr((fromPtr(src.LastGrantedAt)).UTC())
+	}
+	result.CreatedAt = (src.CreatedAt).UTC()
+	return result, nil
+}
+
+func convertOAuthClientFromJsonModel(src *jsonOAuthClient) (*authservice.OAuthClient, error) {
+	result := &authservice.OAuthClient{}
+	result.ID = src.ID
+	result.ClientID = src.ClientID
+	result.Name = src.Name
+	tmp11 := make([]string, 0, len(src.RedirectURIs))
+	for _, el := range src.RedirectURIs {
+
+		tmp11 = append(tmp11, el)
+	}
+	result.RedirectURIs = tmp11
+	if src.LastGrantedAt == nil {
+		result.LastGrantedAt = nil
+	} else {
+		result.LastGrantedAt = toPtr(fromPtr(src.LastGrantedAt))
+	}
+	result.CreatedAt = src.CreatedAt
+	return result, nil
+}
+
+type jsonOAuthCode struct {
+	ID            uuid.UUID `json:"id"`
+	CodeHash      string    `json:"code_hash"`
+	ClientID      string    `json:"client_id"`
+	RedirectURI   string    `json:"redirect_uri"`
+	CodeChallenge string    `json:"code_challenge"`
+	UserID        uuid.UUID `json:"user_id"`
+	WorkspaceID   uuid.UUID `json:"workspace_id"`
+	Level         string    `json:"level"`
+	ExpiresAt     time.Time `json:"expires_at"`
+	CreatedAt     time.Time `json:"created_at"`
+}
+
+func (o *jsonOAuthCode) Scan(value any) error {
+	return json.Unmarshal(value.([]byte), o)
+}
+
+func (o jsonOAuthCode) Value() (driver.Value, error) {
+	return json.Marshal(o)
+}
+
+func convertOAuthCodeToJsonModel(src *authservice.OAuthCode) (*jsonOAuthCode, error) {
+	result := &jsonOAuthCode{}
+	result.ID = src.ID
+	result.CodeHash = src.CodeHash
+	result.ClientID = src.ClientID
+	result.RedirectURI = src.RedirectURI
+	result.CodeChallenge = src.CodeChallenge
+	result.UserID = src.UserID
+	result.WorkspaceID = src.WorkspaceID
+	tmp7, err := convertOAuthAccessLevelToDB(src.Level)
+	if err != nil {
+		return nil, err
+	}
+	result.Level = tmp7
+	result.ExpiresAt = (src.ExpiresAt).UTC()
+	result.CreatedAt = (src.CreatedAt).UTC()
+	return result, nil
+}
+
+func convertOAuthCodeFromJsonModel(src *jsonOAuthCode) (*authservice.OAuthCode, error) {
+	result := &authservice.OAuthCode{}
+	result.ID = src.ID
+	result.CodeHash = src.CodeHash
+	result.ClientID = src.ClientID
+	result.RedirectURI = src.RedirectURI
+	result.CodeChallenge = src.CodeChallenge
+	result.UserID = src.UserID
+	result.WorkspaceID = src.WorkspaceID
+	tmp17, err := convertOAuthAccessLevelFromDB(src.Level)
+	if err != nil {
+		return nil, err
+	}
+	result.Level = tmp17
+	result.ExpiresAt = src.ExpiresAt
+	result.CreatedAt = src.CreatedAt
+	return result, nil
+}
+
+type jsonOAuthGrant struct {
+	ID          uuid.UUID `json:"id"`
+	ClientID    string    `json:"client_id"`
+	UserID      uuid.UUID `json:"user_id"`
+	WorkspaceID uuid.UUID `json:"workspace_id"`
+	Level       string    `json:"level"`
+	CreatedAt   time.Time `json:"created_at"`
+}
+
+func (o *jsonOAuthGrant) Scan(value any) error {
+	return json.Unmarshal(value.([]byte), o)
+}
+
+func (o jsonOAuthGrant) Value() (driver.Value, error) {
+	return json.Marshal(o)
+}
+
+func convertOAuthGrantToJsonModel(src *authservice.OAuthGrant) (*jsonOAuthGrant, error) {
+	result := &jsonOAuthGrant{}
+	result.ID = src.ID
+	result.ClientID = src.ClientID
+	result.UserID = src.UserID
+	result.WorkspaceID = src.WorkspaceID
+	tmp4, err := convertOAuthAccessLevelToDB(src.Level)
+	if err != nil {
+		return nil, err
+	}
+	result.Level = tmp4
+	result.CreatedAt = (src.CreatedAt).UTC()
+	return result, nil
+}
+
+func convertOAuthGrantFromJsonModel(src *jsonOAuthGrant) (*authservice.OAuthGrant, error) {
+	result := &authservice.OAuthGrant{}
+	result.ID = src.ID
+	result.ClientID = src.ClientID
+	result.UserID = src.UserID
+	result.WorkspaceID = src.WorkspaceID
+	tmp10, err := convertOAuthAccessLevelFromDB(src.Level)
+	if err != nil {
+		return nil, err
+	}
+	result.Level = tmp10
+	result.CreatedAt = src.CreatedAt
+	return result, nil
+}
+
+type jsonOAuthRefreshToken struct {
+	ID        uuid.UUID  `json:"id"`
+	GrantID   uuid.UUID  `json:"grant_id"`
+	TokenHash string     `json:"token_hash"`
+	UsedAt    *time.Time `json:"used_at"`
+	ExpiresAt time.Time  `json:"expires_at"`
+	CreatedAt time.Time  `json:"created_at"`
+}
+
+func (o *jsonOAuthRefreshToken) Scan(value any) error {
+	return json.Unmarshal(value.([]byte), o)
+}
+
+func (o jsonOAuthRefreshToken) Value() (driver.Value, error) {
+	return json.Marshal(o)
+}
+
+func convertOAuthRefreshTokenToJsonModel(src *authservice.OAuthRefreshToken) (*jsonOAuthRefreshToken, error) {
+	result := &jsonOAuthRefreshToken{}
+	result.ID = src.ID
+	result.GrantID = src.GrantID
+	result.TokenHash = src.TokenHash
+	if src.UsedAt == nil {
+		result.UsedAt = nil
+	} else {
+		result.UsedAt = toPtr((fromPtr(src.UsedAt)).UTC())
+	}
+	result.ExpiresAt = (src.ExpiresAt).UTC()
+	result.CreatedAt = (src.CreatedAt).UTC()
+	return result, nil
+}
+
+func convertOAuthRefreshTokenFromJsonModel(src *jsonOAuthRefreshToken) (*authservice.OAuthRefreshToken, error) {
+	result := &authservice.OAuthRefreshToken{}
+	result.ID = src.ID
+	result.GrantID = src.GrantID
+	result.TokenHash = src.TokenHash
+	if src.UsedAt == nil {
+		result.UsedAt = nil
+	} else {
+		result.UsedAt = toPtr(fromPtr(src.UsedAt))
+	}
+	result.ExpiresAt = src.ExpiresAt
 	result.CreatedAt = src.CreatedAt
 	return result, nil
 }

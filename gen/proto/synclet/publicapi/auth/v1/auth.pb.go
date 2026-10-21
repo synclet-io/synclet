@@ -24,6 +24,62 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// OAuthAccessLevel limits what an OAuth client may do on /mcp.
+type OAuthAccessLevel int32
+
+const (
+	OAuthAccessLevel_OAUTH_ACCESS_LEVEL_UNSPECIFIED OAuthAccessLevel = 0
+	// Read tools only.
+	OAuthAccessLevel_OAUTH_ACCESS_LEVEL_READ OAuthAccessLevel = 1
+	// Read tools and actions (sync, cancel, pause, resume, run).
+	OAuthAccessLevel_OAUTH_ACCESS_LEVEL_ACTIONS OAuthAccessLevel = 2
+	// Every tool.
+	OAuthAccessLevel_OAUTH_ACCESS_LEVEL_WRITE OAuthAccessLevel = 3
+)
+
+// Enum value maps for OAuthAccessLevel.
+var (
+	OAuthAccessLevel_name = map[int32]string{
+		0: "OAUTH_ACCESS_LEVEL_UNSPECIFIED",
+		1: "OAUTH_ACCESS_LEVEL_READ",
+		2: "OAUTH_ACCESS_LEVEL_ACTIONS",
+		3: "OAUTH_ACCESS_LEVEL_WRITE",
+	}
+	OAuthAccessLevel_value = map[string]int32{
+		"OAUTH_ACCESS_LEVEL_UNSPECIFIED": 0,
+		"OAUTH_ACCESS_LEVEL_READ":        1,
+		"OAUTH_ACCESS_LEVEL_ACTIONS":     2,
+		"OAUTH_ACCESS_LEVEL_WRITE":       3,
+	}
+)
+
+func (x OAuthAccessLevel) Enum() *OAuthAccessLevel {
+	p := new(OAuthAccessLevel)
+	*p = x
+	return p
+}
+
+func (x OAuthAccessLevel) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (OAuthAccessLevel) Descriptor() protoreflect.EnumDescriptor {
+	return file_synclet_publicapi_auth_v1_auth_proto_enumTypes[0].Descriptor()
+}
+
+func (OAuthAccessLevel) Type() protoreflect.EnumType {
+	return &file_synclet_publicapi_auth_v1_auth_proto_enumTypes[0]
+}
+
+func (x OAuthAccessLevel) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use OAuthAccessLevel.Descriptor instead.
+func (OAuthAccessLevel) EnumDescriptor() ([]byte, []int) {
+	return file_synclet_publicapi_auth_v1_auth_proto_rawDescGZIP(), []int{0}
+}
+
 type UserInfo struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -993,13 +1049,17 @@ func (*ResetPasswordResponse) Descriptor() ([]byte, []int) {
 }
 
 type APIKeyInfo struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	WorkspaceId   string                 `protobuf:"bytes,2,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
-	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	ExpiresAt     *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
-	LastUsedAt    *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=last_used_at,json=lastUsedAt,proto3" json:"last_used_at,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Id          string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	WorkspaceId string                 `protobuf:"bytes,2,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	Name        string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	CreatedAt   *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	ExpiresAt   *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	LastUsedAt  *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=last_used_at,json=lastUsedAt,proto3" json:"last_used_at,omitempty"`
+	// Set on a key issued to an OAuth client: the client's name.
+	OauthClientName string `protobuf:"bytes,7,opt,name=oauth_client_name,json=oauthClientName,proto3" json:"oauth_client_name,omitempty"`
+	// Set on a key issued to an OAuth client.
+	OauthLevel    OAuthAccessLevel `protobuf:"varint,8,opt,name=oauth_level,json=oauthLevel,proto3,enum=synclet.publicapi.auth.v1.OAuthAccessLevel" json:"oauth_level,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1076,6 +1136,254 @@ func (x *APIKeyInfo) GetLastUsedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *APIKeyInfo) GetOauthClientName() string {
+	if x != nil {
+		return x.OauthClientName
+	}
+	return ""
+}
+
+func (x *APIKeyInfo) GetOauthLevel() OAuthAccessLevel {
+	if x != nil {
+		return x.OauthLevel
+	}
+	return OAuthAccessLevel_OAUTH_ACCESS_LEVEL_UNSPECIFIED
+}
+
+type GetOAuthClientRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ClientId      string                 `protobuf:"bytes,1,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
+	RedirectUri   string                 `protobuf:"bytes,2,opt,name=redirect_uri,json=redirectUri,proto3" json:"redirect_uri,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetOAuthClientRequest) Reset() {
+	*x = GetOAuthClientRequest{}
+	mi := &file_synclet_publicapi_auth_v1_auth_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetOAuthClientRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetOAuthClientRequest) ProtoMessage() {}
+
+func (x *GetOAuthClientRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_publicapi_auth_v1_auth_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetOAuthClientRequest.ProtoReflect.Descriptor instead.
+func (*GetOAuthClientRequest) Descriptor() ([]byte, []int) {
+	return file_synclet_publicapi_auth_v1_auth_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *GetOAuthClientRequest) GetClientId() string {
+	if x != nil {
+		return x.ClientId
+	}
+	return ""
+}
+
+func (x *GetOAuthClientRequest) GetRedirectUri() string {
+	if x != nil {
+		return x.RedirectUri
+	}
+	return ""
+}
+
+type GetOAuthClientResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ClientId      string                 `protobuf:"bytes,1,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
+	ClientName    string                 `protobuf:"bytes,2,opt,name=client_name,json=clientName,proto3" json:"client_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetOAuthClientResponse) Reset() {
+	*x = GetOAuthClientResponse{}
+	mi := &file_synclet_publicapi_auth_v1_auth_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetOAuthClientResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetOAuthClientResponse) ProtoMessage() {}
+
+func (x *GetOAuthClientResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_publicapi_auth_v1_auth_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetOAuthClientResponse.ProtoReflect.Descriptor instead.
+func (*GetOAuthClientResponse) Descriptor() ([]byte, []int) {
+	return file_synclet_publicapi_auth_v1_auth_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *GetOAuthClientResponse) GetClientId() string {
+	if x != nil {
+		return x.ClientId
+	}
+	return ""
+}
+
+func (x *GetOAuthClientResponse) GetClientName() string {
+	if x != nil {
+		return x.ClientName
+	}
+	return ""
+}
+
+type AuthorizeOAuthRequest struct {
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	ClientId            string                 `protobuf:"bytes,1,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
+	RedirectUri         string                 `protobuf:"bytes,2,opt,name=redirect_uri,json=redirectUri,proto3" json:"redirect_uri,omitempty"`
+	CodeChallenge       string                 `protobuf:"bytes,3,opt,name=code_challenge,json=codeChallenge,proto3" json:"code_challenge,omitempty"`
+	CodeChallengeMethod string                 `protobuf:"bytes,4,opt,name=code_challenge_method,json=codeChallengeMethod,proto3" json:"code_challenge_method,omitempty"`
+	Level               OAuthAccessLevel       `protobuf:"varint,5,opt,name=level,proto3,enum=synclet.publicapi.auth.v1.OAuthAccessLevel" json:"level,omitempty"`
+	// Returned to the client unchanged.
+	State         string `protobuf:"bytes,6,opt,name=state,proto3" json:"state,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AuthorizeOAuthRequest) Reset() {
+	*x = AuthorizeOAuthRequest{}
+	mi := &file_synclet_publicapi_auth_v1_auth_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AuthorizeOAuthRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AuthorizeOAuthRequest) ProtoMessage() {}
+
+func (x *AuthorizeOAuthRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_publicapi_auth_v1_auth_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AuthorizeOAuthRequest.ProtoReflect.Descriptor instead.
+func (*AuthorizeOAuthRequest) Descriptor() ([]byte, []int) {
+	return file_synclet_publicapi_auth_v1_auth_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *AuthorizeOAuthRequest) GetClientId() string {
+	if x != nil {
+		return x.ClientId
+	}
+	return ""
+}
+
+func (x *AuthorizeOAuthRequest) GetRedirectUri() string {
+	if x != nil {
+		return x.RedirectUri
+	}
+	return ""
+}
+
+func (x *AuthorizeOAuthRequest) GetCodeChallenge() string {
+	if x != nil {
+		return x.CodeChallenge
+	}
+	return ""
+}
+
+func (x *AuthorizeOAuthRequest) GetCodeChallengeMethod() string {
+	if x != nil {
+		return x.CodeChallengeMethod
+	}
+	return ""
+}
+
+func (x *AuthorizeOAuthRequest) GetLevel() OAuthAccessLevel {
+	if x != nil {
+		return x.Level
+	}
+	return OAuthAccessLevel_OAUTH_ACCESS_LEVEL_UNSPECIFIED
+}
+
+func (x *AuthorizeOAuthRequest) GetState() string {
+	if x != nil {
+		return x.State
+	}
+	return ""
+}
+
+type AuthorizeOAuthResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The redirect URI with the code and state added.
+	RedirectUrl   string `protobuf:"bytes,1,opt,name=redirect_url,json=redirectUrl,proto3" json:"redirect_url,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AuthorizeOAuthResponse) Reset() {
+	*x = AuthorizeOAuthResponse{}
+	mi := &file_synclet_publicapi_auth_v1_auth_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AuthorizeOAuthResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AuthorizeOAuthResponse) ProtoMessage() {}
+
+func (x *AuthorizeOAuthResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_publicapi_auth_v1_auth_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AuthorizeOAuthResponse.ProtoReflect.Descriptor instead.
+func (*AuthorizeOAuthResponse) Descriptor() ([]byte, []int) {
+	return file_synclet_publicapi_auth_v1_auth_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *AuthorizeOAuthResponse) GetRedirectUrl() string {
+	if x != nil {
+		return x.RedirectUrl
+	}
+	return ""
+}
+
 type CreateAPIKeyRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	WorkspaceId   string                 `protobuf:"bytes,1,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
@@ -1087,7 +1395,7 @@ type CreateAPIKeyRequest struct {
 
 func (x *CreateAPIKeyRequest) Reset() {
 	*x = CreateAPIKeyRequest{}
-	mi := &file_synclet_publicapi_auth_v1_auth_proto_msgTypes[21]
+	mi := &file_synclet_publicapi_auth_v1_auth_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1099,7 +1407,7 @@ func (x *CreateAPIKeyRequest) String() string {
 func (*CreateAPIKeyRequest) ProtoMessage() {}
 
 func (x *CreateAPIKeyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_auth_v1_auth_proto_msgTypes[21]
+	mi := &file_synclet_publicapi_auth_v1_auth_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1112,7 +1420,7 @@ func (x *CreateAPIKeyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateAPIKeyRequest.ProtoReflect.Descriptor instead.
 func (*CreateAPIKeyRequest) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_auth_v1_auth_proto_rawDescGZIP(), []int{21}
+	return file_synclet_publicapi_auth_v1_auth_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *CreateAPIKeyRequest) GetWorkspaceId() string {
@@ -1146,7 +1454,7 @@ type CreateAPIKeyResponse struct {
 
 func (x *CreateAPIKeyResponse) Reset() {
 	*x = CreateAPIKeyResponse{}
-	mi := &file_synclet_publicapi_auth_v1_auth_proto_msgTypes[22]
+	mi := &file_synclet_publicapi_auth_v1_auth_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1158,7 +1466,7 @@ func (x *CreateAPIKeyResponse) String() string {
 func (*CreateAPIKeyResponse) ProtoMessage() {}
 
 func (x *CreateAPIKeyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_auth_v1_auth_proto_msgTypes[22]
+	mi := &file_synclet_publicapi_auth_v1_auth_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1171,7 +1479,7 @@ func (x *CreateAPIKeyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateAPIKeyResponse.ProtoReflect.Descriptor instead.
 func (*CreateAPIKeyResponse) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_auth_v1_auth_proto_rawDescGZIP(), []int{22}
+	return file_synclet_publicapi_auth_v1_auth_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *CreateAPIKeyResponse) GetRawKey() string {
@@ -1197,7 +1505,7 @@ type RevokeAPIKeyRequest struct {
 
 func (x *RevokeAPIKeyRequest) Reset() {
 	*x = RevokeAPIKeyRequest{}
-	mi := &file_synclet_publicapi_auth_v1_auth_proto_msgTypes[23]
+	mi := &file_synclet_publicapi_auth_v1_auth_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1209,7 +1517,7 @@ func (x *RevokeAPIKeyRequest) String() string {
 func (*RevokeAPIKeyRequest) ProtoMessage() {}
 
 func (x *RevokeAPIKeyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_auth_v1_auth_proto_msgTypes[23]
+	mi := &file_synclet_publicapi_auth_v1_auth_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1222,7 +1530,7 @@ func (x *RevokeAPIKeyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevokeAPIKeyRequest.ProtoReflect.Descriptor instead.
 func (*RevokeAPIKeyRequest) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_auth_v1_auth_proto_rawDescGZIP(), []int{23}
+	return file_synclet_publicapi_auth_v1_auth_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *RevokeAPIKeyRequest) GetId() string {
@@ -1240,7 +1548,7 @@ type RevokeAPIKeyResponse struct {
 
 func (x *RevokeAPIKeyResponse) Reset() {
 	*x = RevokeAPIKeyResponse{}
-	mi := &file_synclet_publicapi_auth_v1_auth_proto_msgTypes[24]
+	mi := &file_synclet_publicapi_auth_v1_auth_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1252,7 +1560,7 @@ func (x *RevokeAPIKeyResponse) String() string {
 func (*RevokeAPIKeyResponse) ProtoMessage() {}
 
 func (x *RevokeAPIKeyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_auth_v1_auth_proto_msgTypes[24]
+	mi := &file_synclet_publicapi_auth_v1_auth_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1265,7 +1573,7 @@ func (x *RevokeAPIKeyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevokeAPIKeyResponse.ProtoReflect.Descriptor instead.
 func (*RevokeAPIKeyResponse) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_auth_v1_auth_proto_rawDescGZIP(), []int{24}
+	return file_synclet_publicapi_auth_v1_auth_proto_rawDescGZIP(), []int{28}
 }
 
 type ListAPIKeysRequest struct {
@@ -1277,7 +1585,7 @@ type ListAPIKeysRequest struct {
 
 func (x *ListAPIKeysRequest) Reset() {
 	*x = ListAPIKeysRequest{}
-	mi := &file_synclet_publicapi_auth_v1_auth_proto_msgTypes[25]
+	mi := &file_synclet_publicapi_auth_v1_auth_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1289,7 +1597,7 @@ func (x *ListAPIKeysRequest) String() string {
 func (*ListAPIKeysRequest) ProtoMessage() {}
 
 func (x *ListAPIKeysRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_auth_v1_auth_proto_msgTypes[25]
+	mi := &file_synclet_publicapi_auth_v1_auth_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1302,7 +1610,7 @@ func (x *ListAPIKeysRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAPIKeysRequest.ProtoReflect.Descriptor instead.
 func (*ListAPIKeysRequest) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_auth_v1_auth_proto_rawDescGZIP(), []int{25}
+	return file_synclet_publicapi_auth_v1_auth_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *ListAPIKeysRequest) GetWorkspaceId() string {
@@ -1321,7 +1629,7 @@ type ListAPIKeysResponse struct {
 
 func (x *ListAPIKeysResponse) Reset() {
 	*x = ListAPIKeysResponse{}
-	mi := &file_synclet_publicapi_auth_v1_auth_proto_msgTypes[26]
+	mi := &file_synclet_publicapi_auth_v1_auth_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1333,7 +1641,7 @@ func (x *ListAPIKeysResponse) String() string {
 func (*ListAPIKeysResponse) ProtoMessage() {}
 
 func (x *ListAPIKeysResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_auth_v1_auth_proto_msgTypes[26]
+	mi := &file_synclet_publicapi_auth_v1_auth_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1346,7 +1654,7 @@ func (x *ListAPIKeysResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAPIKeysResponse.ProtoReflect.Descriptor instead.
 func (*ListAPIKeysResponse) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_auth_v1_auth_proto_rawDescGZIP(), []int{26}
+	return file_synclet_publicapi_auth_v1_auth_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *ListAPIKeysResponse) GetApiKeys() []*APIKeyInfo {
@@ -1366,7 +1674,7 @@ type OIDCProviderInfo struct {
 
 func (x *OIDCProviderInfo) Reset() {
 	*x = OIDCProviderInfo{}
-	mi := &file_synclet_publicapi_auth_v1_auth_proto_msgTypes[27]
+	mi := &file_synclet_publicapi_auth_v1_auth_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1378,7 +1686,7 @@ func (x *OIDCProviderInfo) String() string {
 func (*OIDCProviderInfo) ProtoMessage() {}
 
 func (x *OIDCProviderInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_auth_v1_auth_proto_msgTypes[27]
+	mi := &file_synclet_publicapi_auth_v1_auth_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1391,7 +1699,7 @@ func (x *OIDCProviderInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OIDCProviderInfo.ProtoReflect.Descriptor instead.
 func (*OIDCProviderInfo) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_auth_v1_auth_proto_rawDescGZIP(), []int{27}
+	return file_synclet_publicapi_auth_v1_auth_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *OIDCProviderInfo) GetSlug() string {
@@ -1416,7 +1724,7 @@ type GetOIDCProvidersRequest struct {
 
 func (x *GetOIDCProvidersRequest) Reset() {
 	*x = GetOIDCProvidersRequest{}
-	mi := &file_synclet_publicapi_auth_v1_auth_proto_msgTypes[28]
+	mi := &file_synclet_publicapi_auth_v1_auth_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1428,7 +1736,7 @@ func (x *GetOIDCProvidersRequest) String() string {
 func (*GetOIDCProvidersRequest) ProtoMessage() {}
 
 func (x *GetOIDCProvidersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_auth_v1_auth_proto_msgTypes[28]
+	mi := &file_synclet_publicapi_auth_v1_auth_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1441,7 +1749,7 @@ func (x *GetOIDCProvidersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetOIDCProvidersRequest.ProtoReflect.Descriptor instead.
 func (*GetOIDCProvidersRequest) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_auth_v1_auth_proto_rawDescGZIP(), []int{28}
+	return file_synclet_publicapi_auth_v1_auth_proto_rawDescGZIP(), []int{32}
 }
 
 type GetOIDCProvidersResponse struct {
@@ -1453,7 +1761,7 @@ type GetOIDCProvidersResponse struct {
 
 func (x *GetOIDCProvidersResponse) Reset() {
 	*x = GetOIDCProvidersResponse{}
-	mi := &file_synclet_publicapi_auth_v1_auth_proto_msgTypes[29]
+	mi := &file_synclet_publicapi_auth_v1_auth_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1465,7 +1773,7 @@ func (x *GetOIDCProvidersResponse) String() string {
 func (*GetOIDCProvidersResponse) ProtoMessage() {}
 
 func (x *GetOIDCProvidersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_synclet_publicapi_auth_v1_auth_proto_msgTypes[29]
+	mi := &file_synclet_publicapi_auth_v1_auth_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1478,7 +1786,7 @@ func (x *GetOIDCProvidersResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetOIDCProvidersResponse.ProtoReflect.Descriptor instead.
 func (*GetOIDCProvidersResponse) Descriptor() ([]byte, []int) {
-	return file_synclet_publicapi_auth_v1_auth_proto_rawDescGZIP(), []int{29}
+	return file_synclet_publicapi_auth_v1_auth_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *GetOIDCProvidersResponse) GetProviders() []*OIDCProviderInfo {
@@ -1553,7 +1861,7 @@ const file_synclet_publicapi_auth_v1_auth_proto_rawDesc = "" +
 	"\x14ResetPasswordRequest\x12\x14\n" +
 	"\x05token\x18\x01 \x01(\tR\x05token\x12!\n" +
 	"\fnew_password\x18\x02 \x01(\tR\vnewPassword\"\x17\n" +
-	"\x15ResetPasswordResponse\"\x87\x02\n" +
+	"\x15ResetPasswordResponse\"\x81\x03\n" +
 	"\n" +
 	"APIKeyInfo\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
@@ -1564,7 +1872,26 @@ const file_synclet_publicapi_auth_v1_auth_proto_rawDesc = "" +
 	"\n" +
 	"expires_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\x12<\n" +
 	"\flast_used_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"lastUsedAt\"\x87\x01\n" +
+	"lastUsedAt\x12*\n" +
+	"\x11oauth_client_name\x18\a \x01(\tR\x0foauthClientName\x12L\n" +
+	"\voauth_level\x18\b \x01(\x0e2+.synclet.publicapi.auth.v1.OAuthAccessLevelR\n" +
+	"oauthLevel\"W\n" +
+	"\x15GetOAuthClientRequest\x12\x1b\n" +
+	"\tclient_id\x18\x01 \x01(\tR\bclientId\x12!\n" +
+	"\fredirect_uri\x18\x02 \x01(\tR\vredirectUri\"V\n" +
+	"\x16GetOAuthClientResponse\x12\x1b\n" +
+	"\tclient_id\x18\x01 \x01(\tR\bclientId\x12\x1f\n" +
+	"\vclient_name\x18\x02 \x01(\tR\n" +
+	"clientName\"\x8b\x02\n" +
+	"\x15AuthorizeOAuthRequest\x12\x1b\n" +
+	"\tclient_id\x18\x01 \x01(\tR\bclientId\x12!\n" +
+	"\fredirect_uri\x18\x02 \x01(\tR\vredirectUri\x12%\n" +
+	"\x0ecode_challenge\x18\x03 \x01(\tR\rcodeChallenge\x122\n" +
+	"\x15code_challenge_method\x18\x04 \x01(\tR\x13codeChallengeMethod\x12A\n" +
+	"\x05level\x18\x05 \x01(\x0e2+.synclet.publicapi.auth.v1.OAuthAccessLevelR\x05level\x12\x14\n" +
+	"\x05state\x18\x06 \x01(\tR\x05state\";\n" +
+	"\x16AuthorizeOAuthResponse\x12!\n" +
+	"\fredirect_url\x18\x01 \x01(\tR\vredirectUrl\"\x87\x01\n" +
 	"\x13CreateAPIKeyRequest\x12!\n" +
 	"\fworkspace_id\x18\x01 \x01(\tR\vworkspaceId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x129\n" +
@@ -1585,7 +1912,12 @@ const file_synclet_publicapi_auth_v1_auth_proto_rawDesc = "" +
 	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\"\x19\n" +
 	"\x17GetOIDCProvidersRequest\"e\n" +
 	"\x18GetOIDCProvidersResponse\x12I\n" +
-	"\tproviders\x18\x01 \x03(\v2+.synclet.publicapi.auth.v1.OIDCProviderInfoR\tproviders2\xdd\v\n" +
+	"\tproviders\x18\x01 \x03(\v2+.synclet.publicapi.auth.v1.OIDCProviderInfoR\tproviders*\x91\x01\n" +
+	"\x10OAuthAccessLevel\x12\"\n" +
+	"\x1eOAUTH_ACCESS_LEVEL_UNSPECIFIED\x10\x00\x12\x1b\n" +
+	"\x17OAUTH_ACCESS_LEVEL_READ\x10\x01\x12\x1e\n" +
+	"\x1aOAUTH_ACCESS_LEVEL_ACTIONS\x10\x02\x12\x1c\n" +
+	"\x18OAUTH_ACCESS_LEVEL_WRITE\x10\x032\xd1\r\n" +
 	"\vAuthService\x12c\n" +
 	"\bRegister\x12*.synclet.publicapi.auth.v1.RegisterRequest\x1a+.synclet.publicapi.auth.v1.RegisterResponse\x12Z\n" +
 	"\x05Login\x12'.synclet.publicapi.auth.v1.LoginRequest\x1a(.synclet.publicapi.auth.v1.LoginResponse\x12o\n" +
@@ -1599,7 +1931,9 @@ const file_synclet_publicapi_auth_v1_auth_proto_rawDesc = "" +
 	"\fCreateAPIKey\x12..synclet.publicapi.auth.v1.CreateAPIKeyRequest\x1a/.synclet.publicapi.auth.v1.CreateAPIKeyResponse\"\x04\x88\xb5\x18\x01\x12u\n" +
 	"\fRevokeAPIKey\x12..synclet.publicapi.auth.v1.RevokeAPIKeyRequest\x1a/.synclet.publicapi.auth.v1.RevokeAPIKeyResponse\"\x04\x88\xb5\x18\x01\x12r\n" +
 	"\vListAPIKeys\x12-.synclet.publicapi.auth.v1.ListAPIKeysRequest\x1a..synclet.publicapi.auth.v1.ListAPIKeysResponse\"\x04\x88\xb5\x18\x01\x12{\n" +
-	"\x10GetOIDCProviders\x122.synclet.publicapi.auth.v1.GetOIDCProvidersRequest\x1a3.synclet.publicapi.auth.v1.GetOIDCProvidersResponseB\xfb\x01\n" +
+	"\x10GetOIDCProviders\x122.synclet.publicapi.auth.v1.GetOIDCProvidersRequest\x1a3.synclet.publicapi.auth.v1.GetOIDCProvidersResponse\x12u\n" +
+	"\x0eGetOAuthClient\x120.synclet.publicapi.auth.v1.GetOAuthClientRequest\x1a1.synclet.publicapi.auth.v1.GetOAuthClientResponse\x12{\n" +
+	"\x0eAuthorizeOAuth\x120.synclet.publicapi.auth.v1.AuthorizeOAuthRequest\x1a1.synclet.publicapi.auth.v1.AuthorizeOAuthResponse\"\x04\x88\xb5\x18\x01B\xfb\x01\n" +
 	"\x1dcom.synclet.publicapi.auth.v1B\tAuthProtoP\x01ZHgithub.com/synclet-io/synclet/gen/proto/synclet/publicapi/auth/v1;authv1\xa2\x02\x03SPA\xaa\x02\x19Synclet.Publicapi.Auth.V1\xca\x02\x19Synclet\\Publicapi\\Auth\\V1\xe2\x02%Synclet\\Publicapi\\Auth\\V1\\GPBMetadata\xea\x02\x1cSynclet::Publicapi::Auth::V1b\x06proto3"
 
 var (
@@ -1614,95 +1948,107 @@ func file_synclet_publicapi_auth_v1_auth_proto_rawDescGZIP() []byte {
 	return file_synclet_publicapi_auth_v1_auth_proto_rawDescData
 }
 
-var file_synclet_publicapi_auth_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 30)
+var file_synclet_publicapi_auth_v1_auth_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_synclet_publicapi_auth_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 34)
 var file_synclet_publicapi_auth_v1_auth_proto_goTypes = []any{
-	(*UserInfo)(nil),                     // 0: synclet.publicapi.auth.v1.UserInfo
-	(*WorkspaceMembership)(nil),          // 1: synclet.publicapi.auth.v1.WorkspaceMembership
-	(*RegisterRequest)(nil),              // 2: synclet.publicapi.auth.v1.RegisterRequest
-	(*RegisterResponse)(nil),             // 3: synclet.publicapi.auth.v1.RegisterResponse
-	(*LoginRequest)(nil),                 // 4: synclet.publicapi.auth.v1.LoginRequest
-	(*LoginResponse)(nil),                // 5: synclet.publicapi.auth.v1.LoginResponse
-	(*RefreshTokenRequest)(nil),          // 6: synclet.publicapi.auth.v1.RefreshTokenRequest
-	(*RefreshTokenResponse)(nil),         // 7: synclet.publicapi.auth.v1.RefreshTokenResponse
-	(*LogoutRequest)(nil),                // 8: synclet.publicapi.auth.v1.LogoutRequest
-	(*LogoutResponse)(nil),               // 9: synclet.publicapi.auth.v1.LogoutResponse
-	(*GetCurrentUserRequest)(nil),        // 10: synclet.publicapi.auth.v1.GetCurrentUserRequest
-	(*GetCurrentUserResponse)(nil),       // 11: synclet.publicapi.auth.v1.GetCurrentUserResponse
-	(*UpdateProfileRequest)(nil),         // 12: synclet.publicapi.auth.v1.UpdateProfileRequest
-	(*UpdateProfileResponse)(nil),        // 13: synclet.publicapi.auth.v1.UpdateProfileResponse
-	(*ChangePasswordRequest)(nil),        // 14: synclet.publicapi.auth.v1.ChangePasswordRequest
-	(*ChangePasswordResponse)(nil),       // 15: synclet.publicapi.auth.v1.ChangePasswordResponse
-	(*RequestPasswordResetRequest)(nil),  // 16: synclet.publicapi.auth.v1.RequestPasswordResetRequest
-	(*RequestPasswordResetResponse)(nil), // 17: synclet.publicapi.auth.v1.RequestPasswordResetResponse
-	(*ResetPasswordRequest)(nil),         // 18: synclet.publicapi.auth.v1.ResetPasswordRequest
-	(*ResetPasswordResponse)(nil),        // 19: synclet.publicapi.auth.v1.ResetPasswordResponse
-	(*APIKeyInfo)(nil),                   // 20: synclet.publicapi.auth.v1.APIKeyInfo
-	(*CreateAPIKeyRequest)(nil),          // 21: synclet.publicapi.auth.v1.CreateAPIKeyRequest
-	(*CreateAPIKeyResponse)(nil),         // 22: synclet.publicapi.auth.v1.CreateAPIKeyResponse
-	(*RevokeAPIKeyRequest)(nil),          // 23: synclet.publicapi.auth.v1.RevokeAPIKeyRequest
-	(*RevokeAPIKeyResponse)(nil),         // 24: synclet.publicapi.auth.v1.RevokeAPIKeyResponse
-	(*ListAPIKeysRequest)(nil),           // 25: synclet.publicapi.auth.v1.ListAPIKeysRequest
-	(*ListAPIKeysResponse)(nil),          // 26: synclet.publicapi.auth.v1.ListAPIKeysResponse
-	(*OIDCProviderInfo)(nil),             // 27: synclet.publicapi.auth.v1.OIDCProviderInfo
-	(*GetOIDCProvidersRequest)(nil),      // 28: synclet.publicapi.auth.v1.GetOIDCProvidersRequest
-	(*GetOIDCProvidersResponse)(nil),     // 29: synclet.publicapi.auth.v1.GetOIDCProvidersResponse
-	(*timestamppb.Timestamp)(nil),        // 30: google.protobuf.Timestamp
-	(v1.MemberRole)(0),                   // 31: synclet.publicapi.workspace.v1.MemberRole
+	(OAuthAccessLevel)(0),                // 0: synclet.publicapi.auth.v1.OAuthAccessLevel
+	(*UserInfo)(nil),                     // 1: synclet.publicapi.auth.v1.UserInfo
+	(*WorkspaceMembership)(nil),          // 2: synclet.publicapi.auth.v1.WorkspaceMembership
+	(*RegisterRequest)(nil),              // 3: synclet.publicapi.auth.v1.RegisterRequest
+	(*RegisterResponse)(nil),             // 4: synclet.publicapi.auth.v1.RegisterResponse
+	(*LoginRequest)(nil),                 // 5: synclet.publicapi.auth.v1.LoginRequest
+	(*LoginResponse)(nil),                // 6: synclet.publicapi.auth.v1.LoginResponse
+	(*RefreshTokenRequest)(nil),          // 7: synclet.publicapi.auth.v1.RefreshTokenRequest
+	(*RefreshTokenResponse)(nil),         // 8: synclet.publicapi.auth.v1.RefreshTokenResponse
+	(*LogoutRequest)(nil),                // 9: synclet.publicapi.auth.v1.LogoutRequest
+	(*LogoutResponse)(nil),               // 10: synclet.publicapi.auth.v1.LogoutResponse
+	(*GetCurrentUserRequest)(nil),        // 11: synclet.publicapi.auth.v1.GetCurrentUserRequest
+	(*GetCurrentUserResponse)(nil),       // 12: synclet.publicapi.auth.v1.GetCurrentUserResponse
+	(*UpdateProfileRequest)(nil),         // 13: synclet.publicapi.auth.v1.UpdateProfileRequest
+	(*UpdateProfileResponse)(nil),        // 14: synclet.publicapi.auth.v1.UpdateProfileResponse
+	(*ChangePasswordRequest)(nil),        // 15: synclet.publicapi.auth.v1.ChangePasswordRequest
+	(*ChangePasswordResponse)(nil),       // 16: synclet.publicapi.auth.v1.ChangePasswordResponse
+	(*RequestPasswordResetRequest)(nil),  // 17: synclet.publicapi.auth.v1.RequestPasswordResetRequest
+	(*RequestPasswordResetResponse)(nil), // 18: synclet.publicapi.auth.v1.RequestPasswordResetResponse
+	(*ResetPasswordRequest)(nil),         // 19: synclet.publicapi.auth.v1.ResetPasswordRequest
+	(*ResetPasswordResponse)(nil),        // 20: synclet.publicapi.auth.v1.ResetPasswordResponse
+	(*APIKeyInfo)(nil),                   // 21: synclet.publicapi.auth.v1.APIKeyInfo
+	(*GetOAuthClientRequest)(nil),        // 22: synclet.publicapi.auth.v1.GetOAuthClientRequest
+	(*GetOAuthClientResponse)(nil),       // 23: synclet.publicapi.auth.v1.GetOAuthClientResponse
+	(*AuthorizeOAuthRequest)(nil),        // 24: synclet.publicapi.auth.v1.AuthorizeOAuthRequest
+	(*AuthorizeOAuthResponse)(nil),       // 25: synclet.publicapi.auth.v1.AuthorizeOAuthResponse
+	(*CreateAPIKeyRequest)(nil),          // 26: synclet.publicapi.auth.v1.CreateAPIKeyRequest
+	(*CreateAPIKeyResponse)(nil),         // 27: synclet.publicapi.auth.v1.CreateAPIKeyResponse
+	(*RevokeAPIKeyRequest)(nil),          // 28: synclet.publicapi.auth.v1.RevokeAPIKeyRequest
+	(*RevokeAPIKeyResponse)(nil),         // 29: synclet.publicapi.auth.v1.RevokeAPIKeyResponse
+	(*ListAPIKeysRequest)(nil),           // 30: synclet.publicapi.auth.v1.ListAPIKeysRequest
+	(*ListAPIKeysResponse)(nil),          // 31: synclet.publicapi.auth.v1.ListAPIKeysResponse
+	(*OIDCProviderInfo)(nil),             // 32: synclet.publicapi.auth.v1.OIDCProviderInfo
+	(*GetOIDCProvidersRequest)(nil),      // 33: synclet.publicapi.auth.v1.GetOIDCProvidersRequest
+	(*GetOIDCProvidersResponse)(nil),     // 34: synclet.publicapi.auth.v1.GetOIDCProvidersResponse
+	(*timestamppb.Timestamp)(nil),        // 35: google.protobuf.Timestamp
+	(v1.MemberRole)(0),                   // 36: synclet.publicapi.workspace.v1.MemberRole
 }
 var file_synclet_publicapi_auth_v1_auth_proto_depIdxs = []int32{
-	30, // 0: synclet.publicapi.auth.v1.UserInfo.created_at:type_name -> google.protobuf.Timestamp
-	31, // 1: synclet.publicapi.auth.v1.WorkspaceMembership.role:type_name -> synclet.publicapi.workspace.v1.MemberRole
-	30, // 2: synclet.publicapi.auth.v1.RegisterResponse.expires_at:type_name -> google.protobuf.Timestamp
-	0,  // 3: synclet.publicapi.auth.v1.RegisterResponse.user:type_name -> synclet.publicapi.auth.v1.UserInfo
-	30, // 4: synclet.publicapi.auth.v1.RegisterResponse.refresh_token_expires_at:type_name -> google.protobuf.Timestamp
-	1,  // 5: synclet.publicapi.auth.v1.RegisterResponse.workspaces:type_name -> synclet.publicapi.auth.v1.WorkspaceMembership
-	30, // 6: synclet.publicapi.auth.v1.LoginResponse.expires_at:type_name -> google.protobuf.Timestamp
-	0,  // 7: synclet.publicapi.auth.v1.LoginResponse.user:type_name -> synclet.publicapi.auth.v1.UserInfo
-	30, // 8: synclet.publicapi.auth.v1.LoginResponse.refresh_token_expires_at:type_name -> google.protobuf.Timestamp
-	1,  // 9: synclet.publicapi.auth.v1.LoginResponse.workspaces:type_name -> synclet.publicapi.auth.v1.WorkspaceMembership
-	30, // 10: synclet.publicapi.auth.v1.RefreshTokenResponse.expires_at:type_name -> google.protobuf.Timestamp
-	30, // 11: synclet.publicapi.auth.v1.RefreshTokenResponse.refresh_token_expires_at:type_name -> google.protobuf.Timestamp
-	0,  // 12: synclet.publicapi.auth.v1.GetCurrentUserResponse.user:type_name -> synclet.publicapi.auth.v1.UserInfo
-	1,  // 13: synclet.publicapi.auth.v1.GetCurrentUserResponse.workspaces:type_name -> synclet.publicapi.auth.v1.WorkspaceMembership
-	0,  // 14: synclet.publicapi.auth.v1.UpdateProfileResponse.user:type_name -> synclet.publicapi.auth.v1.UserInfo
-	30, // 15: synclet.publicapi.auth.v1.APIKeyInfo.created_at:type_name -> google.protobuf.Timestamp
-	30, // 16: synclet.publicapi.auth.v1.APIKeyInfo.expires_at:type_name -> google.protobuf.Timestamp
-	30, // 17: synclet.publicapi.auth.v1.APIKeyInfo.last_used_at:type_name -> google.protobuf.Timestamp
-	30, // 18: synclet.publicapi.auth.v1.CreateAPIKeyRequest.expires_at:type_name -> google.protobuf.Timestamp
-	20, // 19: synclet.publicapi.auth.v1.CreateAPIKeyResponse.api_key:type_name -> synclet.publicapi.auth.v1.APIKeyInfo
-	20, // 20: synclet.publicapi.auth.v1.ListAPIKeysResponse.api_keys:type_name -> synclet.publicapi.auth.v1.APIKeyInfo
-	27, // 21: synclet.publicapi.auth.v1.GetOIDCProvidersResponse.providers:type_name -> synclet.publicapi.auth.v1.OIDCProviderInfo
-	2,  // 22: synclet.publicapi.auth.v1.AuthService.Register:input_type -> synclet.publicapi.auth.v1.RegisterRequest
-	4,  // 23: synclet.publicapi.auth.v1.AuthService.Login:input_type -> synclet.publicapi.auth.v1.LoginRequest
-	6,  // 24: synclet.publicapi.auth.v1.AuthService.RefreshToken:input_type -> synclet.publicapi.auth.v1.RefreshTokenRequest
-	8,  // 25: synclet.publicapi.auth.v1.AuthService.Logout:input_type -> synclet.publicapi.auth.v1.LogoutRequest
-	10, // 26: synclet.publicapi.auth.v1.AuthService.GetCurrentUser:input_type -> synclet.publicapi.auth.v1.GetCurrentUserRequest
-	12, // 27: synclet.publicapi.auth.v1.AuthService.UpdateProfile:input_type -> synclet.publicapi.auth.v1.UpdateProfileRequest
-	14, // 28: synclet.publicapi.auth.v1.AuthService.ChangePassword:input_type -> synclet.publicapi.auth.v1.ChangePasswordRequest
-	16, // 29: synclet.publicapi.auth.v1.AuthService.RequestPasswordReset:input_type -> synclet.publicapi.auth.v1.RequestPasswordResetRequest
-	18, // 30: synclet.publicapi.auth.v1.AuthService.ResetPassword:input_type -> synclet.publicapi.auth.v1.ResetPasswordRequest
-	21, // 31: synclet.publicapi.auth.v1.AuthService.CreateAPIKey:input_type -> synclet.publicapi.auth.v1.CreateAPIKeyRequest
-	23, // 32: synclet.publicapi.auth.v1.AuthService.RevokeAPIKey:input_type -> synclet.publicapi.auth.v1.RevokeAPIKeyRequest
-	25, // 33: synclet.publicapi.auth.v1.AuthService.ListAPIKeys:input_type -> synclet.publicapi.auth.v1.ListAPIKeysRequest
-	28, // 34: synclet.publicapi.auth.v1.AuthService.GetOIDCProviders:input_type -> synclet.publicapi.auth.v1.GetOIDCProvidersRequest
-	3,  // 35: synclet.publicapi.auth.v1.AuthService.Register:output_type -> synclet.publicapi.auth.v1.RegisterResponse
-	5,  // 36: synclet.publicapi.auth.v1.AuthService.Login:output_type -> synclet.publicapi.auth.v1.LoginResponse
-	7,  // 37: synclet.publicapi.auth.v1.AuthService.RefreshToken:output_type -> synclet.publicapi.auth.v1.RefreshTokenResponse
-	9,  // 38: synclet.publicapi.auth.v1.AuthService.Logout:output_type -> synclet.publicapi.auth.v1.LogoutResponse
-	11, // 39: synclet.publicapi.auth.v1.AuthService.GetCurrentUser:output_type -> synclet.publicapi.auth.v1.GetCurrentUserResponse
-	13, // 40: synclet.publicapi.auth.v1.AuthService.UpdateProfile:output_type -> synclet.publicapi.auth.v1.UpdateProfileResponse
-	15, // 41: synclet.publicapi.auth.v1.AuthService.ChangePassword:output_type -> synclet.publicapi.auth.v1.ChangePasswordResponse
-	17, // 42: synclet.publicapi.auth.v1.AuthService.RequestPasswordReset:output_type -> synclet.publicapi.auth.v1.RequestPasswordResetResponse
-	19, // 43: synclet.publicapi.auth.v1.AuthService.ResetPassword:output_type -> synclet.publicapi.auth.v1.ResetPasswordResponse
-	22, // 44: synclet.publicapi.auth.v1.AuthService.CreateAPIKey:output_type -> synclet.publicapi.auth.v1.CreateAPIKeyResponse
-	24, // 45: synclet.publicapi.auth.v1.AuthService.RevokeAPIKey:output_type -> synclet.publicapi.auth.v1.RevokeAPIKeyResponse
-	26, // 46: synclet.publicapi.auth.v1.AuthService.ListAPIKeys:output_type -> synclet.publicapi.auth.v1.ListAPIKeysResponse
-	29, // 47: synclet.publicapi.auth.v1.AuthService.GetOIDCProviders:output_type -> synclet.publicapi.auth.v1.GetOIDCProvidersResponse
-	35, // [35:48] is the sub-list for method output_type
-	22, // [22:35] is the sub-list for method input_type
-	22, // [22:22] is the sub-list for extension type_name
-	22, // [22:22] is the sub-list for extension extendee
-	0,  // [0:22] is the sub-list for field type_name
+	35, // 0: synclet.publicapi.auth.v1.UserInfo.created_at:type_name -> google.protobuf.Timestamp
+	36, // 1: synclet.publicapi.auth.v1.WorkspaceMembership.role:type_name -> synclet.publicapi.workspace.v1.MemberRole
+	35, // 2: synclet.publicapi.auth.v1.RegisterResponse.expires_at:type_name -> google.protobuf.Timestamp
+	1,  // 3: synclet.publicapi.auth.v1.RegisterResponse.user:type_name -> synclet.publicapi.auth.v1.UserInfo
+	35, // 4: synclet.publicapi.auth.v1.RegisterResponse.refresh_token_expires_at:type_name -> google.protobuf.Timestamp
+	2,  // 5: synclet.publicapi.auth.v1.RegisterResponse.workspaces:type_name -> synclet.publicapi.auth.v1.WorkspaceMembership
+	35, // 6: synclet.publicapi.auth.v1.LoginResponse.expires_at:type_name -> google.protobuf.Timestamp
+	1,  // 7: synclet.publicapi.auth.v1.LoginResponse.user:type_name -> synclet.publicapi.auth.v1.UserInfo
+	35, // 8: synclet.publicapi.auth.v1.LoginResponse.refresh_token_expires_at:type_name -> google.protobuf.Timestamp
+	2,  // 9: synclet.publicapi.auth.v1.LoginResponse.workspaces:type_name -> synclet.publicapi.auth.v1.WorkspaceMembership
+	35, // 10: synclet.publicapi.auth.v1.RefreshTokenResponse.expires_at:type_name -> google.protobuf.Timestamp
+	35, // 11: synclet.publicapi.auth.v1.RefreshTokenResponse.refresh_token_expires_at:type_name -> google.protobuf.Timestamp
+	1,  // 12: synclet.publicapi.auth.v1.GetCurrentUserResponse.user:type_name -> synclet.publicapi.auth.v1.UserInfo
+	2,  // 13: synclet.publicapi.auth.v1.GetCurrentUserResponse.workspaces:type_name -> synclet.publicapi.auth.v1.WorkspaceMembership
+	1,  // 14: synclet.publicapi.auth.v1.UpdateProfileResponse.user:type_name -> synclet.publicapi.auth.v1.UserInfo
+	35, // 15: synclet.publicapi.auth.v1.APIKeyInfo.created_at:type_name -> google.protobuf.Timestamp
+	35, // 16: synclet.publicapi.auth.v1.APIKeyInfo.expires_at:type_name -> google.protobuf.Timestamp
+	35, // 17: synclet.publicapi.auth.v1.APIKeyInfo.last_used_at:type_name -> google.protobuf.Timestamp
+	0,  // 18: synclet.publicapi.auth.v1.APIKeyInfo.oauth_level:type_name -> synclet.publicapi.auth.v1.OAuthAccessLevel
+	0,  // 19: synclet.publicapi.auth.v1.AuthorizeOAuthRequest.level:type_name -> synclet.publicapi.auth.v1.OAuthAccessLevel
+	35, // 20: synclet.publicapi.auth.v1.CreateAPIKeyRequest.expires_at:type_name -> google.protobuf.Timestamp
+	21, // 21: synclet.publicapi.auth.v1.CreateAPIKeyResponse.api_key:type_name -> synclet.publicapi.auth.v1.APIKeyInfo
+	21, // 22: synclet.publicapi.auth.v1.ListAPIKeysResponse.api_keys:type_name -> synclet.publicapi.auth.v1.APIKeyInfo
+	32, // 23: synclet.publicapi.auth.v1.GetOIDCProvidersResponse.providers:type_name -> synclet.publicapi.auth.v1.OIDCProviderInfo
+	3,  // 24: synclet.publicapi.auth.v1.AuthService.Register:input_type -> synclet.publicapi.auth.v1.RegisterRequest
+	5,  // 25: synclet.publicapi.auth.v1.AuthService.Login:input_type -> synclet.publicapi.auth.v1.LoginRequest
+	7,  // 26: synclet.publicapi.auth.v1.AuthService.RefreshToken:input_type -> synclet.publicapi.auth.v1.RefreshTokenRequest
+	9,  // 27: synclet.publicapi.auth.v1.AuthService.Logout:input_type -> synclet.publicapi.auth.v1.LogoutRequest
+	11, // 28: synclet.publicapi.auth.v1.AuthService.GetCurrentUser:input_type -> synclet.publicapi.auth.v1.GetCurrentUserRequest
+	13, // 29: synclet.publicapi.auth.v1.AuthService.UpdateProfile:input_type -> synclet.publicapi.auth.v1.UpdateProfileRequest
+	15, // 30: synclet.publicapi.auth.v1.AuthService.ChangePassword:input_type -> synclet.publicapi.auth.v1.ChangePasswordRequest
+	17, // 31: synclet.publicapi.auth.v1.AuthService.RequestPasswordReset:input_type -> synclet.publicapi.auth.v1.RequestPasswordResetRequest
+	19, // 32: synclet.publicapi.auth.v1.AuthService.ResetPassword:input_type -> synclet.publicapi.auth.v1.ResetPasswordRequest
+	26, // 33: synclet.publicapi.auth.v1.AuthService.CreateAPIKey:input_type -> synclet.publicapi.auth.v1.CreateAPIKeyRequest
+	28, // 34: synclet.publicapi.auth.v1.AuthService.RevokeAPIKey:input_type -> synclet.publicapi.auth.v1.RevokeAPIKeyRequest
+	30, // 35: synclet.publicapi.auth.v1.AuthService.ListAPIKeys:input_type -> synclet.publicapi.auth.v1.ListAPIKeysRequest
+	33, // 36: synclet.publicapi.auth.v1.AuthService.GetOIDCProviders:input_type -> synclet.publicapi.auth.v1.GetOIDCProvidersRequest
+	22, // 37: synclet.publicapi.auth.v1.AuthService.GetOAuthClient:input_type -> synclet.publicapi.auth.v1.GetOAuthClientRequest
+	24, // 38: synclet.publicapi.auth.v1.AuthService.AuthorizeOAuth:input_type -> synclet.publicapi.auth.v1.AuthorizeOAuthRequest
+	4,  // 39: synclet.publicapi.auth.v1.AuthService.Register:output_type -> synclet.publicapi.auth.v1.RegisterResponse
+	6,  // 40: synclet.publicapi.auth.v1.AuthService.Login:output_type -> synclet.publicapi.auth.v1.LoginResponse
+	8,  // 41: synclet.publicapi.auth.v1.AuthService.RefreshToken:output_type -> synclet.publicapi.auth.v1.RefreshTokenResponse
+	10, // 42: synclet.publicapi.auth.v1.AuthService.Logout:output_type -> synclet.publicapi.auth.v1.LogoutResponse
+	12, // 43: synclet.publicapi.auth.v1.AuthService.GetCurrentUser:output_type -> synclet.publicapi.auth.v1.GetCurrentUserResponse
+	14, // 44: synclet.publicapi.auth.v1.AuthService.UpdateProfile:output_type -> synclet.publicapi.auth.v1.UpdateProfileResponse
+	16, // 45: synclet.publicapi.auth.v1.AuthService.ChangePassword:output_type -> synclet.publicapi.auth.v1.ChangePasswordResponse
+	18, // 46: synclet.publicapi.auth.v1.AuthService.RequestPasswordReset:output_type -> synclet.publicapi.auth.v1.RequestPasswordResetResponse
+	20, // 47: synclet.publicapi.auth.v1.AuthService.ResetPassword:output_type -> synclet.publicapi.auth.v1.ResetPasswordResponse
+	27, // 48: synclet.publicapi.auth.v1.AuthService.CreateAPIKey:output_type -> synclet.publicapi.auth.v1.CreateAPIKeyResponse
+	29, // 49: synclet.publicapi.auth.v1.AuthService.RevokeAPIKey:output_type -> synclet.publicapi.auth.v1.RevokeAPIKeyResponse
+	31, // 50: synclet.publicapi.auth.v1.AuthService.ListAPIKeys:output_type -> synclet.publicapi.auth.v1.ListAPIKeysResponse
+	34, // 51: synclet.publicapi.auth.v1.AuthService.GetOIDCProviders:output_type -> synclet.publicapi.auth.v1.GetOIDCProvidersResponse
+	23, // 52: synclet.publicapi.auth.v1.AuthService.GetOAuthClient:output_type -> synclet.publicapi.auth.v1.GetOAuthClientResponse
+	25, // 53: synclet.publicapi.auth.v1.AuthService.AuthorizeOAuth:output_type -> synclet.publicapi.auth.v1.AuthorizeOAuthResponse
+	39, // [39:54] is the sub-list for method output_type
+	24, // [24:39] is the sub-list for method input_type
+	24, // [24:24] is the sub-list for extension type_name
+	24, // [24:24] is the sub-list for extension extendee
+	0,  // [0:24] is the sub-list for field type_name
 }
 
 func init() { file_synclet_publicapi_auth_v1_auth_proto_init() }
@@ -1715,13 +2061,14 @@ func file_synclet_publicapi_auth_v1_auth_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_synclet_publicapi_auth_v1_auth_proto_rawDesc), len(file_synclet_publicapi_auth_v1_auth_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   30,
+			NumEnums:      1,
+			NumMessages:   34,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_synclet_publicapi_auth_v1_auth_proto_goTypes,
 		DependencyIndexes: file_synclet_publicapi_auth_v1_auth_proto_depIdxs,
+		EnumInfos:         file_synclet_publicapi_auth_v1_auth_proto_enumTypes,
 		MessageInfos:      file_synclet_publicapi_auth_v1_auth_proto_msgTypes,
 	}.Build()
 	File_synclet_publicapi_auth_v1_auth_proto = out.File

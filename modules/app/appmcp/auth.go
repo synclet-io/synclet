@@ -7,16 +7,21 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/modelcontextprotocol/go-sdk/auth"
 
 	"github.com/synclet-io/synclet/pkg/connectutil"
 )
 
-// Principal is the user and workspace a bearer token acts for.
+// Principal is the user and workspace a bearer token acts for, with the
+// token's expiry and access level (empty for no limit).
 type Principal struct {
 	UserID      uuid.UUID
 	WorkspaceID uuid.UUID
+	Expiration  time.Time
+	Level       string
 }
 
 // BearerAuthenticator resolves one form of bearer token. claimed is false when
@@ -27,9 +32,25 @@ type BearerAuthenticator interface {
 	Authenticate(ctx context.Context, token string) (principal Principal, claimed bool, err error)
 }
 
-// APIKeyValidator validates a raw workspace API key.
+// Access levels of a key issued to an OAuth client. A plain API key has none.
+const (
+	LevelRead    = "read"
+	LevelActions = "actions"
+	LevelWrite   = "write"
+)
+
+// MCPKey is what a workspace API key grants on /mcp. Level is empty for a
+// plain API key.
+type MCPKey struct {
+	UserID      string
+	WorkspaceID string
+	Level       string
+	ExpiresAt   *time.Time
+}
+
+// APIKeyValidator validates a raw workspace API key, plain or OAuth-issued.
 type APIKeyValidator interface {
-	ValidateAPIKey(ctx context.Context, rawKey string) (userID, workspaceID string, err error)
+	ValidateMCPKey(ctx context.Context, rawKey string) (MCPKey, error)
 }
 
 const apiKeyPrefix = "synclet_sk_" //nolint:gosec // key prefix, not a credential
@@ -48,10 +69,12 @@ func (a *APIKeyAuthenticator) Authenticate(ctx context.Context, token string) (P
 		return Principal{}, false, nil
 	}
 
-	userID, workspaceID, err := a.validator.ValidateAPIKey(ctx, token)
+	key, err := a.validator.ValidateMCPKey(ctx, token)
 	if err != nil {
 		return Principal{}, true, err
 	}
+
+	userID, workspaceID := key.UserID, key.WorkspaceID
 
 	uid, err := uuid.Parse(userID)
 	if err != nil {
@@ -63,52 +86,103 @@ func (a *APIKeyAuthenticator) Authenticate(ctx context.Context, token string) (P
 		return Principal{}, true, fmt.Errorf("parsing API key workspace id: %w", err)
 	}
 
-	return Principal{UserID: uid, WorkspaceID: wsID}, true, nil
+	principal := Principal{UserID: uid, WorkspaceID: wsID, Level: key.Level}
+	if key.ExpiresAt != nil {
+		principal.Expiration = *key.ExpiresAt
+	}
+
+	return principal, true, nil
 }
 
-// requireBearer admits a request whose bearer token one of authenticators
-// accepts, with the principal's user and workspace in its context, and
-// answers 401 to any other.
-func requireBearer(authenticators []BearerAuthenticator, next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		token, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
-		if !ok || token == "" {
-			unauthorized(w)
+const (
+	extraWorkspaceID = "workspace_id"
+	extraLevel       = "level"
+)
 
-			return
-		}
-
+// tokenVerifier resolves a bearer token with the first of authenticators that
+// claims it. A token none claims, or one rejected as an invalid credential, is
+// auth.ErrInvalidToken alone, so the response does not say why; the reason is
+// logged.
+func tokenVerifier(authenticators []BearerAuthenticator) auth.TokenVerifier {
+	return func(ctx context.Context, token string, _ *http.Request) (*auth.TokenInfo, error) {
 		for _, authenticator := range authenticators {
-			principal, claimed, err := authenticator.Authenticate(r.Context(), token)
+			principal, claimed, err := authenticator.Authenticate(ctx, token)
 			if !claimed {
 				continue
 			}
 
 			if errors.Is(err, connectutil.ErrInvalidCredential) {
-				unauthorized(w)
+				slog.Default().InfoContext(ctx, "rejected MCP bearer token", "error", err)
 
-				return
+				return nil, auth.ErrInvalidToken
 			}
 
 			if err != nil {
-				slog.Default().ErrorContext(r.Context(), "authenticating MCP request", "error", err)
-				http.Error(w, "internal error", http.StatusInternalServerError)
+				slog.Default().ErrorContext(ctx, "authenticating MCP request", "error", err)
 
-				return
+				return nil, errors.New("internal error")
 			}
 
-			ctx := connectutil.ContextWithUserID(r.Context(), principal.UserID)
-			ctx = connectutil.ContextWithWorkspaceID(ctx, principal.WorkspaceID)
-			next.ServeHTTP(w, r.WithContext(ctx))
+			return &auth.TokenInfo{
+				UserID:     principal.UserID.String(),
+				Expiration: principal.Expiration,
+				Extra: map[string]any{
+					extraWorkspaceID: principal.WorkspaceID,
+					extraLevel:       principal.Level,
+				},
+			}, nil
+		}
+
+		return nil, auth.ErrInvalidToken
+	}
+}
+
+// requireBearer admits a request whose bearer token one of authenticators
+// accepts, with the token's user and workspace in its context, and answers
+// 401 with the protected resource metadata URL to any other.
+func requireBearer(resourceMetadataURL string, authenticators []BearerAuthenticator, next http.Handler) http.Handler {
+	withPrincipal := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		info := auth.TokenInfoFromContext(r.Context())
+
+		userID, err := uuid.Parse(info.UserID)
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
 
 			return
 		}
 
-		unauthorized(w)
+		workspaceID, _ := info.Extra[extraWorkspaceID].(uuid.UUID)
+		ctx := connectutil.ContextWithUserID(r.Context(), userID)
+		ctx = connectutil.ContextWithWorkspaceID(ctx, workspaceID)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+
+	return auth.RequireBearerToken(tokenVerifier(authenticators), &auth.RequireBearerTokenOptions{
+		ResourceMetadataURL:    resourceMetadataURL,
+		AllowMissingExpiration: true,
+	})(withPrincipal)
 }
 
-func unauthorized(w http.ResponseWriter) {
-	w.Header().Set("WWW-Authenticate", "Bearer")
-	http.Error(w, "unauthorized", http.StatusUnauthorized)
+// levelOf returns the access level of the request's token, empty for no limit.
+func levelOf(ctx context.Context) string {
+	info := auth.TokenInfoFromContext(ctx)
+	if info == nil {
+		return ""
+	}
+
+	level, _ := info.Extra[extraLevel].(string)
+
+	return level
+}
+
+// allows reports whether a token of level may use a tool of kind.
+func allows(level string, kind toolKind) bool {
+	switch level {
+	case "", LevelWrite:
+		return true
+	case LevelActions:
+		return kind == kindRead || kind == kindAction
+	default:
+		return kind == kindRead
+	}
 }

@@ -1,36 +1,37 @@
 {{- if and (include "synclet.mcpEnabled" .) (not (include "synclet.mcpShared" .)) }}
-{{- $hostname := required "mcp.ingress.hostname is required when mcp.ingress.mode is separate" .Values.mcp.ingress.hostname }}
+{{- $mcp := include "synclet.mcp" . | fromYaml }}
+{{- $hostname := required "mcp.ingress.hostname is required when mcp.ingress.mode is separate" $mcp.ingress.hostname }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: {{ include "synclet.fullname" . }}-mcp
   labels:
     {{- include "synclet.server.labels" . | nindent 4 }}
-  {{- with .Values.mcp.ingress.annotations }}
+  {{- with $mcp.ingress.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- with .Values.mcp.ingress.ingressClassName }}
+  {{- with $mcp.ingress.ingressClassName }}
   ingressClassName: {{ . }}
   {{- end }}
-  {{- if .Values.mcp.ingress.tls }}
+  {{- if $mcp.ingress.tls }}
   tls:
     - hosts:
         - {{ $hostname }}
-      secretName: {{ .Values.mcp.ingress.tlsSecretName | default (printf "%s-mcp-tls" (include "synclet.fullname" .)) }}
+      secretName: {{ $mcp.ingress.tlsSecretName | default (printf "%s-mcp-tls" (include "synclet.fullname" .)) }}
   {{- end }}
   rules:
     - host: {{ $hostname }}
       http:
         paths:
-          {{- range .Values.mcp.ingress.paths }}
+          {{- range $mcp.ingress.paths }}
           - path: {{ . }}
             pathType: Prefix
             backend:
               service:
                 name: {{ include "synclet.fullname" $ }}-mcp
                 port:
-                  number: {{ $.Values.mcp.service.port }}
+                  number: {{ $mcp.service.port }}
           {{- end }}
 {{- end }}

@@ -104,14 +104,16 @@ func (a dbPasswordResetToken) TableName() string {
 }
 
 type dbAPIKey struct {
-	ID          uuid.UUID  `gorm:"column:id"`
-	WorkspaceID uuid.UUID  `gorm:"column:workspace_id"`
-	UserID      uuid.UUID  `gorm:"column:user_id"`
-	Name        string     `gorm:"column:name;type:text"`
-	KeyHash     string     `gorm:"column:key_hash;type:text"`
-	LastUsedAt  *time.Time `gorm:"column:last_used_at"`
-	ExpiresAt   *time.Time `gorm:"column:expires_at"`
-	CreatedAt   time.Time  `gorm:"column:created_at"`
+	ID           uuid.UUID  `gorm:"column:id"`
+	WorkspaceID  uuid.UUID  `gorm:"column:workspace_id"`
+	UserID       uuid.UUID  `gorm:"column:user_id"`
+	Name         string     `gorm:"column:name;type:text"`
+	KeyHash      string     `gorm:"column:key_hash;type:text"`
+	LastUsedAt   *time.Time `gorm:"column:last_used_at"`
+	ExpiresAt    *time.Time `gorm:"column:expires_at"`
+	OAuthGrantID *uuid.UUID `gorm:"column:oauth_grant_id"`
+	OAuthLevel   *string    `gorm:"column:oauth_level;type:text"`
+	CreatedAt    time.Time  `gorm:"column:created_at"`
 }
 
 func convertAPIKeyToDB(src *authservice.APIKey) (*dbAPIKey, error) {
@@ -130,6 +132,20 @@ func convertAPIKeyToDB(src *authservice.APIKey) (*dbAPIKey, error) {
 		result.ExpiresAt = nil
 	} else {
 		result.ExpiresAt = toPtr((fromPtr(src.ExpiresAt)).UTC())
+	}
+	if src.OAuthGrantID == nil {
+		result.OAuthGrantID = nil
+	} else {
+		result.OAuthGrantID = toPtr(fromPtr(src.OAuthGrantID))
+	}
+	if src.OAuthLevel == nil {
+		result.OAuthLevel = nil
+	} else {
+		tmp12, err := convertOAuthAccessLevelToDB(fromPtr(src.OAuthLevel))
+		if err != nil {
+			return nil, err
+		}
+		result.OAuthLevel = toPtr(tmp12)
 	}
 	result.CreatedAt = (src.CreatedAt).UTC()
 	return result, nil
@@ -152,11 +168,214 @@ func convertAPIKeyFromDB(src *dbAPIKey) (*authservice.APIKey, error) {
 	} else {
 		result.ExpiresAt = toPtr(fromPtr(src.ExpiresAt))
 	}
+	if src.OAuthGrantID == nil {
+		result.OAuthGrantID = nil
+	} else {
+		result.OAuthGrantID = toPtr(fromPtr(src.OAuthGrantID))
+	}
+	if src.OAuthLevel == nil {
+		result.OAuthLevel = nil
+	} else {
+		tmp26, err := convertOAuthAccessLevelFromDB(fromPtr(src.OAuthLevel))
+		if err != nil {
+			return nil, err
+		}
+		result.OAuthLevel = toPtr(tmp26)
+	}
 	result.CreatedAt = src.CreatedAt
 	return result, nil
 }
 func (a dbAPIKey) TableName() string {
 	return "auth.api_keys"
+}
+
+type dbOAuthClient struct {
+	ID            uuid.UUID        `gorm:"column:id"`
+	ClientID      string           `gorm:"column:client_id;type:text"`
+	Name          string           `gorm:"column:name;type:text"`
+	RedirectURIs  stringSliceValue `gorm:"column:redirect_uris"`
+	LastGrantedAt *time.Time       `gorm:"column:last_granted_at"`
+	CreatedAt     time.Time        `gorm:"column:created_at"`
+}
+
+func convertOAuthClientToDB(src *authservice.OAuthClient) (*dbOAuthClient, error) {
+	result := &dbOAuthClient{}
+	result.ID = src.ID
+	result.ClientID = src.ClientID
+	result.Name = src.Name
+	tmp3 := make(stringSliceValue, 0, len(src.RedirectURIs))
+	for _, el := range src.RedirectURIs {
+		tmp3 = append(tmp3, el)
+	}
+	result.RedirectURIs = tmp3
+	if src.LastGrantedAt == nil {
+		result.LastGrantedAt = nil
+	} else {
+		result.LastGrantedAt = toPtr((fromPtr(src.LastGrantedAt)).UTC())
+	}
+	result.CreatedAt = (src.CreatedAt).UTC()
+	return result, nil
+}
+
+func convertOAuthClientFromDB(src *dbOAuthClient) (*authservice.OAuthClient, error) {
+	result := &authservice.OAuthClient{}
+	result.ID = src.ID
+	result.ClientID = src.ClientID
+	result.Name = src.Name
+	tmp11 := make([]string, 0, len(src.RedirectURIs))
+	for _, el := range src.RedirectURIs {
+
+		tmp11 = append(tmp11, el)
+	}
+	result.RedirectURIs = tmp11
+	if src.LastGrantedAt == nil {
+		result.LastGrantedAt = nil
+	} else {
+		result.LastGrantedAt = toPtr(fromPtr(src.LastGrantedAt))
+	}
+	result.CreatedAt = src.CreatedAt
+	return result, nil
+}
+func (a dbOAuthClient) TableName() string {
+	return "auth.oauth_clients"
+}
+
+type dbOAuthCode struct {
+	ID            uuid.UUID `gorm:"column:id"`
+	CodeHash      string    `gorm:"column:code_hash;type:text"`
+	ClientID      string    `gorm:"column:client_id;type:text"`
+	RedirectURI   string    `gorm:"column:redirect_uri;type:text"`
+	CodeChallenge string    `gorm:"column:code_challenge;type:text"`
+	UserID        uuid.UUID `gorm:"column:user_id"`
+	WorkspaceID   uuid.UUID `gorm:"column:workspace_id"`
+	Level         string    `gorm:"column:level;type:text"`
+	ExpiresAt     time.Time `gorm:"column:expires_at"`
+	CreatedAt     time.Time `gorm:"column:created_at"`
+}
+
+func convertOAuthCodeToDB(src *authservice.OAuthCode) (*dbOAuthCode, error) {
+	result := &dbOAuthCode{}
+	result.ID = src.ID
+	result.CodeHash = src.CodeHash
+	result.ClientID = src.ClientID
+	result.RedirectURI = src.RedirectURI
+	result.CodeChallenge = src.CodeChallenge
+	result.UserID = src.UserID
+	result.WorkspaceID = src.WorkspaceID
+	tmp7, err := convertOAuthAccessLevelToDB(src.Level)
+	if err != nil {
+		return nil, err
+	}
+	result.Level = tmp7
+	result.ExpiresAt = (src.ExpiresAt).UTC()
+	result.CreatedAt = (src.CreatedAt).UTC()
+	return result, nil
+}
+
+func convertOAuthCodeFromDB(src *dbOAuthCode) (*authservice.OAuthCode, error) {
+	result := &authservice.OAuthCode{}
+	result.ID = src.ID
+	result.CodeHash = src.CodeHash
+	result.ClientID = src.ClientID
+	result.RedirectURI = src.RedirectURI
+	result.CodeChallenge = src.CodeChallenge
+	result.UserID = src.UserID
+	result.WorkspaceID = src.WorkspaceID
+	tmp17, err := convertOAuthAccessLevelFromDB(src.Level)
+	if err != nil {
+		return nil, err
+	}
+	result.Level = tmp17
+	result.ExpiresAt = src.ExpiresAt
+	result.CreatedAt = src.CreatedAt
+	return result, nil
+}
+func (a dbOAuthCode) TableName() string {
+	return "auth.oauth_codes"
+}
+
+type dbOAuthGrant struct {
+	ID          uuid.UUID `gorm:"column:id"`
+	ClientID    string    `gorm:"column:client_id;type:text"`
+	UserID      uuid.UUID `gorm:"column:user_id"`
+	WorkspaceID uuid.UUID `gorm:"column:workspace_id"`
+	Level       string    `gorm:"column:level;type:text"`
+	CreatedAt   time.Time `gorm:"column:created_at"`
+}
+
+func convertOAuthGrantToDB(src *authservice.OAuthGrant) (*dbOAuthGrant, error) {
+	result := &dbOAuthGrant{}
+	result.ID = src.ID
+	result.ClientID = src.ClientID
+	result.UserID = src.UserID
+	result.WorkspaceID = src.WorkspaceID
+	tmp4, err := convertOAuthAccessLevelToDB(src.Level)
+	if err != nil {
+		return nil, err
+	}
+	result.Level = tmp4
+	result.CreatedAt = (src.CreatedAt).UTC()
+	return result, nil
+}
+
+func convertOAuthGrantFromDB(src *dbOAuthGrant) (*authservice.OAuthGrant, error) {
+	result := &authservice.OAuthGrant{}
+	result.ID = src.ID
+	result.ClientID = src.ClientID
+	result.UserID = src.UserID
+	result.WorkspaceID = src.WorkspaceID
+	tmp10, err := convertOAuthAccessLevelFromDB(src.Level)
+	if err != nil {
+		return nil, err
+	}
+	result.Level = tmp10
+	result.CreatedAt = src.CreatedAt
+	return result, nil
+}
+func (a dbOAuthGrant) TableName() string {
+	return "auth.oauth_grants"
+}
+
+type dbOAuthRefreshToken struct {
+	ID        uuid.UUID  `gorm:"column:id"`
+	GrantID   uuid.UUID  `gorm:"column:grant_id"`
+	TokenHash string     `gorm:"column:token_hash;type:text"`
+	UsedAt    *time.Time `gorm:"column:used_at"`
+	ExpiresAt time.Time  `gorm:"column:expires_at"`
+	CreatedAt time.Time  `gorm:"column:created_at"`
+}
+
+func convertOAuthRefreshTokenToDB(src *authservice.OAuthRefreshToken) (*dbOAuthRefreshToken, error) {
+	result := &dbOAuthRefreshToken{}
+	result.ID = src.ID
+	result.GrantID = src.GrantID
+	result.TokenHash = src.TokenHash
+	if src.UsedAt == nil {
+		result.UsedAt = nil
+	} else {
+		result.UsedAt = toPtr((fromPtr(src.UsedAt)).UTC())
+	}
+	result.ExpiresAt = (src.ExpiresAt).UTC()
+	result.CreatedAt = (src.CreatedAt).UTC()
+	return result, nil
+}
+
+func convertOAuthRefreshTokenFromDB(src *dbOAuthRefreshToken) (*authservice.OAuthRefreshToken, error) {
+	result := &authservice.OAuthRefreshToken{}
+	result.ID = src.ID
+	result.GrantID = src.GrantID
+	result.TokenHash = src.TokenHash
+	if src.UsedAt == nil {
+		result.UsedAt = nil
+	} else {
+		result.UsedAt = toPtr(fromPtr(src.UsedAt))
+	}
+	result.ExpiresAt = src.ExpiresAt
+	result.CreatedAt = src.CreatedAt
+	return result, nil
+}
+func (a dbOAuthRefreshToken) TableName() string {
+	return "auth.oauth_refresh_tokens"
 }
 
 type dbOIDCIdentity struct {

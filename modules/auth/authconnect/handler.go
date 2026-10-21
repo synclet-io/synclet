@@ -80,6 +80,32 @@ func mapError(err error) error {
 	return err
 }
 
+func oauthLevelToProto(level authservice.OAuthAccessLevel) authv1.OAuthAccessLevel {
+	switch level {
+	case authservice.OAuthAccessLevelRead:
+		return authv1.OAuthAccessLevel_OAUTH_ACCESS_LEVEL_READ
+	case authservice.OAuthAccessLevelActions:
+		return authv1.OAuthAccessLevel_OAUTH_ACCESS_LEVEL_ACTIONS
+	case authservice.OAuthAccessLevelWrite:
+		return authv1.OAuthAccessLevel_OAUTH_ACCESS_LEVEL_WRITE
+	default:
+		return authv1.OAuthAccessLevel_OAUTH_ACCESS_LEVEL_UNSPECIFIED
+	}
+}
+
+func oauthLevelFromProto(level authv1.OAuthAccessLevel) authservice.OAuthAccessLevel {
+	switch level {
+	case authv1.OAuthAccessLevel_OAUTH_ACCESS_LEVEL_READ:
+		return authservice.OAuthAccessLevelRead
+	case authv1.OAuthAccessLevel_OAUTH_ACCESS_LEVEL_ACTIONS:
+		return authservice.OAuthAccessLevelActions
+	case authv1.OAuthAccessLevel_OAUTH_ACCESS_LEVEL_WRITE:
+		return authservice.OAuthAccessLevelWrite
+	default:
+		return 0
+	}
+}
+
 // Handler implements the AuthService ConnectRPC handler.
 type Handler struct {
 	authv1connect.UnimplementedAuthServiceHandler
@@ -97,6 +123,8 @@ type Handler struct {
 	revokeAPIKey         *authservice.RevokeAPIKey
 	listAPIKeys          *authservice.ListAPIKeys
 	getOIDCProviders     *authservice.GetOIDCProviders
+	getOAuthClient       *authservice.GetOAuthClient
+	issueOAuthCode       *authservice.IssueOAuthCode
 	cookieConfig         connectutil.CookieConfig
 }
 
@@ -116,6 +144,8 @@ func NewHandler(
 	revokeAPIKey *authservice.RevokeAPIKey,
 	listAPIKeys *authservice.ListAPIKeys,
 	getOIDCProviders *authservice.GetOIDCProviders,
+	getOAuthClient *authservice.GetOAuthClient,
+	issueOAuthCode *authservice.IssueOAuthCode,
 	cookieConfig connectutil.CookieConfig,
 ) *Handler {
 	return &Handler{
@@ -133,6 +163,8 @@ func NewHandler(
 		revokeAPIKey:         revokeAPIKey,
 		listAPIKeys:          listAPIKeys,
 		getOIDCProviders:     getOIDCProviders,
+		getOAuthClient:       getOAuthClient,
+		issueOAuthCode:       issueOAuthCode,
 		cookieConfig:         cookieConfig,
 	}
 }
@@ -374,7 +406,12 @@ func (h *Handler) CreateAPIKey(ctx context.Context, req *connect.Request[authv1.
 		expiresAt = &t
 	}
 
-	rawKey, apiKey, err := h.createAPIKey.Execute(ctx, wsID, userID, req.Msg.GetName(), expiresAt)
+	rawKey, apiKey, err := h.createAPIKey.Execute(ctx, authservice.CreateAPIKeyParams{
+		WorkspaceID: wsID,
+		UserID:      userID,
+		Name:        req.Msg.GetName(),
+		ExpiresAt:   expiresAt,
+	})
 	if err != nil {
 		return nil, mapError(fmt.Errorf("creating API key: %w", err))
 	}
@@ -441,6 +478,11 @@ func apiKeyToProto(apiKey *authservice.APIKey) *authv1.APIKeyInfo {
 
 	if apiKey.LastUsedAt != nil {
 		info.LastUsedAt = timestamppb.New(*apiKey.LastUsedAt)
+	}
+
+	if apiKey.OAuthLevel != nil {
+		info.OauthClientName = apiKey.Name
+		info.OauthLevel = oauthLevelToProto(*apiKey.OAuthLevel)
 	}
 
 	return info

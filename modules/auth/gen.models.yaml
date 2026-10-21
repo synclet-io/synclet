@@ -1,4 +1,12 @@
 types:
+  enums:
+    - name: OAuthAccessLevel
+      values: [ Read, Actions, Write ]
+      helpers:
+        is_valid: true
+        stringer: true
+        is: true
+
   models:
     - name: User
       table_name: auth.users
@@ -37,6 +45,52 @@ types:
         - { name: KeyHash, type: string, filterable: true }
         - { name: LastUsedAt, type: "*timestamp" }
         - { name: ExpiresAt, type: "*timestamp" }
+        - { name: OAuthGrantID, type: "*uuid", filterable: true, database_name: oauth_grant_id }
+        - { name: OAuthLevel, type: "*OAuthAccessLevel", database_name: oauth_level }
+        - { name: CreatedAt, type: timestamp }
+
+    - name: OAuthClient
+      table_name: auth.oauth_clients
+      fields:
+        - { name: ID, type: uuid, filterable: true }
+        - { name: ClientID, type: string, filterable: true }
+        - { name: Name, type: string }
+        - { name: RedirectURIs, type: "[]string", database_name: redirect_uris }
+        - { name: LastGrantedAt, type: "*timestamp" }
+        - { name: CreatedAt, type: timestamp }
+
+    - name: OAuthCode
+      table_name: auth.oauth_codes
+      fields:
+        - { name: ID, type: uuid, filterable: true }
+        - { name: CodeHash, type: string, filterable: true }
+        - { name: ClientID, type: string, filterable: true }
+        - { name: RedirectURI, type: string }
+        - { name: CodeChallenge, type: string }
+        - { name: UserID, type: uuid }
+        - { name: WorkspaceID, type: uuid }
+        - { name: Level, type: OAuthAccessLevel }
+        - { name: ExpiresAt, type: timestamp, filterable: true }
+        - { name: CreatedAt, type: timestamp }
+
+    - name: OAuthGrant
+      table_name: auth.oauth_grants
+      fields:
+        - { name: ID, type: uuid, filterable: true }
+        - { name: ClientID, type: string, filterable: true }
+        - { name: UserID, type: uuid, filterable: true }
+        - { name: WorkspaceID, type: uuid, filterable: true }
+        - { name: Level, type: OAuthAccessLevel }
+        - { name: CreatedAt, type: timestamp }
+
+    - name: OAuthRefreshToken
+      table_name: auth.oauth_refresh_tokens
+      fields:
+        - { name: ID, type: uuid, filterable: true }
+        - { name: GrantID, type: uuid, filterable: true }
+        - { name: TokenHash, type: string, filterable: true }
+        - { name: UsedAt, type: "*timestamp" }
+        - { name: ExpiresAt, type: timestamp, filterable: true }
         - { name: CreatedAt, type: timestamp }
 
     - name: OIDCIdentity

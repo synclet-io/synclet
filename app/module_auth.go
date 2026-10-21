@@ -83,6 +83,7 @@ func authDependenciesModule() fx.Option {
 	return fx.Provide(
 		fx.Annotate(authstorage.NewStorages, fx.As(new(authservice.Storage))),
 		fx.Annotate(authstorage.NewUserIDStorage, fx.As(new(authservice.UserIDStorage))),
+		fx.Annotate(authstorage.NewOAuthStorage, fx.As(new(authservice.OAuthStorage))),
 		fx.Annotate(authadapt.NewWorkspaceAutoAssigner, fx.As(new(authservice.WorkspaceAutoAssigner))),
 		fx.Annotate(authadapt.NewDefaultWorkspaceRoleApplier, fx.As(new(authservice.DefaultWorkspaceRoleApplier))),
 		fx.Annotate(authadapt.NewAuditRecorder, fx.As(new(authservice.AuditRecorder))),
@@ -120,6 +121,12 @@ func authUseCasesModule() fx.Option {
 		authservice.NewStartOIDCLogin,
 		authservice.NewHandleOIDCCallback,
 		authservice.NewPurgeWorkspaceAPIKeys,
+		authservice.NewRegisterOAuthClient,
+		authservice.NewGetOAuthClient,
+		authservice.NewIssueOAuthCode,
+		authservice.NewExchangeOAuthCode,
+		authservice.NewRefreshOAuthToken,
+		authservice.NewCleanupOAuthGrants,
 	)
 }
 

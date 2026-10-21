@@ -103,7 +103,9 @@ var audited = map[string][]string{
 }
 
 // exempt maps mutating RPCs that intentionally record no audit event to the reason why.
-var exempt = map[string]string{}
+var exempt = map[string]string{
+	"authconnect.Handler.AuthorizeOAuth": "issues a one-time code that expires in 10 minutes; the API key it is exchanged for is audited by ExchangeOAuthCode",
+}
 
 func TestMutatingRPCsAreAudited(t *testing.T) {
 	root := repoRoot(t)

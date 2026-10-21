@@ -18,7 +18,7 @@ func TestCreateAPIKey_RecordsAuditEventWithoutSecrets(t *testing.T) {
 	wsID, userID := uuid.New(), uuid.New()
 	expiresAt := time.Now().Add(24 * time.Hour)
 
-	rawKey, created, err := NewCreateAPIKey(store, audit).Execute(ctx, wsID, userID, "ci", &expiresAt)
+	rawKey, created, err := NewCreateAPIKey(store, audit).Execute(ctx, CreateAPIKeyParams{WorkspaceID: wsID, UserID: userID, Name: "ci", ExpiresAt: &expiresAt})
 	require.NoError(t, err)
 
 	require.Len(t, audit.events, 1)
@@ -42,7 +42,7 @@ func TestCreateAPIKey_RejectsExpiryInThePast(t *testing.T) {
 	store := newFakeStorage()
 	expiresAt := time.Now().Add(-time.Minute)
 
-	_, _, err := NewCreateAPIKey(store, &capturingAuditRecorder{}).Execute(context.Background(), uuid.New(), uuid.New(), "ci", &expiresAt)
+	_, _, err := NewCreateAPIKey(store, &capturingAuditRecorder{}).Execute(context.Background(), CreateAPIKeyParams{WorkspaceID: uuid.New(), UserID: uuid.New(), Name: "ci", ExpiresAt: &expiresAt})
 
 	var validationErr *ValidationError
 	require.ErrorAs(t, err, &validationErr)

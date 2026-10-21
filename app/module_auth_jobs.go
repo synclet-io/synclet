@@ -13,7 +13,10 @@ import (
 func authJobsModule(options *RunAppOptions) fx.Option {
 	return fx.Options(
 		conditionalFxOptions(options.RunJobs, func() fx.Option {
-			return pnpjobber.Module(newAuthTokenCleanupJob)
+			return fx.Options(
+				pnpjobber.Module(newAuthTokenCleanupJob),
+				pnpjobber.Module(newOAuthCleanupJob),
+			)
 		}),
 	)
 }
@@ -26,6 +29,21 @@ func newAuthTokenCleanupJob(cfg *authConfig, cleanup *authservice.CleanupExpired
 		Job: func(ctx context.Context) error {
 			if err := cleanup.Execute(ctx); err != nil {
 				logger.WithError(err).Error(ctx, "auth token cleanup failed")
+			}
+
+			return nil
+		},
+	})
+}
+
+func newOAuthCleanupJob(cfg *authConfig, cleanup *authservice.CleanupOAuthGrants, logger *logging.Logger) jobber.Job {
+	return jobber.NewIntervalJob(jobber.IntervalJobParams{
+		Name:             "auth_oauth_cleanup",
+		Interval:         cfg.TokenCleanupInterval,
+		StartImmediately: false,
+		Job: func(ctx context.Context) error {
+			if err := cleanup.Execute(ctx); err != nil {
+				logger.WithError(err).Error(ctx, "OAuth grant cleanup failed")
 			}
 
 			return nil

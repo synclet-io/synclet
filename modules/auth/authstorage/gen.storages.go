@@ -37,6 +37,18 @@ func (s Storages) PasswordResetTokens() authsvc.PasswordResetTokensStorage {
 func (s Storages) APIKeys() authsvc.APIKeysStorage {
 	return NewAPIKeysStorage(s.db, s.logger)
 }
+func (s Storages) OAuthClients() authsvc.OAuthClientsStorage {
+	return NewOAuthClientsStorage(s.db, s.logger)
+}
+func (s Storages) OAuthCodes() authsvc.OAuthCodesStorage {
+	return NewOAuthCodesStorage(s.db, s.logger)
+}
+func (s Storages) OAuthGrants() authsvc.OAuthGrantsStorage {
+	return NewOAuthGrantsStorage(s.db, s.logger)
+}
+func (s Storages) OAuthRefreshTokens() authsvc.OAuthRefreshTokensStorage {
+	return NewOAuthRefreshTokensStorage(s.db, s.logger)
+}
 func (s Storages) OIDCIdentities() authsvc.OIDCIdentitiesStorage {
 	return NewOIDCIdentitiesStorage(s.db, s.logger)
 }
@@ -149,16 +161,110 @@ func NewAPIKeysStorage(db *gorm.DB, logger *logging.Logger) authsvc.APIKeysStora
 			return buildAPIKeyFilterExpr(filter)
 		},
 		FieldMapping: map[any]clause.Column{
-			authsvc.APIKeyFieldID:          {Name: "id"},
-			authsvc.APIKeyFieldWorkspaceID: {Name: "workspace_id"},
-			authsvc.APIKeyFieldUserID:      {Name: "user_id"},
-			authsvc.APIKeyFieldName:        {Name: "name"},
-			authsvc.APIKeyFieldKeyHash:     {Name: "key_hash"},
-			authsvc.APIKeyFieldLastUsedAt:  {Name: "last_used_at"},
-			authsvc.APIKeyFieldExpiresAt:   {Name: "expires_at"},
-			authsvc.APIKeyFieldCreatedAt:   {Name: "created_at"},
+			authsvc.APIKeyFieldID:           {Name: "id"},
+			authsvc.APIKeyFieldWorkspaceID:  {Name: "workspace_id"},
+			authsvc.APIKeyFieldUserID:       {Name: "user_id"},
+			authsvc.APIKeyFieldName:         {Name: "name"},
+			authsvc.APIKeyFieldKeyHash:      {Name: "key_hash"},
+			authsvc.APIKeyFieldLastUsedAt:   {Name: "last_used_at"},
+			authsvc.APIKeyFieldExpiresAt:    {Name: "expires_at"},
+			authsvc.APIKeyFieldOAuthGrantID: {Name: "oauth_grant_id"},
+			authsvc.APIKeyFieldOAuthLevel:   {Name: "oauth_level"},
+			authsvc.APIKeyFieldCreatedAt:    {Name: "created_at"},
 		},
 		LockScope: "auth.APIKeys",
+	}
+}
+
+func NewOAuthClientsStorage(db *gorm.DB, logger *logging.Logger) authsvc.OAuthClientsStorage {
+	return dbutil.GormEntityStorage[authsvc.OAuthClient, dbOAuthClient, authsvc.OAuthClientFilter]{
+		Logger:            logger,
+		DB:                db,
+		DBErrorsWrapper:   wrapOAuthClientQueryError,
+		ConvertToInternal: convertOAuthClientToDB,
+		ConvertToExternal: convertOAuthClientFromDB,
+		BuildFilterExpression: func(filter *authsvc.OAuthClientFilter) (clause.Expression, error) {
+			return buildOAuthClientFilterExpr(filter)
+		},
+		FieldMapping: map[any]clause.Column{
+			authsvc.OAuthClientFieldID:            {Name: "id"},
+			authsvc.OAuthClientFieldClientID:      {Name: "client_id"},
+			authsvc.OAuthClientFieldName:          {Name: "name"},
+			authsvc.OAuthClientFieldRedirectURIs:  {Name: "redirect_uris"},
+			authsvc.OAuthClientFieldLastGrantedAt: {Name: "last_granted_at"},
+			authsvc.OAuthClientFieldCreatedAt:     {Name: "created_at"},
+		},
+		LockScope: "auth.OAuthClients",
+	}
+}
+
+func NewOAuthCodesStorage(db *gorm.DB, logger *logging.Logger) authsvc.OAuthCodesStorage {
+	return dbutil.GormEntityStorage[authsvc.OAuthCode, dbOAuthCode, authsvc.OAuthCodeFilter]{
+		Logger:            logger,
+		DB:                db,
+		DBErrorsWrapper:   wrapOAuthCodeQueryError,
+		ConvertToInternal: convertOAuthCodeToDB,
+		ConvertToExternal: convertOAuthCodeFromDB,
+		BuildFilterExpression: func(filter *authsvc.OAuthCodeFilter) (clause.Expression, error) {
+			return buildOAuthCodeFilterExpr(filter)
+		},
+		FieldMapping: map[any]clause.Column{
+			authsvc.OAuthCodeFieldID:            {Name: "id"},
+			authsvc.OAuthCodeFieldCodeHash:      {Name: "code_hash"},
+			authsvc.OAuthCodeFieldClientID:      {Name: "client_id"},
+			authsvc.OAuthCodeFieldRedirectURI:   {Name: "redirect_uri"},
+			authsvc.OAuthCodeFieldCodeChallenge: {Name: "code_challenge"},
+			authsvc.OAuthCodeFieldUserID:        {Name: "user_id"},
+			authsvc.OAuthCodeFieldWorkspaceID:   {Name: "workspace_id"},
+			authsvc.OAuthCodeFieldLevel:         {Name: "level"},
+			authsvc.OAuthCodeFieldExpiresAt:     {Name: "expires_at"},
+			authsvc.OAuthCodeFieldCreatedAt:     {Name: "created_at"},
+		},
+		LockScope: "auth.OAuthCodes",
+	}
+}
+
+func NewOAuthGrantsStorage(db *gorm.DB, logger *logging.Logger) authsvc.OAuthGrantsStorage {
+	return dbutil.GormEntityStorage[authsvc.OAuthGrant, dbOAuthGrant, authsvc.OAuthGrantFilter]{
+		Logger:            logger,
+		DB:                db,
+		DBErrorsWrapper:   wrapOAuthGrantQueryError,
+		ConvertToInternal: convertOAuthGrantToDB,
+		ConvertToExternal: convertOAuthGrantFromDB,
+		BuildFilterExpression: func(filter *authsvc.OAuthGrantFilter) (clause.Expression, error) {
+			return buildOAuthGrantFilterExpr(filter)
+		},
+		FieldMapping: map[any]clause.Column{
+			authsvc.OAuthGrantFieldID:          {Name: "id"},
+			authsvc.OAuthGrantFieldClientID:    {Name: "client_id"},
+			authsvc.OAuthGrantFieldUserID:      {Name: "user_id"},
+			authsvc.OAuthGrantFieldWorkspaceID: {Name: "workspace_id"},
+			authsvc.OAuthGrantFieldLevel:       {Name: "level"},
+			authsvc.OAuthGrantFieldCreatedAt:   {Name: "created_at"},
+		},
+		LockScope: "auth.OAuthGrants",
+	}
+}
+
+func NewOAuthRefreshTokensStorage(db *gorm.DB, logger *logging.Logger) authsvc.OAuthRefreshTokensStorage {
+	return dbutil.GormEntityStorage[authsvc.OAuthRefreshToken, dbOAuthRefreshToken, authsvc.OAuthRefreshTokenFilter]{
+		Logger:            logger,
+		DB:                db,
+		DBErrorsWrapper:   wrapOAuthRefreshTokenQueryError,
+		ConvertToInternal: convertOAuthRefreshTokenToDB,
+		ConvertToExternal: convertOAuthRefreshTokenFromDB,
+		BuildFilterExpression: func(filter *authsvc.OAuthRefreshTokenFilter) (clause.Expression, error) {
+			return buildOAuthRefreshTokenFilterExpr(filter)
+		},
+		FieldMapping: map[any]clause.Column{
+			authsvc.OAuthRefreshTokenFieldID:        {Name: "id"},
+			authsvc.OAuthRefreshTokenFieldGrantID:   {Name: "grant_id"},
+			authsvc.OAuthRefreshTokenFieldTokenHash: {Name: "token_hash"},
+			authsvc.OAuthRefreshTokenFieldUsedAt:    {Name: "used_at"},
+			authsvc.OAuthRefreshTokenFieldExpiresAt: {Name: "expires_at"},
+			authsvc.OAuthRefreshTokenFieldCreatedAt: {Name: "created_at"},
+		},
+		LockScope: "auth.OAuthRefreshTokens",
 	}
 }
 
