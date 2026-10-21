@@ -78,7 +78,8 @@ func (mr *MessageReader) decode(line []byte) (*AirbyteMessage, bool) {
 
 	var msg AirbyteMessage
 	if err := json.Unmarshal(line, &msg); err != nil {
-		mr.logger.WithError(err).Warn(context.Background(), "skipping unparseable line", "line", truncateLine(string(line[:min(len(line), 256)]), 200))
+		// The line may echo connector config secrets, so only its size is logged.
+		mr.logger.WithError(err).Warn(context.Background(), "skipping unparseable line", "bytes", len(line))
 		return nil, false
 	}
 
@@ -182,13 +183,6 @@ func isKnownMessageType(t MessageType) bool {
 	default:
 		return false
 	}
-}
-
-func truncateLine(line string, maxLen int) string {
-	if len(line) <= maxLen {
-		return line
-	}
-	return line[:maxLen] + "..."
 }
 
 func formatSize(n int) string {

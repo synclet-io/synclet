@@ -205,12 +205,6 @@ func TestIsKnownMessageType(t *testing.T) {
 	assert.False(t, isKnownMessageType(""))
 }
 
-func TestTruncateLine(t *testing.T) {
-	assert.Equal(t, "short", truncateLine("short", 10))
-	assert.Equal(t, "0123456789...", truncateLine("0123456789extra", 10))
-	assert.Equal(t, "", truncateLine("", 10))
-}
-
 func TestMessageWriter_Write(t *testing.T) {
 	t.Run("writes JSON line", func(t *testing.T) {
 		var buf strings.Builder
