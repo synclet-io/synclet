@@ -3,6 +3,7 @@ package protocol
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"strings"
 	"testing"
@@ -394,4 +395,92 @@ func TestMessageReader_LargeMessages(t *testing.T) {
 func TestMessageSizeLimits(t *testing.T) {
 	assert.Equal(t, "50 MiB", formatSize(TaskMessageMaxSize))
 	assert.Equal(t, "16 MiB", formatSize(SyncMessageMaxSize))
+}
+
+// recordLineOfSize returns a RECORD line of exactly size bytes and its data.
+func recordLineOfSize(t *testing.T, size int, fill byte) (line, data string) {
+	t.Helper()
+
+	prefix := `{"type":"RECORD","record":{"stream":"s","data":`
+	suffix := `,"emitted_at":0}}`
+	data = `{"v":"` + strings.Repeat(string(fill), size-len(prefix)-len(suffix)-len(`{"v":""}`)) + `"}`
+	line = prefix + data + suffix
+	require.Len(t, line, size)
+
+	return line, data
+}
+
+func TestMessageReader_LinesAtBufferBoundaries(t *testing.T) {
+	sizes := []int{initialBufferSize - 2, initialBufferSize - 1, initialBufferSize, initialBufferSize + 1, 2 * initialBufferSize}
+
+	for _, eol := range []string{"\n", "\r\n"} {
+		for _, size := range sizes {
+			line, data := recordLineOfSize(t, size, 'q')
+			reader := NewMessageReader(strings.NewReader(line+eol+recordLine+eol), SyncMessageMaxSize)
+
+			msg, err := reader.Read()
+			require.NoError(t, err, "size %d eol %q", size, eol)
+			assert.Equal(t, data, string(msg.Record.Data), "size %d eol %q", size, eol)
+
+			msg, err = reader.Read()
+			require.NoError(t, err, "size %d eol %q", size, eol)
+			assert.Equal(t, "users", msg.Record.Stream)
+
+			_, err = reader.Read()
+			require.ErrorIs(t, err, io.EOF)
+		}
+	}
+}
+
+func TestMessageReader_MessagesOutliveLaterReads(t *testing.T) {
+	var lines, data []string
+	for i, size := range []int{3 * initialBufferSize, 100, 3 * initialBufferSize, 100, 2 * retainedLineSize, 100} {
+		line, d := recordLineOfSize(t, size, byte('a'+i))
+		lines = append(lines, line)
+		data = append(data, d)
+	}
+
+	reader := NewMessageReader(strings.NewReader(strings.Join(lines, "\n")+"\n"), SyncMessageMaxSize)
+
+	var messages []*AirbyteMessage
+	for range lines {
+		msg, err := reader.Read()
+		require.NoError(t, err)
+		messages = append(messages, msg)
+	}
+
+	for i, msg := range messages {
+		assert.Equal(t, data[i], string(msg.Record.Data), "message %d", i)
+	}
+}
+
+type failingReader struct {
+	data []byte
+	err  error
+}
+
+func (r *failingReader) Read(p []byte) (int, error) {
+	if len(r.data) == 0 {
+		return 0, r.err
+	}
+
+	n := copy(p, r.data)
+	r.data = r.data[n:]
+
+	return n, nil
+}
+
+func TestMessageReader_ReadErrorMidLineIsReturnedAndSticky(t *testing.T) {
+	readErr := errors.New("pipe broke")
+	reader := NewMessageReader(&failingReader{data: []byte(recordLine + "\n" + `{"type":"RECO`), err: readErr}, SyncMessageMaxSize)
+
+	msg, err := reader.Read()
+	require.NoError(t, err)
+	assert.Equal(t, MessageTypeRecord, msg.Type)
+
+	_, err = reader.Read()
+	require.ErrorIs(t, err, readErr)
+
+	_, err = reader.Read()
+	require.ErrorIs(t, err, readErr)
 }
