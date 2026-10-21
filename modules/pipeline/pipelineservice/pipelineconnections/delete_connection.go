@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/saturn4er/boilerplate-go/lib/dbutil"
 	"github.com/saturn4er/boilerplate-go/lib/filter"
 
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
@@ -31,30 +32,43 @@ func NewDeleteConnection(storage pipelineservice.Storage, audit pipelineservice.
 // returns a not-found error when no such connection exists, and
 // ErrConnectionInWorkflow while the connection is a step of a workflow.
 func (uc *DeleteConnection) Execute(ctx context.Context, params DeleteConnectionParams) error {
-	existing, err := uc.storage.Connections().First(ctx, &pipelineservice.ConnectionFilter{
-		ID:          filter.Equals(params.ID),
-		WorkspaceID: filter.Equals(params.WorkspaceID),
-	})
-	if err != nil {
-		return fmt.Errorf("getting connection: %w", err)
-	}
+	var existing *pipelineservice.Connection
 
-	steps, err := uc.storage.WorkflowSteps().Count(ctx, &pipelineservice.WorkflowStepFilter{
-		ConnectionID: filter.Equals(existing.ID),
-	})
-	if err != nil {
-		return fmt.Errorf("checking workflow steps of connection: %w", err)
-	}
+	// The row lock makes a concurrent step insert, which takes a key-share
+	// lock on the connection, either finish before the count or wait for the
+	// delete.
+	if err := uc.storage.ExecuteInTransaction(ctx, func(ctx context.Context, tx pipelineservice.Storage) error {
+		conn, err := tx.Connections().First(ctx, &pipelineservice.ConnectionFilter{
+			ID:          filter.Equals(params.ID),
+			WorkspaceID: filter.Equals(params.WorkspaceID),
+		}, dbutil.WithForUpdate())
+		if err != nil {
+			return fmt.Errorf("getting connection: %w", err)
+		}
 
-	if steps > 0 {
-		return pipelineservice.ErrConnectionInWorkflow
-	}
+		steps, err := tx.WorkflowSteps().Count(ctx, &pipelineservice.WorkflowStepFilter{
+			ConnectionID: filter.Equals(conn.ID),
+		})
+		if err != nil {
+			return fmt.Errorf("checking workflow steps of connection: %w", err)
+		}
 
-	if err := uc.storage.Connections().Delete(ctx, &pipelineservice.ConnectionFilter{
-		ID:          filter.Equals(existing.ID),
-		WorkspaceID: filter.Equals(params.WorkspaceID),
+		if steps > 0 {
+			return pipelineservice.ErrConnectionInWorkflow
+		}
+
+		if err := tx.Connections().Delete(ctx, &pipelineservice.ConnectionFilter{
+			ID:          filter.Equals(conn.ID),
+			WorkspaceID: filter.Equals(params.WorkspaceID),
+		}); err != nil {
+			return fmt.Errorf("deleting connection: %w", err)
+		}
+
+		existing = conn
+
+		return nil
 	}); err != nil {
-		return fmt.Errorf("deleting connection: %w", err)
+		return err
 	}
 
 	uc.audit.Record(ctx, pipelineservice.AuditEvent{

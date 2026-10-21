@@ -131,6 +131,10 @@ func (s *createConnStore) WorkflowSteps() pipelineservice.WorkflowStepsStorage {
 	return s.workflows.WorkflowSteps()
 }
 
+func (s *createConnStore) ExecuteInTransaction(ctx context.Context, cb func(ctx context.Context, tx pipelineservice.Storage) error) error {
+	return cb(ctx, s)
+}
+
 func newCreateConnStore(workspaceID, sourceID, destID uuid.UUID) *createConnStore {
 	return &createConnStore{
 		sources: &createConnSourcesStorage{
