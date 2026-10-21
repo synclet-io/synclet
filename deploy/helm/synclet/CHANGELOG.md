@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/synclet-io/synclet/compare/synclet-helm-v0.7.0...synclet-helm-v0.8.0) (2026-10-21)
+
+
+### Features
+
+* **auth:** set default workspace role from OIDC claim ([cb19728](https://github.com/synclet-io/synclet/commit/cb19728c299a6a5afd3d87475536b83d7b934b5b))
+
 ## [0.7.0](https://github.com/synclet-io/synclet/compare/synclet-helm-v0.6.0...synclet-helm-v0.7.0) (2026-10-20)
 
 
