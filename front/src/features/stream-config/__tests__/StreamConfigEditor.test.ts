@@ -70,7 +70,7 @@ describe('turning streams on', () => {
   }
 
   function current(wrapper: ReturnType<typeof mountEditor>): StreamRow {
-    return (wrapper.props('streams') as StreamRow[])[0]
+    return (wrapper.props() as { streams: StreamRow[] }).streams[0]
   }
 
   it('applies the defaults to a stream that was never configured', async () => {
@@ -110,7 +110,7 @@ describe('namespace sections', () => {
   }
 
   function enabledNames(wrapper: ReturnType<typeof mountEditor>): string[] {
-    return (wrapper.props('streams') as StreamRow[]).filter(s => s.enabled).map(s => `${s.namespace}.${s.name}`)
+    return (wrapper.props() as { streams: StreamRow[] }).streams.filter(s => s.enabled).map(s => `${s.namespace}.${s.name}`)
   }
 
   function namespaceCheckbox(wrapper: ReturnType<typeof mountEditor>, label: string) {
@@ -190,7 +190,7 @@ describe('bulk sync mode', () => {
     ])
     await wrapper.find('select[aria-label="Sync mode of selected streams"]').setValue('incremental|append')
 
-    const modes = (wrapper.props('streams') as StreamRow[]).map(s => [s.name, `${s.syncMode}|${s.destinationSyncMode}`])
+    const modes = (wrapper.props() as { streams: StreamRow[] }).streams.map(s => [s.name, `${s.syncMode}|${s.destinationSyncMode}`])
     expect(modes).toEqual([
       ['a', 'incremental|append'],
       ['b', 'full_refresh|overwrite'],
