@@ -117,13 +117,18 @@ type sourceRead struct {
 // readSource reads the source stream on its own goroutine so the router can
 // stop waiting on a silent source. The goroutine exits after delivering EOF or
 // an error, or once done is closed; a Read blocked at that point returns when
-// the caller tears down the source.
-func readSource(reader *protocol.MessageReader, done <-chan struct{}) <-chan sourceRead {
+// the caller tears down the source. Secrets of a config the source replaces
+// through CONTROL are added to redactor before the next Read, which may
+// already build an error from the source's stderr.
+func readSource(reader *protocol.MessageReader, redactor *Redactor, done <-chan struct{}) <-chan sourceRead {
 	reads := make(chan sourceRead)
 
 	go func() {
 		for {
 			msg, err := reader.Read()
+			if err == nil && msg.Control != nil {
+				redactor.Add(controlConfig(msg.Control)...)
+			}
 
 			select {
 			case reads <- sourceRead{msg: msg, err: err}:
@@ -148,7 +153,7 @@ func routeSourceMessages(ctx context.Context, reader *protocol.MessageReader, wr
 	done := make(chan struct{})
 	defer close(done)
 
-	reads := readSource(reader, done)
+	reads := readSource(reader, cfg.Redactor, done)
 
 	idleTimer := time.NewTimer(cfg.IdleTimeout)
 	idleTimer.Stop()

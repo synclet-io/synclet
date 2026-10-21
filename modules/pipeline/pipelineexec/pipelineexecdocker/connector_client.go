@@ -110,8 +110,9 @@ func (c *ConnectorClient) Discover(ctx context.Context, image string, config jso
 // Read starts a source connector and returns its stdout for the caller to read messages from.
 // The caller must close the returned ReadCloser and call the cleanup function when done.
 // When the connector exits with a non-zero code, the returned reader surfaces the error
-// after all buffered messages are consumed (at the point where it would normally return EOF).
-func (c *ConnectorClient) Read(ctx context.Context, image string, config json.RawMessage, catalog *protocol.ConfiguredAirbyteCatalog, state json.RawMessage, labels map[string]string, limits ResourceLimits) (io.ReadCloser, func(), error) {
+// after all buffered messages are consumed (at the point where it would normally return EOF),
+// with its stderr masked by redactor.
+func (c *ConnectorClient) Read(ctx context.Context, image string, config json.RawMessage, redactor *pipelineexec.Redactor, catalog *protocol.ConfiguredAirbyteCatalog, state json.RawMessage, labels map[string]string, limits ResourceLimits) (io.ReadCloser, func(), error) {
 	catalogBytes, err := json.Marshal(catalog)
 	if err != nil {
 		return nil, nil, fmt.Errorf("read: marshaling catalog: %w", err)
@@ -155,7 +156,7 @@ func (c *ConnectorClient) Read(ctx context.Context, image string, config json.Ra
 		_ = c.runner.Remove(context.Background(), result.ContainerID)
 	}
 
-	wrapped := newExitAwareReader(result.Stdout, result.Stderr, result.Done, &result.ExitCode, pipelineservice.ExitRoleSource, pipelineexec.NewRedactor(config))
+	wrapped := newExitAwareReader(result.Stdout, result.Stderr, result.Done, &result.ExitCode, pipelineservice.ExitRoleSource, redactor)
 
 	return wrapped, cleanup, nil
 }
@@ -164,8 +165,8 @@ func (c *ConnectorClient) Read(ctx context.Context, image string, config json.Ra
 // The caller pipes source messages into stdin and reads dest output from the returned ReadCloser.
 // The caller must close the returned ReadCloser and call the cleanup function when done.
 // When the connector exits with a non-zero code, the returned reader surfaces the error
-// after all buffered messages are consumed.
-func (c *ConnectorClient) Write(ctx context.Context, image string, config json.RawMessage, catalog *protocol.ConfiguredAirbyteCatalog, stdin io.Reader, labels map[string]string, limits ResourceLimits) (io.ReadCloser, func(), error) {
+// after all buffered messages are consumed, with its stderr masked by redactor.
+func (c *ConnectorClient) Write(ctx context.Context, image string, config json.RawMessage, redactor *pipelineexec.Redactor, catalog *protocol.ConfiguredAirbyteCatalog, stdin io.Reader, labels map[string]string, limits ResourceLimits) (io.ReadCloser, func(), error) {
 	catalogBytes, err := json.Marshal(catalog)
 	if err != nil {
 		return nil, nil, fmt.Errorf("write: marshaling catalog: %w", err)
@@ -200,7 +201,7 @@ func (c *ConnectorClient) Write(ctx context.Context, image string, config json.R
 		_ = c.runner.Remove(context.Background(), result.ContainerID)
 	}
 
-	wrapped := newExitAwareReader(result.Stdout, result.Stderr, result.Done, &result.ExitCode, pipelineservice.ExitRoleDestination, pipelineexec.NewRedactor(config))
+	wrapped := newExitAwareReader(result.Stdout, result.Stderr, result.Done, &result.ExitCode, pipelineservice.ExitRoleDestination, redactor)
 
 	return wrapped, cleanup, nil
 }

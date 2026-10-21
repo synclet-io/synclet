@@ -260,7 +260,7 @@ func TestConnectorClientRedactsSecrets(t *testing.T) {
 			finishedRunResult("", "password=hunter2-pass", 2),
 		}}
 
-		stdout, cleanup, err := NewConnectorClient(runner).Read(ctx, "img", config, &protocol.ConfiguredAirbyteCatalog{}, nil, nil, ResourceLimits{})
+		stdout, cleanup, err := NewConnectorClient(runner).Read(ctx, "img", config, pipelineexec.NewRedactor(config), &protocol.ConfiguredAirbyteCatalog{}, nil, nil, ResourceLimits{})
 		require.NoError(t, err)
 
 		defer cleanup()
@@ -286,7 +286,7 @@ func TestConnectorClientRedactsSecrets(t *testing.T) {
 		runner := &mockContainerRunner{runResults: []*pkgcontainer.RunResult{clippedStderr(2), clippedStderr(1)}}
 		client := NewConnectorClient(runner)
 
-		stdout, cleanup, err := client.Read(ctx, "img", config, &protocol.ConfiguredAirbyteCatalog{}, nil, nil, ResourceLimits{})
+		stdout, cleanup, err := client.Read(ctx, "img", config, pipelineexec.NewRedactor(config), &protocol.ConfiguredAirbyteCatalog{}, nil, nil, ResourceLimits{})
 		require.NoError(t, err)
 
 		defer cleanup()
@@ -318,7 +318,7 @@ func TestConnectorClientDrainTimeoutCarriesExit(t *testing.T) {
 
 	runner := &mockContainerRunner{runResults: []*pkgcontainer.RunResult{result}}
 
-	stdout, cleanup, err := NewConnectorClient(runner).Read(context.Background(), "img", json.RawMessage(`{}`), &protocol.ConfiguredAirbyteCatalog{}, nil, nil, ResourceLimits{})
+	stdout, cleanup, err := NewConnectorClient(runner).Read(context.Background(), "img", json.RawMessage(`{}`), nil, &protocol.ConfiguredAirbyteCatalog{}, nil, nil, ResourceLimits{})
 	require.NoError(t, err)
 
 	defer cleanup()

@@ -3,6 +3,7 @@ package pipelineexec
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"strings"
 	"sync"
@@ -101,4 +102,38 @@ func TestRun_RedactsSecretsFromConnectorConfigUpdates(t *testing.T) {
 	require.Len(t, handler.lines, 2)
 	assert.NotContains(t, lines, srcRotated)
 	assert.NotContains(t, lines, destRotated)
+}
+
+// failingSource yields lines and then an error built from failure, redacted
+// by redactor at the moment of the failing Read.
+type failingSource struct {
+	lines    io.Reader
+	failure  string
+	redactor *Redactor
+}
+
+func (s *failingSource) Read(p []byte) (int, error) {
+	n, err := s.lines.Read(p)
+	if errors.Is(err, io.EOF) {
+		return n, errors.New(s.redactor.Redact(s.failure))
+	}
+
+	return n, err
+}
+
+func TestRun_SourceFailureAfterControlMasksRotatedSecret(t *testing.T) {
+	const rotated = "rotated-source-token"
+
+	redactor := NewRedactor(json.RawMessage(`{"access_token":"initial-token"}`))
+	source := &failingSource{
+		lines:    strings.NewReader(`{"type":"CONTROL","control":{"type":"CONNECTOR_CONFIG","emitted_at":0,"connectorConfig":{"config":{"access_token":"` + rotated + `"}}}}` + "\n"),
+		failure:  "token " + rotated + " expired",
+		redactor: redactor,
+	}
+
+	_, err := Run(context.Background(), source, discardWriteCloser{}, io.NopCloser(strings.NewReader("")), DefaultHandler{}, RunConfig{
+		Redactor: redactor,
+	}, nil)
+
+	require.EqualError(t, err, "token "+RedactedMask+" expired")
 }

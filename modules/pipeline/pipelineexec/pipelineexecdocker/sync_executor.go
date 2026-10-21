@@ -106,8 +106,12 @@ func (e *DockerSyncExecutor) Execute(ctx context.Context, bundle *pipelineexec.S
 
 	srcMemLimit, srcCPULimit, _, _ := pipelineservice.ToContainerResources(srcRuntimeCfg)
 
+	// One redactor serves the whole run, so secrets of a config replaced
+	// through CONTROL are masked in connector stderr as well.
+	redactor := pipelineexec.NewRedactor(bundle.SourceConfig, bundle.DestConfig)
+
 	// Start source read.
-	sourceStdout, sourceCleanup, err := e.client.Read(ctx, bundle.SourceImage, bundle.SourceConfig, pipelineservice.BuildSourceCatalog(catalog), bundle.StateBlob, labels, ResourceLimits{
+	sourceStdout, sourceCleanup, err := e.client.Read(ctx, bundle.SourceImage, bundle.SourceConfig, redactor, pipelineservice.BuildSourceCatalog(catalog), bundle.StateBlob, labels, ResourceLimits{
 		MemoryLimit: srcMemLimit,
 		CPULimit:    srcCPULimit,
 		NetworkMode: srcRuntimeCfg.DockerNetwork,
@@ -138,7 +142,7 @@ func (e *DockerSyncExecutor) Execute(ctx context.Context, bundle *pipelineexec.S
 	destMemLimit, destCPULimit, _, _ := pipelineservice.ToContainerResources(destRuntimeCfg)
 
 	// Start destination write with pipe reader as stdin.
-	destStdout, destCleanup, err := e.client.Write(ctx, bundle.DestImage, bundle.DestConfig, destCatalog, srcPipeReader, labels, ResourceLimits{
+	destStdout, destCleanup, err := e.client.Write(ctx, bundle.DestImage, bundle.DestConfig, redactor, destCatalog, srcPipeReader, labels, ResourceLimits{
 		MemoryLimit: destMemLimit,
 		CPULimit:    destCPULimit,
 		NetworkMode: destRuntimeCfg.DockerNetwork,
@@ -176,7 +180,7 @@ func (e *DockerSyncExecutor) Execute(ctx context.Context, bundle *pipelineexec.S
 	// Route messages using the shared router.
 	routeStats, routeErr := pipelineexec.Run(ctx, sourceStdout, srcPipeWriter, destStdout, handler, pipelineexec.RunConfig{
 		IdleTimeout: e.idleTimeout,
-		Redactor:    pipelineexec.NewRedactor(bundle.SourceConfig, bundle.DestConfig),
+		Redactor:    redactor,
 		Rewriter:    rewriter,
 		Catalog:     catalog,
 		Transformer: transformer,
