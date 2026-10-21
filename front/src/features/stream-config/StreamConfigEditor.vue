@@ -53,9 +53,6 @@ function validate(): StreamValidationError[] {
 
 defineExpose({ validate })
 
-const allEnabled = computed(() => streams.value.length > 0 && streams.value.every(s => s.enabled))
-const someEnabled = computed(() => streams.value.some(s => s.enabled))
-
 function withEnabled(s: StreamRow, enabled: boolean): StreamRow {
   if (s.enabled === enabled)
     return s
@@ -68,8 +65,17 @@ function setEnabled(s: StreamRow, enabled: boolean) {
   replaceStream(withEnabled(s, enabled))
 }
 
-function setAllEnabled(enabled: boolean) {
-  streams.value = streams.value.map(s => withEnabled(s, enabled))
+function setStreamsEnabled(targets: StreamRow[], enabled: boolean) {
+  const keys = new Set(targets.map(streamKey))
+  streams.value = streams.value.map(s => keys.has(streamKey(s)) ? withEnabled(s, enabled) : s)
+}
+
+function allOn(rows: StreamRow[]): boolean {
+  return rows.length > 0 && rows.every(s => s.enabled)
+}
+
+function partlyOn(rows: StreamRow[]): boolean {
+  return rows.some(s => s.enabled) && !allOn(rows)
 }
 
 function replaceStream(updated: StreamRow) {
@@ -111,7 +117,18 @@ const filteredGroupedStreams = computed(() => {
     .filter(g => g.streams.length > 0)
 })
 
-const hasMultipleNamespaces = computed(() => groupedStreams.value.length > 1)
+const visibleStreams = computed(() => filteredGroupedStreams.value.flatMap(g => g.streams))
+
+const namespaceCounts = computed(() => {
+  const counts = new Map<string, { enabled: number, total: number }>()
+  for (const g of groupedStreams.value)
+    counts.set(g.namespace, { enabled: g.streams.filter(s => s.enabled).length, total: g.streams.length })
+  return counts
+})
+
+function namespaceLabel(ns: string): string {
+  return ns || 'Default'
+}
 
 function toggleNamespace(ns: string) {
   const updated = new Set(expandedNamespaces.value)
@@ -142,12 +159,6 @@ function errorsForStream(s: StreamRow): StreamValidationError[] {
   return validationErrors.value.filter(e => e.streamKey === key)
 }
 
-function displayStreamName(s: StreamRow): string {
-  if (hasMultipleNamespaces.value)
-    return s.name
-  return streamKey(s)
-}
-
 const validSyncCombinations: { src: SyncMode, dst: DestinationSyncMode, label: string }[] = [
   { src: 'incremental', dst: 'append_dedup', label: 'Incremental | Append + Dedup' },
   { src: 'incremental', dst: 'append', label: 'Incremental | Append' },
@@ -166,6 +177,24 @@ function applySyncMode(s: StreamRow, combined: string) {
   editStream({ ...s, syncMode: src as SyncMode, destinationSyncMode: dst as DestinationSyncMode })
 }
 
+const bulkSelectKey = ref(0)
+const bulkResult = ref('')
+
+/** Sets one sync mode on every enabled stream the search shows, skipping those whose source does not support it. */
+function applyBulkSyncMode(combined: string) {
+  const [src, dst] = combined.split('|')
+  const selected = visibleStreams.value.filter(s => s.enabled)
+  const supported = new Set(selected.filter(s => s.supportedSyncModes.includes(src)).map(streamKey))
+  streams.value = streams.value.map(s => supported.has(streamKey(s))
+    ? { ...s, syncMode: src as SyncMode, destinationSyncMode: dst as DestinationSyncMode, configured: true }
+    : s)
+  const skipped = selected.length - supported.size
+  const plural = (n: number) => n === 1 ? 'stream' : 'streams'
+  const skippedNote = skipped > 0 ? `; ${skipped} ${plural(skipped)} skipped because the source does not support it` : ''
+  bulkResult.value = `Sync mode set on ${supported.size} ${plural(supported.size)}${skippedNote}`
+  bulkSelectKey.value++
+}
+
 function streamState(s: StreamRow): StreamState | undefined {
   return props.streamStates.find(st => st.streamNamespace === s.namespace && st.streamName === s.name)
 }
@@ -173,8 +202,20 @@ function streamState(s: StreamRow): StreamState | undefined {
 
 <template>
   <div class="bg-surface border border-border rounded-xl overflow-hidden">
-    <div class="p-3 border-b border-border">
-      <SInput v-model="searchQuery" placeholder="Search streams..." class="max-w-sm" />
+    <div class="p-3 border-b border-border flex flex-wrap items-center gap-3">
+      <SInput v-model="searchQuery" placeholder="Search streams..." class="max-w-sm flex-1 min-w-48" />
+      <SSelect
+        :key="bulkSelectKey"
+        size="sm"
+        model-value=""
+        placeholder="Set sync mode of selected streams"
+        :options="validSyncCombinations.map(c => ({ value: `${c.src}|${c.dst}`, label: c.label }))"
+        :disabled="!visibleStreams.some(s => s.enabled)"
+        aria-label="Sync mode of selected streams"
+        class="w-64"
+        @update:model-value="applyBulkSyncMode($event as string)"
+      />
+      <span v-if="bulkResult" role="status" class="text-xs text-text-secondary">{{ bulkResult }}</span>
     </div>
 
     <div class="overflow-x-auto">
@@ -186,9 +227,10 @@ function streamState(s: StreamRow): StreamState | undefined {
                 type="checkbox"
                 class="w-3.5 h-3.5 rounded border-border text-primary focus:ring-primary/20 cursor-pointer"
                 aria-label="Enable all streams"
-                :checked="allEnabled"
-                :indeterminate="someEnabled && !allEnabled"
-                @change="setAllEnabled(($event.target as HTMLInputElement).checked)"
+                :checked="allOn(visibleStreams)"
+                :indeterminate="partlyOn(visibleStreams)"
+                :disabled="visibleStreams.length === 0"
+                @change="setStreamsEnabled(visibleStreams, ($event.target as HTMLInputElement).checked)"
               >
             </th>
             <th class="px-3 py-2 text-left text-xs font-medium text-text-secondary uppercase">
@@ -206,11 +248,21 @@ function streamState(s: StreamRow): StreamState | undefined {
         <tbody class="divide-y divide-border">
           <template v-for="group in filteredGroupedStreams" :key="group.namespace">
             <tr
-              v-if="hasMultipleNamespaces"
+              :data-testid="`namespace-${group.namespace}`"
               class="cursor-pointer hover:bg-surface-hover transition-colors bg-surface-raised/50"
               @click="toggleNamespace(group.namespace)"
             >
-              <td colspan="5" class="px-3 py-2">
+              <td class="px-3 py-2 w-10" @click.stop>
+                <input
+                  type="checkbox"
+                  class="w-3.5 h-3.5 rounded border-border text-primary focus:ring-primary/20 cursor-pointer"
+                  :aria-label="`Enable all streams of namespace ${namespaceLabel(group.namespace)}`"
+                  :checked="allOn(group.streams)"
+                  :indeterminate="partlyOn(group.streams)"
+                  @change="setStreamsEnabled(group.streams, ($event.target as HTMLInputElement).checked)"
+                >
+              </td>
+              <td colspan="4" class="px-3 py-2">
                 <button
                   type="button"
                   class="flex items-center gap-2 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
@@ -220,16 +272,16 @@ function streamState(s: StreamRow): StreamState | undefined {
                   <ChevronDown v-if="isNamespaceExpanded(group.namespace)" class="w-4 h-4 text-text-secondary" />
                   <ChevronRight v-else class="w-4 h-4 text-text-secondary" />
                   <span class="font-semibold text-sm text-heading">
-                    {{ group.namespace || 'Default' }}
+                    {{ namespaceLabel(group.namespace) }}
                   </span>
                   <SBadge variant="gray">
-                    {{ group.streams.length }} streams
+                    {{ namespaceCounts.get(group.namespace)?.enabled ?? 0 }}/{{ namespaceCounts.get(group.namespace)?.total ?? 0 }} enabled
                   </SBadge>
                 </button>
               </td>
             </tr>
 
-            <template v-if="!hasMultipleNamespaces || isNamespaceExpanded(group.namespace)">
+            <template v-if="isNamespaceExpanded(group.namespace)">
               <template v-for="s in group.streams" :key="streamKey(s)">
                 <tr
                   class="cursor-pointer hover:bg-surface-hover transition-colors h-10"
@@ -246,7 +298,7 @@ function streamState(s: StreamRow): StreamState | undefined {
                     >
                   </td>
                   <td class="px-3 py-2 text-sm font-medium text-heading">
-                    {{ displayStreamName(s) }}
+                    {{ s.name }}
                     <AlertCircle v-if="errorsForStream(s).length > 0" class="inline w-4 h-4 text-danger ml-1" />
                   </td>
                   <td class="px-3 py-2" @click.stop>
