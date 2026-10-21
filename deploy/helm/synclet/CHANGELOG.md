@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.9.0](https://github.com/synclet-io/synclet/compare/synclet-helm-v0.8.0...synclet-helm-v0.9.0) (2026-10-21)
+
+
+### Features
+
+* **auth:** OAuth for MCP clients ([e8c994a](https://github.com/synclet-io/synclet/commit/e8c994a30e7606976bf5c0af52010f39f26f0522))
+* **mcp:** MCP server for AI clients ([244f3f6](https://github.com/synclet-io/synclet/commit/244f3f62f556888ee99d5e8a0a32248c4fa83180))
+
 ## [0.8.0](https://github.com/synclet-io/synclet/compare/synclet-helm-v0.7.0...synclet-helm-v0.8.0) (2026-10-21)
 
 
