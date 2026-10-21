@@ -1,19 +1,15 @@
 <script setup lang="ts">
-import type { ConfiguredStream, DestinationSyncMode, SyncMode } from '@entities/connection'
-import type { ConfiguredCatalogInput, DiscoveredCatalog } from '@features/stream-config/catalogStreams'
-import type { StreamRow } from '@features/stream-config/StreamExpandedRow.vue'
-import type { StreamValidationError } from '@features/stream-config/useStreamValidation'
+import type { ConfiguredCatalogInput, DiscoveredCatalog, StreamRow } from '@features/stream-config/catalogStreams'
 import { Code, ConnectError } from '@connectrpc/connect'
 import { discoverSchema, getConfiguredCatalog, getDiscoveredCatalog, useConfigureStreams, useConnection, useResetConnectionState, useStreamStates } from '@entities/connection'
 import { useConnectorTaskResult } from '@entities/connector-task'
 import { getSourceCatalog } from '@entities/source'
-import { mergeDiscoveredStreams, parseStreams, streamKey } from '@features/stream-config/catalogStreams'
-import { getLeafFields, parseJsonSchema } from '@features/stream-config/schemaParser'
-import StreamExpandedRow from '@features/stream-config/StreamExpandedRow.vue'
-import { useStreamValidation } from '@features/stream-config/useStreamValidation'
+import { mergeDiscoveredStreams, parseStreams, streamKey, toConfiguredStreams } from '@features/stream-config/catalogStreams'
+import StreamConfigEditor from '@features/stream-config/StreamConfigEditor.vue'
+import { streamErrorSummary } from '@features/stream-config/useStreamValidation'
 import { getErrorMessage } from '@shared/lib/errorUtils'
-import { PageHeader, SAlert, SBadge, SButton, SConfirmDialog, SEmptyState, SInput, SSelect, SSkeleton, useToast } from '@shared/ui'
-import { AlertCircle, ChevronDown, ChevronRight, ChevronUp, RefreshCw, RotateCcw, Save } from 'lucide-vue-next'
+import { PageHeader, SAlert, SButton, SConfirmDialog, SEmptyState, SSkeleton, useToast } from '@shared/ui'
+import { RefreshCw, RotateCcw, Save } from 'lucide-vue-next'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 
@@ -23,11 +19,6 @@ const id = route.params.id as string
 const toast = useToast()
 
 const { data: connection } = useConnection(id)
-
-interface NamespaceGroup {
-  namespace: string
-  streams: { stream: StreamRow, index: number }[]
-}
 
 interface DiscoverySummary {
   added: string[]
@@ -41,12 +32,7 @@ const discovering = ref(false)
 const error = ref('')
 const configuredCatalogError = ref('')
 const discoverySummary = ref<DiscoverySummary | null>(null)
-const searchQuery = ref('')
-
-const expandedStream = ref<string | null>(null)
-const validationErrors = ref<StreamValidationError[]>([])
-const hasAttemptedSave = ref(false)
-const expandedNamespaces = ref(new Set<string>())
+const editor = ref<InstanceType<typeof StreamConfigEditor> | null>(null)
 const confirmResetAll = ref(false)
 const savedSnapshot = ref('')
 const pendingLeave = ref<string | null>(null)
@@ -61,23 +47,10 @@ function configSnapshot(rows: StreamRow[]): string {
 }
 
 const isDirty = computed(() => !loading.value && configSnapshot(streams.value) !== savedSnapshot.value)
-const allEnabled = computed(() => streams.value.length > 0 && streams.value.every(s => s.enabled))
-const someEnabled = computed(() => streams.value.some(s => s.enabled))
-
-function setAllEnabled(enabled: boolean) {
-  for (const s of streams.value)
-    s.enabled = enabled
-  revalidateIfNeeded()
-}
-
-function expandAllNamespaces() {
-  expandedNamespaces.value = new Set(streams.value.map(s => s.namespace))
-}
 
 function setLoadedStreams(rows: StreamRow[]) {
   streams.value = rows
   savedSnapshot.value = configSnapshot(rows)
-  expandAllNamespaces()
 }
 
 watch(discoverTaskResult, (task) => {
@@ -88,8 +61,6 @@ watch(discoverTaskResult, (task) => {
     if (cat) {
       const { streams: merged, added, removed } = mergeDiscoveredStreams(streams.value, parseStreams(cat))
       streams.value = merged
-      expandAllNamespaces()
-      revalidateIfNeeded()
       discoverySummary.value = added.length > 0 || removed.length > 0 ? { added, removed } : null
     }
     discovering.value = false
@@ -107,7 +78,6 @@ watch(discoverTaskResult, (task) => {
 
 const configureStreamsMutation = useConfigureStreams()
 const resetConnectionStateMutation = useResetConnectionState()
-const { validate } = useStreamValidation()
 const { data: streamStatesResult } = useStreamStates(id)
 
 async function loadDiscoveredCatalog(sourceId: string | undefined): Promise<DiscoveredCatalog | undefined> {
@@ -192,155 +162,6 @@ function onBeforeUnload(e: BeforeUnloadEvent) {
 onMounted(() => window.addEventListener('beforeunload', onBeforeUnload))
 onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload))
 
-// Namespace grouping
-const groupedStreams = computed<NamespaceGroup[]>(() => {
-  const groups = new Map<string, { stream: StreamRow, index: number }[]>()
-  streams.value.forEach((s, i) => {
-    const ns = s.namespace
-    if (!groups.has(ns))
-      groups.set(ns, [])
-    groups.get(ns)!.push({ stream: s, index: i })
-  })
-
-  const result: NamespaceGroup[] = []
-  if (groups.has('')) {
-    result.push({ namespace: '', streams: groups.get('')! })
-    groups.delete('')
-  }
-  const sorted = Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b))
-  for (const [ns, items] of sorted) {
-    result.push({ namespace: ns, streams: items })
-  }
-  return result
-})
-
-const filteredGroupedStreams = computed(() => {
-  if (!searchQuery.value)
-    return groupedStreams.value
-  const q = searchQuery.value.toLowerCase()
-  return groupedStreams.value
-    .map(g => ({
-      ...g,
-      streams: g.streams.filter(s => s.stream.name.toLowerCase().includes(q)
-        || s.stream.namespace.toLowerCase().includes(q)),
-    }))
-    .filter(g => g.streams.length > 0)
-})
-
-const hasMultipleNamespaces = computed(() => groupedStreams.value.length > 1)
-
-function toggleNamespace(ns: string) {
-  const updated = new Set(expandedNamespaces.value)
-  if (updated.has(ns)) {
-    updated.delete(ns)
-  }
-  else {
-    updated.add(ns)
-  }
-  expandedNamespaces.value = updated
-}
-
-function isNamespaceExpanded(ns: string): boolean {
-  return expandedNamespaces.value.has(ns)
-}
-
-function toggleExpand(s: StreamRow) {
-  const key = streamKey(s)
-  expandedStream.value = expandedStream.value === key ? null : key
-}
-
-function selectedFieldCount(s: StreamRow): number {
-  return s.selectedFields.length
-}
-
-function totalFieldCount(s: StreamRow): number {
-  if (!s.jsonSchema)
-    return 0
-  const fields = parseJsonSchema(s.jsonSchema)
-  return getLeafFields(fields).length
-}
-
-function errorsForStream(s: StreamRow): StreamValidationError[] {
-  const key = streamKey(s)
-  return validationErrors.value.filter(e => e.streamKey === key)
-}
-
-function hasStreamErrors(s: StreamRow): boolean {
-  return errorsForStream(s).length > 0
-}
-
-function streamErrorSummary(): string {
-  const byStream = new Map<string, string[]>()
-  for (const err of validationErrors.value) {
-    if (!byStream.has(err.streamKey))
-      byStream.set(err.streamKey, [])
-    byStream.get(err.streamKey)!.push(err.message)
-  }
-  const parts: string[] = []
-  for (const [stream, msgs] of byStream) {
-    parts.push(`${stream}: ${msgs.join(', ')}`)
-  }
-  return parts.join('; ')
-}
-
-function updateStreamByKey(updatedStream: StreamRow) {
-  const key = streamKey(updatedStream)
-  const idx = streams.value.findIndex(s => streamKey(s) === key)
-  if (idx !== -1) {
-    streams.value[idx] = updatedStream
-  }
-  revalidateIfNeeded()
-}
-
-function revalidateIfNeeded() {
-  if (hasAttemptedSave.value) {
-    validationErrors.value = validate(streams.value)
-  }
-}
-
-function displayStreamName(s: StreamRow): string {
-  if (hasMultipleNamespaces.value)
-    return s.name
-  return s.namespace ? `${s.namespace}.${s.name}` : s.name
-}
-
-const validSyncCombinations: { src: SyncMode, dst: DestinationSyncMode, label: string }[] = [
-  { src: 'incremental', dst: 'append_dedup', label: 'Incremental | Append + Dedup' },
-  { src: 'incremental', dst: 'append', label: 'Incremental | Append' },
-  { src: 'full_refresh', dst: 'overwrite', label: 'Full Refresh | Overwrite' },
-  { src: 'full_refresh', dst: 'append', label: 'Full Refresh | Append' },
-]
-
-function combinedSyncModeOptions(s: StreamRow) {
-  return validSyncCombinations
-    .filter(c => s.supportedSyncModes.includes(c.src))
-    .map(c => ({
-      value: `${c.src}|${c.dst}`,
-      label: c.label,
-    }))
-}
-
-function combinedSyncModeValue(s: StreamRow): string {
-  return `${s.syncMode}|${s.destinationSyncMode}`
-}
-
-function applyCombinedSyncMode(s: StreamRow, combined: string) {
-  const [src, dst] = combined.split('|')
-  s.syncMode = src as SyncMode
-  s.destinationSyncMode = dst as DestinationSyncMode
-  revalidateIfNeeded()
-}
-
-function getStreamStateData(namespace: string, name: string): string | undefined {
-  const state = streamStatesResult.value?.states.find(s => s.streamNamespace === namespace && s.streamName === name)
-  return state?.stateData
-}
-
-function getStreamStateUpdatedAt(namespace: string, name: string): Date | undefined {
-  const state = streamStatesResult.value?.states.find(s => s.streamNamespace === namespace && s.streamName === name)
-  return state?.updatedAt
-}
-
 async function handleDiscoverSchema() {
   discovering.value = true
   error.value = ''
@@ -370,32 +191,16 @@ async function resetAllState() {
 async function saveConfig() {
   if (configuredCatalogError.value)
     return
-  hasAttemptedSave.value = true
-  const errors = validate(streams.value)
-  validationErrors.value = errors
-
+  const errors = editor.value?.validate() ?? []
   if (errors.length > 0) {
-    error.value = `Fix ${errors.length} issue(s) before saving: ${streamErrorSummary()}`
-    expandedStream.value = errors[0].streamKey
+    error.value = `Fix ${errors.length} issue(s) before saving: ${streamErrorSummary(errors)}`
     return
   }
 
   saving.value = true
   error.value = ''
   try {
-    const configured: ConfiguredStream[] = streams.value
-      .filter(s => s.enabled)
-      .map(s => ({
-        streamName: s.name,
-        namespace: s.namespace,
-        syncMode: s.syncMode,
-        destinationSyncMode: s.destinationSyncMode,
-        cursorField: s.sourceDefinedCursor ? [] : s.cursorField,
-        primaryKey: s.sourceDefinedPrimaryKey.length > 0 ? [] : s.primaryKey,
-        selectedFields: s.selectedFields,
-        mappers: s.mappers,
-      }))
-    await configureStreamsMutation.mutateAsync({ connectionId: id, streams: configured })
+    await configureStreamsMutation.mutateAsync({ connectionId: id, streams: toConfiguredStreams(streams.value) })
     savedSnapshot.value = configSnapshot(streams.value)
     router.push(`/connections/${id}`)
   }
@@ -465,130 +270,13 @@ async function saveConfig() {
     </SEmptyState>
   </div>
 
-  <!-- Stream table -->
-  <div v-else class="bg-surface border border-border rounded-xl overflow-hidden">
-    <!-- Search -->
-    <div class="p-3 border-b border-border">
-      <SInput v-model="searchQuery" placeholder="Search streams..." class="max-w-sm" />
-    </div>
-
-    <div class="overflow-x-auto">
-      <table class="w-full min-w-[700px]">
-        <thead class="bg-surface-raised">
-          <tr>
-            <th class="px-3 py-2 text-left w-10">
-              <input
-                type="checkbox"
-                class="w-3.5 h-3.5 rounded border-border text-primary focus:ring-primary/20 cursor-pointer"
-                aria-label="Enable all streams"
-                :checked="allEnabled"
-                :indeterminate="someEnabled && !allEnabled"
-                @change="setAllEnabled(($event.target as HTMLInputElement).checked)"
-              >
-            </th>
-            <th class="px-3 py-2 text-left text-xs font-medium text-text-secondary uppercase">
-              Stream Name
-            </th>
-            <th class="px-3 py-2 text-left text-xs font-medium text-text-secondary uppercase w-52">
-              Sync Mode
-            </th>
-            <th class="px-3 py-2 text-left text-xs font-medium text-text-secondary uppercase">
-              Fields
-            </th>
-            <th class="px-3 py-2 w-10" />
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-border">
-          <template v-for="group in filteredGroupedStreams" :key="group.namespace">
-            <!-- Namespace header -->
-            <tr
-              v-if="hasMultipleNamespaces"
-              class="cursor-pointer hover:bg-surface-hover transition-colors bg-surface-raised/50"
-              @click="toggleNamespace(group.namespace)"
-            >
-              <td colspan="5" class="px-3 py-2">
-                <button
-                  type="button"
-                  class="flex items-center gap-2 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
-                  :aria-expanded="isNamespaceExpanded(group.namespace)"
-                  @click.stop="toggleNamespace(group.namespace)"
-                >
-                  <ChevronDown v-if="isNamespaceExpanded(group.namespace)" class="w-4 h-4 text-text-secondary" />
-                  <ChevronRight v-else class="w-4 h-4 text-text-secondary" />
-                  <span class="font-semibold text-sm text-heading">
-                    {{ group.namespace || 'Default' }}
-                  </span>
-                  <SBadge variant="gray">
-                    {{ group.streams.length }} streams
-                  </SBadge>
-                </button>
-              </td>
-            </tr>
-
-            <!-- Stream rows -->
-            <template v-if="!hasMultipleNamespaces || isNamespaceExpanded(group.namespace)">
-              <template v-for="{ stream: s } in group.streams" :key="streamKey(s)">
-                <!-- Collapsed row -->
-                <tr
-                  class="cursor-pointer hover:bg-surface-hover transition-colors h-10"
-                  :class="{ 'opacity-50': !s.enabled }"
-                  @click="toggleExpand(s)"
-                >
-                  <td class="px-3 py-2 w-10" @click.stop>
-                    <input
-                      v-model="s.enabled" type="checkbox" :aria-label="`Enable stream ${s.name}`"
-                      class="w-3.5 h-3.5 rounded border-border text-primary focus:ring-primary/20 cursor-pointer"
-                    >
-                  </td>
-                  <td class="px-3 py-2 text-sm font-medium text-heading">
-                    {{ displayStreamName(s) }}
-                    <AlertCircle v-if="hasAttemptedSave && hasStreamErrors(s)" class="inline w-4 h-4 text-danger ml-1" />
-                  </td>
-                  <td class="px-3 py-2" @click.stop>
-                    <SSelect
-                      size="sm"
-                      :model-value="combinedSyncModeValue(s)"
-                      :options="combinedSyncModeOptions(s)"
-                      @update:model-value="applyCombinedSyncMode(s, $event as string)"
-                    />
-                  </td>
-                  <td class="px-3 py-2">
-                    <span class="text-xs text-text-muted">{{ selectedFieldCount(s) }}/{{ totalFieldCount(s) }} fields</span>
-                  </td>
-                  <td class="px-3 py-2 w-10" @click.stop>
-                    <SButton
-                      variant="ghost"
-                      size="icon"
-                      :aria-label="`${expandedStream === streamKey(s) ? 'Collapse' : 'Expand'} stream ${s.name}`"
-                      :aria-expanded="expandedStream === streamKey(s)"
-                      @click="toggleExpand(s)"
-                    >
-                      <ChevronUp v-if="expandedStream === streamKey(s)" class="w-4 h-4" aria-hidden="true" />
-                      <ChevronDown v-else class="w-4 h-4" aria-hidden="true" />
-                    </SButton>
-                  </td>
-                </tr>
-                <!-- Expanded row -->
-                <tr v-if="expandedStream === streamKey(s)">
-                  <td colspan="5">
-                    <StreamExpandedRow
-                      :stream="s"
-                      :schema="s.jsonSchema"
-                      :validation-errors="errorsForStream(s)"
-                      :connection-id="id"
-                      :state-data="getStreamStateData(s.namespace, s.name)"
-                      :state-updated-at="getStreamStateUpdatedAt(s.namespace, s.name)"
-                      @update:stream="updateStreamByKey($event)"
-                    />
-                  </td>
-                </tr>
-              </template>
-            </template>
-          </template>
-        </tbody>
-      </table>
-    </div>
-  </div>
+  <StreamConfigEditor
+    v-else
+    ref="editor"
+    v-model:streams="streams"
+    :connection-id="id"
+    :stream-states="streamStatesResult?.states"
+  />
 
   <SConfirmDialog
     :open="confirmResetAll"

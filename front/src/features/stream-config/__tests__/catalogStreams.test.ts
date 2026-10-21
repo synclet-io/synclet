@@ -1,6 +1,6 @@
 import type { DiscoveredCatalog, StreamRow } from '../catalogStreams'
 import { describe, expect, it } from 'vitest'
-import { mergeDiscoveredStreams, parseStreams } from '../catalogStreams'
+import { mergeDiscoveredStreams, parseStreams, toConfiguredStreams } from '../catalogStreams'
 
 function discovered(...names: Array<string | [string, string]>): DiscoveredCatalog {
   return {
@@ -48,6 +48,35 @@ describe('parseStreams', () => {
       selectedFields: [{ fieldPath: ['id'] }],
     })
     expect(rows.find(r => r.name === 'users')!.enabled).toBe(false)
+  })
+
+  it('reads an empty saved field selection as every field selected', () => {
+    const rows = parseStreams(discovered('orders'), {
+      streams: [{ name: 'orders', syncMode: 'full_refresh', destinationSyncMode: 'overwrite', selectedFields: [] }],
+    })
+    expect(rows[0].selectedFields).toEqual([{ fieldPath: ['id'] }, { fieldPath: ['updated_at'] }])
+  })
+
+  it('applies the turn-on defaults to streams enabled because nothing is configured', () => {
+    const rows = parseStreams({
+      streams: [{
+        stream: {
+          name: 'orders',
+          json_schema: { properties: { id: { type: 'integer' }, updated_at: { type: 'string' } } },
+          supported_sync_modes: ['full_refresh', 'incremental'],
+          source_defined_primary_key: [['id']],
+          default_cursor_field: ['updated_at'],
+        },
+      }],
+    })
+    expect(rows[0]).toMatchObject({
+      enabled: true,
+      syncMode: 'incremental',
+      destinationSyncMode: 'append_dedup',
+      primaryKey: [['id']],
+      cursorField: ['updated_at'],
+      selectedFields: [{ fieldPath: ['id'] }, { fieldPath: ['updated_at'] }],
+    })
   })
 })
 
@@ -119,5 +148,25 @@ describe('mergeDiscoveredStreams', () => {
 
     const { streams } = mergeDiscoveredStreams(current, parseStreams(discovered('orders', 'users')))
     expect(streams.find(s => s.name === 'orders')!.mappers).toEqual(mappers)
+  })
+})
+
+describe('toConfiguredStreams', () => {
+  function orders(selectedFields: { fieldPath: string[] }[]) {
+    return parseStreams(discovered('orders'), {
+      streams: [{ name: 'orders', syncMode: 'full_refresh', destinationSyncMode: 'overwrite', selectedFields }],
+    })
+  }
+
+  it('saves a stream with every field selected as an empty selection', () => {
+    expect(toConfiguredStreams(orders([{ fieldPath: ['id'] }, { fieldPath: ['updated_at'] }]))[0].selectedFields).toEqual([])
+  })
+
+  it('saves a strict subset of fields as that list', () => {
+    expect(toConfiguredStreams(orders([{ fieldPath: ['id'] }]))[0].selectedFields).toEqual([{ fieldPath: ['id'] }])
+  })
+
+  it('saves an old empty selection again as empty', () => {
+    expect(toConfiguredStreams(orders([]))[0].selectedFields).toEqual([])
   })
 })

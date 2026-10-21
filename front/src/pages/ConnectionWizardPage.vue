@@ -27,6 +27,7 @@ const redirectTimer = ref<ReturnType<typeof setTimeout> | null>(null)
 const hydrating = ref(false)
 const skipLeaveGuard = ref(false)
 const resolveLeave = ref<((leave: boolean) => void) | null>(null)
+const streamStep = ref<InstanceType<typeof StepStreamConfig> | null>(null)
 const cloneFromId = ref<string>(typeof route.query.cloneFrom === 'string' ? route.query.cloneFrom : '')
 const preselectSourceId = typeof route.query.sourceId === 'string' ? route.query.sourceId : ''
 const preselectDestinationId = typeof route.query.destinationId === 'string' ? route.query.destinationId : ''
@@ -115,6 +116,12 @@ function settleLeave(leave: boolean) {
 }
 
 function handleAutoAdvance() {
+  next()
+}
+
+function handleNext() {
+  if (currentStep.value === 4 && streamStep.value && !streamStep.value.validate())
+    return
   next()
 }
 
@@ -237,6 +244,7 @@ function handleSkipStreams() {
 
           <StepStreamConfig
             v-if="currentStep === 4"
+            ref="streamStep"
             :source-id="state.sourceId"
             :streams="state.streams"
             :discovered-catalog="state.discoveredCatalog"
@@ -272,7 +280,7 @@ function handleSkipStreams() {
             <SButton v-if="currentStep === 4" variant="secondary" @click="handleSkipStreams">
               Skip
             </SButton>
-            <SButton v-if="currentStep === 3 || currentStep === 4" :disabled="!canProceed" @click="next">
+            <SButton v-if="currentStep === 3 || currentStep === 4" :disabled="!canProceed" @click="handleNext">
               Next
             </SButton>
             <SButton v-if="currentStep === 5" :loading="submitting" :disabled="!!committedConnectionId" @click="handleCreate">

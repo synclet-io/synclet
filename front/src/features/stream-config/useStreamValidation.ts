@@ -83,3 +83,13 @@ export function useStreamValidation() {
 
   return { validate }
 }
+
+export function streamErrorSummary(errors: StreamValidationError[]): string {
+  const byStream = new Map<string, string[]>()
+  for (const err of errors) {
+    if (!byStream.has(err.streamKey))
+      byStream.set(err.streamKey, [])
+    byStream.get(err.streamKey)!.push(err.message)
+  }
+  return Array.from(byStream, ([stream, msgs]) => `${stream}: ${msgs.join(', ')}`).join('; ')
+}

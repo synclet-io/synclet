@@ -1,4 +1,6 @@
-import type { DestinationSyncMode, SelectedField, SyncMode } from '@entities/connection'
+import type { ConfiguredStream, DestinationSyncMode, SelectedField, SyncMode } from '@entities/connection'
+import { pathKey } from './schemaParser'
+import { allFieldSelection, enableStream } from './streamDefaults'
 
 export interface StreamRow {
   name: string
@@ -16,6 +18,8 @@ export interface StreamRow {
   sourceDefinedPrimaryKey: string[][]
   mappers: Record<string, unknown>[]
   transformErrors?: number
+  /** Set once the stream has a saved configuration or was turned on or edited in this session. */
+  configured?: boolean
 }
 
 export interface DiscoveredCatalog {
@@ -100,29 +104,68 @@ export function parseStreams(cat: DiscoveredCatalog, configuredCat?: ConfiguredC
 
     const configured = configuredMap.get(streamKey(discovered))
     if (configured) {
+      const selectedFields = (configured.selected_fields || configured.selectedFields || []).map(sf => ({ fieldPath: fieldPath(sf) }))
       return {
         ...discovered,
         syncMode: (configured.sync_mode || configured.syncMode || 'full_refresh') as SyncMode,
         destinationSyncMode: (configured.destination_sync_mode || configured.destinationSyncMode || 'overwrite') as DestinationSyncMode,
         enabled: true,
+        configured: true,
         cursorField: configured.cursor_field || configured.cursorField || [],
         primaryKey: (configured.primary_key || configured.primaryKey || []).map(fieldPath),
-        selectedFields: (configured.selected_fields || configured.selectedFields || []).map(sf => ({ fieldPath: fieldPath(sf) })),
+        selectedFields: selectedFields.length > 0 ? selectedFields : allFieldSelection(discovered.jsonSchema),
         mappers: configured.mappers || [],
       } satisfies StreamRow
     }
 
-    return {
+    const row = {
       ...discovered,
       syncMode: (s.sync_mode || 'full_refresh') as SyncMode,
       destinationSyncMode: (s.destination_sync_mode || 'overwrite') as DestinationSyncMode,
-      enabled: !hasConfigured,
+      enabled: false,
       cursorField: [] as string[],
       primaryKey: [] as string[][],
       selectedFields: [] as SelectedField[],
       mappers: [] as Record<string, unknown>[],
     } satisfies StreamRow
+    return hasConfigured ? row : enableStream(row)
   })
+}
+
+export function configuredCatalogInput(streams: ConfiguredStream[]): ConfiguredCatalogInput {
+  return {
+    streams: streams.map(s => ({
+      name: s.streamName,
+      namespace: s.namespace,
+      syncMode: s.syncMode,
+      destinationSyncMode: s.destinationSyncMode,
+      cursorField: s.cursorField,
+      primaryKey: s.primaryKey,
+      selectedFields: s.selectedFields,
+      mappers: s.mappers,
+    })),
+  }
+}
+
+export function toConfiguredStreams(rows: StreamRow[]): ConfiguredStream[] {
+  return rows
+    .filter(s => s.enabled)
+    .map(s => ({
+      streamName: s.name,
+      namespace: s.namespace,
+      syncMode: s.syncMode,
+      destinationSyncMode: s.destinationSyncMode,
+      cursorField: s.sourceDefinedCursor ? [] : s.cursorField,
+      primaryKey: s.sourceDefinedPrimaryKey.length > 0 ? [] : s.primaryKey,
+      selectedFields: coversAllFields(s) ? [] : s.selectedFields,
+      mappers: s.mappers,
+    }))
+}
+
+// An empty saved selection means every field, including fields the source adds later.
+function coversAllFields(s: StreamRow): boolean {
+  const selected = new Set(s.selectedFields.map(f => pathKey(f.fieldPath)))
+  return allFieldSelection(s.jsonSchema).every(f => selected.has(pathKey(f.fieldPath)))
 }
 
 // Rows present in `current` keep their user configuration and take the schema metadata from
@@ -142,6 +185,7 @@ export function mergeDiscoveredStreams(current: StreamRow[], discovered: StreamR
     return {
       ...d,
       enabled: existing.enabled,
+      configured: existing.configured,
       syncMode: existing.syncMode,
       destinationSyncMode: existing.destinationSyncMode,
       cursorField: existing.cursorField,

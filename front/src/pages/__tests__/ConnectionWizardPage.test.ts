@@ -1,7 +1,7 @@
 import { Code, ConnectError } from '@connectrpc/connect'
 import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
-import { defineComponent, ref } from 'vue'
+import { defineComponent, onMounted, ref } from 'vue'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import ConnectionWizardPage from '../ConnectionWizardPage.vue'
 
@@ -77,5 +77,51 @@ describe('connection wizard create errors', () => {
 
     expect(wrapper.get('[data-tag-input]').find('[role="alert"]').exists()).toBe(false)
     expect(wrapper.text()).toContain('validation error on name: required')
+  })
+})
+
+describe('connection wizard streams step', () => {
+  function streamStep(valid: boolean) {
+    return defineComponent({
+      emits: ['update:streams'],
+      setup(_, { emit, expose }) {
+        expose({ validate: () => valid })
+        onMounted(() => emit('update:streams', [{ streamName: 'orders', namespace: '', syncMode: 'incremental', destinationSyncMode: 'append', cursorField: [], primaryKey: [], selectedFields: [] }]))
+        return {}
+      },
+      template: '<div />',
+    })
+  }
+
+  async function nextFromStreams(valid: boolean) {
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/connections/new', component: ConnectionWizardPage },
+        { path: '/:rest(.*)*', component: Empty },
+      ],
+    })
+    await router.push('/connections/new?cloneFrom=c1')
+    const wrapper = mount(ConnectionWizardPage, {
+      global: { plugins: [router], stubs: { StepSelectSource: true, StepSelectDestination: true, StepSettings: true, StepStreamConfig: streamStep(valid), WizardStepper: true } },
+    })
+    await flushPromises()
+    const button = (text: string) => wrapper.findAll('button').find(b => b.text() === text)
+    await button('Next')!.trigger('click')
+    await flushPromises()
+    await button('Next')!.trigger('click')
+    await flushPromises()
+    return { wrapper, button }
+  }
+
+  it('stays on the streams step while its validation fails', async () => {
+    const { button } = await nextFromStreams(false)
+    expect(button('Create Connection')).toBeUndefined()
+    expect(button('Skip')).toBeDefined()
+  })
+
+  it('goes on to the review once the streams are valid', async () => {
+    const { button } = await nextFromStreams(true)
+    expect(button('Create Connection')).toBeDefined()
   })
 })
