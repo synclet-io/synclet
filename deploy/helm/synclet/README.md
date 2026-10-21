@@ -43,12 +43,14 @@ helm upgrade synclet oci://ghcr.io/synclet-io/charts/synclet \
 Read the [CHANGELOG](https://github.com/synclet-io/synclet/blob/main/deploy/helm/synclet/CHANGELOG.md) before upgrading.
 Charts before 0.4.0 ran the executor as a Deployment: in distributed mode, delete it first with `kubectl delete deployment <fullname>-executor`.
 
-### Upgrading from 0.9.0
+### Upgrading from 0.9.0 or 0.10.0
 
 The MCP exposure keys were renamed, as they apply to the Ingress and the HTTPRoute alike: `mcp.ingress.mode` → `mcp.exposure`, `mcp.ingress.paths` → `mcp.paths`.
 The old keys are no longer read: move their values to the new keys before upgrading, or MCP renders with the defaults (`shared` and the MCP and OAuth paths).
 
-With `mcp.exposure: separate`, each enabled way the server is exposed (Ingress, HTTPRoute) now gets its own MCP twin. Two 0.9.0 setups render differently:
+### Upgrading from 0.9.0
+
+Since 0.10.0, separate exposure gives each enabled way the server is exposed (Ingress, HTTPRoute) its own MCP twin. Two 0.9.0 setups render differently:
 
 - With `server.gateway.enabled`, separate mode renders an MCP HTTPRoute and requires `mcp.gateway.parentRefs`; set it before upgrading, or rendering fails.
 - With `server.ingress.enabled: false`, separate mode no longer renders an MCP Ingress. Expose MCP through the gateway (`server.gateway.enabled` and `mcp.gateway.parentRefs`), or keep the Ingress enabled.
