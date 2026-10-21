@@ -1643,6 +1643,25 @@ func NewTableGenerators() table.GeneratorList {
 				}
 				return values
 			}
+			info.AddField("WorkflowStepRunID", "workflow_step_run_id", db.UUID)
+			info.FieldSortable()
+			info.FieldFilterable(types.FilterType{
+				FormType: form.Text,
+			},
+			)
+			formList.AddField("WorkflowStepRunID", "workflow_step_run_id", db.UUID, form.Text)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
 			info.AddField("CreatedAt", "created_at", db.Timestamp)
 			info.FieldSortable()
 			formList.AddField("CreatedAt", "created_at", db.Timestamp, form.Datetime)
@@ -2922,6 +2941,639 @@ func NewTableGenerators() table.GeneratorList {
 			info.AddField("LastSeenAt", "last_seen_at", db.Timestamp)
 			info.FieldSortable()
 			formList.AddField("LastSeenAt", "last_seen_at", db.Timestamp, form.Datetime)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+
+			return table
+		},
+
+		"workflow": func(ctx *context.Context) table.Table {
+			tableConfig := table.DefaultConfigWithDriver("postgresql")
+			tableConfig.PrimaryKey.Type = db.UUID
+			tableConfig.PrimaryKey.Name = "id"
+			table := table.NewDefaultTable(ctx, tableConfig)
+			info := table.GetInfo()
+			formList := table.GetForm()
+			info.SetTable("pipeline\".\"workflows").SetTitle("Workflow").SetDescription("Workflow")
+			formList.SetTable("pipeline\".\"workflows").SetTitle("Workflow").SetDescription("Workflow")
+			info.AddField("ID", "id", db.UUID)
+			info.FieldSortable()
+			info.FieldFilterable(types.FilterType{
+				FormType: form.Text,
+			},
+			)
+			formList.AddField("ID", "id", db.UUID, form.Text)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+			info.AddField("WorkspaceID", "workspace_id", db.UUID)
+			info.FieldSortable()
+			info.FieldFilterable(types.FilterType{
+				FormType: form.Text,
+			},
+			)
+			formList.AddField("WorkspaceID", "workspace_id", db.UUID, form.Text)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+			info.AddField("Name", "name", db.Text)
+			info.FieldSortable()
+			info.FieldFilterable(types.FilterType{
+				FormType: form.Text,
+			},
+			)
+			formList.AddField("Name", "name", db.Text, form.Text)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+			info.AddField("Schedule", "schedule", db.Text)
+			info.FieldSortable()
+			formList.AddField("Schedule", "schedule", db.Text, form.Text)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+			info.AddField("NextScheduledAt", "next_scheduled_at", db.Timestamp)
+			info.FieldSortable()
+			info.FieldFilterable(types.FilterType{
+				FormType: form.Datetime,
+			},
+			)
+			formList.AddField("NextScheduledAt", "next_scheduled_at", db.Timestamp, form.Datetime)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+			info.AddField("CreatedAt", "created_at", db.Timestamp)
+			info.FieldSortable()
+			formList.AddField("CreatedAt", "created_at", db.Timestamp, form.Datetime)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+			info.AddField("UpdatedAt", "updated_at", db.Timestamp)
+			info.FieldSortable()
+			formList.AddField("UpdatedAt", "updated_at", db.Timestamp, form.Datetime)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+
+			return table
+		},
+		"workflow_step": func(ctx *context.Context) table.Table {
+			tableConfig := table.DefaultConfigWithDriver("postgresql")
+			tableConfig.PrimaryKey.Type = db.UUID
+			tableConfig.PrimaryKey.Name = "id"
+			table := table.NewDefaultTable(ctx, tableConfig)
+			info := table.GetInfo()
+			formList := table.GetForm()
+			info.SetTable("pipeline\".\"workflow_steps").SetTitle("WorkflowStep").SetDescription("WorkflowStep")
+			formList.SetTable("pipeline\".\"workflow_steps").SetTitle("WorkflowStep").SetDescription("WorkflowStep")
+			info.AddField("ID", "id", db.UUID)
+			info.FieldSortable()
+			info.FieldFilterable(types.FilterType{
+				FormType: form.Text,
+			},
+			)
+			formList.AddField("ID", "id", db.UUID, form.Text)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+			info.AddField("WorkflowID", "workflow_id", db.UUID)
+			info.FieldSortable()
+			info.FieldFilterable(types.FilterType{
+				FormType: form.Text,
+			},
+			)
+			formList.AddField("WorkflowID", "workflow_id", db.UUID, form.Text)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+			info.AddField("ConnectionID", "connection_id", db.UUID)
+			info.FieldSortable()
+			info.FieldFilterable(types.FilterType{
+				FormType: form.Text,
+			},
+			)
+			formList.AddField("ConnectionID", "connection_id", db.UUID, form.Text)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+
+			return table
+		},
+		"workflow_step_dependency": func(ctx *context.Context) table.Table {
+			tableConfig := table.DefaultConfigWithDriver("postgresql")
+			tableConfig.PrimaryKey.Type = db.UUID
+			tableConfig.PrimaryKey.Name = "id"
+			table := table.NewDefaultTable(ctx, tableConfig)
+			info := table.GetInfo()
+			formList := table.GetForm()
+			info.SetTable("pipeline\".\"workflow_step_dependencies").SetTitle("WorkflowStepDependency").SetDescription("WorkflowStepDependency")
+			formList.SetTable("pipeline\".\"workflow_step_dependencies").SetTitle("WorkflowStepDependency").SetDescription("WorkflowStepDependency")
+			info.AddField("ID", "id", db.UUID)
+			info.FieldSortable()
+			info.FieldFilterable(types.FilterType{
+				FormType: form.Text,
+			},
+			)
+			formList.AddField("ID", "id", db.UUID, form.Text)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+			info.AddField("WorkflowID", "workflow_id", db.UUID)
+			info.FieldSortable()
+			info.FieldFilterable(types.FilterType{
+				FormType: form.Text,
+			},
+			)
+			formList.AddField("WorkflowID", "workflow_id", db.UUID, form.Text)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+			info.AddField("StepID", "step_id", db.UUID)
+			info.FieldSortable()
+			info.FieldFilterable(types.FilterType{
+				FormType: form.Text,
+			},
+			)
+			formList.AddField("StepID", "step_id", db.UUID, form.Text)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+			info.AddField("UpstreamStepID", "upstream_step_id", db.UUID)
+			info.FieldSortable()
+			info.FieldFilterable(types.FilterType{
+				FormType: form.Text,
+			},
+			)
+			formList.AddField("UpstreamStepID", "upstream_step_id", db.UUID, form.Text)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+
+			return table
+		},
+		"workflow_run": func(ctx *context.Context) table.Table {
+			tableConfig := table.DefaultConfigWithDriver("postgresql")
+			tableConfig.PrimaryKey.Type = db.UUID
+			tableConfig.PrimaryKey.Name = "id"
+			table := table.NewDefaultTable(ctx, tableConfig)
+			info := table.GetInfo()
+			formList := table.GetForm()
+			info.SetTable("pipeline\".\"workflow_runs").SetTitle("WorkflowRun").SetDescription("WorkflowRun")
+			formList.SetTable("pipeline\".\"workflow_runs").SetTitle("WorkflowRun").SetDescription("WorkflowRun")
+			info.AddField("ID", "id", db.UUID)
+			info.FieldSortable()
+			info.FieldFilterable(types.FilterType{
+				FormType: form.Text,
+			},
+			)
+			formList.AddField("ID", "id", db.UUID, form.Text)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+			info.AddField("WorkflowID", "workflow_id", db.UUID)
+			info.FieldSortable()
+			info.FieldFilterable(types.FilterType{
+				FormType: form.Text,
+			},
+			)
+			formList.AddField("WorkflowID", "workflow_id", db.UUID, form.Text)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+			info.AddField("Status", "status", db.Enum)
+			info.FieldSortable()
+			info.FieldFilterable(types.FilterType{
+				FormType: form.SelectSingle,
+
+				Options: types.FieldOptions{
+					{Value: "running", Text: "Running"},
+					{Value: "succeeded", Text: "Succeeded"},
+					{Value: "failed", Text: "Failed"},
+				},
+			},
+			)
+			formList.AddField("Status", "status", db.Enum, form.SelectSingle)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+
+			formList.FieldOptions(types.FieldOptions{
+				{Value: "running", Text: "Running"},
+				{Value: "succeeded", Text: "Succeeded"},
+				{Value: "failed", Text: "Failed"},
+			})
+			info.AddField("Trigger", "trigger", db.Enum)
+			info.FieldSortable()
+			info.FieldFilterable(types.FilterType{
+				FormType: form.SelectSingle,
+
+				Options: types.FieldOptions{
+					{Value: "schedule", Text: "Schedule"},
+					{Value: "manual", Text: "Manual"},
+				},
+			},
+			)
+			formList.AddField("Trigger", "trigger", db.Enum, form.SelectSingle)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+
+			formList.FieldOptions(types.FieldOptions{
+				{Value: "schedule", Text: "Schedule"},
+				{Value: "manual", Text: "Manual"},
+			})
+			info.AddField("StartedAt", "started_at", db.Timestamp)
+			info.FieldSortable()
+			formList.AddField("StartedAt", "started_at", db.Timestamp, form.Datetime)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+			info.AddField("CompletedAt", "completed_at", db.Timestamp)
+			info.FieldSortable()
+			formList.AddField("CompletedAt", "completed_at", db.Timestamp, form.Datetime)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+			info.AddField("CreatedAt", "created_at", db.Timestamp)
+			info.FieldSortable()
+			formList.AddField("CreatedAt", "created_at", db.Timestamp, form.Datetime)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+
+			return table
+		},
+		"workflow_step_run": func(ctx *context.Context) table.Table {
+			tableConfig := table.DefaultConfigWithDriver("postgresql")
+			tableConfig.PrimaryKey.Type = db.UUID
+			tableConfig.PrimaryKey.Name = "id"
+			table := table.NewDefaultTable(ctx, tableConfig)
+			info := table.GetInfo()
+			formList := table.GetForm()
+			info.SetTable("pipeline\".\"workflow_step_runs").SetTitle("WorkflowStepRun").SetDescription("WorkflowStepRun")
+			formList.SetTable("pipeline\".\"workflow_step_runs").SetTitle("WorkflowStepRun").SetDescription("WorkflowStepRun")
+			info.AddField("ID", "id", db.UUID)
+			info.FieldSortable()
+			info.FieldFilterable(types.FilterType{
+				FormType: form.Text,
+			},
+			)
+			formList.AddField("ID", "id", db.UUID, form.Text)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+			info.AddField("RunID", "run_id", db.UUID)
+			info.FieldSortable()
+			info.FieldFilterable(types.FilterType{
+				FormType: form.Text,
+			},
+			)
+			formList.AddField("RunID", "run_id", db.UUID, form.Text)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+			info.AddField("StepID", "step_id", db.UUID)
+			info.FieldSortable()
+			info.FieldFilterable(types.FilterType{
+				FormType: form.Text,
+			},
+			)
+			formList.AddField("StepID", "step_id", db.UUID, form.Text)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+			info.AddField("ConnectionID", "connection_id", db.UUID)
+			info.FieldSortable()
+			info.FieldFilterable(types.FilterType{
+				FormType: form.Text,
+			},
+			)
+			formList.AddField("ConnectionID", "connection_id", db.UUID, form.Text)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+			info.AddField("Status", "status", db.Enum)
+			info.FieldSortable()
+			info.FieldFilterable(types.FilterType{
+				FormType: form.SelectSingle,
+
+				Options: types.FieldOptions{
+					{Value: "pending", Text: "Pending"},
+					{Value: "queued", Text: "Queued"},
+					{Value: "succeeded", Text: "Succeeded"},
+					{Value: "failed", Text: "Failed"},
+					{Value: "skipped", Text: "Skipped"},
+				},
+			},
+			)
+			formList.AddField("Status", "status", db.Enum, form.SelectSingle)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+
+			formList.FieldOptions(types.FieldOptions{
+				{Value: "pending", Text: "Pending"},
+				{Value: "queued", Text: "Queued"},
+				{Value: "succeeded", Text: "Succeeded"},
+				{Value: "failed", Text: "Failed"},
+				{Value: "skipped", Text: "Skipped"},
+			})
+			info.AddField("JobID", "job_id", db.UUID)
+			info.FieldSortable()
+			info.FieldFilterable(types.FilterType{
+				FormType: form.Text,
+			},
+			)
+			formList.AddField("JobID", "job_id", db.UUID, form.Text)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+			info.AddField("Error", "error", db.Text)
+			info.FieldSortable()
+			formList.AddField("Error", "error", db.Text, form.Text)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+			info.AddField("StartedAt", "started_at", db.Timestamp)
+			info.FieldSortable()
+			formList.AddField("StartedAt", "started_at", db.Timestamp, form.Datetime)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+			info.AddField("CompletedAt", "completed_at", db.Timestamp)
+			info.FieldSortable()
+			formList.AddField("CompletedAt", "completed_at", db.Timestamp, form.Datetime)
 			formList.PreProcessFn = func(values form1.Values) form1.Values {
 				for k, v := range values {
 					for i, v := range v {

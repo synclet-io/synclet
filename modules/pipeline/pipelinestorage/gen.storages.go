@@ -79,6 +79,21 @@ func (s Storages) Executors() pipelinesvc.ExecutorsStorage {
 	return NewExecutorsStorage(s.db, s.logger)
 }
 
+func (s Storages) Workflows() pipelinesvc.WorkflowsStorage {
+	return NewWorkflowsStorage(s.db, s.logger)
+}
+func (s Storages) WorkflowSteps() pipelinesvc.WorkflowStepsStorage {
+	return NewWorkflowStepsStorage(s.db, s.logger)
+}
+func (s Storages) WorkflowStepDependencies() pipelinesvc.WorkflowStepDependenciesStorage {
+	return NewWorkflowStepDependenciesStorage(s.db, s.logger)
+}
+func (s Storages) WorkflowRuns() pipelinesvc.WorkflowRunsStorage {
+	return NewWorkflowRunsStorage(s.db, s.logger)
+}
+func (s Storages) WorkflowStepRuns() pipelinesvc.WorkflowStepRunsStorage {
+	return NewWorkflowStepRunsStorage(s.db, s.logger)
+}
 func (s Storages) PipelineEvents() pipelinesvc.PipelineEventsOutbox {
 	return NewPipelineEventsOutbox(s.db, s.processors)
 }
@@ -318,22 +333,23 @@ func NewJobsStorage(db *gorm.DB, logger *logging.Logger) pipelinesvc.JobsStorage
 				return buildJobFilterExpr(filter)
 			},
 			FieldMapping: map[any]clause.Column{
-				pipelinesvc.JobFieldID:            {Name: "id"},
-				pipelinesvc.JobFieldConnectionID:  {Name: "connection_id"},
-				pipelinesvc.JobFieldStatus:        {Name: "status"},
-				pipelinesvc.JobFieldJobType:       {Name: "job_type"},
-				pipelinesvc.JobFieldScheduledAt:   {Name: "scheduled_at"},
-				pipelinesvc.JobFieldStartedAt:     {Name: "started_at"},
-				pipelinesvc.JobFieldCompletedAt:   {Name: "completed_at"},
-				pipelinesvc.JobFieldError:         {Name: "error"},
-				pipelinesvc.JobFieldAttempt:       {Name: "attempt"},
-				pipelinesvc.JobFieldMaxAttempts:   {Name: "max_attempts"},
-				pipelinesvc.JobFieldSyncID:        {Name: "sync_id"},
-				pipelinesvc.JobFieldWorkerID:      {Name: "worker_id"},
-				pipelinesvc.JobFieldHeartbeatAt:   {Name: "heartbeat_at"},
-				pipelinesvc.JobFieldK8sJobName:    {Name: "k8s_job_name"},
-				pipelinesvc.JobFieldFailureReason: {Name: "failure_reason"},
-				pipelinesvc.JobFieldCreatedAt:     {Name: "created_at"},
+				pipelinesvc.JobFieldID:                {Name: "id"},
+				pipelinesvc.JobFieldConnectionID:      {Name: "connection_id"},
+				pipelinesvc.JobFieldStatus:            {Name: "status"},
+				pipelinesvc.JobFieldJobType:           {Name: "job_type"},
+				pipelinesvc.JobFieldScheduledAt:       {Name: "scheduled_at"},
+				pipelinesvc.JobFieldStartedAt:         {Name: "started_at"},
+				pipelinesvc.JobFieldCompletedAt:       {Name: "completed_at"},
+				pipelinesvc.JobFieldError:             {Name: "error"},
+				pipelinesvc.JobFieldAttempt:           {Name: "attempt"},
+				pipelinesvc.JobFieldMaxAttempts:       {Name: "max_attempts"},
+				pipelinesvc.JobFieldSyncID:            {Name: "sync_id"},
+				pipelinesvc.JobFieldWorkerID:          {Name: "worker_id"},
+				pipelinesvc.JobFieldHeartbeatAt:       {Name: "heartbeat_at"},
+				pipelinesvc.JobFieldK8sJobName:        {Name: "k8s_job_name"},
+				pipelinesvc.JobFieldFailureReason:     {Name: "failure_reason"},
+				pipelinesvc.JobFieldWorkflowStepRunID: {Name: "workflow_step_run_id"},
+				pipelinesvc.JobFieldCreatedAt:         {Name: "created_at"},
 			},
 			LockScope: "pipeline.Jobs",
 		},
@@ -619,6 +635,115 @@ func NewExecutorsStorage(db *gorm.DB, logger *logging.Logger) pipelinesvc.Execut
 	}
 }
 
+func NewWorkflowsStorage(db *gorm.DB, logger *logging.Logger) pipelinesvc.WorkflowsStorage {
+	return dbutil.GormEntityStorage[pipelinesvc.Workflow, dbWorkflow, pipelinesvc.WorkflowFilter]{
+		Logger:            logger,
+		DB:                db,
+		DBErrorsWrapper:   wrapWorkflowQueryError,
+		ConvertToInternal: convertWorkflowToDB,
+		ConvertToExternal: convertWorkflowFromDB,
+		BuildFilterExpression: func(filter *pipelinesvc.WorkflowFilter) (clause.Expression, error) {
+			return buildWorkflowFilterExpr(filter)
+		},
+		FieldMapping: map[any]clause.Column{
+			pipelinesvc.WorkflowFieldID:              {Name: "id"},
+			pipelinesvc.WorkflowFieldWorkspaceID:     {Name: "workspace_id"},
+			pipelinesvc.WorkflowFieldName:            {Name: "name"},
+			pipelinesvc.WorkflowFieldSchedule:        {Name: "schedule"},
+			pipelinesvc.WorkflowFieldNextScheduledAt: {Name: "next_scheduled_at"},
+			pipelinesvc.WorkflowFieldCreatedAt:       {Name: "created_at"},
+			pipelinesvc.WorkflowFieldUpdatedAt:       {Name: "updated_at"},
+		},
+		LockScope: "pipeline.Workflows",
+	}
+}
+
+func NewWorkflowStepsStorage(db *gorm.DB, logger *logging.Logger) pipelinesvc.WorkflowStepsStorage {
+	return dbutil.GormEntityStorage[pipelinesvc.WorkflowStep, dbWorkflowStep, pipelinesvc.WorkflowStepFilter]{
+		Logger:            logger,
+		DB:                db,
+		DBErrorsWrapper:   wrapWorkflowStepQueryError,
+		ConvertToInternal: convertWorkflowStepToDB,
+		ConvertToExternal: convertWorkflowStepFromDB,
+		BuildFilterExpression: func(filter *pipelinesvc.WorkflowStepFilter) (clause.Expression, error) {
+			return buildWorkflowStepFilterExpr(filter)
+		},
+		FieldMapping: map[any]clause.Column{
+			pipelinesvc.WorkflowStepFieldID:           {Name: "id"},
+			pipelinesvc.WorkflowStepFieldWorkflowID:   {Name: "workflow_id"},
+			pipelinesvc.WorkflowStepFieldConnectionID: {Name: "connection_id"},
+		},
+		LockScope: "pipeline.WorkflowSteps",
+	}
+}
+
+func NewWorkflowStepDependenciesStorage(db *gorm.DB, logger *logging.Logger) pipelinesvc.WorkflowStepDependenciesStorage {
+	return dbutil.GormEntityStorage[pipelinesvc.WorkflowStepDependency, dbWorkflowStepDependency, pipelinesvc.WorkflowStepDependencyFilter]{
+		Logger:            logger,
+		DB:                db,
+		DBErrorsWrapper:   wrapWorkflowStepDependencyQueryError,
+		ConvertToInternal: convertWorkflowStepDependencyToDB,
+		ConvertToExternal: convertWorkflowStepDependencyFromDB,
+		BuildFilterExpression: func(filter *pipelinesvc.WorkflowStepDependencyFilter) (clause.Expression, error) {
+			return buildWorkflowStepDependencyFilterExpr(filter)
+		},
+		FieldMapping: map[any]clause.Column{
+			pipelinesvc.WorkflowStepDependencyFieldID:             {Name: "id"},
+			pipelinesvc.WorkflowStepDependencyFieldWorkflowID:     {Name: "workflow_id"},
+			pipelinesvc.WorkflowStepDependencyFieldStepID:         {Name: "step_id"},
+			pipelinesvc.WorkflowStepDependencyFieldUpstreamStepID: {Name: "upstream_step_id"},
+		},
+		LockScope: "pipeline.WorkflowStepDependencies",
+	}
+}
+
+func NewWorkflowRunsStorage(db *gorm.DB, logger *logging.Logger) pipelinesvc.WorkflowRunsStorage {
+	return dbutil.GormEntityStorage[pipelinesvc.WorkflowRun, dbWorkflowRun, pipelinesvc.WorkflowRunFilter]{
+		Logger:            logger,
+		DB:                db,
+		DBErrorsWrapper:   wrapWorkflowRunQueryError,
+		ConvertToInternal: convertWorkflowRunToDB,
+		ConvertToExternal: convertWorkflowRunFromDB,
+		BuildFilterExpression: func(filter *pipelinesvc.WorkflowRunFilter) (clause.Expression, error) {
+			return buildWorkflowRunFilterExpr(filter)
+		},
+		FieldMapping: map[any]clause.Column{
+			pipelinesvc.WorkflowRunFieldID:          {Name: "id"},
+			pipelinesvc.WorkflowRunFieldWorkflowID:  {Name: "workflow_id"},
+			pipelinesvc.WorkflowRunFieldStatus:      {Name: "status"},
+			pipelinesvc.WorkflowRunFieldTrigger:     {Name: "trigger"},
+			pipelinesvc.WorkflowRunFieldStartedAt:   {Name: "started_at"},
+			pipelinesvc.WorkflowRunFieldCompletedAt: {Name: "completed_at"},
+			pipelinesvc.WorkflowRunFieldCreatedAt:   {Name: "created_at"},
+		},
+		LockScope: "pipeline.WorkflowRuns",
+	}
+}
+
+func NewWorkflowStepRunsStorage(db *gorm.DB, logger *logging.Logger) pipelinesvc.WorkflowStepRunsStorage {
+	return dbutil.GormEntityStorage[pipelinesvc.WorkflowStepRun, dbWorkflowStepRun, pipelinesvc.WorkflowStepRunFilter]{
+		Logger:            logger,
+		DB:                db,
+		DBErrorsWrapper:   wrapWorkflowStepRunQueryError,
+		ConvertToInternal: convertWorkflowStepRunToDB,
+		ConvertToExternal: convertWorkflowStepRunFromDB,
+		BuildFilterExpression: func(filter *pipelinesvc.WorkflowStepRunFilter) (clause.Expression, error) {
+			return buildWorkflowStepRunFilterExpr(filter)
+		},
+		FieldMapping: map[any]clause.Column{
+			pipelinesvc.WorkflowStepRunFieldID:           {Name: "id"},
+			pipelinesvc.WorkflowStepRunFieldRunID:        {Name: "run_id"},
+			pipelinesvc.WorkflowStepRunFieldStepID:       {Name: "step_id"},
+			pipelinesvc.WorkflowStepRunFieldConnectionID: {Name: "connection_id"},
+			pipelinesvc.WorkflowStepRunFieldStatus:       {Name: "status"},
+			pipelinesvc.WorkflowStepRunFieldJobID:        {Name: "job_id"},
+			pipelinesvc.WorkflowStepRunFieldError:        {Name: "error"},
+			pipelinesvc.WorkflowStepRunFieldStartedAt:    {Name: "started_at"},
+			pipelinesvc.WorkflowStepRunFieldCompletedAt:  {Name: "completed_at"},
+		},
+		LockScope: "pipeline.WorkflowStepRuns",
+	}
+}
 func NewPipelineEventsOutbox(db *gorm.DB, processors []txoutbox.MessageProcessor) pipelinesvc.PipelineEventsOutbox {
 	return txoutbox.GormStorage[pipelinesvc.PipelineEvent]{
 		DB:                db,

@@ -41,6 +41,7 @@ func TestEncodeDecode_JobCreatedRoundTrip(t *testing.T) {
 	job.WorkerID = ptr("worker-1")
 	job.K8sJobName = ptr("sync-abc")
 	job.FailureReason = ptr("system_error")
+	job.WorkflowStepRunID = ptr(uuid.New())
 
 	event := &pipelineservice.PipelineEvent{
 		EventType: pipelineservice.PipelineEventTypeJobCreated,
@@ -83,6 +84,23 @@ func TestEncodeDecode_JobUpdatedRoundTrip(t *testing.T) {
 	decoded, err := DecodePipelineEvent(metadata, body)
 	require.NoError(t, err)
 	require.True(t, event.Equals(decoded))
+}
+
+func TestEncodeDecode_WorkflowRunStartedRoundTrip(t *testing.T) {
+	data := &pipelineservice.WorkflowRunStartedEventData{WorkspaceID: uuid.New(), WorkflowID: uuid.New(), RunID: uuid.New()}
+	event := &pipelineservice.PipelineEvent{EventType: pipelineservice.PipelineEventTypeWorkflowRunStarted, Data: data}
+
+	metadata, body, err := EncodePipelineEvent(event)
+	require.NoError(t, err)
+	assert.Equal(t, "workflow_run.started", metadata[eventutil.MetadataKeyEventType])
+
+	decoded, err := DecodePipelineEvent(metadata, body)
+	require.NoError(t, err)
+	require.True(t, event.Equals(decoded))
+
+	key, err := OrderingKey(event)
+	require.NoError(t, err)
+	assert.Equal(t, data.WorkflowID.String(), key, "runs of one workflow stay in order")
 }
 
 func TestOrderingKey_JobCreated(t *testing.T) {

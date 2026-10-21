@@ -308,6 +308,23 @@ func TestDeleteConnection(t *testing.T) {
 		assert.False(t, exists)
 	})
 
+	t.Run("rejects a connection that is a step of a workflow", func(t *testing.T) {
+		ws := uuid.New()
+		store := newCreateConnStore(ws, uuid.New(), uuid.New())
+		conn := &pipelineservice.Connection{ID: uuid.New(), WorkspaceID: ws}
+		seedConnection(t, store, conn)
+		store.workflows.WorkflowStepsTable.Insert(&pipelineservice.WorkflowStep{ID: uuid.New(), WorkflowID: uuid.New(), ConnectionID: conn.ID})
+
+		audit := &recordingAudit{}
+		uc := pipelineconnections.NewDeleteConnection(store, audit)
+		err := uc.Execute(context.Background(), pipelineconnections.DeleteConnectionParams{ID: conn.ID, WorkspaceID: ws})
+		require.ErrorIs(t, err, pipelineservice.ErrConnectionInWorkflow)
+		assert.Empty(t, audit.events)
+
+		_, exists := store.connections.records[conn.ID]
+		assert.True(t, exists, "a connection that is a step stays")
+	})
+
 	t.Run("does not delete a connection that belongs to another workspace", func(t *testing.T) {
 		ws := uuid.New()
 		otherWs := uuid.New()

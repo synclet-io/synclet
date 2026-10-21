@@ -849,22 +849,23 @@ func convertConnectionFromJsonModel(src *jsonConnection) (*pipelineservice.Conne
 }
 
 type jsonJob struct {
-	ID            uuid.UUID  `json:"id"`
-	ConnectionID  uuid.UUID  `json:"connection_id"`
-	Status        string     `json:"status"`
-	JobType       string     `json:"job_type"`
-	ScheduledAt   time.Time  `json:"scheduled_at"`
-	StartedAt     *time.Time `json:"started_at"`
-	CompletedAt   *time.Time `json:"completed_at"`
-	Error         *string    `json:"error"`
-	Attempt       int        `json:"attempt"`
-	MaxAttempts   int        `json:"max_attempts"`
-	SyncID        *int64     `json:"sync_id"`
-	WorkerID      *string    `json:"worker_id"`
-	HeartbeatAt   *time.Time `json:"heartbeat_at"`
-	K8sJobName    *string    `json:"k8s_job_name"`
-	FailureReason *string    `json:"failure_reason"`
-	CreatedAt     time.Time  `json:"created_at"`
+	ID                uuid.UUID  `json:"id"`
+	ConnectionID      uuid.UUID  `json:"connection_id"`
+	Status            string     `json:"status"`
+	JobType           string     `json:"job_type"`
+	ScheduledAt       time.Time  `json:"scheduled_at"`
+	StartedAt         *time.Time `json:"started_at"`
+	CompletedAt       *time.Time `json:"completed_at"`
+	Error             *string    `json:"error"`
+	Attempt           int        `json:"attempt"`
+	MaxAttempts       int        `json:"max_attempts"`
+	SyncID            *int64     `json:"sync_id"`
+	WorkerID          *string    `json:"worker_id"`
+	HeartbeatAt       *time.Time `json:"heartbeat_at"`
+	K8sJobName        *string    `json:"k8s_job_name"`
+	FailureReason     *string    `json:"failure_reason"`
+	WorkflowStepRunID *uuid.UUID `json:"workflow_step_run_id"`
+	CreatedAt         time.Time  `json:"created_at"`
 }
 
 func (j *jsonJob) Scan(value any) error {
@@ -932,6 +933,11 @@ func convertJobToJsonModel(src *pipelineservice.Job) (*jsonJob, error) {
 	} else {
 		result.FailureReason = toPtr(fromPtr(src.FailureReason))
 	}
+	if src.WorkflowStepRunID == nil {
+		result.WorkflowStepRunID = nil
+	} else {
+		result.WorkflowStepRunID = toPtr(fromPtr(src.WorkflowStepRunID))
+	}
 	result.CreatedAt = (src.CreatedAt).UTC()
 	return result, nil
 }
@@ -940,16 +946,16 @@ func convertJobFromJsonModel(src *jsonJob) (*pipelineservice.Job, error) {
 	result := &pipelineservice.Job{}
 	result.ID = src.ID
 	result.ConnectionID = src.ConnectionID
-	tmp26, err := convertJobStatusFromDB(src.Status)
+	tmp28, err := convertJobStatusFromDB(src.Status)
 	if err != nil {
 		return nil, err
 	}
-	result.Status = tmp26
-	tmp27, err := convertJobTypeFromDB(src.JobType)
+	result.Status = tmp28
+	tmp29, err := convertJobTypeFromDB(src.JobType)
 	if err != nil {
 		return nil, err
 	}
-	result.JobType = tmp27
+	result.JobType = tmp29
 	result.ScheduledAt = src.ScheduledAt
 	if src.StartedAt == nil {
 		result.StartedAt = nil
@@ -992,6 +998,11 @@ func convertJobFromJsonModel(src *jsonJob) (*pipelineservice.Job, error) {
 		result.FailureReason = nil
 	} else {
 		result.FailureReason = toPtr(fromPtr(src.FailureReason))
+	}
+	if src.WorkflowStepRunID == nil {
+		result.WorkflowStepRunID = nil
+	} else {
+		result.WorkflowStepRunID = toPtr(fromPtr(src.WorkflowStepRunID))
 	}
 	result.CreatedAt = src.CreatedAt
 	return result, nil
@@ -1844,6 +1855,281 @@ func convertExecutorResourceDefaultsFromJsonModel(src *jsonExecutorResourceDefau
 	return result, nil
 }
 
+type jsonWorkflow struct {
+	ID              uuid.UUID  `json:"id"`
+	WorkspaceID     uuid.UUID  `json:"workspace_id"`
+	Name            string     `json:"name"`
+	Schedule        *string    `json:"schedule"`
+	NextScheduledAt *time.Time `json:"next_scheduled_at"`
+	CreatedAt       time.Time  `json:"created_at"`
+	UpdatedAt       time.Time  `json:"updated_at"`
+}
+
+func (w *jsonWorkflow) Scan(value any) error {
+	return json.Unmarshal(value.([]byte), w)
+}
+
+func (w jsonWorkflow) Value() (driver.Value, error) {
+	return json.Marshal(w)
+}
+
+func convertWorkflowToJsonModel(src *pipelineservice.Workflow) (*jsonWorkflow, error) {
+	result := &jsonWorkflow{}
+	result.ID = src.ID
+	result.WorkspaceID = src.WorkspaceID
+	result.Name = src.Name
+	if src.Schedule == nil {
+		result.Schedule = nil
+	} else {
+		result.Schedule = toPtr(fromPtr(src.Schedule))
+	}
+	if src.NextScheduledAt == nil {
+		result.NextScheduledAt = nil
+	} else {
+		result.NextScheduledAt = toPtr((fromPtr(src.NextScheduledAt)).UTC())
+	}
+	result.CreatedAt = (src.CreatedAt).UTC()
+	result.UpdatedAt = (src.UpdatedAt).UTC()
+	return result, nil
+}
+
+func convertWorkflowFromJsonModel(src *jsonWorkflow) (*pipelineservice.Workflow, error) {
+	result := &pipelineservice.Workflow{}
+	result.ID = src.ID
+	result.WorkspaceID = src.WorkspaceID
+	result.Name = src.Name
+	if src.Schedule == nil {
+		result.Schedule = nil
+	} else {
+		result.Schedule = toPtr(fromPtr(src.Schedule))
+	}
+	if src.NextScheduledAt == nil {
+		result.NextScheduledAt = nil
+	} else {
+		result.NextScheduledAt = toPtr(fromPtr(src.NextScheduledAt))
+	}
+	result.CreatedAt = src.CreatedAt
+	result.UpdatedAt = src.UpdatedAt
+	return result, nil
+}
+
+type jsonWorkflowStep struct {
+	ID           uuid.UUID `json:"id"`
+	WorkflowID   uuid.UUID `json:"workflow_id"`
+	ConnectionID uuid.UUID `json:"connection_id"`
+}
+
+func (w *jsonWorkflowStep) Scan(value any) error {
+	return json.Unmarshal(value.([]byte), w)
+}
+
+func (w jsonWorkflowStep) Value() (driver.Value, error) {
+	return json.Marshal(w)
+}
+
+func convertWorkflowStepToJsonModel(src *pipelineservice.WorkflowStep) (*jsonWorkflowStep, error) {
+	result := &jsonWorkflowStep{}
+	result.ID = src.ID
+	result.WorkflowID = src.WorkflowID
+	result.ConnectionID = src.ConnectionID
+	return result, nil
+}
+
+func convertWorkflowStepFromJsonModel(src *jsonWorkflowStep) (*pipelineservice.WorkflowStep, error) {
+	result := &pipelineservice.WorkflowStep{}
+	result.ID = src.ID
+	result.WorkflowID = src.WorkflowID
+	result.ConnectionID = src.ConnectionID
+	return result, nil
+}
+
+type jsonWorkflowStepDependency struct {
+	ID             uuid.UUID `json:"id"`
+	WorkflowID     uuid.UUID `json:"workflow_id"`
+	StepID         uuid.UUID `json:"step_id"`
+	UpstreamStepID uuid.UUID `json:"upstream_step_id"`
+}
+
+func (w *jsonWorkflowStepDependency) Scan(value any) error {
+	return json.Unmarshal(value.([]byte), w)
+}
+
+func (w jsonWorkflowStepDependency) Value() (driver.Value, error) {
+	return json.Marshal(w)
+}
+
+func convertWorkflowStepDependencyToJsonModel(src *pipelineservice.WorkflowStepDependency) (*jsonWorkflowStepDependency, error) {
+	result := &jsonWorkflowStepDependency{}
+	result.ID = src.ID
+	result.WorkflowID = src.WorkflowID
+	result.StepID = src.StepID
+	result.UpstreamStepID = src.UpstreamStepID
+	return result, nil
+}
+
+func convertWorkflowStepDependencyFromJsonModel(src *jsonWorkflowStepDependency) (*pipelineservice.WorkflowStepDependency, error) {
+	result := &pipelineservice.WorkflowStepDependency{}
+	result.ID = src.ID
+	result.WorkflowID = src.WorkflowID
+	result.StepID = src.StepID
+	result.UpstreamStepID = src.UpstreamStepID
+	return result, nil
+}
+
+type jsonWorkflowRun struct {
+	ID          uuid.UUID  `json:"id"`
+	WorkflowID  uuid.UUID  `json:"workflow_id"`
+	Status      string     `json:"status"`
+	Trigger     string     `json:"trigger"`
+	StartedAt   time.Time  `json:"started_at"`
+	CompletedAt *time.Time `json:"completed_at"`
+	CreatedAt   time.Time  `json:"created_at"`
+}
+
+func (w *jsonWorkflowRun) Scan(value any) error {
+	return json.Unmarshal(value.([]byte), w)
+}
+
+func (w jsonWorkflowRun) Value() (driver.Value, error) {
+	return json.Marshal(w)
+}
+
+func convertWorkflowRunToJsonModel(src *pipelineservice.WorkflowRun) (*jsonWorkflowRun, error) {
+	result := &jsonWorkflowRun{}
+	result.ID = src.ID
+	result.WorkflowID = src.WorkflowID
+	tmp2, err := convertWorkflowRunStatusToDB(src.Status)
+	if err != nil {
+		return nil, err
+	}
+	result.Status = tmp2
+	tmp3, err := convertWorkflowRunTriggerToDB(src.Trigger)
+	if err != nil {
+		return nil, err
+	}
+	result.Trigger = tmp3
+	result.StartedAt = (src.StartedAt).UTC()
+	if src.CompletedAt == nil {
+		result.CompletedAt = nil
+	} else {
+		result.CompletedAt = toPtr((fromPtr(src.CompletedAt)).UTC())
+	}
+	result.CreatedAt = (src.CreatedAt).UTC()
+	return result, nil
+}
+
+func convertWorkflowRunFromJsonModel(src *jsonWorkflowRun) (*pipelineservice.WorkflowRun, error) {
+	result := &pipelineservice.WorkflowRun{}
+	result.ID = src.ID
+	result.WorkflowID = src.WorkflowID
+	tmp10, err := convertWorkflowRunStatusFromDB(src.Status)
+	if err != nil {
+		return nil, err
+	}
+	result.Status = tmp10
+	tmp11, err := convertWorkflowRunTriggerFromDB(src.Trigger)
+	if err != nil {
+		return nil, err
+	}
+	result.Trigger = tmp11
+	result.StartedAt = src.StartedAt
+	if src.CompletedAt == nil {
+		result.CompletedAt = nil
+	} else {
+		result.CompletedAt = toPtr(fromPtr(src.CompletedAt))
+	}
+	result.CreatedAt = src.CreatedAt
+	return result, nil
+}
+
+type jsonWorkflowStepRun struct {
+	ID           uuid.UUID  `json:"id"`
+	RunID        uuid.UUID  `json:"run_id"`
+	StepID       uuid.UUID  `json:"step_id"`
+	ConnectionID uuid.UUID  `json:"connection_id"`
+	Status       string     `json:"status"`
+	JobID        *uuid.UUID `json:"job_id"`
+	Error        *string    `json:"error"`
+	StartedAt    *time.Time `json:"started_at"`
+	CompletedAt  *time.Time `json:"completed_at"`
+}
+
+func (w *jsonWorkflowStepRun) Scan(value any) error {
+	return json.Unmarshal(value.([]byte), w)
+}
+
+func (w jsonWorkflowStepRun) Value() (driver.Value, error) {
+	return json.Marshal(w)
+}
+
+func convertWorkflowStepRunToJsonModel(src *pipelineservice.WorkflowStepRun) (*jsonWorkflowStepRun, error) {
+	result := &jsonWorkflowStepRun{}
+	result.ID = src.ID
+	result.RunID = src.RunID
+	result.StepID = src.StepID
+	result.ConnectionID = src.ConnectionID
+	tmp4, err := convertWorkflowStepRunStatusToDB(src.Status)
+	if err != nil {
+		return nil, err
+	}
+	result.Status = tmp4
+	if src.JobID == nil {
+		result.JobID = nil
+	} else {
+		result.JobID = toPtr(fromPtr(src.JobID))
+	}
+	if src.Error == nil {
+		result.Error = nil
+	} else {
+		result.Error = toPtr(fromPtr(src.Error))
+	}
+	if src.StartedAt == nil {
+		result.StartedAt = nil
+	} else {
+		result.StartedAt = toPtr((fromPtr(src.StartedAt)).UTC())
+	}
+	if src.CompletedAt == nil {
+		result.CompletedAt = nil
+	} else {
+		result.CompletedAt = toPtr((fromPtr(src.CompletedAt)).UTC())
+	}
+	return result, nil
+}
+
+func convertWorkflowStepRunFromJsonModel(src *jsonWorkflowStepRun) (*pipelineservice.WorkflowStepRun, error) {
+	result := &pipelineservice.WorkflowStepRun{}
+	result.ID = src.ID
+	result.RunID = src.RunID
+	result.StepID = src.StepID
+	result.ConnectionID = src.ConnectionID
+	tmp17, err := convertWorkflowStepRunStatusFromDB(src.Status)
+	if err != nil {
+		return nil, err
+	}
+	result.Status = tmp17
+	if src.JobID == nil {
+		result.JobID = nil
+	} else {
+		result.JobID = toPtr(fromPtr(src.JobID))
+	}
+	if src.Error == nil {
+		result.Error = nil
+	} else {
+		result.Error = toPtr(fromPtr(src.Error))
+	}
+	if src.StartedAt == nil {
+		result.StartedAt = nil
+	} else {
+		result.StartedAt = toPtr(fromPtr(src.StartedAt))
+	}
+	if src.CompletedAt == nil {
+		result.CompletedAt = nil
+	} else {
+		result.CompletedAt = toPtr(fromPtr(src.CompletedAt))
+	}
+	return result, nil
+}
+
 type jsonPipelineEvent struct {
 	EventType string                 `json:"event_type"`
 	Data      *jsonPipelineEventData `json:"data"`
@@ -1989,5 +2275,35 @@ func convertJobUpdatedEventDataFromJsonModel(src *jsonJobUpdatedEventData) (*pip
 	} else {
 		result.NewData = nil
 	}
+	return result, nil
+}
+
+type jsonWorkflowRunStartedEventData struct {
+	WorkspaceID uuid.UUID `json:"workspace_id"`
+	WorkflowID  uuid.UUID `json:"workflow_id"`
+	RunID       uuid.UUID `json:"run_id"`
+}
+
+func (w *jsonWorkflowRunStartedEventData) Scan(value any) error {
+	return json.Unmarshal(value.([]byte), w)
+}
+
+func (w jsonWorkflowRunStartedEventData) Value() (driver.Value, error) {
+	return json.Marshal(w)
+}
+
+func convertWorkflowRunStartedEventDataToJsonModel(src *pipelineservice.WorkflowRunStartedEventData) (*jsonWorkflowRunStartedEventData, error) {
+	result := &jsonWorkflowRunStartedEventData{}
+	result.WorkspaceID = src.WorkspaceID
+	result.WorkflowID = src.WorkflowID
+	result.RunID = src.RunID
+	return result, nil
+}
+
+func convertWorkflowRunStartedEventDataFromJsonModel(src *jsonWorkflowRunStartedEventData) (*pipelineservice.WorkflowRunStartedEventData, error) {
+	result := &pipelineservice.WorkflowRunStartedEventData{}
+	result.WorkspaceID = src.WorkspaceID
+	result.WorkflowID = src.WorkflowID
+	result.RunID = src.RunID
 	return result, nil
 }

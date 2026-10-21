@@ -23,8 +23,9 @@ const PipelineEventTopic = "pipeline.pipeline_event"
 // Wire-format strings. Kept distinct from the in-process enum so the wire
 // format is stable across enum re-orderings.
 const (
-	pipelineEventTypeJobCreated = "job.created"
-	pipelineEventTypeJobUpdated = "job.updated"
+	pipelineEventTypeJobCreated         = "job.created"
+	pipelineEventTypeJobUpdated         = "job.updated"
+	pipelineEventTypeWorkflowRunStarted = "workflow_run.started"
 )
 
 func eventTypeToString(eventType pipelineservice.PipelineEventType) (string, error) {
@@ -33,6 +34,8 @@ func eventTypeToString(eventType pipelineservice.PipelineEventType) (string, err
 		return pipelineEventTypeJobCreated, nil
 	case pipelineservice.PipelineEventTypeJobUpdated:
 		return pipelineEventTypeJobUpdated, nil
+	case pipelineservice.PipelineEventTypeWorkflowRunStarted:
+		return pipelineEventTypeWorkflowRunStarted, nil
 	default:
 		return "", fmt.Errorf("unknown PipelineEventType: %d", eventType)
 	}
@@ -44,6 +47,8 @@ func eventTypeFromString(value string) (pipelineservice.PipelineEventType, error
 		return pipelineservice.PipelineEventTypeJobCreated, nil
 	case pipelineEventTypeJobUpdated:
 		return pipelineservice.PipelineEventTypeJobUpdated, nil
+	case pipelineEventTypeWorkflowRunStarted:
+		return pipelineservice.PipelineEventTypeWorkflowRunStarted, nil
 	default:
 		return 0, fmt.Errorf("unknown PipelineEventType string: %q", value)
 	}
@@ -51,40 +56,42 @@ func eventTypeFromString(value string) (pipelineservice.PipelineEventType, error
 
 // jobPayload is the wire format of a Job inside an event envelope.
 type jobPayload struct {
-	ID            uuid.UUID  `json:"id"`
-	ConnectionID  uuid.UUID  `json:"connection_id"`
-	JobType       string     `json:"job_type"`
-	Status        string     `json:"status"`
-	ScheduledAt   time.Time  `json:"scheduled_at"`
-	StartedAt     *time.Time `json:"started_at,omitempty"`
-	CompletedAt   *time.Time `json:"completed_at,omitempty"`
-	Error         *string    `json:"error,omitempty"`
-	Attempt       int        `json:"attempt"`
-	MaxAttempts   int        `json:"max_attempts"`
-	WorkerID      *string    `json:"worker_id,omitempty"`
-	HeartbeatAt   *time.Time `json:"heartbeat_at,omitempty"`
-	K8sJobName    *string    `json:"k8s_job_name,omitempty"`
-	FailureReason *string    `json:"failure_reason,omitempty"`
-	CreatedAt     time.Time  `json:"created_at"`
+	ID                uuid.UUID  `json:"id"`
+	ConnectionID      uuid.UUID  `json:"connection_id"`
+	JobType           string     `json:"job_type"`
+	Status            string     `json:"status"`
+	ScheduledAt       time.Time  `json:"scheduled_at"`
+	StartedAt         *time.Time `json:"started_at,omitempty"`
+	CompletedAt       *time.Time `json:"completed_at,omitempty"`
+	Error             *string    `json:"error,omitempty"`
+	Attempt           int        `json:"attempt"`
+	MaxAttempts       int        `json:"max_attempts"`
+	WorkerID          *string    `json:"worker_id,omitempty"`
+	HeartbeatAt       *time.Time `json:"heartbeat_at,omitempty"`
+	K8sJobName        *string    `json:"k8s_job_name,omitempty"`
+	FailureReason     *string    `json:"failure_reason,omitempty"`
+	WorkflowStepRunID *uuid.UUID `json:"workflow_step_run_id,omitempty"`
+	CreatedAt         time.Time  `json:"created_at"`
 }
 
 func toJobPayload(job *pipelineservice.Job) jobPayload {
 	return jobPayload{
-		ID:            job.ID,
-		ConnectionID:  job.ConnectionID,
-		JobType:       job.JobType.String(),
-		Status:        job.Status.String(),
-		ScheduledAt:   job.ScheduledAt,
-		StartedAt:     job.StartedAt,
-		CompletedAt:   job.CompletedAt,
-		Error:         job.Error,
-		Attempt:       job.Attempt,
-		MaxAttempts:   job.MaxAttempts,
-		WorkerID:      job.WorkerID,
-		HeartbeatAt:   job.HeartbeatAt,
-		K8sJobName:    job.K8sJobName,
-		FailureReason: job.FailureReason,
-		CreatedAt:     job.CreatedAt,
+		ID:                job.ID,
+		ConnectionID:      job.ConnectionID,
+		JobType:           job.JobType.String(),
+		Status:            job.Status.String(),
+		ScheduledAt:       job.ScheduledAt,
+		StartedAt:         job.StartedAt,
+		CompletedAt:       job.CompletedAt,
+		Error:             job.Error,
+		Attempt:           job.Attempt,
+		MaxAttempts:       job.MaxAttempts,
+		WorkerID:          job.WorkerID,
+		HeartbeatAt:       job.HeartbeatAt,
+		K8sJobName:        job.K8sJobName,
+		FailureReason:     job.FailureReason,
+		WorkflowStepRunID: job.WorkflowStepRunID,
+		CreatedAt:         job.CreatedAt,
 	}
 }
 
@@ -100,21 +107,22 @@ func fromJobPayload(payload jobPayload) (*pipelineservice.Job, error) {
 	}
 
 	return &pipelineservice.Job{
-		ID:            payload.ID,
-		ConnectionID:  payload.ConnectionID,
-		JobType:       jobType,
-		Status:        status,
-		ScheduledAt:   payload.ScheduledAt,
-		StartedAt:     payload.StartedAt,
-		CompletedAt:   payload.CompletedAt,
-		Error:         payload.Error,
-		Attempt:       payload.Attempt,
-		MaxAttempts:   payload.MaxAttempts,
-		WorkerID:      payload.WorkerID,
-		HeartbeatAt:   payload.HeartbeatAt,
-		K8sJobName:    payload.K8sJobName,
-		FailureReason: payload.FailureReason,
-		CreatedAt:     payload.CreatedAt,
+		ID:                payload.ID,
+		ConnectionID:      payload.ConnectionID,
+		JobType:           jobType,
+		Status:            status,
+		ScheduledAt:       payload.ScheduledAt,
+		StartedAt:         payload.StartedAt,
+		CompletedAt:       payload.CompletedAt,
+		Error:             payload.Error,
+		Attempt:           payload.Attempt,
+		MaxAttempts:       payload.MaxAttempts,
+		WorkerID:          payload.WorkerID,
+		HeartbeatAt:       payload.HeartbeatAt,
+		K8sJobName:        payload.K8sJobName,
+		FailureReason:     payload.FailureReason,
+		WorkflowStepRunID: payload.WorkflowStepRunID,
+		CreatedAt:         payload.CreatedAt,
 	}, nil
 }
 
@@ -127,6 +135,12 @@ type jobUpdatedPayload struct {
 	WorkspaceID uuid.UUID  `json:"workspace_id"`
 	OldData     jobPayload `json:"old_data"`
 	NewData     jobPayload `json:"new_data"`
+}
+
+type workflowRunStartedPayload struct {
+	WorkspaceID uuid.UUID `json:"workspace_id"`
+	WorkflowID  uuid.UUID `json:"workflow_id"`
+	RunID       uuid.UUID `json:"run_id"`
 }
 
 // EncodePipelineEvent serializes a domain event into its (metadata, data)
@@ -164,6 +178,16 @@ func EncodePipelineEvent(event *pipelineservice.PipelineEvent) (metadata map[str
 			WorkspaceID: data.WorkspaceID,
 			OldData:     toJobPayload(data.OldData),
 			NewData:     toJobPayload(data.NewData),
+		}
+	case *pipelineservice.WorkflowRunStartedEventData:
+		if data == nil {
+			return nil, nil, errors.New("workflow_run.started event missing data")
+		}
+
+		payload = workflowRunStartedPayload{
+			WorkspaceID: data.WorkspaceID,
+			WorkflowID:  data.WorkflowID,
+			RunID:       data.RunID,
 		}
 	default:
 		return nil, nil, fmt.Errorf("unsupported PipelineEventData type: %T", event.Data)
@@ -233,6 +257,17 @@ func DecodePipelineEvent(metadata map[string]string, body []byte) (*pipelineserv
 			OldData:     oldJob,
 			NewData:     newJob,
 		}
+	case pipelineEventTypeWorkflowRunStarted:
+		payload := workflowRunStartedPayload{}
+		if err := json.Unmarshal(body, &payload); err != nil {
+			return nil, fmt.Errorf("unmarshalling workflow_run.started payload: %w", err)
+		}
+
+		data = &pipelineservice.WorkflowRunStartedEventData{
+			WorkspaceID: payload.WorkspaceID,
+			WorkflowID:  payload.WorkflowID,
+			RunID:       payload.RunID,
+		}
 	default:
 		return nil, fmt.Errorf("unsupported event type: %s", eventTypeStr)
 	}
@@ -275,8 +310,9 @@ func jobStatusFromString(value string) (pipelineservice.JobStatus, error) {
 	}
 }
 
-// OrderingKey returns the connection UUID for the event, suitable for the
-// txoutbox ordering key. Events for the same connection stay in order.
+// OrderingKey returns the txoutbox ordering key of the event: the connection
+// UUID for job events, the workflow UUID for workflow run events. Events with
+// the same key stay in order.
 func OrderingKey(event *pipelineservice.PipelineEvent) (string, error) {
 	if event == nil {
 		return "", errors.New("event is nil")
@@ -295,6 +331,12 @@ func OrderingKey(event *pipelineservice.PipelineEvent) (string, error) {
 		}
 
 		return data.NewData.ConnectionID.String(), nil
+	case *pipelineservice.WorkflowRunStartedEventData:
+		if data == nil {
+			return "", errors.New("workflow_run.started event missing data")
+		}
+
+		return data.WorkflowID.String(), nil
 	default:
 		return "", fmt.Errorf("unsupported PipelineEventData type: %T", event.Data)
 	}

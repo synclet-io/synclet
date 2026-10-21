@@ -497,22 +497,23 @@ func (a dbConnection) TableName() string {
 }
 
 type dbJob struct {
-	ID            uuid.UUID  `gorm:"column:id"`
-	ConnectionID  uuid.UUID  `gorm:"column:connection_id"`
-	Status        string     `gorm:"column:status;type:text"`
-	JobType       string     `gorm:"column:job_type;type:text"`
-	ScheduledAt   time.Time  `gorm:"column:scheduled_at"`
-	StartedAt     *time.Time `gorm:"column:started_at"`
-	CompletedAt   *time.Time `gorm:"column:completed_at"`
-	Error         *string    `gorm:"column:error;type:text"`
-	Attempt       int        `gorm:"column:attempt"`
-	MaxAttempts   int        `gorm:"column:max_attempts"`
-	SyncID        *int64     `gorm:"column:sync_id"`
-	WorkerID      *string    `gorm:"column:worker_id;type:text"`
-	HeartbeatAt   *time.Time `gorm:"column:heartbeat_at"`
-	K8sJobName    *string    `gorm:"column:k8s_job_name;type:text"`
-	FailureReason *string    `gorm:"column:failure_reason;type:text"`
-	CreatedAt     time.Time  `gorm:"column:created_at"`
+	ID                uuid.UUID  `gorm:"column:id"`
+	ConnectionID      uuid.UUID  `gorm:"column:connection_id"`
+	Status            string     `gorm:"column:status;type:text"`
+	JobType           string     `gorm:"column:job_type;type:text"`
+	ScheduledAt       time.Time  `gorm:"column:scheduled_at"`
+	StartedAt         *time.Time `gorm:"column:started_at"`
+	CompletedAt       *time.Time `gorm:"column:completed_at"`
+	Error             *string    `gorm:"column:error;type:text"`
+	Attempt           int        `gorm:"column:attempt"`
+	MaxAttempts       int        `gorm:"column:max_attempts"`
+	SyncID            *int64     `gorm:"column:sync_id"`
+	WorkerID          *string    `gorm:"column:worker_id;type:text"`
+	HeartbeatAt       *time.Time `gorm:"column:heartbeat_at"`
+	K8sJobName        *string    `gorm:"column:k8s_job_name;type:text"`
+	FailureReason     *string    `gorm:"column:failure_reason;type:text"`
+	WorkflowStepRunID *uuid.UUID `gorm:"column:workflow_step_run_id"`
+	CreatedAt         time.Time  `gorm:"column:created_at"`
 }
 
 func convertJobToDB(src *pipelineservice.Job) (*dbJob, error) {
@@ -572,6 +573,11 @@ func convertJobToDB(src *pipelineservice.Job) (*dbJob, error) {
 	} else {
 		result.FailureReason = toPtr(fromPtr(src.FailureReason))
 	}
+	if src.WorkflowStepRunID == nil {
+		result.WorkflowStepRunID = nil
+	} else {
+		result.WorkflowStepRunID = toPtr(fromPtr(src.WorkflowStepRunID))
+	}
 	result.CreatedAt = (src.CreatedAt).UTC()
 	return result, nil
 }
@@ -580,16 +586,16 @@ func convertJobFromDB(src *dbJob) (*pipelineservice.Job, error) {
 	result := &pipelineservice.Job{}
 	result.ID = src.ID
 	result.ConnectionID = src.ConnectionID
-	tmp26, err := convertJobStatusFromDB(src.Status)
+	tmp28, err := convertJobStatusFromDB(src.Status)
 	if err != nil {
 		return nil, err
 	}
-	result.Status = tmp26
-	tmp27, err := convertJobTypeFromDB(src.JobType)
+	result.Status = tmp28
+	tmp29, err := convertJobTypeFromDB(src.JobType)
 	if err != nil {
 		return nil, err
 	}
-	result.JobType = tmp27
+	result.JobType = tmp29
 	result.ScheduledAt = src.ScheduledAt
 	if src.StartedAt == nil {
 		result.StartedAt = nil
@@ -632,6 +638,11 @@ func convertJobFromDB(src *dbJob) (*pipelineservice.Job, error) {
 		result.FailureReason = nil
 	} else {
 		result.FailureReason = toPtr(fromPtr(src.FailureReason))
+	}
+	if src.WorkflowStepRunID == nil {
+		result.WorkflowStepRunID = nil
+	} else {
+		result.WorkflowStepRunID = toPtr(fromPtr(src.WorkflowStepRunID))
 	}
 	result.CreatedAt = src.CreatedAt
 	return result, nil
@@ -1153,6 +1164,256 @@ func convertExecutorFromDB(src *dbExecutor) (*pipelineservice.Executor, error) {
 }
 func (a dbExecutor) TableName() string {
 	return "pipeline.executors"
+}
+
+type dbWorkflow struct {
+	ID              uuid.UUID  `gorm:"column:id"`
+	WorkspaceID     uuid.UUID  `gorm:"column:workspace_id"`
+	Name            string     `gorm:"column:name;type:text"`
+	Schedule        *string    `gorm:"column:schedule;type:text"`
+	NextScheduledAt *time.Time `gorm:"column:next_scheduled_at"`
+	CreatedAt       time.Time  `gorm:"column:created_at"`
+	UpdatedAt       time.Time  `gorm:"column:updated_at"`
+}
+
+func convertWorkflowToDB(src *pipelineservice.Workflow) (*dbWorkflow, error) {
+	result := &dbWorkflow{}
+	result.ID = src.ID
+	result.WorkspaceID = src.WorkspaceID
+	result.Name = src.Name
+	if src.Schedule == nil {
+		result.Schedule = nil
+	} else {
+		result.Schedule = toPtr(fromPtr(src.Schedule))
+	}
+	if src.NextScheduledAt == nil {
+		result.NextScheduledAt = nil
+	} else {
+		result.NextScheduledAt = toPtr((fromPtr(src.NextScheduledAt)).UTC())
+	}
+	result.CreatedAt = (src.CreatedAt).UTC()
+	result.UpdatedAt = (src.UpdatedAt).UTC()
+	return result, nil
+}
+
+func convertWorkflowFromDB(src *dbWorkflow) (*pipelineservice.Workflow, error) {
+	result := &pipelineservice.Workflow{}
+	result.ID = src.ID
+	result.WorkspaceID = src.WorkspaceID
+	result.Name = src.Name
+	if src.Schedule == nil {
+		result.Schedule = nil
+	} else {
+		result.Schedule = toPtr(fromPtr(src.Schedule))
+	}
+	if src.NextScheduledAt == nil {
+		result.NextScheduledAt = nil
+	} else {
+		result.NextScheduledAt = toPtr(fromPtr(src.NextScheduledAt))
+	}
+	result.CreatedAt = src.CreatedAt
+	result.UpdatedAt = src.UpdatedAt
+	return result, nil
+}
+func (a dbWorkflow) TableName() string {
+	return "pipeline.workflows"
+}
+
+type dbWorkflowStep struct {
+	ID           uuid.UUID `gorm:"column:id"`
+	WorkflowID   uuid.UUID `gorm:"column:workflow_id"`
+	ConnectionID uuid.UUID `gorm:"column:connection_id"`
+}
+
+func convertWorkflowStepToDB(src *pipelineservice.WorkflowStep) (*dbWorkflowStep, error) {
+	result := &dbWorkflowStep{}
+	result.ID = src.ID
+	result.WorkflowID = src.WorkflowID
+	result.ConnectionID = src.ConnectionID
+	return result, nil
+}
+
+func convertWorkflowStepFromDB(src *dbWorkflowStep) (*pipelineservice.WorkflowStep, error) {
+	result := &pipelineservice.WorkflowStep{}
+	result.ID = src.ID
+	result.WorkflowID = src.WorkflowID
+	result.ConnectionID = src.ConnectionID
+	return result, nil
+}
+func (a dbWorkflowStep) TableName() string {
+	return "pipeline.workflow_steps"
+}
+
+type dbWorkflowStepDependency struct {
+	ID             uuid.UUID `gorm:"column:id"`
+	WorkflowID     uuid.UUID `gorm:"column:workflow_id"`
+	StepID         uuid.UUID `gorm:"column:step_id"`
+	UpstreamStepID uuid.UUID `gorm:"column:upstream_step_id"`
+}
+
+func convertWorkflowStepDependencyToDB(src *pipelineservice.WorkflowStepDependency) (*dbWorkflowStepDependency, error) {
+	result := &dbWorkflowStepDependency{}
+	result.ID = src.ID
+	result.WorkflowID = src.WorkflowID
+	result.StepID = src.StepID
+	result.UpstreamStepID = src.UpstreamStepID
+	return result, nil
+}
+
+func convertWorkflowStepDependencyFromDB(src *dbWorkflowStepDependency) (*pipelineservice.WorkflowStepDependency, error) {
+	result := &pipelineservice.WorkflowStepDependency{}
+	result.ID = src.ID
+	result.WorkflowID = src.WorkflowID
+	result.StepID = src.StepID
+	result.UpstreamStepID = src.UpstreamStepID
+	return result, nil
+}
+func (a dbWorkflowStepDependency) TableName() string {
+	return "pipeline.workflow_step_dependencies"
+}
+
+type dbWorkflowRun struct {
+	ID          uuid.UUID  `gorm:"column:id"`
+	WorkflowID  uuid.UUID  `gorm:"column:workflow_id"`
+	Status      string     `gorm:"column:status;type:text"`
+	Trigger     string     `gorm:"column:trigger;type:text"`
+	StartedAt   time.Time  `gorm:"column:started_at"`
+	CompletedAt *time.Time `gorm:"column:completed_at"`
+	CreatedAt   time.Time  `gorm:"column:created_at"`
+}
+
+func convertWorkflowRunToDB(src *pipelineservice.WorkflowRun) (*dbWorkflowRun, error) {
+	result := &dbWorkflowRun{}
+	result.ID = src.ID
+	result.WorkflowID = src.WorkflowID
+	tmp2, err := convertWorkflowRunStatusToDB(src.Status)
+	if err != nil {
+		return nil, err
+	}
+	result.Status = tmp2
+	tmp3, err := convertWorkflowRunTriggerToDB(src.Trigger)
+	if err != nil {
+		return nil, err
+	}
+	result.Trigger = tmp3
+	result.StartedAt = (src.StartedAt).UTC()
+	if src.CompletedAt == nil {
+		result.CompletedAt = nil
+	} else {
+		result.CompletedAt = toPtr((fromPtr(src.CompletedAt)).UTC())
+	}
+	result.CreatedAt = (src.CreatedAt).UTC()
+	return result, nil
+}
+
+func convertWorkflowRunFromDB(src *dbWorkflowRun) (*pipelineservice.WorkflowRun, error) {
+	result := &pipelineservice.WorkflowRun{}
+	result.ID = src.ID
+	result.WorkflowID = src.WorkflowID
+	tmp10, err := convertWorkflowRunStatusFromDB(src.Status)
+	if err != nil {
+		return nil, err
+	}
+	result.Status = tmp10
+	tmp11, err := convertWorkflowRunTriggerFromDB(src.Trigger)
+	if err != nil {
+		return nil, err
+	}
+	result.Trigger = tmp11
+	result.StartedAt = src.StartedAt
+	if src.CompletedAt == nil {
+		result.CompletedAt = nil
+	} else {
+		result.CompletedAt = toPtr(fromPtr(src.CompletedAt))
+	}
+	result.CreatedAt = src.CreatedAt
+	return result, nil
+}
+func (a dbWorkflowRun) TableName() string {
+	return "pipeline.workflow_runs"
+}
+
+type dbWorkflowStepRun struct {
+	ID           uuid.UUID  `gorm:"column:id"`
+	RunID        uuid.UUID  `gorm:"column:run_id"`
+	StepID       uuid.UUID  `gorm:"column:step_id"`
+	ConnectionID uuid.UUID  `gorm:"column:connection_id"`
+	Status       string     `gorm:"column:status;type:text"`
+	JobID        *uuid.UUID `gorm:"column:job_id"`
+	Error        *string    `gorm:"column:error;type:text"`
+	StartedAt    *time.Time `gorm:"column:started_at"`
+	CompletedAt  *time.Time `gorm:"column:completed_at"`
+}
+
+func convertWorkflowStepRunToDB(src *pipelineservice.WorkflowStepRun) (*dbWorkflowStepRun, error) {
+	result := &dbWorkflowStepRun{}
+	result.ID = src.ID
+	result.RunID = src.RunID
+	result.StepID = src.StepID
+	result.ConnectionID = src.ConnectionID
+	tmp4, err := convertWorkflowStepRunStatusToDB(src.Status)
+	if err != nil {
+		return nil, err
+	}
+	result.Status = tmp4
+	if src.JobID == nil {
+		result.JobID = nil
+	} else {
+		result.JobID = toPtr(fromPtr(src.JobID))
+	}
+	if src.Error == nil {
+		result.Error = nil
+	} else {
+		result.Error = toPtr(fromPtr(src.Error))
+	}
+	if src.StartedAt == nil {
+		result.StartedAt = nil
+	} else {
+		result.StartedAt = toPtr((fromPtr(src.StartedAt)).UTC())
+	}
+	if src.CompletedAt == nil {
+		result.CompletedAt = nil
+	} else {
+		result.CompletedAt = toPtr((fromPtr(src.CompletedAt)).UTC())
+	}
+	return result, nil
+}
+
+func convertWorkflowStepRunFromDB(src *dbWorkflowStepRun) (*pipelineservice.WorkflowStepRun, error) {
+	result := &pipelineservice.WorkflowStepRun{}
+	result.ID = src.ID
+	result.RunID = src.RunID
+	result.StepID = src.StepID
+	result.ConnectionID = src.ConnectionID
+	tmp17, err := convertWorkflowStepRunStatusFromDB(src.Status)
+	if err != nil {
+		return nil, err
+	}
+	result.Status = tmp17
+	if src.JobID == nil {
+		result.JobID = nil
+	} else {
+		result.JobID = toPtr(fromPtr(src.JobID))
+	}
+	if src.Error == nil {
+		result.Error = nil
+	} else {
+		result.Error = toPtr(fromPtr(src.Error))
+	}
+	if src.StartedAt == nil {
+		result.StartedAt = nil
+	} else {
+		result.StartedAt = toPtr(fromPtr(src.StartedAt))
+	}
+	if src.CompletedAt == nil {
+		result.CompletedAt = nil
+	} else {
+		result.CompletedAt = toPtr(fromPtr(src.CompletedAt))
+	}
+	return result, nil
+}
+func (a dbWorkflowStepRun) TableName() string {
+	return "pipeline.workflow_step_runs"
 }
 
 type dbPipelineEvent struct {

@@ -439,6 +439,10 @@ func buildJobFilterExpr(filter *pipelineservice.JobFilter, options ...func(*filt
 			Column: opts.columnPrefix + "heartbeat_at",
 			Filter: filter.HeartbeatAt,
 		},
+		dbutil.ColumnFilter[*uuid.UUID]{
+			Column: opts.columnPrefix + "workflow_step_run_id",
+			Filter: filter.WorkflowStepRunID,
+		},
 		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
 			if filter.Or == nil {
 				return nil, nil
@@ -989,6 +993,298 @@ func buildExecutorFilterExpr(filter *pipelineservice.ExecutorFilter, options ...
 	)
 }
 
+func buildWorkflowFilterExpr(filter *pipelineservice.WorkflowFilter, options ...func(*filterOptions)) (clause.Expression, error) {
+	if filter == nil {
+		return nil, nil
+	}
+
+	opts := &filterOptions{}
+	for _, opt := range options {
+		opt(opts)
+	}
+
+	return dbutil.BuildFilterExpression(
+		dbutil.ColumnFilter[uuid.UUID]{
+			Column: opts.columnPrefix + "id",
+			Filter: filter.ID,
+		},
+		dbutil.ColumnFilter[uuid.UUID]{
+			Column: opts.columnPrefix + "workspace_id",
+			Filter: filter.WorkspaceID,
+		},
+		dbutil.ColumnFilter[string]{
+			Column: opts.columnPrefix + "name",
+			Filter: filter.Name,
+		},
+		dbutil.ColumnFilter[*time.Time]{
+			Column: opts.columnPrefix + "next_scheduled_at",
+			Filter: filter.NextScheduledAt,
+		},
+		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
+			if filter.Or == nil {
+				return nil, nil
+			}
+			exprs := make([]clause.Expression, 0, len(filter.Or))
+			for _, orFilter := range filter.Or {
+				expr, err := buildWorkflowFilterExpr(orFilter)
+				if err != nil {
+					return nil, err
+				}
+				exprs = append(exprs, expr)
+			}
+			return clause.Or(exprs...), nil
+		}),
+		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
+			if filter.And == nil {
+				return nil, nil
+			}
+			exprs := make([]clause.Expression, 0, len(filter.And))
+			for _, andFilter := range filter.And {
+				expr, err := buildWorkflowFilterExpr(andFilter)
+				if err != nil {
+					return nil, err
+				}
+				exprs = append(exprs, expr)
+			}
+			return clause.And(exprs...), nil
+		}),
+	)
+}
+func buildWorkflowStepFilterExpr(filter *pipelineservice.WorkflowStepFilter, options ...func(*filterOptions)) (clause.Expression, error) {
+	if filter == nil {
+		return nil, nil
+	}
+
+	opts := &filterOptions{}
+	for _, opt := range options {
+		opt(opts)
+	}
+
+	return dbutil.BuildFilterExpression(
+		dbutil.ColumnFilter[uuid.UUID]{
+			Column: opts.columnPrefix + "id",
+			Filter: filter.ID,
+		},
+		dbutil.ColumnFilter[uuid.UUID]{
+			Column: opts.columnPrefix + "workflow_id",
+			Filter: filter.WorkflowID,
+		},
+		dbutil.ColumnFilter[uuid.UUID]{
+			Column: opts.columnPrefix + "connection_id",
+			Filter: filter.ConnectionID,
+		},
+		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
+			if filter.Or == nil {
+				return nil, nil
+			}
+			exprs := make([]clause.Expression, 0, len(filter.Or))
+			for _, orFilter := range filter.Or {
+				expr, err := buildWorkflowStepFilterExpr(orFilter)
+				if err != nil {
+					return nil, err
+				}
+				exprs = append(exprs, expr)
+			}
+			return clause.Or(exprs...), nil
+		}),
+		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
+			if filter.And == nil {
+				return nil, nil
+			}
+			exprs := make([]clause.Expression, 0, len(filter.And))
+			for _, andFilter := range filter.And {
+				expr, err := buildWorkflowStepFilterExpr(andFilter)
+				if err != nil {
+					return nil, err
+				}
+				exprs = append(exprs, expr)
+			}
+			return clause.And(exprs...), nil
+		}),
+	)
+}
+func buildWorkflowStepDependencyFilterExpr(filter *pipelineservice.WorkflowStepDependencyFilter, options ...func(*filterOptions)) (clause.Expression, error) {
+	if filter == nil {
+		return nil, nil
+	}
+
+	opts := &filterOptions{}
+	for _, opt := range options {
+		opt(opts)
+	}
+
+	return dbutil.BuildFilterExpression(
+		dbutil.ColumnFilter[uuid.UUID]{
+			Column: opts.columnPrefix + "id",
+			Filter: filter.ID,
+		},
+		dbutil.ColumnFilter[uuid.UUID]{
+			Column: opts.columnPrefix + "workflow_id",
+			Filter: filter.WorkflowID,
+		},
+		dbutil.ColumnFilter[uuid.UUID]{
+			Column: opts.columnPrefix + "step_id",
+			Filter: filter.StepID,
+		},
+		dbutil.ColumnFilter[uuid.UUID]{
+			Column: opts.columnPrefix + "upstream_step_id",
+			Filter: filter.UpstreamStepID,
+		},
+		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
+			if filter.Or == nil {
+				return nil, nil
+			}
+			exprs := make([]clause.Expression, 0, len(filter.Or))
+			for _, orFilter := range filter.Or {
+				expr, err := buildWorkflowStepDependencyFilterExpr(orFilter)
+				if err != nil {
+					return nil, err
+				}
+				exprs = append(exprs, expr)
+			}
+			return clause.Or(exprs...), nil
+		}),
+		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
+			if filter.And == nil {
+				return nil, nil
+			}
+			exprs := make([]clause.Expression, 0, len(filter.And))
+			for _, andFilter := range filter.And {
+				expr, err := buildWorkflowStepDependencyFilterExpr(andFilter)
+				if err != nil {
+					return nil, err
+				}
+				exprs = append(exprs, expr)
+			}
+			return clause.And(exprs...), nil
+		}),
+	)
+}
+func buildWorkflowRunFilterExpr(filter *pipelineservice.WorkflowRunFilter, options ...func(*filterOptions)) (clause.Expression, error) {
+	if filter == nil {
+		return nil, nil
+	}
+
+	opts := &filterOptions{}
+	for _, opt := range options {
+		opt(opts)
+	}
+
+	return dbutil.BuildFilterExpression(
+		dbutil.ColumnFilter[uuid.UUID]{
+			Column: opts.columnPrefix + "id",
+			Filter: filter.ID,
+		},
+		dbutil.ColumnFilter[uuid.UUID]{
+			Column: opts.columnPrefix + "workflow_id",
+			Filter: filter.WorkflowID,
+		},
+		dbutil.MappedColumnFilter[pipelineservice.WorkflowRunStatus, string]{
+			Column: opts.columnPrefix + "status",
+			Filter: filter.Status,
+			Mapper: convertWorkflowRunStatusToDB,
+		},
+		dbutil.MappedColumnFilter[pipelineservice.WorkflowRunTrigger, string]{
+			Column: opts.columnPrefix + "trigger",
+			Filter: filter.Trigger,
+			Mapper: convertWorkflowRunTriggerToDB,
+		},
+		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
+			if filter.Or == nil {
+				return nil, nil
+			}
+			exprs := make([]clause.Expression, 0, len(filter.Or))
+			for _, orFilter := range filter.Or {
+				expr, err := buildWorkflowRunFilterExpr(orFilter)
+				if err != nil {
+					return nil, err
+				}
+				exprs = append(exprs, expr)
+			}
+			return clause.Or(exprs...), nil
+		}),
+		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
+			if filter.And == nil {
+				return nil, nil
+			}
+			exprs := make([]clause.Expression, 0, len(filter.And))
+			for _, andFilter := range filter.And {
+				expr, err := buildWorkflowRunFilterExpr(andFilter)
+				if err != nil {
+					return nil, err
+				}
+				exprs = append(exprs, expr)
+			}
+			return clause.And(exprs...), nil
+		}),
+	)
+}
+func buildWorkflowStepRunFilterExpr(filter *pipelineservice.WorkflowStepRunFilter, options ...func(*filterOptions)) (clause.Expression, error) {
+	if filter == nil {
+		return nil, nil
+	}
+
+	opts := &filterOptions{}
+	for _, opt := range options {
+		opt(opts)
+	}
+
+	return dbutil.BuildFilterExpression(
+		dbutil.ColumnFilter[uuid.UUID]{
+			Column: opts.columnPrefix + "id",
+			Filter: filter.ID,
+		},
+		dbutil.ColumnFilter[uuid.UUID]{
+			Column: opts.columnPrefix + "run_id",
+			Filter: filter.RunID,
+		},
+		dbutil.ColumnFilter[uuid.UUID]{
+			Column: opts.columnPrefix + "step_id",
+			Filter: filter.StepID,
+		},
+		dbutil.ColumnFilter[uuid.UUID]{
+			Column: opts.columnPrefix + "connection_id",
+			Filter: filter.ConnectionID,
+		},
+		dbutil.MappedColumnFilter[pipelineservice.WorkflowStepRunStatus, string]{
+			Column: opts.columnPrefix + "status",
+			Filter: filter.Status,
+			Mapper: convertWorkflowStepRunStatusToDB,
+		},
+		dbutil.ColumnFilter[*uuid.UUID]{
+			Column: opts.columnPrefix + "job_id",
+			Filter: filter.JobID,
+		},
+		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
+			if filter.Or == nil {
+				return nil, nil
+			}
+			exprs := make([]clause.Expression, 0, len(filter.Or))
+			for _, orFilter := range filter.Or {
+				expr, err := buildWorkflowStepRunFilterExpr(orFilter)
+				if err != nil {
+					return nil, err
+				}
+				exprs = append(exprs, expr)
+			}
+			return clause.Or(exprs...), nil
+		}),
+		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
+			if filter.And == nil {
+				return nil, nil
+			}
+			exprs := make([]clause.Expression, 0, len(filter.And))
+			for _, andFilter := range filter.And {
+				expr, err := buildWorkflowStepRunFilterExpr(andFilter)
+				if err != nil {
+					return nil, err
+				}
+				exprs = append(exprs, expr)
+			}
+			return clause.And(exprs...), nil
+		}),
+	)
+}
 func buildPipelineEventFilterExpr(filter *pipelineservice.PipelineEventFilter, options ...func(*filterOptions)) (clause.Expression, error) {
 	if filter == nil {
 		return nil, nil

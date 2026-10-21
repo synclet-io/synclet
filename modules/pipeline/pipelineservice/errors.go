@@ -15,6 +15,9 @@ const (
 	ErrMissingCheckTaskParams baseErr = "either source_id/destination_id or managed_connector_id+config must be provided"
 	ErrEmptyFieldPath         baseErr = "empty field path in selected fields"
 	ErrNoCachedSpec           baseErr = "connector has no cached spec yet; wait for the repository sync to finish"
+	ErrWorkflowRunActive      baseErr = "the workflow has an active run; wait for it to end"
+	ErrWorkflowRunNotFailed   baseErr = "only a failed workflow run can be rerun"
+	ErrConnectionInWorkflow   baseErr = "the connection is a step of a workflow; remove it from the workflow first"
 )
 
 // ValidationError indicates invalid input.

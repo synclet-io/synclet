@@ -28,7 +28,8 @@ func NewDeleteConnection(storage pipelineservice.Storage, audit pipelineservice.
 }
 
 // Execute deletes the connection matching the given ID and workspace. It
-// returns a not-found error when no such connection exists.
+// returns a not-found error when no such connection exists, and
+// ErrConnectionInWorkflow while the connection is a step of a workflow.
 func (uc *DeleteConnection) Execute(ctx context.Context, params DeleteConnectionParams) error {
 	existing, err := uc.storage.Connections().First(ctx, &pipelineservice.ConnectionFilter{
 		ID:          filter.Equals(params.ID),
@@ -36,6 +37,17 @@ func (uc *DeleteConnection) Execute(ctx context.Context, params DeleteConnection
 	})
 	if err != nil {
 		return fmt.Errorf("getting connection: %w", err)
+	}
+
+	steps, err := uc.storage.WorkflowSteps().Count(ctx, &pipelineservice.WorkflowStepFilter{
+		ConnectionID: filter.Equals(existing.ID),
+	})
+	if err != nil {
+		return fmt.Errorf("checking workflow steps of connection: %w", err)
+	}
+
+	if steps > 0 {
+		return pipelineservice.ErrConnectionInWorkflow
 	}
 
 	if err := uc.storage.Connections().Delete(ctx, &pipelineservice.ConnectionFilter{

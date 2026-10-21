@@ -561,14 +561,109 @@ func convertExecutorTypeFromDB(executorTypeValue string) (pipelineservice.Execut
 }
 
 const (
-	pipelineEventTypeJobCreated = "job_created"
-	pipelineEventTypeJobUpdated = "job_updated"
+	workflowRunStatusRunning   = "running"
+	workflowRunStatusSucceeded = "succeeded"
+	workflowRunStatusFailed    = "failed"
+)
+
+func convertWorkflowRunStatusToDB(workflowRunStatusValue pipelineservice.WorkflowRunStatus) (string, error) {
+	result, ok := map[pipelineservice.WorkflowRunStatus]string{
+		pipelineservice.WorkflowRunStatusRunning:   workflowRunStatusRunning,
+		pipelineservice.WorkflowRunStatusSucceeded: workflowRunStatusSucceeded,
+		pipelineservice.WorkflowRunStatusFailed:    workflowRunStatusFailed,
+	}[workflowRunStatusValue]
+	if !ok {
+		return "", fmt.Errorf("unknown WorkflowRunStatus value: %d", workflowRunStatusValue)
+	}
+	return result, nil
+}
+
+func convertWorkflowRunStatusFromDB(workflowRunStatusValue string) (pipelineservice.WorkflowRunStatus, error) {
+	result, ok := map[string]pipelineservice.WorkflowRunStatus{
+		workflowRunStatusRunning:   pipelineservice.WorkflowRunStatusRunning,
+		workflowRunStatusSucceeded: pipelineservice.WorkflowRunStatusSucceeded,
+		workflowRunStatusFailed:    pipelineservice.WorkflowRunStatusFailed,
+	}[workflowRunStatusValue]
+	if !ok {
+		return 0, fmt.Errorf("unknown WorkflowRunStatus db value: %s", workflowRunStatusValue)
+	}
+	return result, nil
+}
+
+const (
+	workflowRunTriggerSchedule = "schedule"
+	workflowRunTriggerManual   = "manual"
+)
+
+func convertWorkflowRunTriggerToDB(workflowRunTriggerValue pipelineservice.WorkflowRunTrigger) (string, error) {
+	result, ok := map[pipelineservice.WorkflowRunTrigger]string{
+		pipelineservice.WorkflowRunTriggerSchedule: workflowRunTriggerSchedule,
+		pipelineservice.WorkflowRunTriggerManual:   workflowRunTriggerManual,
+	}[workflowRunTriggerValue]
+	if !ok {
+		return "", fmt.Errorf("unknown WorkflowRunTrigger value: %d", workflowRunTriggerValue)
+	}
+	return result, nil
+}
+
+func convertWorkflowRunTriggerFromDB(workflowRunTriggerValue string) (pipelineservice.WorkflowRunTrigger, error) {
+	result, ok := map[string]pipelineservice.WorkflowRunTrigger{
+		workflowRunTriggerSchedule: pipelineservice.WorkflowRunTriggerSchedule,
+		workflowRunTriggerManual:   pipelineservice.WorkflowRunTriggerManual,
+	}[workflowRunTriggerValue]
+	if !ok {
+		return 0, fmt.Errorf("unknown WorkflowRunTrigger db value: %s", workflowRunTriggerValue)
+	}
+	return result, nil
+}
+
+const (
+	workflowStepRunStatusPending   = "pending"
+	workflowStepRunStatusQueued    = "queued"
+	workflowStepRunStatusSucceeded = "succeeded"
+	workflowStepRunStatusFailed    = "failed"
+	workflowStepRunStatusSkipped   = "skipped"
+)
+
+func convertWorkflowStepRunStatusToDB(workflowStepRunStatusValue pipelineservice.WorkflowStepRunStatus) (string, error) {
+	result, ok := map[pipelineservice.WorkflowStepRunStatus]string{
+		pipelineservice.WorkflowStepRunStatusPending:   workflowStepRunStatusPending,
+		pipelineservice.WorkflowStepRunStatusQueued:    workflowStepRunStatusQueued,
+		pipelineservice.WorkflowStepRunStatusSucceeded: workflowStepRunStatusSucceeded,
+		pipelineservice.WorkflowStepRunStatusFailed:    workflowStepRunStatusFailed,
+		pipelineservice.WorkflowStepRunStatusSkipped:   workflowStepRunStatusSkipped,
+	}[workflowStepRunStatusValue]
+	if !ok {
+		return "", fmt.Errorf("unknown WorkflowStepRunStatus value: %d", workflowStepRunStatusValue)
+	}
+	return result, nil
+}
+
+func convertWorkflowStepRunStatusFromDB(workflowStepRunStatusValue string) (pipelineservice.WorkflowStepRunStatus, error) {
+	result, ok := map[string]pipelineservice.WorkflowStepRunStatus{
+		workflowStepRunStatusPending:   pipelineservice.WorkflowStepRunStatusPending,
+		workflowStepRunStatusQueued:    pipelineservice.WorkflowStepRunStatusQueued,
+		workflowStepRunStatusSucceeded: pipelineservice.WorkflowStepRunStatusSucceeded,
+		workflowStepRunStatusFailed:    pipelineservice.WorkflowStepRunStatusFailed,
+		workflowStepRunStatusSkipped:   pipelineservice.WorkflowStepRunStatusSkipped,
+	}[workflowStepRunStatusValue]
+	if !ok {
+		return 0, fmt.Errorf("unknown WorkflowStepRunStatus db value: %s", workflowStepRunStatusValue)
+	}
+	return result, nil
+}
+
+const (
+	pipelineEventTypeJobCreated         = "job_created"
+	pipelineEventTypeJobUpdated         = "job_updated"
+	pipelineEventTypeWorkflowRunStarted = "workflow_run_started"
 )
 
 func convertPipelineEventTypeToDB(pipelineEventTypeValue pipelineservice.PipelineEventType) (string, error) {
 	result, ok := map[pipelineservice.PipelineEventType]string{
-		pipelineservice.PipelineEventTypeJobCreated: pipelineEventTypeJobCreated,
-		pipelineservice.PipelineEventTypeJobUpdated: pipelineEventTypeJobUpdated,
+		pipelineservice.PipelineEventTypeJobCreated:         pipelineEventTypeJobCreated,
+		pipelineservice.PipelineEventTypeJobUpdated:         pipelineEventTypeJobUpdated,
+		pipelineservice.PipelineEventTypeWorkflowRunStarted: pipelineEventTypeWorkflowRunStarted,
 	}[pipelineEventTypeValue]
 	if !ok {
 		return "", fmt.Errorf("unknown PipelineEventType value: %d", pipelineEventTypeValue)
@@ -578,8 +673,9 @@ func convertPipelineEventTypeToDB(pipelineEventTypeValue pipelineservice.Pipelin
 
 func convertPipelineEventTypeFromDB(pipelineEventTypeValue string) (pipelineservice.PipelineEventType, error) {
 	result, ok := map[string]pipelineservice.PipelineEventType{
-		pipelineEventTypeJobCreated: pipelineservice.PipelineEventTypeJobCreated,
-		pipelineEventTypeJobUpdated: pipelineservice.PipelineEventTypeJobUpdated,
+		pipelineEventTypeJobCreated:         pipelineservice.PipelineEventTypeJobCreated,
+		pipelineEventTypeJobUpdated:         pipelineservice.PipelineEventTypeJobUpdated,
+		pipelineEventTypeWorkflowRunStarted: pipelineservice.PipelineEventTypeWorkflowRunStarted,
 	}[pipelineEventTypeValue]
 	if !ok {
 		return 0, fmt.Errorf("unknown PipelineEventType db value: %s", pipelineEventTypeValue)

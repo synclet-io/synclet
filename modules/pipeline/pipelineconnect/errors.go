@@ -36,7 +36,9 @@ func mapError(err error) error {
 		return connect.NewError(connect.CodeFailedPrecondition, inUseErr)
 	}
 
-	if errors.Is(err, pipelineservice.ErrConnectorNotLinked) || errors.Is(err, pipelineservice.ErrNoCachedSpec) {
+	if errors.Is(err, pipelineservice.ErrConnectorNotLinked) || errors.Is(err, pipelineservice.ErrNoCachedSpec) ||
+		errors.Is(err, pipelineservice.ErrWorkflowRunActive) || errors.Is(err, pipelineservice.ErrWorkflowRunNotFailed) ||
+		errors.Is(err, pipelineservice.ErrConnectionInWorkflow) {
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	}
 

@@ -29,6 +29,8 @@ const (
 	ConnectionServiceName = "synclet.publicapi.pipeline.v1.ConnectionService"
 	// JobServiceName is the fully-qualified name of the JobService service.
 	JobServiceName = "synclet.publicapi.pipeline.v1.JobService"
+	// WorkflowServiceName is the fully-qualified name of the WorkflowService service.
+	WorkflowServiceName = "synclet.publicapi.pipeline.v1.WorkflowService"
 	// ConnectorTaskServiceName is the fully-qualified name of the ConnectorTaskService service.
 	ConnectorTaskServiceName = "synclet.publicapi.pipeline.v1.ConnectorTaskService"
 )
@@ -170,6 +172,33 @@ const (
 	// JobServiceDownloadJobLogsProcedure is the fully-qualified name of the JobService's
 	// DownloadJobLogs RPC.
 	JobServiceDownloadJobLogsProcedure = "/synclet.publicapi.pipeline.v1.JobService/DownloadJobLogs"
+	// WorkflowServiceCreateWorkflowProcedure is the fully-qualified name of the WorkflowService's
+	// CreateWorkflow RPC.
+	WorkflowServiceCreateWorkflowProcedure = "/synclet.publicapi.pipeline.v1.WorkflowService/CreateWorkflow"
+	// WorkflowServiceUpdateWorkflowProcedure is the fully-qualified name of the WorkflowService's
+	// UpdateWorkflow RPC.
+	WorkflowServiceUpdateWorkflowProcedure = "/synclet.publicapi.pipeline.v1.WorkflowService/UpdateWorkflow"
+	// WorkflowServiceDeleteWorkflowProcedure is the fully-qualified name of the WorkflowService's
+	// DeleteWorkflow RPC.
+	WorkflowServiceDeleteWorkflowProcedure = "/synclet.publicapi.pipeline.v1.WorkflowService/DeleteWorkflow"
+	// WorkflowServiceGetWorkflowProcedure is the fully-qualified name of the WorkflowService's
+	// GetWorkflow RPC.
+	WorkflowServiceGetWorkflowProcedure = "/synclet.publicapi.pipeline.v1.WorkflowService/GetWorkflow"
+	// WorkflowServiceListWorkflowsProcedure is the fully-qualified name of the WorkflowService's
+	// ListWorkflows RPC.
+	WorkflowServiceListWorkflowsProcedure = "/synclet.publicapi.pipeline.v1.WorkflowService/ListWorkflows"
+	// WorkflowServiceRunWorkflowProcedure is the fully-qualified name of the WorkflowService's
+	// RunWorkflow RPC.
+	WorkflowServiceRunWorkflowProcedure = "/synclet.publicapi.pipeline.v1.WorkflowService/RunWorkflow"
+	// WorkflowServiceRerunWorkflowRunProcedure is the fully-qualified name of the WorkflowService's
+	// RerunWorkflowRun RPC.
+	WorkflowServiceRerunWorkflowRunProcedure = "/synclet.publicapi.pipeline.v1.WorkflowService/RerunWorkflowRun"
+	// WorkflowServiceListWorkflowRunsProcedure is the fully-qualified name of the WorkflowService's
+	// ListWorkflowRuns RPC.
+	WorkflowServiceListWorkflowRunsProcedure = "/synclet.publicapi.pipeline.v1.WorkflowService/ListWorkflowRuns"
+	// WorkflowServiceGetWorkflowRunProcedure is the fully-qualified name of the WorkflowService's
+	// GetWorkflowRun RPC.
+	WorkflowServiceGetWorkflowRunProcedure = "/synclet.publicapi.pipeline.v1.WorkflowService/GetWorkflowRun"
 	// ConnectorTaskServiceGetConnectorTaskResultProcedure is the fully-qualified name of the
 	// ConnectorTaskService's GetConnectorTaskResult RPC.
 	ConnectorTaskServiceGetConnectorTaskResultProcedure = "/synclet.publicapi.pipeline.v1.ConnectorTaskService/GetConnectorTaskResult"
@@ -1542,6 +1571,290 @@ func (UnimplementedJobServiceHandler) GetJobLogs(context.Context, *connect.Reque
 
 func (UnimplementedJobServiceHandler) DownloadJobLogs(context.Context, *connect.Request[v1.DownloadJobLogsRequest], *connect.ServerStream[v1.DownloadJobLogsResponse]) error {
 	return connect.NewError(connect.CodeUnimplemented, errors.New("synclet.publicapi.pipeline.v1.JobService.DownloadJobLogs is not implemented"))
+}
+
+// WorkflowServiceClient is a client for the synclet.publicapi.pipeline.v1.WorkflowService service.
+type WorkflowServiceClient interface {
+	CreateWorkflow(context.Context, *connect.Request[v1.CreateWorkflowRequest]) (*connect.Response[v1.CreateWorkflowResponse], error)
+	UpdateWorkflow(context.Context, *connect.Request[v1.UpdateWorkflowRequest]) (*connect.Response[v1.UpdateWorkflowResponse], error)
+	DeleteWorkflow(context.Context, *connect.Request[v1.DeleteWorkflowRequest]) (*connect.Response[v1.DeleteWorkflowResponse], error)
+	GetWorkflow(context.Context, *connect.Request[v1.GetWorkflowRequest]) (*connect.Response[v1.GetWorkflowResponse], error)
+	ListWorkflows(context.Context, *connect.Request[v1.ListWorkflowsRequest]) (*connect.Response[v1.ListWorkflowsResponse], error)
+	// Starts a run now. Rejected with FAILED_PRECONDITION while a run is active.
+	RunWorkflow(context.Context, *connect.Request[v1.RunWorkflowRequest]) (*connect.Response[v1.RunWorkflowResponse], error)
+	// Reruns a failed run from its failed steps; steps that succeeded are not synced again.
+	RerunWorkflowRun(context.Context, *connect.Request[v1.RerunWorkflowRunRequest]) (*connect.Response[v1.RerunWorkflowRunResponse], error)
+	ListWorkflowRuns(context.Context, *connect.Request[v1.ListWorkflowRunsRequest]) (*connect.Response[v1.ListWorkflowRunsResponse], error)
+	GetWorkflowRun(context.Context, *connect.Request[v1.GetWorkflowRunRequest]) (*connect.Response[v1.GetWorkflowRunResponse], error)
+}
+
+// NewWorkflowServiceClient constructs a client for the
+// synclet.publicapi.pipeline.v1.WorkflowService service. By default, it uses the Connect protocol
+// with the binary Protobuf Codec, asks for gzipped responses, and sends uncompressed requests. To
+// use the gRPC or gRPC-Web protocols, supply the connect.WithGRPC() or connect.WithGRPCWeb()
+// options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewWorkflowServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) WorkflowServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	workflowServiceMethods := v1.File_synclet_publicapi_pipeline_v1_pipeline_proto.Services().ByName("WorkflowService").Methods()
+	return &workflowServiceClient{
+		createWorkflow: connect.NewClient[v1.CreateWorkflowRequest, v1.CreateWorkflowResponse](
+			httpClient,
+			baseURL+WorkflowServiceCreateWorkflowProcedure,
+			connect.WithSchema(workflowServiceMethods.ByName("CreateWorkflow")),
+			connect.WithClientOptions(opts...),
+		),
+		updateWorkflow: connect.NewClient[v1.UpdateWorkflowRequest, v1.UpdateWorkflowResponse](
+			httpClient,
+			baseURL+WorkflowServiceUpdateWorkflowProcedure,
+			connect.WithSchema(workflowServiceMethods.ByName("UpdateWorkflow")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteWorkflow: connect.NewClient[v1.DeleteWorkflowRequest, v1.DeleteWorkflowResponse](
+			httpClient,
+			baseURL+WorkflowServiceDeleteWorkflowProcedure,
+			connect.WithSchema(workflowServiceMethods.ByName("DeleteWorkflow")),
+			connect.WithClientOptions(opts...),
+		),
+		getWorkflow: connect.NewClient[v1.GetWorkflowRequest, v1.GetWorkflowResponse](
+			httpClient,
+			baseURL+WorkflowServiceGetWorkflowProcedure,
+			connect.WithSchema(workflowServiceMethods.ByName("GetWorkflow")),
+			connect.WithClientOptions(opts...),
+		),
+		listWorkflows: connect.NewClient[v1.ListWorkflowsRequest, v1.ListWorkflowsResponse](
+			httpClient,
+			baseURL+WorkflowServiceListWorkflowsProcedure,
+			connect.WithSchema(workflowServiceMethods.ByName("ListWorkflows")),
+			connect.WithClientOptions(opts...),
+		),
+		runWorkflow: connect.NewClient[v1.RunWorkflowRequest, v1.RunWorkflowResponse](
+			httpClient,
+			baseURL+WorkflowServiceRunWorkflowProcedure,
+			connect.WithSchema(workflowServiceMethods.ByName("RunWorkflow")),
+			connect.WithClientOptions(opts...),
+		),
+		rerunWorkflowRun: connect.NewClient[v1.RerunWorkflowRunRequest, v1.RerunWorkflowRunResponse](
+			httpClient,
+			baseURL+WorkflowServiceRerunWorkflowRunProcedure,
+			connect.WithSchema(workflowServiceMethods.ByName("RerunWorkflowRun")),
+			connect.WithClientOptions(opts...),
+		),
+		listWorkflowRuns: connect.NewClient[v1.ListWorkflowRunsRequest, v1.ListWorkflowRunsResponse](
+			httpClient,
+			baseURL+WorkflowServiceListWorkflowRunsProcedure,
+			connect.WithSchema(workflowServiceMethods.ByName("ListWorkflowRuns")),
+			connect.WithClientOptions(opts...),
+		),
+		getWorkflowRun: connect.NewClient[v1.GetWorkflowRunRequest, v1.GetWorkflowRunResponse](
+			httpClient,
+			baseURL+WorkflowServiceGetWorkflowRunProcedure,
+			connect.WithSchema(workflowServiceMethods.ByName("GetWorkflowRun")),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// workflowServiceClient implements WorkflowServiceClient.
+type workflowServiceClient struct {
+	createWorkflow   *connect.Client[v1.CreateWorkflowRequest, v1.CreateWorkflowResponse]
+	updateWorkflow   *connect.Client[v1.UpdateWorkflowRequest, v1.UpdateWorkflowResponse]
+	deleteWorkflow   *connect.Client[v1.DeleteWorkflowRequest, v1.DeleteWorkflowResponse]
+	getWorkflow      *connect.Client[v1.GetWorkflowRequest, v1.GetWorkflowResponse]
+	listWorkflows    *connect.Client[v1.ListWorkflowsRequest, v1.ListWorkflowsResponse]
+	runWorkflow      *connect.Client[v1.RunWorkflowRequest, v1.RunWorkflowResponse]
+	rerunWorkflowRun *connect.Client[v1.RerunWorkflowRunRequest, v1.RerunWorkflowRunResponse]
+	listWorkflowRuns *connect.Client[v1.ListWorkflowRunsRequest, v1.ListWorkflowRunsResponse]
+	getWorkflowRun   *connect.Client[v1.GetWorkflowRunRequest, v1.GetWorkflowRunResponse]
+}
+
+// CreateWorkflow calls synclet.publicapi.pipeline.v1.WorkflowService.CreateWorkflow.
+func (c *workflowServiceClient) CreateWorkflow(ctx context.Context, req *connect.Request[v1.CreateWorkflowRequest]) (*connect.Response[v1.CreateWorkflowResponse], error) {
+	return c.createWorkflow.CallUnary(ctx, req)
+}
+
+// UpdateWorkflow calls synclet.publicapi.pipeline.v1.WorkflowService.UpdateWorkflow.
+func (c *workflowServiceClient) UpdateWorkflow(ctx context.Context, req *connect.Request[v1.UpdateWorkflowRequest]) (*connect.Response[v1.UpdateWorkflowResponse], error) {
+	return c.updateWorkflow.CallUnary(ctx, req)
+}
+
+// DeleteWorkflow calls synclet.publicapi.pipeline.v1.WorkflowService.DeleteWorkflow.
+func (c *workflowServiceClient) DeleteWorkflow(ctx context.Context, req *connect.Request[v1.DeleteWorkflowRequest]) (*connect.Response[v1.DeleteWorkflowResponse], error) {
+	return c.deleteWorkflow.CallUnary(ctx, req)
+}
+
+// GetWorkflow calls synclet.publicapi.pipeline.v1.WorkflowService.GetWorkflow.
+func (c *workflowServiceClient) GetWorkflow(ctx context.Context, req *connect.Request[v1.GetWorkflowRequest]) (*connect.Response[v1.GetWorkflowResponse], error) {
+	return c.getWorkflow.CallUnary(ctx, req)
+}
+
+// ListWorkflows calls synclet.publicapi.pipeline.v1.WorkflowService.ListWorkflows.
+func (c *workflowServiceClient) ListWorkflows(ctx context.Context, req *connect.Request[v1.ListWorkflowsRequest]) (*connect.Response[v1.ListWorkflowsResponse], error) {
+	return c.listWorkflows.CallUnary(ctx, req)
+}
+
+// RunWorkflow calls synclet.publicapi.pipeline.v1.WorkflowService.RunWorkflow.
+func (c *workflowServiceClient) RunWorkflow(ctx context.Context, req *connect.Request[v1.RunWorkflowRequest]) (*connect.Response[v1.RunWorkflowResponse], error) {
+	return c.runWorkflow.CallUnary(ctx, req)
+}
+
+// RerunWorkflowRun calls synclet.publicapi.pipeline.v1.WorkflowService.RerunWorkflowRun.
+func (c *workflowServiceClient) RerunWorkflowRun(ctx context.Context, req *connect.Request[v1.RerunWorkflowRunRequest]) (*connect.Response[v1.RerunWorkflowRunResponse], error) {
+	return c.rerunWorkflowRun.CallUnary(ctx, req)
+}
+
+// ListWorkflowRuns calls synclet.publicapi.pipeline.v1.WorkflowService.ListWorkflowRuns.
+func (c *workflowServiceClient) ListWorkflowRuns(ctx context.Context, req *connect.Request[v1.ListWorkflowRunsRequest]) (*connect.Response[v1.ListWorkflowRunsResponse], error) {
+	return c.listWorkflowRuns.CallUnary(ctx, req)
+}
+
+// GetWorkflowRun calls synclet.publicapi.pipeline.v1.WorkflowService.GetWorkflowRun.
+func (c *workflowServiceClient) GetWorkflowRun(ctx context.Context, req *connect.Request[v1.GetWorkflowRunRequest]) (*connect.Response[v1.GetWorkflowRunResponse], error) {
+	return c.getWorkflowRun.CallUnary(ctx, req)
+}
+
+// WorkflowServiceHandler is an implementation of the synclet.publicapi.pipeline.v1.WorkflowService
+// service.
+type WorkflowServiceHandler interface {
+	CreateWorkflow(context.Context, *connect.Request[v1.CreateWorkflowRequest]) (*connect.Response[v1.CreateWorkflowResponse], error)
+	UpdateWorkflow(context.Context, *connect.Request[v1.UpdateWorkflowRequest]) (*connect.Response[v1.UpdateWorkflowResponse], error)
+	DeleteWorkflow(context.Context, *connect.Request[v1.DeleteWorkflowRequest]) (*connect.Response[v1.DeleteWorkflowResponse], error)
+	GetWorkflow(context.Context, *connect.Request[v1.GetWorkflowRequest]) (*connect.Response[v1.GetWorkflowResponse], error)
+	ListWorkflows(context.Context, *connect.Request[v1.ListWorkflowsRequest]) (*connect.Response[v1.ListWorkflowsResponse], error)
+	// Starts a run now. Rejected with FAILED_PRECONDITION while a run is active.
+	RunWorkflow(context.Context, *connect.Request[v1.RunWorkflowRequest]) (*connect.Response[v1.RunWorkflowResponse], error)
+	// Reruns a failed run from its failed steps; steps that succeeded are not synced again.
+	RerunWorkflowRun(context.Context, *connect.Request[v1.RerunWorkflowRunRequest]) (*connect.Response[v1.RerunWorkflowRunResponse], error)
+	ListWorkflowRuns(context.Context, *connect.Request[v1.ListWorkflowRunsRequest]) (*connect.Response[v1.ListWorkflowRunsResponse], error)
+	GetWorkflowRun(context.Context, *connect.Request[v1.GetWorkflowRunRequest]) (*connect.Response[v1.GetWorkflowRunResponse], error)
+}
+
+// NewWorkflowServiceHandler builds an HTTP handler from the service implementation. It returns the
+// path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewWorkflowServiceHandler(svc WorkflowServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	workflowServiceMethods := v1.File_synclet_publicapi_pipeline_v1_pipeline_proto.Services().ByName("WorkflowService").Methods()
+	workflowServiceCreateWorkflowHandler := connect.NewUnaryHandler(
+		WorkflowServiceCreateWorkflowProcedure,
+		svc.CreateWorkflow,
+		connect.WithSchema(workflowServiceMethods.ByName("CreateWorkflow")),
+		connect.WithHandlerOptions(opts...),
+	)
+	workflowServiceUpdateWorkflowHandler := connect.NewUnaryHandler(
+		WorkflowServiceUpdateWorkflowProcedure,
+		svc.UpdateWorkflow,
+		connect.WithSchema(workflowServiceMethods.ByName("UpdateWorkflow")),
+		connect.WithHandlerOptions(opts...),
+	)
+	workflowServiceDeleteWorkflowHandler := connect.NewUnaryHandler(
+		WorkflowServiceDeleteWorkflowProcedure,
+		svc.DeleteWorkflow,
+		connect.WithSchema(workflowServiceMethods.ByName("DeleteWorkflow")),
+		connect.WithHandlerOptions(opts...),
+	)
+	workflowServiceGetWorkflowHandler := connect.NewUnaryHandler(
+		WorkflowServiceGetWorkflowProcedure,
+		svc.GetWorkflow,
+		connect.WithSchema(workflowServiceMethods.ByName("GetWorkflow")),
+		connect.WithHandlerOptions(opts...),
+	)
+	workflowServiceListWorkflowsHandler := connect.NewUnaryHandler(
+		WorkflowServiceListWorkflowsProcedure,
+		svc.ListWorkflows,
+		connect.WithSchema(workflowServiceMethods.ByName("ListWorkflows")),
+		connect.WithHandlerOptions(opts...),
+	)
+	workflowServiceRunWorkflowHandler := connect.NewUnaryHandler(
+		WorkflowServiceRunWorkflowProcedure,
+		svc.RunWorkflow,
+		connect.WithSchema(workflowServiceMethods.ByName("RunWorkflow")),
+		connect.WithHandlerOptions(opts...),
+	)
+	workflowServiceRerunWorkflowRunHandler := connect.NewUnaryHandler(
+		WorkflowServiceRerunWorkflowRunProcedure,
+		svc.RerunWorkflowRun,
+		connect.WithSchema(workflowServiceMethods.ByName("RerunWorkflowRun")),
+		connect.WithHandlerOptions(opts...),
+	)
+	workflowServiceListWorkflowRunsHandler := connect.NewUnaryHandler(
+		WorkflowServiceListWorkflowRunsProcedure,
+		svc.ListWorkflowRuns,
+		connect.WithSchema(workflowServiceMethods.ByName("ListWorkflowRuns")),
+		connect.WithHandlerOptions(opts...),
+	)
+	workflowServiceGetWorkflowRunHandler := connect.NewUnaryHandler(
+		WorkflowServiceGetWorkflowRunProcedure,
+		svc.GetWorkflowRun,
+		connect.WithSchema(workflowServiceMethods.ByName("GetWorkflowRun")),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/synclet.publicapi.pipeline.v1.WorkflowService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case WorkflowServiceCreateWorkflowProcedure:
+			workflowServiceCreateWorkflowHandler.ServeHTTP(w, r)
+		case WorkflowServiceUpdateWorkflowProcedure:
+			workflowServiceUpdateWorkflowHandler.ServeHTTP(w, r)
+		case WorkflowServiceDeleteWorkflowProcedure:
+			workflowServiceDeleteWorkflowHandler.ServeHTTP(w, r)
+		case WorkflowServiceGetWorkflowProcedure:
+			workflowServiceGetWorkflowHandler.ServeHTTP(w, r)
+		case WorkflowServiceListWorkflowsProcedure:
+			workflowServiceListWorkflowsHandler.ServeHTTP(w, r)
+		case WorkflowServiceRunWorkflowProcedure:
+			workflowServiceRunWorkflowHandler.ServeHTTP(w, r)
+		case WorkflowServiceRerunWorkflowRunProcedure:
+			workflowServiceRerunWorkflowRunHandler.ServeHTTP(w, r)
+		case WorkflowServiceListWorkflowRunsProcedure:
+			workflowServiceListWorkflowRunsHandler.ServeHTTP(w, r)
+		case WorkflowServiceGetWorkflowRunProcedure:
+			workflowServiceGetWorkflowRunHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedWorkflowServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedWorkflowServiceHandler struct{}
+
+func (UnimplementedWorkflowServiceHandler) CreateWorkflow(context.Context, *connect.Request[v1.CreateWorkflowRequest]) (*connect.Response[v1.CreateWorkflowResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("synclet.publicapi.pipeline.v1.WorkflowService.CreateWorkflow is not implemented"))
+}
+
+func (UnimplementedWorkflowServiceHandler) UpdateWorkflow(context.Context, *connect.Request[v1.UpdateWorkflowRequest]) (*connect.Response[v1.UpdateWorkflowResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("synclet.publicapi.pipeline.v1.WorkflowService.UpdateWorkflow is not implemented"))
+}
+
+func (UnimplementedWorkflowServiceHandler) DeleteWorkflow(context.Context, *connect.Request[v1.DeleteWorkflowRequest]) (*connect.Response[v1.DeleteWorkflowResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("synclet.publicapi.pipeline.v1.WorkflowService.DeleteWorkflow is not implemented"))
+}
+
+func (UnimplementedWorkflowServiceHandler) GetWorkflow(context.Context, *connect.Request[v1.GetWorkflowRequest]) (*connect.Response[v1.GetWorkflowResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("synclet.publicapi.pipeline.v1.WorkflowService.GetWorkflow is not implemented"))
+}
+
+func (UnimplementedWorkflowServiceHandler) ListWorkflows(context.Context, *connect.Request[v1.ListWorkflowsRequest]) (*connect.Response[v1.ListWorkflowsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("synclet.publicapi.pipeline.v1.WorkflowService.ListWorkflows is not implemented"))
+}
+
+func (UnimplementedWorkflowServiceHandler) RunWorkflow(context.Context, *connect.Request[v1.RunWorkflowRequest]) (*connect.Response[v1.RunWorkflowResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("synclet.publicapi.pipeline.v1.WorkflowService.RunWorkflow is not implemented"))
+}
+
+func (UnimplementedWorkflowServiceHandler) RerunWorkflowRun(context.Context, *connect.Request[v1.RerunWorkflowRunRequest]) (*connect.Response[v1.RerunWorkflowRunResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("synclet.publicapi.pipeline.v1.WorkflowService.RerunWorkflowRun is not implemented"))
+}
+
+func (UnimplementedWorkflowServiceHandler) ListWorkflowRuns(context.Context, *connect.Request[v1.ListWorkflowRunsRequest]) (*connect.Response[v1.ListWorkflowRunsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("synclet.publicapi.pipeline.v1.WorkflowService.ListWorkflowRuns is not implemented"))
+}
+
+func (UnimplementedWorkflowServiceHandler) GetWorkflowRun(context.Context, *connect.Request[v1.GetWorkflowRunRequest]) (*connect.Response[v1.GetWorkflowRunResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("synclet.publicapi.pipeline.v1.WorkflowService.GetWorkflowRun is not implemented"))
 }
 
 // ConnectorTaskServiceClient is a client for the synclet.publicapi.pipeline.v1.ConnectorTaskService

@@ -126,6 +126,27 @@ types:
         stringer: true
         is: true
 
+    - name: WorkflowRunStatus
+      values: [ Running, Succeeded, Failed ]
+      helpers:
+        is_valid: true
+        stringer: true
+        is: true
+
+    - name: WorkflowRunTrigger
+      values: [ Schedule, Manual ]
+      helpers:
+        is_valid: true
+        stringer: true
+        is: true
+
+    - name: WorkflowStepRunStatus
+      values: [ Pending, Queued, Succeeded, Failed, Skipped ]
+      helpers:
+        is_valid: true
+        stringer: true
+        is: true
+
   one_ofs:
     - name: ConnectorTaskPayload
       values:
@@ -307,6 +328,7 @@ types:
         - { name: HeartbeatAt, type: "*timestamp", filterable: true }
         - { name: K8sJobName, type: "*string" }
         - { name: FailureReason, type: "*string" }
+        - { name: WorkflowStepRunID, type: "*uuid", filterable: true }
         - { name: CreatedAt, type: timestamp }
 
     - name: JobAttempt
@@ -487,3 +509,54 @@ types:
         - { name: MemoryLimit, type: string }
         - { name: CPUExecutorDefault, type: bool }
         - { name: MemoryExecutorDefault, type: bool }
+
+    - name: Workflow
+      table_name: pipeline.workflows
+      fields:
+        - { name: ID, type: uuid, filterable: true }
+        - { name: WorkspaceID, type: uuid, filterable: true }
+        - { name: Name, type: string, filterable: true }
+        - { name: Schedule, type: "*string" }
+        - { name: NextScheduledAt, type: "*timestamp", filterable: true }
+        - { name: CreatedAt, type: timestamp }
+        - { name: UpdatedAt, type: timestamp }
+
+    - name: WorkflowStep
+      table_name: pipeline.workflow_steps
+      fields:
+        - { name: ID, type: uuid, filterable: true }
+        - { name: WorkflowID, type: uuid, filterable: true }
+        - { name: ConnectionID, type: uuid, filterable: true }
+
+    - name: WorkflowStepDependency
+      plural_name: WorkflowStepDependencies
+      table_name: pipeline.workflow_step_dependencies
+      fields:
+        - { name: ID, type: uuid, filterable: true }
+        - { name: WorkflowID, type: uuid, filterable: true }
+        - { name: StepID, type: uuid, filterable: true }
+        - { name: UpstreamStepID, type: uuid, filterable: true }
+
+    - name: WorkflowRun
+      table_name: pipeline.workflow_runs
+      fields:
+        - { name: ID, type: uuid, filterable: true }
+        - { name: WorkflowID, type: uuid, filterable: true }
+        - { name: Status, type: WorkflowRunStatus, filterable: true }
+        - { name: Trigger, type: WorkflowRunTrigger, filterable: true }
+        - { name: StartedAt, type: timestamp }
+        - { name: CompletedAt, type: "*timestamp" }
+        - { name: CreatedAt, type: timestamp }
+
+    - name: WorkflowStepRun
+      table_name: pipeline.workflow_step_runs
+      fields:
+        - { name: ID, type: uuid, filterable: true }
+        - { name: RunID, type: uuid, filterable: true }
+        - { name: StepID, type: uuid, filterable: true }
+        - { name: ConnectionID, type: uuid, filterable: true }
+        - { name: Status, type: WorkflowStepRunStatus, filterable: true }
+        - { name: JobID, type: "*uuid", filterable: true }
+        - { name: Error, type: "*string" }
+        - { name: StartedAt, type: "*timestamp" }
+        - { name: CompletedAt, type: "*timestamp" }

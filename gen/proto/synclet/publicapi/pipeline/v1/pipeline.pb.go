@@ -601,6 +601,165 @@ func (ConnectorTaskStatus) EnumDescriptor() ([]byte, []int) {
 	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{10}
 }
 
+type WorkflowRunStatus int32
+
+const (
+	WorkflowRunStatus_WORKFLOW_RUN_STATUS_UNSPECIFIED WorkflowRunStatus = 0
+	WorkflowRunStatus_WORKFLOW_RUN_STATUS_RUNNING     WorkflowRunStatus = 1
+	WorkflowRunStatus_WORKFLOW_RUN_STATUS_SUCCEEDED   WorkflowRunStatus = 2
+	WorkflowRunStatus_WORKFLOW_RUN_STATUS_FAILED      WorkflowRunStatus = 3
+)
+
+// Enum value maps for WorkflowRunStatus.
+var (
+	WorkflowRunStatus_name = map[int32]string{
+		0: "WORKFLOW_RUN_STATUS_UNSPECIFIED",
+		1: "WORKFLOW_RUN_STATUS_RUNNING",
+		2: "WORKFLOW_RUN_STATUS_SUCCEEDED",
+		3: "WORKFLOW_RUN_STATUS_FAILED",
+	}
+	WorkflowRunStatus_value = map[string]int32{
+		"WORKFLOW_RUN_STATUS_UNSPECIFIED": 0,
+		"WORKFLOW_RUN_STATUS_RUNNING":     1,
+		"WORKFLOW_RUN_STATUS_SUCCEEDED":   2,
+		"WORKFLOW_RUN_STATUS_FAILED":      3,
+	}
+)
+
+func (x WorkflowRunStatus) Enum() *WorkflowRunStatus {
+	p := new(WorkflowRunStatus)
+	*p = x
+	return p
+}
+
+func (x WorkflowRunStatus) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (WorkflowRunStatus) Descriptor() protoreflect.EnumDescriptor {
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_enumTypes[11].Descriptor()
+}
+
+func (WorkflowRunStatus) Type() protoreflect.EnumType {
+	return &file_synclet_publicapi_pipeline_v1_pipeline_proto_enumTypes[11]
+}
+
+func (x WorkflowRunStatus) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use WorkflowRunStatus.Descriptor instead.
+func (WorkflowRunStatus) EnumDescriptor() ([]byte, []int) {
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{11}
+}
+
+type WorkflowRunTrigger int32
+
+const (
+	WorkflowRunTrigger_WORKFLOW_RUN_TRIGGER_UNSPECIFIED WorkflowRunTrigger = 0
+	WorkflowRunTrigger_WORKFLOW_RUN_TRIGGER_SCHEDULE    WorkflowRunTrigger = 1
+	WorkflowRunTrigger_WORKFLOW_RUN_TRIGGER_MANUAL      WorkflowRunTrigger = 2
+)
+
+// Enum value maps for WorkflowRunTrigger.
+var (
+	WorkflowRunTrigger_name = map[int32]string{
+		0: "WORKFLOW_RUN_TRIGGER_UNSPECIFIED",
+		1: "WORKFLOW_RUN_TRIGGER_SCHEDULE",
+		2: "WORKFLOW_RUN_TRIGGER_MANUAL",
+	}
+	WorkflowRunTrigger_value = map[string]int32{
+		"WORKFLOW_RUN_TRIGGER_UNSPECIFIED": 0,
+		"WORKFLOW_RUN_TRIGGER_SCHEDULE":    1,
+		"WORKFLOW_RUN_TRIGGER_MANUAL":      2,
+	}
+)
+
+func (x WorkflowRunTrigger) Enum() *WorkflowRunTrigger {
+	p := new(WorkflowRunTrigger)
+	*p = x
+	return p
+}
+
+func (x WorkflowRunTrigger) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (WorkflowRunTrigger) Descriptor() protoreflect.EnumDescriptor {
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_enumTypes[12].Descriptor()
+}
+
+func (WorkflowRunTrigger) Type() protoreflect.EnumType {
+	return &file_synclet_publicapi_pipeline_v1_pipeline_proto_enumTypes[12]
+}
+
+func (x WorkflowRunTrigger) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use WorkflowRunTrigger.Descriptor instead.
+func (WorkflowRunTrigger) EnumDescriptor() ([]byte, []int) {
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{12}
+}
+
+type WorkflowStepRunStatus int32
+
+const (
+	WorkflowStepRunStatus_WORKFLOW_STEP_RUN_STATUS_UNSPECIFIED WorkflowStepRunStatus = 0
+	WorkflowStepRunStatus_WORKFLOW_STEP_RUN_STATUS_PENDING     WorkflowStepRunStatus = 1
+	WorkflowStepRunStatus_WORKFLOW_STEP_RUN_STATUS_QUEUED      WorkflowStepRunStatus = 2
+	WorkflowStepRunStatus_WORKFLOW_STEP_RUN_STATUS_SUCCEEDED   WorkflowStepRunStatus = 3
+	WorkflowStepRunStatus_WORKFLOW_STEP_RUN_STATUS_FAILED      WorkflowStepRunStatus = 4
+	WorkflowStepRunStatus_WORKFLOW_STEP_RUN_STATUS_SKIPPED     WorkflowStepRunStatus = 5
+)
+
+// Enum value maps for WorkflowStepRunStatus.
+var (
+	WorkflowStepRunStatus_name = map[int32]string{
+		0: "WORKFLOW_STEP_RUN_STATUS_UNSPECIFIED",
+		1: "WORKFLOW_STEP_RUN_STATUS_PENDING",
+		2: "WORKFLOW_STEP_RUN_STATUS_QUEUED",
+		3: "WORKFLOW_STEP_RUN_STATUS_SUCCEEDED",
+		4: "WORKFLOW_STEP_RUN_STATUS_FAILED",
+		5: "WORKFLOW_STEP_RUN_STATUS_SKIPPED",
+	}
+	WorkflowStepRunStatus_value = map[string]int32{
+		"WORKFLOW_STEP_RUN_STATUS_UNSPECIFIED": 0,
+		"WORKFLOW_STEP_RUN_STATUS_PENDING":     1,
+		"WORKFLOW_STEP_RUN_STATUS_QUEUED":      2,
+		"WORKFLOW_STEP_RUN_STATUS_SUCCEEDED":   3,
+		"WORKFLOW_STEP_RUN_STATUS_FAILED":      4,
+		"WORKFLOW_STEP_RUN_STATUS_SKIPPED":     5,
+	}
+)
+
+func (x WorkflowStepRunStatus) Enum() *WorkflowStepRunStatus {
+	p := new(WorkflowStepRunStatus)
+	*p = x
+	return p
+}
+
+func (x WorkflowStepRunStatus) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (WorkflowStepRunStatus) Descriptor() protoreflect.EnumDescriptor {
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_enumTypes[13].Descriptor()
+}
+
+func (WorkflowStepRunStatus) Type() protoreflect.EnumType {
+	return &file_synclet_publicapi_pipeline_v1_pipeline_proto_enumTypes[13]
+}
+
+func (x WorkflowStepRunStatus) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use WorkflowStepRunStatus.Descriptor instead.
+func (WorkflowStepRunStatus) EnumDescriptor() ([]byte, []int) {
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{13}
+}
+
 type Source struct {
 	state              protoimpl.MessageState `protogen:"open.v1"`
 	Id                 string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -7171,6 +7330,1228 @@ func (x *UpdatePipelineSettingsResponse) GetSettings() *PipelineSettings {
 	return nil
 }
 
+// A step is one connection; it runs once the steps of after_connection_ids have succeeded.
+type WorkflowStep struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	Id                 string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	ConnectionId       string                 `protobuf:"bytes,2,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty"`
+	AfterConnectionIds []string               `protobuf:"bytes,3,rep,name=after_connection_ids,json=afterConnectionIds,proto3" json:"after_connection_ids,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *WorkflowStep) Reset() {
+	*x = WorkflowStep{}
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[115]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WorkflowStep) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WorkflowStep) ProtoMessage() {}
+
+func (x *WorkflowStep) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[115]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WorkflowStep.ProtoReflect.Descriptor instead.
+func (*WorkflowStep) Descriptor() ([]byte, []int) {
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{115}
+}
+
+func (x *WorkflowStep) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *WorkflowStep) GetConnectionId() string {
+	if x != nil {
+		return x.ConnectionId
+	}
+	return ""
+}
+
+func (x *WorkflowStep) GetAfterConnectionIds() []string {
+	if x != nil {
+		return x.AfterConnectionIds
+	}
+	return nil
+}
+
+type Workflow struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Id              string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	WorkspaceId     string                 `protobuf:"bytes,2,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	Name            string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	Schedule        *string                `protobuf:"bytes,4,opt,name=schedule,proto3,oneof" json:"schedule,omitempty"`
+	NextScheduledAt *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=next_scheduled_at,json=nextScheduledAt,proto3,oneof" json:"next_scheduled_at,omitempty"`
+	Steps           []*WorkflowStep        `protobuf:"bytes,6,rep,name=steps,proto3" json:"steps,omitempty"`
+	CreatedAt       *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt       *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *Workflow) Reset() {
+	*x = Workflow{}
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[116]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Workflow) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Workflow) ProtoMessage() {}
+
+func (x *Workflow) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[116]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Workflow.ProtoReflect.Descriptor instead.
+func (*Workflow) Descriptor() ([]byte, []int) {
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{116}
+}
+
+func (x *Workflow) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *Workflow) GetWorkspaceId() string {
+	if x != nil {
+		return x.WorkspaceId
+	}
+	return ""
+}
+
+func (x *Workflow) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *Workflow) GetSchedule() string {
+	if x != nil && x.Schedule != nil {
+		return *x.Schedule
+	}
+	return ""
+}
+
+func (x *Workflow) GetNextScheduledAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.NextScheduledAt
+	}
+	return nil
+}
+
+func (x *Workflow) GetSteps() []*WorkflowStep {
+	if x != nil {
+		return x.Steps
+	}
+	return nil
+}
+
+func (x *Workflow) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *Workflow) GetUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return nil
+}
+
+type WorkflowStepRun struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	StepId        string                 `protobuf:"bytes,2,opt,name=step_id,json=stepId,proto3" json:"step_id,omitempty"`
+	ConnectionId  string                 `protobuf:"bytes,3,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty"`
+	Status        WorkflowStepRunStatus  `protobuf:"varint,4,opt,name=status,proto3,enum=synclet.publicapi.pipeline.v1.WorkflowStepRunStatus" json:"status,omitempty"`
+	JobId         *string                `protobuf:"bytes,5,opt,name=job_id,json=jobId,proto3,oneof" json:"job_id,omitempty"`
+	Error         *string                `protobuf:"bytes,6,opt,name=error,proto3,oneof" json:"error,omitempty"`
+	StartedAt     *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=started_at,json=startedAt,proto3,oneof" json:"started_at,omitempty"`
+	CompletedAt   *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=completed_at,json=completedAt,proto3,oneof" json:"completed_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WorkflowStepRun) Reset() {
+	*x = WorkflowStepRun{}
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[117]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WorkflowStepRun) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WorkflowStepRun) ProtoMessage() {}
+
+func (x *WorkflowStepRun) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[117]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WorkflowStepRun.ProtoReflect.Descriptor instead.
+func (*WorkflowStepRun) Descriptor() ([]byte, []int) {
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{117}
+}
+
+func (x *WorkflowStepRun) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *WorkflowStepRun) GetStepId() string {
+	if x != nil {
+		return x.StepId
+	}
+	return ""
+}
+
+func (x *WorkflowStepRun) GetConnectionId() string {
+	if x != nil {
+		return x.ConnectionId
+	}
+	return ""
+}
+
+func (x *WorkflowStepRun) GetStatus() WorkflowStepRunStatus {
+	if x != nil {
+		return x.Status
+	}
+	return WorkflowStepRunStatus_WORKFLOW_STEP_RUN_STATUS_UNSPECIFIED
+}
+
+func (x *WorkflowStepRun) GetJobId() string {
+	if x != nil && x.JobId != nil {
+		return *x.JobId
+	}
+	return ""
+}
+
+func (x *WorkflowStepRun) GetError() string {
+	if x != nil && x.Error != nil {
+		return *x.Error
+	}
+	return ""
+}
+
+func (x *WorkflowStepRun) GetStartedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.StartedAt
+	}
+	return nil
+}
+
+func (x *WorkflowStepRun) GetCompletedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CompletedAt
+	}
+	return nil
+}
+
+type WorkflowRun struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	WorkflowId    string                 `protobuf:"bytes,2,opt,name=workflow_id,json=workflowId,proto3" json:"workflow_id,omitempty"`
+	Status        WorkflowRunStatus      `protobuf:"varint,3,opt,name=status,proto3,enum=synclet.publicapi.pipeline.v1.WorkflowRunStatus" json:"status,omitempty"`
+	Trigger       WorkflowRunTrigger     `protobuf:"varint,4,opt,name=trigger,proto3,enum=synclet.publicapi.pipeline.v1.WorkflowRunTrigger" json:"trigger,omitempty"`
+	StartedAt     *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
+	CompletedAt   *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=completed_at,json=completedAt,proto3,oneof" json:"completed_at,omitempty"`
+	StepRuns      []*WorkflowStepRun     `protobuf:"bytes,7,rep,name=step_runs,json=stepRuns,proto3" json:"step_runs,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WorkflowRun) Reset() {
+	*x = WorkflowRun{}
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[118]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WorkflowRun) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WorkflowRun) ProtoMessage() {}
+
+func (x *WorkflowRun) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[118]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WorkflowRun.ProtoReflect.Descriptor instead.
+func (*WorkflowRun) Descriptor() ([]byte, []int) {
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{118}
+}
+
+func (x *WorkflowRun) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *WorkflowRun) GetWorkflowId() string {
+	if x != nil {
+		return x.WorkflowId
+	}
+	return ""
+}
+
+func (x *WorkflowRun) GetStatus() WorkflowRunStatus {
+	if x != nil {
+		return x.Status
+	}
+	return WorkflowRunStatus_WORKFLOW_RUN_STATUS_UNSPECIFIED
+}
+
+func (x *WorkflowRun) GetTrigger() WorkflowRunTrigger {
+	if x != nil {
+		return x.Trigger
+	}
+	return WorkflowRunTrigger_WORKFLOW_RUN_TRIGGER_UNSPECIFIED
+}
+
+func (x *WorkflowRun) GetStartedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.StartedAt
+	}
+	return nil
+}
+
+func (x *WorkflowRun) GetCompletedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CompletedAt
+	}
+	return nil
+}
+
+func (x *WorkflowRun) GetStepRuns() []*WorkflowStepRun {
+	if x != nil {
+		return x.StepRuns
+	}
+	return nil
+}
+
+// The definition of a step in a create or update request.
+type WorkflowStepInput struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	ConnectionId       string                 `protobuf:"bytes,1,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty"`
+	AfterConnectionIds []string               `protobuf:"bytes,2,rep,name=after_connection_ids,json=afterConnectionIds,proto3" json:"after_connection_ids,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *WorkflowStepInput) Reset() {
+	*x = WorkflowStepInput{}
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[119]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WorkflowStepInput) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WorkflowStepInput) ProtoMessage() {}
+
+func (x *WorkflowStepInput) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[119]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WorkflowStepInput.ProtoReflect.Descriptor instead.
+func (*WorkflowStepInput) Descriptor() ([]byte, []int) {
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{119}
+}
+
+func (x *WorkflowStepInput) GetConnectionId() string {
+	if x != nil {
+		return x.ConnectionId
+	}
+	return ""
+}
+
+func (x *WorkflowStepInput) GetAfterConnectionIds() []string {
+	if x != nil {
+		return x.AfterConnectionIds
+	}
+	return nil
+}
+
+type CreateWorkflowRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Schedule      *string                `protobuf:"bytes,2,opt,name=schedule,proto3,oneof" json:"schedule,omitempty"`
+	Steps         []*WorkflowStepInput   `protobuf:"bytes,3,rep,name=steps,proto3" json:"steps,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateWorkflowRequest) Reset() {
+	*x = CreateWorkflowRequest{}
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[120]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateWorkflowRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateWorkflowRequest) ProtoMessage() {}
+
+func (x *CreateWorkflowRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[120]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateWorkflowRequest.ProtoReflect.Descriptor instead.
+func (*CreateWorkflowRequest) Descriptor() ([]byte, []int) {
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{120}
+}
+
+func (x *CreateWorkflowRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CreateWorkflowRequest) GetSchedule() string {
+	if x != nil && x.Schedule != nil {
+		return *x.Schedule
+	}
+	return ""
+}
+
+func (x *CreateWorkflowRequest) GetSteps() []*WorkflowStepInput {
+	if x != nil {
+		return x.Steps
+	}
+	return nil
+}
+
+type CreateWorkflowResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Workflow      *Workflow              `protobuf:"bytes,1,opt,name=workflow,proto3" json:"workflow,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateWorkflowResponse) Reset() {
+	*x = CreateWorkflowResponse{}
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[121]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateWorkflowResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateWorkflowResponse) ProtoMessage() {}
+
+func (x *CreateWorkflowResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[121]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateWorkflowResponse.ProtoReflect.Descriptor instead.
+func (*CreateWorkflowResponse) Descriptor() ([]byte, []int) {
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{121}
+}
+
+func (x *CreateWorkflowResponse) GetWorkflow() *Workflow {
+	if x != nil {
+		return x.Workflow
+	}
+	return nil
+}
+
+type UpdateWorkflowRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Schedule      *string                `protobuf:"bytes,3,opt,name=schedule,proto3,oneof" json:"schedule,omitempty"`
+	Steps         []*WorkflowStepInput   `protobuf:"bytes,4,rep,name=steps,proto3" json:"steps,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateWorkflowRequest) Reset() {
+	*x = UpdateWorkflowRequest{}
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[122]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateWorkflowRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateWorkflowRequest) ProtoMessage() {}
+
+func (x *UpdateWorkflowRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[122]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateWorkflowRequest.ProtoReflect.Descriptor instead.
+func (*UpdateWorkflowRequest) Descriptor() ([]byte, []int) {
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{122}
+}
+
+func (x *UpdateWorkflowRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *UpdateWorkflowRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *UpdateWorkflowRequest) GetSchedule() string {
+	if x != nil && x.Schedule != nil {
+		return *x.Schedule
+	}
+	return ""
+}
+
+func (x *UpdateWorkflowRequest) GetSteps() []*WorkflowStepInput {
+	if x != nil {
+		return x.Steps
+	}
+	return nil
+}
+
+type UpdateWorkflowResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Workflow      *Workflow              `protobuf:"bytes,1,opt,name=workflow,proto3" json:"workflow,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateWorkflowResponse) Reset() {
+	*x = UpdateWorkflowResponse{}
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[123]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateWorkflowResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateWorkflowResponse) ProtoMessage() {}
+
+func (x *UpdateWorkflowResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[123]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateWorkflowResponse.ProtoReflect.Descriptor instead.
+func (*UpdateWorkflowResponse) Descriptor() ([]byte, []int) {
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{123}
+}
+
+func (x *UpdateWorkflowResponse) GetWorkflow() *Workflow {
+	if x != nil {
+		return x.Workflow
+	}
+	return nil
+}
+
+type DeleteWorkflowRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteWorkflowRequest) Reset() {
+	*x = DeleteWorkflowRequest{}
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[124]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteWorkflowRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteWorkflowRequest) ProtoMessage() {}
+
+func (x *DeleteWorkflowRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[124]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteWorkflowRequest.ProtoReflect.Descriptor instead.
+func (*DeleteWorkflowRequest) Descriptor() ([]byte, []int) {
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{124}
+}
+
+func (x *DeleteWorkflowRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type DeleteWorkflowResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteWorkflowResponse) Reset() {
+	*x = DeleteWorkflowResponse{}
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[125]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteWorkflowResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteWorkflowResponse) ProtoMessage() {}
+
+func (x *DeleteWorkflowResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[125]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteWorkflowResponse.ProtoReflect.Descriptor instead.
+func (*DeleteWorkflowResponse) Descriptor() ([]byte, []int) {
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{125}
+}
+
+type GetWorkflowRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetWorkflowRequest) Reset() {
+	*x = GetWorkflowRequest{}
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[126]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetWorkflowRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetWorkflowRequest) ProtoMessage() {}
+
+func (x *GetWorkflowRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[126]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetWorkflowRequest.ProtoReflect.Descriptor instead.
+func (*GetWorkflowRequest) Descriptor() ([]byte, []int) {
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{126}
+}
+
+func (x *GetWorkflowRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type GetWorkflowResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Workflow      *Workflow              `protobuf:"bytes,1,opt,name=workflow,proto3" json:"workflow,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetWorkflowResponse) Reset() {
+	*x = GetWorkflowResponse{}
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[127]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetWorkflowResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetWorkflowResponse) ProtoMessage() {}
+
+func (x *GetWorkflowResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[127]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetWorkflowResponse.ProtoReflect.Descriptor instead.
+func (*GetWorkflowResponse) Descriptor() ([]byte, []int) {
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{127}
+}
+
+func (x *GetWorkflowResponse) GetWorkflow() *Workflow {
+	if x != nil {
+		return x.Workflow
+	}
+	return nil
+}
+
+type ListWorkflowsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListWorkflowsRequest) Reset() {
+	*x = ListWorkflowsRequest{}
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[128]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListWorkflowsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListWorkflowsRequest) ProtoMessage() {}
+
+func (x *ListWorkflowsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[128]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListWorkflowsRequest.ProtoReflect.Descriptor instead.
+func (*ListWorkflowsRequest) Descriptor() ([]byte, []int) {
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{128}
+}
+
+type ListWorkflowsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Workflows     []*Workflow            `protobuf:"bytes,1,rep,name=workflows,proto3" json:"workflows,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListWorkflowsResponse) Reset() {
+	*x = ListWorkflowsResponse{}
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[129]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListWorkflowsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListWorkflowsResponse) ProtoMessage() {}
+
+func (x *ListWorkflowsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[129]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListWorkflowsResponse.ProtoReflect.Descriptor instead.
+func (*ListWorkflowsResponse) Descriptor() ([]byte, []int) {
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{129}
+}
+
+func (x *ListWorkflowsResponse) GetWorkflows() []*Workflow {
+	if x != nil {
+		return x.Workflows
+	}
+	return nil
+}
+
+type RunWorkflowRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RunWorkflowRequest) Reset() {
+	*x = RunWorkflowRequest{}
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[130]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RunWorkflowRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RunWorkflowRequest) ProtoMessage() {}
+
+func (x *RunWorkflowRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[130]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RunWorkflowRequest.ProtoReflect.Descriptor instead.
+func (*RunWorkflowRequest) Descriptor() ([]byte, []int) {
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{130}
+}
+
+func (x *RunWorkflowRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type RunWorkflowResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Run           *WorkflowRun           `protobuf:"bytes,1,opt,name=run,proto3" json:"run,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RunWorkflowResponse) Reset() {
+	*x = RunWorkflowResponse{}
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[131]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RunWorkflowResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RunWorkflowResponse) ProtoMessage() {}
+
+func (x *RunWorkflowResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[131]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RunWorkflowResponse.ProtoReflect.Descriptor instead.
+func (*RunWorkflowResponse) Descriptor() ([]byte, []int) {
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{131}
+}
+
+func (x *RunWorkflowResponse) GetRun() *WorkflowRun {
+	if x != nil {
+		return x.Run
+	}
+	return nil
+}
+
+type RerunWorkflowRunRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RunId         string                 `protobuf:"bytes,1,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RerunWorkflowRunRequest) Reset() {
+	*x = RerunWorkflowRunRequest{}
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[132]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RerunWorkflowRunRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RerunWorkflowRunRequest) ProtoMessage() {}
+
+func (x *RerunWorkflowRunRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[132]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RerunWorkflowRunRequest.ProtoReflect.Descriptor instead.
+func (*RerunWorkflowRunRequest) Descriptor() ([]byte, []int) {
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{132}
+}
+
+func (x *RerunWorkflowRunRequest) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
+}
+
+type RerunWorkflowRunResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Run           *WorkflowRun           `protobuf:"bytes,1,opt,name=run,proto3" json:"run,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RerunWorkflowRunResponse) Reset() {
+	*x = RerunWorkflowRunResponse{}
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[133]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RerunWorkflowRunResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RerunWorkflowRunResponse) ProtoMessage() {}
+
+func (x *RerunWorkflowRunResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[133]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RerunWorkflowRunResponse.ProtoReflect.Descriptor instead.
+func (*RerunWorkflowRunResponse) Descriptor() ([]byte, []int) {
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{133}
+}
+
+func (x *RerunWorkflowRunResponse) GetRun() *WorkflowRun {
+	if x != nil {
+		return x.Run
+	}
+	return nil
+}
+
+type ListWorkflowRunsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	WorkflowId    string                 `protobuf:"bytes,1,opt,name=workflow_id,json=workflowId,proto3" json:"workflow_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListWorkflowRunsRequest) Reset() {
+	*x = ListWorkflowRunsRequest{}
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[134]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListWorkflowRunsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListWorkflowRunsRequest) ProtoMessage() {}
+
+func (x *ListWorkflowRunsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[134]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListWorkflowRunsRequest.ProtoReflect.Descriptor instead.
+func (*ListWorkflowRunsRequest) Descriptor() ([]byte, []int) {
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{134}
+}
+
+func (x *ListWorkflowRunsRequest) GetWorkflowId() string {
+	if x != nil {
+		return x.WorkflowId
+	}
+	return ""
+}
+
+type ListWorkflowRunsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Runs          []*WorkflowRun         `protobuf:"bytes,1,rep,name=runs,proto3" json:"runs,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListWorkflowRunsResponse) Reset() {
+	*x = ListWorkflowRunsResponse{}
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[135]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListWorkflowRunsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListWorkflowRunsResponse) ProtoMessage() {}
+
+func (x *ListWorkflowRunsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[135]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListWorkflowRunsResponse.ProtoReflect.Descriptor instead.
+func (*ListWorkflowRunsResponse) Descriptor() ([]byte, []int) {
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{135}
+}
+
+func (x *ListWorkflowRunsResponse) GetRuns() []*WorkflowRun {
+	if x != nil {
+		return x.Runs
+	}
+	return nil
+}
+
+type GetWorkflowRunRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RunId         string                 `protobuf:"bytes,1,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetWorkflowRunRequest) Reset() {
+	*x = GetWorkflowRunRequest{}
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[136]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetWorkflowRunRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetWorkflowRunRequest) ProtoMessage() {}
+
+func (x *GetWorkflowRunRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[136]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetWorkflowRunRequest.ProtoReflect.Descriptor instead.
+func (*GetWorkflowRunRequest) Descriptor() ([]byte, []int) {
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{136}
+}
+
+func (x *GetWorkflowRunRequest) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
+}
+
+type GetWorkflowRunResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Run           *WorkflowRun           `protobuf:"bytes,1,opt,name=run,proto3" json:"run,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetWorkflowRunResponse) Reset() {
+	*x = GetWorkflowRunResponse{}
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[137]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetWorkflowRunResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetWorkflowRunResponse) ProtoMessage() {}
+
+func (x *GetWorkflowRunResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[137]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetWorkflowRunResponse.ProtoReflect.Descriptor instead.
+func (*GetWorkflowRunResponse) Descriptor() ([]byte, []int) {
+	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP(), []int{137}
+}
+
+func (x *GetWorkflowRunResponse) GetRun() *WorkflowRun {
+	if x != nil {
+		return x.Run
+	}
+	return nil
+}
+
 var File_synclet_publicapi_pipeline_v1_pipeline_proto protoreflect.FileDescriptor
 
 const file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDesc = "" +
@@ -7661,7 +9042,94 @@ const file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDesc = "" +
 	"\x16max_jobs_per_workspace\x18\x01 \x01(\x05H\x00R\x13maxJobsPerWorkspace\x88\x01\x01B\x19\n" +
 	"\x17_max_jobs_per_workspace\"m\n" +
 	"\x1eUpdatePipelineSettingsResponse\x12K\n" +
-	"\bsettings\x18\x01 \x01(\v2/.synclet.publicapi.pipeline.v1.PipelineSettingsR\bsettings*\x91\x01\n" +
+	"\bsettings\x18\x01 \x01(\v2/.synclet.publicapi.pipeline.v1.PipelineSettingsR\bsettings\"u\n" +
+	"\fWorkflowStep\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12#\n" +
+	"\rconnection_id\x18\x02 \x01(\tR\fconnectionId\x120\n" +
+	"\x14after_connection_ids\x18\x03 \x03(\tR\x12afterConnectionIds\"\x9b\x03\n" +
+	"\bWorkflow\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
+	"\fworkspace_id\x18\x02 \x01(\tR\vworkspaceId\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\x12\x1f\n" +
+	"\bschedule\x18\x04 \x01(\tH\x00R\bschedule\x88\x01\x01\x12K\n" +
+	"\x11next_scheduled_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampH\x01R\x0fnextScheduledAt\x88\x01\x01\x12A\n" +
+	"\x05steps\x18\x06 \x03(\v2+.synclet.publicapi.pipeline.v1.WorkflowStepR\x05steps\x129\n" +
+	"\n" +
+	"created_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"\n" +
+	"updated_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAtB\v\n" +
+	"\t_scheduleB\x14\n" +
+	"\x12_next_scheduled_at\"\x9d\x03\n" +
+	"\x0fWorkflowStepRun\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
+	"\astep_id\x18\x02 \x01(\tR\x06stepId\x12#\n" +
+	"\rconnection_id\x18\x03 \x01(\tR\fconnectionId\x12L\n" +
+	"\x06status\x18\x04 \x01(\x0e24.synclet.publicapi.pipeline.v1.WorkflowStepRunStatusR\x06status\x12\x1a\n" +
+	"\x06job_id\x18\x05 \x01(\tH\x00R\x05jobId\x88\x01\x01\x12\x19\n" +
+	"\x05error\x18\x06 \x01(\tH\x01R\x05error\x88\x01\x01\x12>\n" +
+	"\n" +
+	"started_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampH\x02R\tstartedAt\x88\x01\x01\x12B\n" +
+	"\fcompleted_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampH\x03R\vcompletedAt\x88\x01\x01B\t\n" +
+	"\a_job_idB\b\n" +
+	"\x06_errorB\r\n" +
+	"\v_started_atB\x0f\n" +
+	"\r_completed_at\"\xb2\x03\n" +
+	"\vWorkflowRun\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
+	"\vworkflow_id\x18\x02 \x01(\tR\n" +
+	"workflowId\x12H\n" +
+	"\x06status\x18\x03 \x01(\x0e20.synclet.publicapi.pipeline.v1.WorkflowRunStatusR\x06status\x12K\n" +
+	"\atrigger\x18\x04 \x01(\x0e21.synclet.publicapi.pipeline.v1.WorkflowRunTriggerR\atrigger\x129\n" +
+	"\n" +
+	"started_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tstartedAt\x12B\n" +
+	"\fcompleted_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampH\x00R\vcompletedAt\x88\x01\x01\x12K\n" +
+	"\tstep_runs\x18\a \x03(\v2..synclet.publicapi.pipeline.v1.WorkflowStepRunR\bstepRunsB\x0f\n" +
+	"\r_completed_at\"j\n" +
+	"\x11WorkflowStepInput\x12#\n" +
+	"\rconnection_id\x18\x01 \x01(\tR\fconnectionId\x120\n" +
+	"\x14after_connection_ids\x18\x02 \x03(\tR\x12afterConnectionIds\"\xa1\x01\n" +
+	"\x15CreateWorkflowRequest\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1f\n" +
+	"\bschedule\x18\x02 \x01(\tH\x00R\bschedule\x88\x01\x01\x12F\n" +
+	"\x05steps\x18\x03 \x03(\v20.synclet.publicapi.pipeline.v1.WorkflowStepInputR\x05stepsB\v\n" +
+	"\t_schedule\"]\n" +
+	"\x16CreateWorkflowResponse\x12C\n" +
+	"\bworkflow\x18\x01 \x01(\v2'.synclet.publicapi.pipeline.v1.WorkflowR\bworkflow\"\xb1\x01\n" +
+	"\x15UpdateWorkflowRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1f\n" +
+	"\bschedule\x18\x03 \x01(\tH\x00R\bschedule\x88\x01\x01\x12F\n" +
+	"\x05steps\x18\x04 \x03(\v20.synclet.publicapi.pipeline.v1.WorkflowStepInputR\x05stepsB\v\n" +
+	"\t_schedule\"]\n" +
+	"\x16UpdateWorkflowResponse\x12C\n" +
+	"\bworkflow\x18\x01 \x01(\v2'.synclet.publicapi.pipeline.v1.WorkflowR\bworkflow\"'\n" +
+	"\x15DeleteWorkflowRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\x18\n" +
+	"\x16DeleteWorkflowResponse\"$\n" +
+	"\x12GetWorkflowRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"Z\n" +
+	"\x13GetWorkflowResponse\x12C\n" +
+	"\bworkflow\x18\x01 \x01(\v2'.synclet.publicapi.pipeline.v1.WorkflowR\bworkflow\"\x16\n" +
+	"\x14ListWorkflowsRequest\"^\n" +
+	"\x15ListWorkflowsResponse\x12E\n" +
+	"\tworkflows\x18\x01 \x03(\v2'.synclet.publicapi.pipeline.v1.WorkflowR\tworkflows\"$\n" +
+	"\x12RunWorkflowRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"S\n" +
+	"\x13RunWorkflowResponse\x12<\n" +
+	"\x03run\x18\x01 \x01(\v2*.synclet.publicapi.pipeline.v1.WorkflowRunR\x03run\"0\n" +
+	"\x17RerunWorkflowRunRequest\x12\x15\n" +
+	"\x06run_id\x18\x01 \x01(\tR\x05runId\"X\n" +
+	"\x18RerunWorkflowRunResponse\x12<\n" +
+	"\x03run\x18\x01 \x01(\v2*.synclet.publicapi.pipeline.v1.WorkflowRunR\x03run\":\n" +
+	"\x17ListWorkflowRunsRequest\x12\x1f\n" +
+	"\vworkflow_id\x18\x01 \x01(\tR\n" +
+	"workflowId\"Z\n" +
+	"\x18ListWorkflowRunsResponse\x12>\n" +
+	"\x04runs\x18\x01 \x03(\v2*.synclet.publicapi.pipeline.v1.WorkflowRunR\x04runs\".\n" +
+	"\x15GetWorkflowRunRequest\x12\x15\n" +
+	"\x06run_id\x18\x01 \x01(\tR\x05runId\"V\n" +
+	"\x16GetWorkflowRunResponse\x12<\n" +
+	"\x03run\x18\x01 \x01(\v2*.synclet.publicapi.pipeline.v1.WorkflowRunR\x03run*\x91\x01\n" +
 	"\x10ConnectionStatus\x12!\n" +
 	"\x1dCONNECTION_STATUS_UNSPECIFIED\x10\x00\x12\x1c\n" +
 	"\x18CONNECTION_STATUS_ACTIVE\x10\x01\x12\x1e\n" +
@@ -7717,7 +9185,23 @@ const file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDesc = "" +
 	"\x1dCONNECTOR_TASK_STATUS_PENDING\x10\x01\x12!\n" +
 	"\x1dCONNECTOR_TASK_STATUS_RUNNING\x10\x02\x12#\n" +
 	"\x1fCONNECTOR_TASK_STATUS_COMPLETED\x10\x03\x12 \n" +
-	"\x1cCONNECTOR_TASK_STATUS_FAILED\x10\x042\xcd\v\n" +
+	"\x1cCONNECTOR_TASK_STATUS_FAILED\x10\x04*\x9c\x01\n" +
+	"\x11WorkflowRunStatus\x12#\n" +
+	"\x1fWORKFLOW_RUN_STATUS_UNSPECIFIED\x10\x00\x12\x1f\n" +
+	"\x1bWORKFLOW_RUN_STATUS_RUNNING\x10\x01\x12!\n" +
+	"\x1dWORKFLOW_RUN_STATUS_SUCCEEDED\x10\x02\x12\x1e\n" +
+	"\x1aWORKFLOW_RUN_STATUS_FAILED\x10\x03*~\n" +
+	"\x12WorkflowRunTrigger\x12$\n" +
+	" WORKFLOW_RUN_TRIGGER_UNSPECIFIED\x10\x00\x12!\n" +
+	"\x1dWORKFLOW_RUN_TRIGGER_SCHEDULE\x10\x01\x12\x1f\n" +
+	"\x1bWORKFLOW_RUN_TRIGGER_MANUAL\x10\x02*\xff\x01\n" +
+	"\x15WorkflowStepRunStatus\x12(\n" +
+	"$WORKFLOW_STEP_RUN_STATUS_UNSPECIFIED\x10\x00\x12$\n" +
+	" WORKFLOW_STEP_RUN_STATUS_PENDING\x10\x01\x12#\n" +
+	"\x1fWORKFLOW_STEP_RUN_STATUS_QUEUED\x10\x02\x12&\n" +
+	"\"WORKFLOW_STEP_RUN_STATUS_SUCCEEDED\x10\x03\x12#\n" +
+	"\x1fWORKFLOW_STEP_RUN_STATUS_FAILED\x10\x04\x12$\n" +
+	" WORKFLOW_STEP_RUN_STATUS_SKIPPED\x10\x052\xcd\v\n" +
 	"\rSourceService\x12}\n" +
 	"\fCreateSource\x122.synclet.publicapi.pipeline.v1.CreateSourceRequest\x1a3.synclet.publicapi.pipeline.v1.CreateSourceResponse\"\x04\x88\xb5\x18\x02\x12}\n" +
 	"\fUpdateSource\x122.synclet.publicapi.pipeline.v1.UpdateSourceRequest\x1a3.synclet.publicapi.pipeline.v1.UpdateSourceResponse\"\x04\x88\xb5\x18\x02\x12}\n" +
@@ -7768,7 +9252,17 @@ const file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDesc = "" +
 	"\bListJobs\x12..synclet.publicapi.pipeline.v1.ListJobsRequest\x1a/.synclet.publicapi.pipeline.v1.ListJobsResponse\"\x04\x88\xb5\x18\x01\x12w\n" +
 	"\n" +
 	"GetJobLogs\x120.synclet.publicapi.pipeline.v1.GetJobLogsRequest\x1a1.synclet.publicapi.pipeline.v1.GetJobLogsResponse\"\x04\x88\xb5\x18\x01\x12\x88\x01\n" +
-	"\x0fDownloadJobLogs\x125.synclet.publicapi.pipeline.v1.DownloadJobLogsRequest\x1a6.synclet.publicapi.pipeline.v1.DownloadJobLogsResponse\"\x04\x88\xb5\x18\x010\x012\xb4\x01\n" +
+	"\x0fDownloadJobLogs\x125.synclet.publicapi.pipeline.v1.DownloadJobLogsRequest\x1a6.synclet.publicapi.pipeline.v1.DownloadJobLogsResponse\"\x04\x88\xb5\x18\x010\x012\xbc\t\n" +
+	"\x0fWorkflowService\x12\x83\x01\n" +
+	"\x0eCreateWorkflow\x124.synclet.publicapi.pipeline.v1.CreateWorkflowRequest\x1a5.synclet.publicapi.pipeline.v1.CreateWorkflowResponse\"\x04\x88\xb5\x18\x02\x12\x83\x01\n" +
+	"\x0eUpdateWorkflow\x124.synclet.publicapi.pipeline.v1.UpdateWorkflowRequest\x1a5.synclet.publicapi.pipeline.v1.UpdateWorkflowResponse\"\x04\x88\xb5\x18\x02\x12\x83\x01\n" +
+	"\x0eDeleteWorkflow\x124.synclet.publicapi.pipeline.v1.DeleteWorkflowRequest\x1a5.synclet.publicapi.pipeline.v1.DeleteWorkflowResponse\"\x04\x88\xb5\x18\x02\x12z\n" +
+	"\vGetWorkflow\x121.synclet.publicapi.pipeline.v1.GetWorkflowRequest\x1a2.synclet.publicapi.pipeline.v1.GetWorkflowResponse\"\x04\x88\xb5\x18\x01\x12\x80\x01\n" +
+	"\rListWorkflows\x123.synclet.publicapi.pipeline.v1.ListWorkflowsRequest\x1a4.synclet.publicapi.pipeline.v1.ListWorkflowsResponse\"\x04\x88\xb5\x18\x01\x12z\n" +
+	"\vRunWorkflow\x121.synclet.publicapi.pipeline.v1.RunWorkflowRequest\x1a2.synclet.publicapi.pipeline.v1.RunWorkflowResponse\"\x04\x88\xb5\x18\x02\x12\x89\x01\n" +
+	"\x10RerunWorkflowRun\x126.synclet.publicapi.pipeline.v1.RerunWorkflowRunRequest\x1a7.synclet.publicapi.pipeline.v1.RerunWorkflowRunResponse\"\x04\x88\xb5\x18\x02\x12\x89\x01\n" +
+	"\x10ListWorkflowRuns\x126.synclet.publicapi.pipeline.v1.ListWorkflowRunsRequest\x1a7.synclet.publicapi.pipeline.v1.ListWorkflowRunsResponse\"\x04\x88\xb5\x18\x01\x12\x83\x01\n" +
+	"\x0eGetWorkflowRun\x124.synclet.publicapi.pipeline.v1.GetWorkflowRunRequest\x1a5.synclet.publicapi.pipeline.v1.GetWorkflowRunResponse\"\x04\x88\xb5\x18\x012\xb4\x01\n" +
 	"\x14ConnectorTaskService\x12\x9b\x01\n" +
 	"\x16GetConnectorTaskResult\x12<.synclet.publicapi.pipeline.v1.GetConnectorTaskResultRequest\x1a=.synclet.publicapi.pipeline.v1.GetConnectorTaskResultResponse\"\x04\x88\xb5\x18\x01B\x9b\x02\n" +
 	"!com.synclet.publicapi.pipeline.v1B\rPipelineProtoP\x01ZPgithub.com/synclet-io/synclet/gen/proto/synclet/publicapi/pipeline/v1;pipelinev1\xa2\x02\x03SPP\xaa\x02\x1dSynclet.Publicapi.Pipeline.V1\xca\x02\x1dSynclet\\Publicapi\\Pipeline\\V1\xe2\x02)Synclet\\Publicapi\\Pipeline\\V1\\GPBMetadata\xea\x02 Synclet::Publicapi::Pipeline::V1b\x06proto3"
@@ -7785,8 +9279,8 @@ func file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescGZIP() []byte {
 	return file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDescData
 }
 
-var file_synclet_publicapi_pipeline_v1_pipeline_proto_enumTypes = make([]protoimpl.EnumInfo, 11)
-var file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes = make([]protoimpl.MessageInfo, 115)
+var file_synclet_publicapi_pipeline_v1_pipeline_proto_enumTypes = make([]protoimpl.EnumInfo, 14)
+var file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes = make([]protoimpl.MessageInfo, 138)
 var file_synclet_publicapi_pipeline_v1_pipeline_proto_goTypes = []any{
 	(ConnectionStatus)(0),                     // 0: synclet.publicapi.pipeline.v1.ConnectionStatus
 	(SchemaChangePolicy)(0),                   // 1: synclet.publicapi.pipeline.v1.SchemaChangePolicy
@@ -7799,319 +9293,385 @@ var file_synclet_publicapi_pipeline_v1_pipeline_proto_goTypes = []any{
 	(ExecutorType)(0),                         // 8: synclet.publicapi.pipeline.v1.ExecutorType
 	(ConnectorTaskType)(0),                    // 9: synclet.publicapi.pipeline.v1.ConnectorTaskType
 	(ConnectorTaskStatus)(0),                  // 10: synclet.publicapi.pipeline.v1.ConnectorTaskStatus
-	(*Source)(nil),                            // 11: synclet.publicapi.pipeline.v1.Source
-	(*CreateSourceRequest)(nil),               // 12: synclet.publicapi.pipeline.v1.CreateSourceRequest
-	(*CreateSourceResponse)(nil),              // 13: synclet.publicapi.pipeline.v1.CreateSourceResponse
-	(*UpdateSourceRequest)(nil),               // 14: synclet.publicapi.pipeline.v1.UpdateSourceRequest
-	(*UpdateSourceResponse)(nil),              // 15: synclet.publicapi.pipeline.v1.UpdateSourceResponse
-	(*DeleteSourceRequest)(nil),               // 16: synclet.publicapi.pipeline.v1.DeleteSourceRequest
-	(*DeleteSourceResponse)(nil),              // 17: synclet.publicapi.pipeline.v1.DeleteSourceResponse
-	(*GetSourceRequest)(nil),                  // 18: synclet.publicapi.pipeline.v1.GetSourceRequest
-	(*GetSourceResponse)(nil),                 // 19: synclet.publicapi.pipeline.v1.GetSourceResponse
-	(*ListSourcesRequest)(nil),                // 20: synclet.publicapi.pipeline.v1.ListSourcesRequest
-	(*ListSourcesResponse)(nil),               // 21: synclet.publicapi.pipeline.v1.ListSourcesResponse
-	(*TestSourceConnectionRequest)(nil),       // 22: synclet.publicapi.pipeline.v1.TestSourceConnectionRequest
-	(*TestSourceConnectionResponse)(nil),      // 23: synclet.publicapi.pipeline.v1.TestSourceConnectionResponse
-	(*DiscoverSourceSchemaRequest)(nil),       // 24: synclet.publicapi.pipeline.v1.DiscoverSourceSchemaRequest
-	(*DiscoverSourceSchemaResponse)(nil),      // 25: synclet.publicapi.pipeline.v1.DiscoverSourceSchemaResponse
-	(*GetSourceCatalogRequest)(nil),           // 26: synclet.publicapi.pipeline.v1.GetSourceCatalogRequest
-	(*GetSourceCatalogResponse)(nil),          // 27: synclet.publicapi.pipeline.v1.GetSourceCatalogResponse
-	(*GetSystemInfoRequest)(nil),              // 28: synclet.publicapi.pipeline.v1.GetSystemInfoRequest
-	(*GetSystemInfoResponse)(nil),             // 29: synclet.publicapi.pipeline.v1.GetSystemInfoResponse
-	(*GetRuntimeDefaultsRequest)(nil),         // 30: synclet.publicapi.pipeline.v1.GetRuntimeDefaultsRequest
-	(*GetRuntimeDefaultsResponse)(nil),        // 31: synclet.publicapi.pipeline.v1.GetRuntimeDefaultsResponse
-	(*RuntimeDefaults)(nil),                   // 32: synclet.publicapi.pipeline.v1.RuntimeDefaults
-	(*ExecutorResourceDefaults)(nil),          // 33: synclet.publicapi.pipeline.v1.ExecutorResourceDefaults
-	(*ExecutorTypeDefaults)(nil),              // 34: synclet.publicapi.pipeline.v1.ExecutorTypeDefaults
-	(*ExecutorInstance)(nil),                  // 35: synclet.publicapi.pipeline.v1.ExecutorInstance
-	(*ListExecutorsRequest)(nil),              // 36: synclet.publicapi.pipeline.v1.ListExecutorsRequest
-	(*ListExecutorsResponse)(nil),             // 37: synclet.publicapi.pipeline.v1.ListExecutorsResponse
-	(*Destination)(nil),                       // 38: synclet.publicapi.pipeline.v1.Destination
-	(*CreateDestinationRequest)(nil),          // 39: synclet.publicapi.pipeline.v1.CreateDestinationRequest
-	(*CreateDestinationResponse)(nil),         // 40: synclet.publicapi.pipeline.v1.CreateDestinationResponse
-	(*UpdateDestinationRequest)(nil),          // 41: synclet.publicapi.pipeline.v1.UpdateDestinationRequest
-	(*UpdateDestinationResponse)(nil),         // 42: synclet.publicapi.pipeline.v1.UpdateDestinationResponse
-	(*DeleteDestinationRequest)(nil),          // 43: synclet.publicapi.pipeline.v1.DeleteDestinationRequest
-	(*DeleteDestinationResponse)(nil),         // 44: synclet.publicapi.pipeline.v1.DeleteDestinationResponse
-	(*GetDestinationRequest)(nil),             // 45: synclet.publicapi.pipeline.v1.GetDestinationRequest
-	(*GetDestinationResponse)(nil),            // 46: synclet.publicapi.pipeline.v1.GetDestinationResponse
-	(*ListDestinationsRequest)(nil),           // 47: synclet.publicapi.pipeline.v1.ListDestinationsRequest
-	(*ListDestinationsResponse)(nil),          // 48: synclet.publicapi.pipeline.v1.ListDestinationsResponse
-	(*TestDestinationConnectionRequest)(nil),  // 49: synclet.publicapi.pipeline.v1.TestDestinationConnectionRequest
-	(*TestDestinationConnectionResponse)(nil), // 50: synclet.publicapi.pipeline.v1.TestDestinationConnectionResponse
-	(*Connection)(nil),                        // 51: synclet.publicapi.pipeline.v1.Connection
-	(*CreateConnectionRequest)(nil),           // 52: synclet.publicapi.pipeline.v1.CreateConnectionRequest
-	(*CreateConnectionResponse)(nil),          // 53: synclet.publicapi.pipeline.v1.CreateConnectionResponse
-	(*UpdateConnectionRequest)(nil),           // 54: synclet.publicapi.pipeline.v1.UpdateConnectionRequest
-	(*TagList)(nil),                           // 55: synclet.publicapi.pipeline.v1.TagList
-	(*UpdateConnectionResponse)(nil),          // 56: synclet.publicapi.pipeline.v1.UpdateConnectionResponse
-	(*DeleteConnectionRequest)(nil),           // 57: synclet.publicapi.pipeline.v1.DeleteConnectionRequest
-	(*DeleteConnectionResponse)(nil),          // 58: synclet.publicapi.pipeline.v1.DeleteConnectionResponse
-	(*GetConnectionRequest)(nil),              // 59: synclet.publicapi.pipeline.v1.GetConnectionRequest
-	(*GetConnectionResponse)(nil),             // 60: synclet.publicapi.pipeline.v1.GetConnectionResponse
-	(*ListConnectionsRequest)(nil),            // 61: synclet.publicapi.pipeline.v1.ListConnectionsRequest
-	(*ListConnectionsResponse)(nil),           // 62: synclet.publicapi.pipeline.v1.ListConnectionsResponse
-	(*ListConnectionTagsRequest)(nil),         // 63: synclet.publicapi.pipeline.v1.ListConnectionTagsRequest
-	(*ListConnectionTagsResponse)(nil),        // 64: synclet.publicapi.pipeline.v1.ListConnectionTagsResponse
-	(*ConnectionTag)(nil),                     // 65: synclet.publicapi.pipeline.v1.ConnectionTag
-	(*EnableConnectionRequest)(nil),           // 66: synclet.publicapi.pipeline.v1.EnableConnectionRequest
-	(*EnableConnectionResponse)(nil),          // 67: synclet.publicapi.pipeline.v1.EnableConnectionResponse
-	(*DisableConnectionRequest)(nil),          // 68: synclet.publicapi.pipeline.v1.DisableConnectionRequest
-	(*DisableConnectionResponse)(nil),         // 69: synclet.publicapi.pipeline.v1.DisableConnectionResponse
-	(*DiscoverSchemaRequest)(nil),             // 70: synclet.publicapi.pipeline.v1.DiscoverSchemaRequest
-	(*DiscoverSchemaResponse)(nil),            // 71: synclet.publicapi.pipeline.v1.DiscoverSchemaResponse
-	(*ConfigureStreamsRequest)(nil),           // 72: synclet.publicapi.pipeline.v1.ConfigureStreamsRequest
-	(*SelectedField)(nil),                     // 73: synclet.publicapi.pipeline.v1.SelectedField
-	(*CompositeKey)(nil),                      // 74: synclet.publicapi.pipeline.v1.CompositeKey
-	(*ConfiguredStream)(nil),                  // 75: synclet.publicapi.pipeline.v1.ConfiguredStream
-	(*ConfigureStreamsResponse)(nil),          // 76: synclet.publicapi.pipeline.v1.ConfigureStreamsResponse
-	(*ValidateMappersRequest)(nil),            // 77: synclet.publicapi.pipeline.v1.ValidateMappersRequest
-	(*MapperIssue)(nil),                       // 78: synclet.publicapi.pipeline.v1.MapperIssue
-	(*ValidateMappersResponse)(nil),           // 79: synclet.publicapi.pipeline.v1.ValidateMappersResponse
-	(*GetDiscoveredCatalogRequest)(nil),       // 80: synclet.publicapi.pipeline.v1.GetDiscoveredCatalogRequest
-	(*GetDiscoveredCatalogResponse)(nil),      // 81: synclet.publicapi.pipeline.v1.GetDiscoveredCatalogResponse
-	(*GetConfiguredCatalogRequest)(nil),       // 82: synclet.publicapi.pipeline.v1.GetConfiguredCatalogRequest
-	(*GetConfiguredCatalogResponse)(nil),      // 83: synclet.publicapi.pipeline.v1.GetConfiguredCatalogResponse
-	(*GetSchemaChangesRequest)(nil),           // 84: synclet.publicapi.pipeline.v1.GetSchemaChangesRequest
-	(*SchemaChange)(nil),                      // 85: synclet.publicapi.pipeline.v1.SchemaChange
-	(*GetSchemaChangesResponse)(nil),          // 86: synclet.publicapi.pipeline.v1.GetSchemaChangesResponse
-	(*ResetStreamStateRequest)(nil),           // 87: synclet.publicapi.pipeline.v1.ResetStreamStateRequest
-	(*ResetStreamStateResponse)(nil),          // 88: synclet.publicapi.pipeline.v1.ResetStreamStateResponse
-	(*ResetConnectionStateRequest)(nil),       // 89: synclet.publicapi.pipeline.v1.ResetConnectionStateRequest
-	(*ResetConnectionStateResponse)(nil),      // 90: synclet.publicapi.pipeline.v1.ResetConnectionStateResponse
-	(*StreamState)(nil),                       // 91: synclet.publicapi.pipeline.v1.StreamState
-	(*ListStreamStatesRequest)(nil),           // 92: synclet.publicapi.pipeline.v1.ListStreamStatesRequest
-	(*ListStreamStatesResponse)(nil),          // 93: synclet.publicapi.pipeline.v1.ListStreamStatesResponse
-	(*UpdateStreamStateRequest)(nil),          // 94: synclet.publicapi.pipeline.v1.UpdateStreamStateRequest
-	(*UpdateStreamStateResponse)(nil),         // 95: synclet.publicapi.pipeline.v1.UpdateStreamStateResponse
-	(*Job)(nil),                               // 96: synclet.publicapi.pipeline.v1.Job
-	(*JobAttempt)(nil),                        // 97: synclet.publicapi.pipeline.v1.JobAttempt
-	(*SyncStats)(nil),                         // 98: synclet.publicapi.pipeline.v1.SyncStats
-	(*TriggerSyncRequest)(nil),                // 99: synclet.publicapi.pipeline.v1.TriggerSyncRequest
-	(*TriggerSyncResponse)(nil),               // 100: synclet.publicapi.pipeline.v1.TriggerSyncResponse
-	(*CancelJobRequest)(nil),                  // 101: synclet.publicapi.pipeline.v1.CancelJobRequest
-	(*CancelJobResponse)(nil),                 // 102: synclet.publicapi.pipeline.v1.CancelJobResponse
-	(*GetJobRequest)(nil),                     // 103: synclet.publicapi.pipeline.v1.GetJobRequest
-	(*GetJobResponse)(nil),                    // 104: synclet.publicapi.pipeline.v1.GetJobResponse
-	(*ListJobsRequest)(nil),                   // 105: synclet.publicapi.pipeline.v1.ListJobsRequest
-	(*ListJobsResponse)(nil),                  // 106: synclet.publicapi.pipeline.v1.ListJobsResponse
-	(*GetJobLogsRequest)(nil),                 // 107: synclet.publicapi.pipeline.v1.GetJobLogsRequest
-	(*GetJobLogsResponse)(nil),                // 108: synclet.publicapi.pipeline.v1.GetJobLogsResponse
-	(*JobLogAttempt)(nil),                     // 109: synclet.publicapi.pipeline.v1.JobLogAttempt
-	(*DownloadJobLogsRequest)(nil),            // 110: synclet.publicapi.pipeline.v1.DownloadJobLogsRequest
-	(*DownloadJobLogsResponse)(nil),           // 111: synclet.publicapi.pipeline.v1.DownloadJobLogsResponse
-	(*ExportWorkspaceConfigRequest)(nil),      // 112: synclet.publicapi.pipeline.v1.ExportWorkspaceConfigRequest
-	(*ExportWorkspaceConfigResponse)(nil),     // 113: synclet.publicapi.pipeline.v1.ExportWorkspaceConfigResponse
-	(*ImportWorkspaceConfigRequest)(nil),      // 114: synclet.publicapi.pipeline.v1.ImportWorkspaceConfigRequest
-	(*ImportWorkspaceConfigResponse)(nil),     // 115: synclet.publicapi.pipeline.v1.ImportWorkspaceConfigResponse
-	(*GetConnectorTaskResultRequest)(nil),     // 116: synclet.publicapi.pipeline.v1.GetConnectorTaskResultRequest
-	(*GetConnectorTaskResultResponse)(nil),    // 117: synclet.publicapi.pipeline.v1.GetConnectorTaskResultResponse
-	(*CheckTaskResult)(nil),                   // 118: synclet.publicapi.pipeline.v1.CheckTaskResult
-	(*SpecTaskResult)(nil),                    // 119: synclet.publicapi.pipeline.v1.SpecTaskResult
-	(*DiscoverTaskResult)(nil),                // 120: synclet.publicapi.pipeline.v1.DiscoverTaskResult
-	(*PipelineSettings)(nil),                  // 121: synclet.publicapi.pipeline.v1.PipelineSettings
-	(*GetPipelineSettingsRequest)(nil),        // 122: synclet.publicapi.pipeline.v1.GetPipelineSettingsRequest
-	(*GetPipelineSettingsResponse)(nil),       // 123: synclet.publicapi.pipeline.v1.GetPipelineSettingsResponse
-	(*UpdatePipelineSettingsRequest)(nil),     // 124: synclet.publicapi.pipeline.v1.UpdatePipelineSettingsRequest
-	(*UpdatePipelineSettingsResponse)(nil),    // 125: synclet.publicapi.pipeline.v1.UpdatePipelineSettingsResponse
-	(*structpb.Struct)(nil),                   // 126: google.protobuf.Struct
-	(*timestamppb.Timestamp)(nil),             // 127: google.protobuf.Timestamp
-	(*v1.AirbyteCatalog)(nil),                 // 128: synclet.protocol.v1.AirbyteCatalog
-	(*v1.ConnectorSpecification)(nil),         // 129: synclet.protocol.v1.ConnectorSpecification
+	(WorkflowRunStatus)(0),                    // 11: synclet.publicapi.pipeline.v1.WorkflowRunStatus
+	(WorkflowRunTrigger)(0),                   // 12: synclet.publicapi.pipeline.v1.WorkflowRunTrigger
+	(WorkflowStepRunStatus)(0),                // 13: synclet.publicapi.pipeline.v1.WorkflowStepRunStatus
+	(*Source)(nil),                            // 14: synclet.publicapi.pipeline.v1.Source
+	(*CreateSourceRequest)(nil),               // 15: synclet.publicapi.pipeline.v1.CreateSourceRequest
+	(*CreateSourceResponse)(nil),              // 16: synclet.publicapi.pipeline.v1.CreateSourceResponse
+	(*UpdateSourceRequest)(nil),               // 17: synclet.publicapi.pipeline.v1.UpdateSourceRequest
+	(*UpdateSourceResponse)(nil),              // 18: synclet.publicapi.pipeline.v1.UpdateSourceResponse
+	(*DeleteSourceRequest)(nil),               // 19: synclet.publicapi.pipeline.v1.DeleteSourceRequest
+	(*DeleteSourceResponse)(nil),              // 20: synclet.publicapi.pipeline.v1.DeleteSourceResponse
+	(*GetSourceRequest)(nil),                  // 21: synclet.publicapi.pipeline.v1.GetSourceRequest
+	(*GetSourceResponse)(nil),                 // 22: synclet.publicapi.pipeline.v1.GetSourceResponse
+	(*ListSourcesRequest)(nil),                // 23: synclet.publicapi.pipeline.v1.ListSourcesRequest
+	(*ListSourcesResponse)(nil),               // 24: synclet.publicapi.pipeline.v1.ListSourcesResponse
+	(*TestSourceConnectionRequest)(nil),       // 25: synclet.publicapi.pipeline.v1.TestSourceConnectionRequest
+	(*TestSourceConnectionResponse)(nil),      // 26: synclet.publicapi.pipeline.v1.TestSourceConnectionResponse
+	(*DiscoverSourceSchemaRequest)(nil),       // 27: synclet.publicapi.pipeline.v1.DiscoverSourceSchemaRequest
+	(*DiscoverSourceSchemaResponse)(nil),      // 28: synclet.publicapi.pipeline.v1.DiscoverSourceSchemaResponse
+	(*GetSourceCatalogRequest)(nil),           // 29: synclet.publicapi.pipeline.v1.GetSourceCatalogRequest
+	(*GetSourceCatalogResponse)(nil),          // 30: synclet.publicapi.pipeline.v1.GetSourceCatalogResponse
+	(*GetSystemInfoRequest)(nil),              // 31: synclet.publicapi.pipeline.v1.GetSystemInfoRequest
+	(*GetSystemInfoResponse)(nil),             // 32: synclet.publicapi.pipeline.v1.GetSystemInfoResponse
+	(*GetRuntimeDefaultsRequest)(nil),         // 33: synclet.publicapi.pipeline.v1.GetRuntimeDefaultsRequest
+	(*GetRuntimeDefaultsResponse)(nil),        // 34: synclet.publicapi.pipeline.v1.GetRuntimeDefaultsResponse
+	(*RuntimeDefaults)(nil),                   // 35: synclet.publicapi.pipeline.v1.RuntimeDefaults
+	(*ExecutorResourceDefaults)(nil),          // 36: synclet.publicapi.pipeline.v1.ExecutorResourceDefaults
+	(*ExecutorTypeDefaults)(nil),              // 37: synclet.publicapi.pipeline.v1.ExecutorTypeDefaults
+	(*ExecutorInstance)(nil),                  // 38: synclet.publicapi.pipeline.v1.ExecutorInstance
+	(*ListExecutorsRequest)(nil),              // 39: synclet.publicapi.pipeline.v1.ListExecutorsRequest
+	(*ListExecutorsResponse)(nil),             // 40: synclet.publicapi.pipeline.v1.ListExecutorsResponse
+	(*Destination)(nil),                       // 41: synclet.publicapi.pipeline.v1.Destination
+	(*CreateDestinationRequest)(nil),          // 42: synclet.publicapi.pipeline.v1.CreateDestinationRequest
+	(*CreateDestinationResponse)(nil),         // 43: synclet.publicapi.pipeline.v1.CreateDestinationResponse
+	(*UpdateDestinationRequest)(nil),          // 44: synclet.publicapi.pipeline.v1.UpdateDestinationRequest
+	(*UpdateDestinationResponse)(nil),         // 45: synclet.publicapi.pipeline.v1.UpdateDestinationResponse
+	(*DeleteDestinationRequest)(nil),          // 46: synclet.publicapi.pipeline.v1.DeleteDestinationRequest
+	(*DeleteDestinationResponse)(nil),         // 47: synclet.publicapi.pipeline.v1.DeleteDestinationResponse
+	(*GetDestinationRequest)(nil),             // 48: synclet.publicapi.pipeline.v1.GetDestinationRequest
+	(*GetDestinationResponse)(nil),            // 49: synclet.publicapi.pipeline.v1.GetDestinationResponse
+	(*ListDestinationsRequest)(nil),           // 50: synclet.publicapi.pipeline.v1.ListDestinationsRequest
+	(*ListDestinationsResponse)(nil),          // 51: synclet.publicapi.pipeline.v1.ListDestinationsResponse
+	(*TestDestinationConnectionRequest)(nil),  // 52: synclet.publicapi.pipeline.v1.TestDestinationConnectionRequest
+	(*TestDestinationConnectionResponse)(nil), // 53: synclet.publicapi.pipeline.v1.TestDestinationConnectionResponse
+	(*Connection)(nil),                        // 54: synclet.publicapi.pipeline.v1.Connection
+	(*CreateConnectionRequest)(nil),           // 55: synclet.publicapi.pipeline.v1.CreateConnectionRequest
+	(*CreateConnectionResponse)(nil),          // 56: synclet.publicapi.pipeline.v1.CreateConnectionResponse
+	(*UpdateConnectionRequest)(nil),           // 57: synclet.publicapi.pipeline.v1.UpdateConnectionRequest
+	(*TagList)(nil),                           // 58: synclet.publicapi.pipeline.v1.TagList
+	(*UpdateConnectionResponse)(nil),          // 59: synclet.publicapi.pipeline.v1.UpdateConnectionResponse
+	(*DeleteConnectionRequest)(nil),           // 60: synclet.publicapi.pipeline.v1.DeleteConnectionRequest
+	(*DeleteConnectionResponse)(nil),          // 61: synclet.publicapi.pipeline.v1.DeleteConnectionResponse
+	(*GetConnectionRequest)(nil),              // 62: synclet.publicapi.pipeline.v1.GetConnectionRequest
+	(*GetConnectionResponse)(nil),             // 63: synclet.publicapi.pipeline.v1.GetConnectionResponse
+	(*ListConnectionsRequest)(nil),            // 64: synclet.publicapi.pipeline.v1.ListConnectionsRequest
+	(*ListConnectionsResponse)(nil),           // 65: synclet.publicapi.pipeline.v1.ListConnectionsResponse
+	(*ListConnectionTagsRequest)(nil),         // 66: synclet.publicapi.pipeline.v1.ListConnectionTagsRequest
+	(*ListConnectionTagsResponse)(nil),        // 67: synclet.publicapi.pipeline.v1.ListConnectionTagsResponse
+	(*ConnectionTag)(nil),                     // 68: synclet.publicapi.pipeline.v1.ConnectionTag
+	(*EnableConnectionRequest)(nil),           // 69: synclet.publicapi.pipeline.v1.EnableConnectionRequest
+	(*EnableConnectionResponse)(nil),          // 70: synclet.publicapi.pipeline.v1.EnableConnectionResponse
+	(*DisableConnectionRequest)(nil),          // 71: synclet.publicapi.pipeline.v1.DisableConnectionRequest
+	(*DisableConnectionResponse)(nil),         // 72: synclet.publicapi.pipeline.v1.DisableConnectionResponse
+	(*DiscoverSchemaRequest)(nil),             // 73: synclet.publicapi.pipeline.v1.DiscoverSchemaRequest
+	(*DiscoverSchemaResponse)(nil),            // 74: synclet.publicapi.pipeline.v1.DiscoverSchemaResponse
+	(*ConfigureStreamsRequest)(nil),           // 75: synclet.publicapi.pipeline.v1.ConfigureStreamsRequest
+	(*SelectedField)(nil),                     // 76: synclet.publicapi.pipeline.v1.SelectedField
+	(*CompositeKey)(nil),                      // 77: synclet.publicapi.pipeline.v1.CompositeKey
+	(*ConfiguredStream)(nil),                  // 78: synclet.publicapi.pipeline.v1.ConfiguredStream
+	(*ConfigureStreamsResponse)(nil),          // 79: synclet.publicapi.pipeline.v1.ConfigureStreamsResponse
+	(*ValidateMappersRequest)(nil),            // 80: synclet.publicapi.pipeline.v1.ValidateMappersRequest
+	(*MapperIssue)(nil),                       // 81: synclet.publicapi.pipeline.v1.MapperIssue
+	(*ValidateMappersResponse)(nil),           // 82: synclet.publicapi.pipeline.v1.ValidateMappersResponse
+	(*GetDiscoveredCatalogRequest)(nil),       // 83: synclet.publicapi.pipeline.v1.GetDiscoveredCatalogRequest
+	(*GetDiscoveredCatalogResponse)(nil),      // 84: synclet.publicapi.pipeline.v1.GetDiscoveredCatalogResponse
+	(*GetConfiguredCatalogRequest)(nil),       // 85: synclet.publicapi.pipeline.v1.GetConfiguredCatalogRequest
+	(*GetConfiguredCatalogResponse)(nil),      // 86: synclet.publicapi.pipeline.v1.GetConfiguredCatalogResponse
+	(*GetSchemaChangesRequest)(nil),           // 87: synclet.publicapi.pipeline.v1.GetSchemaChangesRequest
+	(*SchemaChange)(nil),                      // 88: synclet.publicapi.pipeline.v1.SchemaChange
+	(*GetSchemaChangesResponse)(nil),          // 89: synclet.publicapi.pipeline.v1.GetSchemaChangesResponse
+	(*ResetStreamStateRequest)(nil),           // 90: synclet.publicapi.pipeline.v1.ResetStreamStateRequest
+	(*ResetStreamStateResponse)(nil),          // 91: synclet.publicapi.pipeline.v1.ResetStreamStateResponse
+	(*ResetConnectionStateRequest)(nil),       // 92: synclet.publicapi.pipeline.v1.ResetConnectionStateRequest
+	(*ResetConnectionStateResponse)(nil),      // 93: synclet.publicapi.pipeline.v1.ResetConnectionStateResponse
+	(*StreamState)(nil),                       // 94: synclet.publicapi.pipeline.v1.StreamState
+	(*ListStreamStatesRequest)(nil),           // 95: synclet.publicapi.pipeline.v1.ListStreamStatesRequest
+	(*ListStreamStatesResponse)(nil),          // 96: synclet.publicapi.pipeline.v1.ListStreamStatesResponse
+	(*UpdateStreamStateRequest)(nil),          // 97: synclet.publicapi.pipeline.v1.UpdateStreamStateRequest
+	(*UpdateStreamStateResponse)(nil),         // 98: synclet.publicapi.pipeline.v1.UpdateStreamStateResponse
+	(*Job)(nil),                               // 99: synclet.publicapi.pipeline.v1.Job
+	(*JobAttempt)(nil),                        // 100: synclet.publicapi.pipeline.v1.JobAttempt
+	(*SyncStats)(nil),                         // 101: synclet.publicapi.pipeline.v1.SyncStats
+	(*TriggerSyncRequest)(nil),                // 102: synclet.publicapi.pipeline.v1.TriggerSyncRequest
+	(*TriggerSyncResponse)(nil),               // 103: synclet.publicapi.pipeline.v1.TriggerSyncResponse
+	(*CancelJobRequest)(nil),                  // 104: synclet.publicapi.pipeline.v1.CancelJobRequest
+	(*CancelJobResponse)(nil),                 // 105: synclet.publicapi.pipeline.v1.CancelJobResponse
+	(*GetJobRequest)(nil),                     // 106: synclet.publicapi.pipeline.v1.GetJobRequest
+	(*GetJobResponse)(nil),                    // 107: synclet.publicapi.pipeline.v1.GetJobResponse
+	(*ListJobsRequest)(nil),                   // 108: synclet.publicapi.pipeline.v1.ListJobsRequest
+	(*ListJobsResponse)(nil),                  // 109: synclet.publicapi.pipeline.v1.ListJobsResponse
+	(*GetJobLogsRequest)(nil),                 // 110: synclet.publicapi.pipeline.v1.GetJobLogsRequest
+	(*GetJobLogsResponse)(nil),                // 111: synclet.publicapi.pipeline.v1.GetJobLogsResponse
+	(*JobLogAttempt)(nil),                     // 112: synclet.publicapi.pipeline.v1.JobLogAttempt
+	(*DownloadJobLogsRequest)(nil),            // 113: synclet.publicapi.pipeline.v1.DownloadJobLogsRequest
+	(*DownloadJobLogsResponse)(nil),           // 114: synclet.publicapi.pipeline.v1.DownloadJobLogsResponse
+	(*ExportWorkspaceConfigRequest)(nil),      // 115: synclet.publicapi.pipeline.v1.ExportWorkspaceConfigRequest
+	(*ExportWorkspaceConfigResponse)(nil),     // 116: synclet.publicapi.pipeline.v1.ExportWorkspaceConfigResponse
+	(*ImportWorkspaceConfigRequest)(nil),      // 117: synclet.publicapi.pipeline.v1.ImportWorkspaceConfigRequest
+	(*ImportWorkspaceConfigResponse)(nil),     // 118: synclet.publicapi.pipeline.v1.ImportWorkspaceConfigResponse
+	(*GetConnectorTaskResultRequest)(nil),     // 119: synclet.publicapi.pipeline.v1.GetConnectorTaskResultRequest
+	(*GetConnectorTaskResultResponse)(nil),    // 120: synclet.publicapi.pipeline.v1.GetConnectorTaskResultResponse
+	(*CheckTaskResult)(nil),                   // 121: synclet.publicapi.pipeline.v1.CheckTaskResult
+	(*SpecTaskResult)(nil),                    // 122: synclet.publicapi.pipeline.v1.SpecTaskResult
+	(*DiscoverTaskResult)(nil),                // 123: synclet.publicapi.pipeline.v1.DiscoverTaskResult
+	(*PipelineSettings)(nil),                  // 124: synclet.publicapi.pipeline.v1.PipelineSettings
+	(*GetPipelineSettingsRequest)(nil),        // 125: synclet.publicapi.pipeline.v1.GetPipelineSettingsRequest
+	(*GetPipelineSettingsResponse)(nil),       // 126: synclet.publicapi.pipeline.v1.GetPipelineSettingsResponse
+	(*UpdatePipelineSettingsRequest)(nil),     // 127: synclet.publicapi.pipeline.v1.UpdatePipelineSettingsRequest
+	(*UpdatePipelineSettingsResponse)(nil),    // 128: synclet.publicapi.pipeline.v1.UpdatePipelineSettingsResponse
+	(*WorkflowStep)(nil),                      // 129: synclet.publicapi.pipeline.v1.WorkflowStep
+	(*Workflow)(nil),                          // 130: synclet.publicapi.pipeline.v1.Workflow
+	(*WorkflowStepRun)(nil),                   // 131: synclet.publicapi.pipeline.v1.WorkflowStepRun
+	(*WorkflowRun)(nil),                       // 132: synclet.publicapi.pipeline.v1.WorkflowRun
+	(*WorkflowStepInput)(nil),                 // 133: synclet.publicapi.pipeline.v1.WorkflowStepInput
+	(*CreateWorkflowRequest)(nil),             // 134: synclet.publicapi.pipeline.v1.CreateWorkflowRequest
+	(*CreateWorkflowResponse)(nil),            // 135: synclet.publicapi.pipeline.v1.CreateWorkflowResponse
+	(*UpdateWorkflowRequest)(nil),             // 136: synclet.publicapi.pipeline.v1.UpdateWorkflowRequest
+	(*UpdateWorkflowResponse)(nil),            // 137: synclet.publicapi.pipeline.v1.UpdateWorkflowResponse
+	(*DeleteWorkflowRequest)(nil),             // 138: synclet.publicapi.pipeline.v1.DeleteWorkflowRequest
+	(*DeleteWorkflowResponse)(nil),            // 139: synclet.publicapi.pipeline.v1.DeleteWorkflowResponse
+	(*GetWorkflowRequest)(nil),                // 140: synclet.publicapi.pipeline.v1.GetWorkflowRequest
+	(*GetWorkflowResponse)(nil),               // 141: synclet.publicapi.pipeline.v1.GetWorkflowResponse
+	(*ListWorkflowsRequest)(nil),              // 142: synclet.publicapi.pipeline.v1.ListWorkflowsRequest
+	(*ListWorkflowsResponse)(nil),             // 143: synclet.publicapi.pipeline.v1.ListWorkflowsResponse
+	(*RunWorkflowRequest)(nil),                // 144: synclet.publicapi.pipeline.v1.RunWorkflowRequest
+	(*RunWorkflowResponse)(nil),               // 145: synclet.publicapi.pipeline.v1.RunWorkflowResponse
+	(*RerunWorkflowRunRequest)(nil),           // 146: synclet.publicapi.pipeline.v1.RerunWorkflowRunRequest
+	(*RerunWorkflowRunResponse)(nil),          // 147: synclet.publicapi.pipeline.v1.RerunWorkflowRunResponse
+	(*ListWorkflowRunsRequest)(nil),           // 148: synclet.publicapi.pipeline.v1.ListWorkflowRunsRequest
+	(*ListWorkflowRunsResponse)(nil),          // 149: synclet.publicapi.pipeline.v1.ListWorkflowRunsResponse
+	(*GetWorkflowRunRequest)(nil),             // 150: synclet.publicapi.pipeline.v1.GetWorkflowRunRequest
+	(*GetWorkflowRunResponse)(nil),            // 151: synclet.publicapi.pipeline.v1.GetWorkflowRunResponse
+	(*structpb.Struct)(nil),                   // 152: google.protobuf.Struct
+	(*timestamppb.Timestamp)(nil),             // 153: google.protobuf.Timestamp
+	(*v1.AirbyteCatalog)(nil),                 // 154: synclet.protocol.v1.AirbyteCatalog
+	(*v1.ConnectorSpecification)(nil),         // 155: synclet.protocol.v1.ConnectorSpecification
 }
 var file_synclet_publicapi_pipeline_v1_pipeline_proto_depIdxs = []int32{
-	126, // 0: synclet.publicapi.pipeline.v1.Source.config:type_name -> google.protobuf.Struct
-	127, // 1: synclet.publicapi.pipeline.v1.Source.created_at:type_name -> google.protobuf.Timestamp
-	127, // 2: synclet.publicapi.pipeline.v1.Source.updated_at:type_name -> google.protobuf.Timestamp
-	126, // 3: synclet.publicapi.pipeline.v1.CreateSourceRequest.config:type_name -> google.protobuf.Struct
-	11,  // 4: synclet.publicapi.pipeline.v1.CreateSourceResponse.source:type_name -> synclet.publicapi.pipeline.v1.Source
-	126, // 5: synclet.publicapi.pipeline.v1.UpdateSourceRequest.config:type_name -> google.protobuf.Struct
-	11,  // 6: synclet.publicapi.pipeline.v1.UpdateSourceResponse.source:type_name -> synclet.publicapi.pipeline.v1.Source
-	11,  // 7: synclet.publicapi.pipeline.v1.GetSourceResponse.source:type_name -> synclet.publicapi.pipeline.v1.Source
-	11,  // 8: synclet.publicapi.pipeline.v1.ListSourcesResponse.sources:type_name -> synclet.publicapi.pipeline.v1.Source
-	126, // 9: synclet.publicapi.pipeline.v1.TestSourceConnectionRequest.config:type_name -> google.protobuf.Struct
-	128, // 10: synclet.publicapi.pipeline.v1.GetSourceCatalogResponse.catalog:type_name -> synclet.protocol.v1.AirbyteCatalog
-	127, // 11: synclet.publicapi.pipeline.v1.GetSourceCatalogResponse.discovered_at:type_name -> google.protobuf.Timestamp
+	152, // 0: synclet.publicapi.pipeline.v1.Source.config:type_name -> google.protobuf.Struct
+	153, // 1: synclet.publicapi.pipeline.v1.Source.created_at:type_name -> google.protobuf.Timestamp
+	153, // 2: synclet.publicapi.pipeline.v1.Source.updated_at:type_name -> google.protobuf.Timestamp
+	152, // 3: synclet.publicapi.pipeline.v1.CreateSourceRequest.config:type_name -> google.protobuf.Struct
+	14,  // 4: synclet.publicapi.pipeline.v1.CreateSourceResponse.source:type_name -> synclet.publicapi.pipeline.v1.Source
+	152, // 5: synclet.publicapi.pipeline.v1.UpdateSourceRequest.config:type_name -> google.protobuf.Struct
+	14,  // 6: synclet.publicapi.pipeline.v1.UpdateSourceResponse.source:type_name -> synclet.publicapi.pipeline.v1.Source
+	14,  // 7: synclet.publicapi.pipeline.v1.GetSourceResponse.source:type_name -> synclet.publicapi.pipeline.v1.Source
+	14,  // 8: synclet.publicapi.pipeline.v1.ListSourcesResponse.sources:type_name -> synclet.publicapi.pipeline.v1.Source
+	152, // 9: synclet.publicapi.pipeline.v1.TestSourceConnectionRequest.config:type_name -> google.protobuf.Struct
+	154, // 10: synclet.publicapi.pipeline.v1.GetSourceCatalogResponse.catalog:type_name -> synclet.protocol.v1.AirbyteCatalog
+	153, // 11: synclet.publicapi.pipeline.v1.GetSourceCatalogResponse.discovered_at:type_name -> google.protobuf.Timestamp
 	7,   // 12: synclet.publicapi.pipeline.v1.GetSystemInfoResponse.workspaces_mode:type_name -> synclet.publicapi.pipeline.v1.WorkspacesMode
-	32,  // 13: synclet.publicapi.pipeline.v1.GetRuntimeDefaultsResponse.runtime_defaults:type_name -> synclet.publicapi.pipeline.v1.RuntimeDefaults
-	34,  // 14: synclet.publicapi.pipeline.v1.RuntimeDefaults.executors:type_name -> synclet.publicapi.pipeline.v1.ExecutorTypeDefaults
+	35,  // 13: synclet.publicapi.pipeline.v1.GetRuntimeDefaultsResponse.runtime_defaults:type_name -> synclet.publicapi.pipeline.v1.RuntimeDefaults
+	37,  // 14: synclet.publicapi.pipeline.v1.RuntimeDefaults.executors:type_name -> synclet.publicapi.pipeline.v1.ExecutorTypeDefaults
 	8,   // 15: synclet.publicapi.pipeline.v1.ExecutorTypeDefaults.type:type_name -> synclet.publicapi.pipeline.v1.ExecutorType
-	33,  // 16: synclet.publicapi.pipeline.v1.ExecutorTypeDefaults.resource_defaults:type_name -> synclet.publicapi.pipeline.v1.ExecutorResourceDefaults
+	36,  // 16: synclet.publicapi.pipeline.v1.ExecutorTypeDefaults.resource_defaults:type_name -> synclet.publicapi.pipeline.v1.ExecutorResourceDefaults
 	8,   // 17: synclet.publicapi.pipeline.v1.ExecutorInstance.type:type_name -> synclet.publicapi.pipeline.v1.ExecutorType
-	33,  // 18: synclet.publicapi.pipeline.v1.ExecutorInstance.resource_defaults:type_name -> synclet.publicapi.pipeline.v1.ExecutorResourceDefaults
-	127, // 19: synclet.publicapi.pipeline.v1.ExecutorInstance.first_seen_at:type_name -> google.protobuf.Timestamp
-	127, // 20: synclet.publicapi.pipeline.v1.ExecutorInstance.last_seen_at:type_name -> google.protobuf.Timestamp
-	35,  // 21: synclet.publicapi.pipeline.v1.ListExecutorsResponse.executors:type_name -> synclet.publicapi.pipeline.v1.ExecutorInstance
-	126, // 22: synclet.publicapi.pipeline.v1.Destination.config:type_name -> google.protobuf.Struct
-	127, // 23: synclet.publicapi.pipeline.v1.Destination.created_at:type_name -> google.protobuf.Timestamp
-	127, // 24: synclet.publicapi.pipeline.v1.Destination.updated_at:type_name -> google.protobuf.Timestamp
-	126, // 25: synclet.publicapi.pipeline.v1.CreateDestinationRequest.config:type_name -> google.protobuf.Struct
-	38,  // 26: synclet.publicapi.pipeline.v1.CreateDestinationResponse.destination:type_name -> synclet.publicapi.pipeline.v1.Destination
-	126, // 27: synclet.publicapi.pipeline.v1.UpdateDestinationRequest.config:type_name -> google.protobuf.Struct
-	38,  // 28: synclet.publicapi.pipeline.v1.UpdateDestinationResponse.destination:type_name -> synclet.publicapi.pipeline.v1.Destination
-	38,  // 29: synclet.publicapi.pipeline.v1.GetDestinationResponse.destination:type_name -> synclet.publicapi.pipeline.v1.Destination
-	38,  // 30: synclet.publicapi.pipeline.v1.ListDestinationsResponse.destinations:type_name -> synclet.publicapi.pipeline.v1.Destination
-	126, // 31: synclet.publicapi.pipeline.v1.TestDestinationConnectionRequest.config:type_name -> google.protobuf.Struct
+	36,  // 18: synclet.publicapi.pipeline.v1.ExecutorInstance.resource_defaults:type_name -> synclet.publicapi.pipeline.v1.ExecutorResourceDefaults
+	153, // 19: synclet.publicapi.pipeline.v1.ExecutorInstance.first_seen_at:type_name -> google.protobuf.Timestamp
+	153, // 20: synclet.publicapi.pipeline.v1.ExecutorInstance.last_seen_at:type_name -> google.protobuf.Timestamp
+	38,  // 21: synclet.publicapi.pipeline.v1.ListExecutorsResponse.executors:type_name -> synclet.publicapi.pipeline.v1.ExecutorInstance
+	152, // 22: synclet.publicapi.pipeline.v1.Destination.config:type_name -> google.protobuf.Struct
+	153, // 23: synclet.publicapi.pipeline.v1.Destination.created_at:type_name -> google.protobuf.Timestamp
+	153, // 24: synclet.publicapi.pipeline.v1.Destination.updated_at:type_name -> google.protobuf.Timestamp
+	152, // 25: synclet.publicapi.pipeline.v1.CreateDestinationRequest.config:type_name -> google.protobuf.Struct
+	41,  // 26: synclet.publicapi.pipeline.v1.CreateDestinationResponse.destination:type_name -> synclet.publicapi.pipeline.v1.Destination
+	152, // 27: synclet.publicapi.pipeline.v1.UpdateDestinationRequest.config:type_name -> google.protobuf.Struct
+	41,  // 28: synclet.publicapi.pipeline.v1.UpdateDestinationResponse.destination:type_name -> synclet.publicapi.pipeline.v1.Destination
+	41,  // 29: synclet.publicapi.pipeline.v1.GetDestinationResponse.destination:type_name -> synclet.publicapi.pipeline.v1.Destination
+	41,  // 30: synclet.publicapi.pipeline.v1.ListDestinationsResponse.destinations:type_name -> synclet.publicapi.pipeline.v1.Destination
+	152, // 31: synclet.publicapi.pipeline.v1.TestDestinationConnectionRequest.config:type_name -> google.protobuf.Struct
 	0,   // 32: synclet.publicapi.pipeline.v1.Connection.status:type_name -> synclet.publicapi.pipeline.v1.ConnectionStatus
 	1,   // 33: synclet.publicapi.pipeline.v1.Connection.schema_change_policy:type_name -> synclet.publicapi.pipeline.v1.SchemaChangePolicy
-	127, // 34: synclet.publicapi.pipeline.v1.Connection.created_at:type_name -> google.protobuf.Timestamp
-	127, // 35: synclet.publicapi.pipeline.v1.Connection.updated_at:type_name -> google.protobuf.Timestamp
+	153, // 34: synclet.publicapi.pipeline.v1.Connection.created_at:type_name -> google.protobuf.Timestamp
+	153, // 35: synclet.publicapi.pipeline.v1.Connection.updated_at:type_name -> google.protobuf.Timestamp
 	6,   // 36: synclet.publicapi.pipeline.v1.Connection.namespace_definition:type_name -> synclet.publicapi.pipeline.v1.NamespaceDefinition
-	127, // 37: synclet.publicapi.pipeline.v1.Connection.next_scheduled_at:type_name -> google.protobuf.Timestamp
+	153, // 37: synclet.publicapi.pipeline.v1.Connection.next_scheduled_at:type_name -> google.protobuf.Timestamp
 	1,   // 38: synclet.publicapi.pipeline.v1.CreateConnectionRequest.schema_change_policy:type_name -> synclet.publicapi.pipeline.v1.SchemaChangePolicy
 	6,   // 39: synclet.publicapi.pipeline.v1.CreateConnectionRequest.namespace_definition:type_name -> synclet.publicapi.pipeline.v1.NamespaceDefinition
-	51,  // 40: synclet.publicapi.pipeline.v1.CreateConnectionResponse.connection:type_name -> synclet.publicapi.pipeline.v1.Connection
+	54,  // 40: synclet.publicapi.pipeline.v1.CreateConnectionResponse.connection:type_name -> synclet.publicapi.pipeline.v1.Connection
 	1,   // 41: synclet.publicapi.pipeline.v1.UpdateConnectionRequest.schema_change_policy:type_name -> synclet.publicapi.pipeline.v1.SchemaChangePolicy
 	6,   // 42: synclet.publicapi.pipeline.v1.UpdateConnectionRequest.namespace_definition:type_name -> synclet.publicapi.pipeline.v1.NamespaceDefinition
-	55,  // 43: synclet.publicapi.pipeline.v1.UpdateConnectionRequest.tags:type_name -> synclet.publicapi.pipeline.v1.TagList
-	51,  // 44: synclet.publicapi.pipeline.v1.UpdateConnectionResponse.connection:type_name -> synclet.publicapi.pipeline.v1.Connection
-	51,  // 45: synclet.publicapi.pipeline.v1.GetConnectionResponse.connection:type_name -> synclet.publicapi.pipeline.v1.Connection
-	51,  // 46: synclet.publicapi.pipeline.v1.ListConnectionsResponse.connections:type_name -> synclet.publicapi.pipeline.v1.Connection
-	65,  // 47: synclet.publicapi.pipeline.v1.ListConnectionTagsResponse.tags:type_name -> synclet.publicapi.pipeline.v1.ConnectionTag
-	51,  // 48: synclet.publicapi.pipeline.v1.EnableConnectionResponse.connection:type_name -> synclet.publicapi.pipeline.v1.Connection
-	51,  // 49: synclet.publicapi.pipeline.v1.DisableConnectionResponse.connection:type_name -> synclet.publicapi.pipeline.v1.Connection
-	75,  // 50: synclet.publicapi.pipeline.v1.ConfigureStreamsRequest.streams:type_name -> synclet.publicapi.pipeline.v1.ConfiguredStream
+	58,  // 43: synclet.publicapi.pipeline.v1.UpdateConnectionRequest.tags:type_name -> synclet.publicapi.pipeline.v1.TagList
+	54,  // 44: synclet.publicapi.pipeline.v1.UpdateConnectionResponse.connection:type_name -> synclet.publicapi.pipeline.v1.Connection
+	54,  // 45: synclet.publicapi.pipeline.v1.GetConnectionResponse.connection:type_name -> synclet.publicapi.pipeline.v1.Connection
+	54,  // 46: synclet.publicapi.pipeline.v1.ListConnectionsResponse.connections:type_name -> synclet.publicapi.pipeline.v1.Connection
+	68,  // 47: synclet.publicapi.pipeline.v1.ListConnectionTagsResponse.tags:type_name -> synclet.publicapi.pipeline.v1.ConnectionTag
+	54,  // 48: synclet.publicapi.pipeline.v1.EnableConnectionResponse.connection:type_name -> synclet.publicapi.pipeline.v1.Connection
+	54,  // 49: synclet.publicapi.pipeline.v1.DisableConnectionResponse.connection:type_name -> synclet.publicapi.pipeline.v1.Connection
+	78,  // 50: synclet.publicapi.pipeline.v1.ConfigureStreamsRequest.streams:type_name -> synclet.publicapi.pipeline.v1.ConfiguredStream
 	4,   // 51: synclet.publicapi.pipeline.v1.ConfiguredStream.sync_mode:type_name -> synclet.publicapi.pipeline.v1.SyncMode
 	5,   // 52: synclet.publicapi.pipeline.v1.ConfiguredStream.destination_sync_mode:type_name -> synclet.publicapi.pipeline.v1.DestinationSyncMode
-	74,  // 53: synclet.publicapi.pipeline.v1.ConfiguredStream.primary_key:type_name -> synclet.publicapi.pipeline.v1.CompositeKey
-	73,  // 54: synclet.publicapi.pipeline.v1.ConfiguredStream.selected_fields:type_name -> synclet.publicapi.pipeline.v1.SelectedField
-	126, // 55: synclet.publicapi.pipeline.v1.ConfiguredStream.mappers:type_name -> google.protobuf.Struct
-	126, // 56: synclet.publicapi.pipeline.v1.ValidateMappersRequest.mappers:type_name -> google.protobuf.Struct
-	73,  // 57: synclet.publicapi.pipeline.v1.ValidateMappersRequest.selected_fields:type_name -> synclet.publicapi.pipeline.v1.SelectedField
-	74,  // 58: synclet.publicapi.pipeline.v1.ValidateMappersRequest.primary_key:type_name -> synclet.publicapi.pipeline.v1.CompositeKey
+	77,  // 53: synclet.publicapi.pipeline.v1.ConfiguredStream.primary_key:type_name -> synclet.publicapi.pipeline.v1.CompositeKey
+	76,  // 54: synclet.publicapi.pipeline.v1.ConfiguredStream.selected_fields:type_name -> synclet.publicapi.pipeline.v1.SelectedField
+	152, // 55: synclet.publicapi.pipeline.v1.ConfiguredStream.mappers:type_name -> google.protobuf.Struct
+	152, // 56: synclet.publicapi.pipeline.v1.ValidateMappersRequest.mappers:type_name -> google.protobuf.Struct
+	76,  // 57: synclet.publicapi.pipeline.v1.ValidateMappersRequest.selected_fields:type_name -> synclet.publicapi.pipeline.v1.SelectedField
+	77,  // 58: synclet.publicapi.pipeline.v1.ValidateMappersRequest.primary_key:type_name -> synclet.publicapi.pipeline.v1.CompositeKey
 	5,   // 59: synclet.publicapi.pipeline.v1.ValidateMappersRequest.destination_sync_mode:type_name -> synclet.publicapi.pipeline.v1.DestinationSyncMode
-	126, // 60: synclet.publicapi.pipeline.v1.ValidateMappersRequest.sample_record:type_name -> google.protobuf.Struct
-	78,  // 61: synclet.publicapi.pipeline.v1.ValidateMappersResponse.errors:type_name -> synclet.publicapi.pipeline.v1.MapperIssue
-	78,  // 62: synclet.publicapi.pipeline.v1.ValidateMappersResponse.warnings:type_name -> synclet.publicapi.pipeline.v1.MapperIssue
-	126, // 63: synclet.publicapi.pipeline.v1.ValidateMappersResponse.output_schema:type_name -> google.protobuf.Struct
-	74,  // 64: synclet.publicapi.pipeline.v1.ValidateMappersResponse.output_primary_key:type_name -> synclet.publicapi.pipeline.v1.CompositeKey
-	126, // 65: synclet.publicapi.pipeline.v1.ValidateMappersResponse.sample_output:type_name -> google.protobuf.Struct
-	128, // 66: synclet.publicapi.pipeline.v1.GetDiscoveredCatalogResponse.catalog:type_name -> synclet.protocol.v1.AirbyteCatalog
-	126, // 67: synclet.publicapi.pipeline.v1.GetConfiguredCatalogResponse.catalog:type_name -> google.protobuf.Struct
-	85,  // 68: synclet.publicapi.pipeline.v1.GetSchemaChangesResponse.changes:type_name -> synclet.publicapi.pipeline.v1.SchemaChange
-	127, // 69: synclet.publicapi.pipeline.v1.StreamState.updated_at:type_name -> google.protobuf.Timestamp
-	91,  // 70: synclet.publicapi.pipeline.v1.ListStreamStatesResponse.states:type_name -> synclet.publicapi.pipeline.v1.StreamState
+	152, // 60: synclet.publicapi.pipeline.v1.ValidateMappersRequest.sample_record:type_name -> google.protobuf.Struct
+	81,  // 61: synclet.publicapi.pipeline.v1.ValidateMappersResponse.errors:type_name -> synclet.publicapi.pipeline.v1.MapperIssue
+	81,  // 62: synclet.publicapi.pipeline.v1.ValidateMappersResponse.warnings:type_name -> synclet.publicapi.pipeline.v1.MapperIssue
+	152, // 63: synclet.publicapi.pipeline.v1.ValidateMappersResponse.output_schema:type_name -> google.protobuf.Struct
+	77,  // 64: synclet.publicapi.pipeline.v1.ValidateMappersResponse.output_primary_key:type_name -> synclet.publicapi.pipeline.v1.CompositeKey
+	152, // 65: synclet.publicapi.pipeline.v1.ValidateMappersResponse.sample_output:type_name -> google.protobuf.Struct
+	154, // 66: synclet.publicapi.pipeline.v1.GetDiscoveredCatalogResponse.catalog:type_name -> synclet.protocol.v1.AirbyteCatalog
+	152, // 67: synclet.publicapi.pipeline.v1.GetConfiguredCatalogResponse.catalog:type_name -> google.protobuf.Struct
+	88,  // 68: synclet.publicapi.pipeline.v1.GetSchemaChangesResponse.changes:type_name -> synclet.publicapi.pipeline.v1.SchemaChange
+	153, // 69: synclet.publicapi.pipeline.v1.StreamState.updated_at:type_name -> google.protobuf.Timestamp
+	94,  // 70: synclet.publicapi.pipeline.v1.ListStreamStatesResponse.states:type_name -> synclet.publicapi.pipeline.v1.StreamState
 	2,   // 71: synclet.publicapi.pipeline.v1.Job.status:type_name -> synclet.publicapi.pipeline.v1.JobStatus
 	3,   // 72: synclet.publicapi.pipeline.v1.Job.job_type:type_name -> synclet.publicapi.pipeline.v1.JobType
-	127, // 73: synclet.publicapi.pipeline.v1.Job.scheduled_at:type_name -> google.protobuf.Timestamp
-	127, // 74: synclet.publicapi.pipeline.v1.Job.started_at:type_name -> google.protobuf.Timestamp
-	127, // 75: synclet.publicapi.pipeline.v1.Job.completed_at:type_name -> google.protobuf.Timestamp
-	127, // 76: synclet.publicapi.pipeline.v1.Job.created_at:type_name -> google.protobuf.Timestamp
-	97,  // 77: synclet.publicapi.pipeline.v1.Job.attempts:type_name -> synclet.publicapi.pipeline.v1.JobAttempt
-	127, // 78: synclet.publicapi.pipeline.v1.JobAttempt.started_at:type_name -> google.protobuf.Timestamp
-	127, // 79: synclet.publicapi.pipeline.v1.JobAttempt.completed_at:type_name -> google.protobuf.Timestamp
-	98,  // 80: synclet.publicapi.pipeline.v1.JobAttempt.sync_stats:type_name -> synclet.publicapi.pipeline.v1.SyncStats
-	96,  // 81: synclet.publicapi.pipeline.v1.TriggerSyncResponse.job:type_name -> synclet.publicapi.pipeline.v1.Job
-	96,  // 82: synclet.publicapi.pipeline.v1.GetJobResponse.job:type_name -> synclet.publicapi.pipeline.v1.Job
+	153, // 73: synclet.publicapi.pipeline.v1.Job.scheduled_at:type_name -> google.protobuf.Timestamp
+	153, // 74: synclet.publicapi.pipeline.v1.Job.started_at:type_name -> google.protobuf.Timestamp
+	153, // 75: synclet.publicapi.pipeline.v1.Job.completed_at:type_name -> google.protobuf.Timestamp
+	153, // 76: synclet.publicapi.pipeline.v1.Job.created_at:type_name -> google.protobuf.Timestamp
+	100, // 77: synclet.publicapi.pipeline.v1.Job.attempts:type_name -> synclet.publicapi.pipeline.v1.JobAttempt
+	153, // 78: synclet.publicapi.pipeline.v1.JobAttempt.started_at:type_name -> google.protobuf.Timestamp
+	153, // 79: synclet.publicapi.pipeline.v1.JobAttempt.completed_at:type_name -> google.protobuf.Timestamp
+	101, // 80: synclet.publicapi.pipeline.v1.JobAttempt.sync_stats:type_name -> synclet.publicapi.pipeline.v1.SyncStats
+	99,  // 81: synclet.publicapi.pipeline.v1.TriggerSyncResponse.job:type_name -> synclet.publicapi.pipeline.v1.Job
+	99,  // 82: synclet.publicapi.pipeline.v1.GetJobResponse.job:type_name -> synclet.publicapi.pipeline.v1.Job
 	2,   // 83: synclet.publicapi.pipeline.v1.ListJobsRequest.statuses:type_name -> synclet.publicapi.pipeline.v1.JobStatus
-	96,  // 84: synclet.publicapi.pipeline.v1.ListJobsResponse.jobs:type_name -> synclet.publicapi.pipeline.v1.Job
-	109, // 85: synclet.publicapi.pipeline.v1.GetJobLogsResponse.attempts:type_name -> synclet.publicapi.pipeline.v1.JobLogAttempt
+	99,  // 84: synclet.publicapi.pipeline.v1.ListJobsResponse.jobs:type_name -> synclet.publicapi.pipeline.v1.Job
+	112, // 85: synclet.publicapi.pipeline.v1.GetJobLogsResponse.attempts:type_name -> synclet.publicapi.pipeline.v1.JobLogAttempt
 	10,  // 86: synclet.publicapi.pipeline.v1.GetConnectorTaskResultResponse.status:type_name -> synclet.publicapi.pipeline.v1.ConnectorTaskStatus
 	9,   // 87: synclet.publicapi.pipeline.v1.GetConnectorTaskResultResponse.task_type:type_name -> synclet.publicapi.pipeline.v1.ConnectorTaskType
-	118, // 88: synclet.publicapi.pipeline.v1.GetConnectorTaskResultResponse.check_result:type_name -> synclet.publicapi.pipeline.v1.CheckTaskResult
-	119, // 89: synclet.publicapi.pipeline.v1.GetConnectorTaskResultResponse.spec_result:type_name -> synclet.publicapi.pipeline.v1.SpecTaskResult
-	120, // 90: synclet.publicapi.pipeline.v1.GetConnectorTaskResultResponse.discover_result:type_name -> synclet.publicapi.pipeline.v1.DiscoverTaskResult
-	129, // 91: synclet.publicapi.pipeline.v1.SpecTaskResult.spec:type_name -> synclet.protocol.v1.ConnectorSpecification
-	128, // 92: synclet.publicapi.pipeline.v1.DiscoverTaskResult.catalog:type_name -> synclet.protocol.v1.AirbyteCatalog
-	121, // 93: synclet.publicapi.pipeline.v1.GetPipelineSettingsResponse.settings:type_name -> synclet.publicapi.pipeline.v1.PipelineSettings
-	121, // 94: synclet.publicapi.pipeline.v1.UpdatePipelineSettingsResponse.settings:type_name -> synclet.publicapi.pipeline.v1.PipelineSettings
-	12,  // 95: synclet.publicapi.pipeline.v1.SourceService.CreateSource:input_type -> synclet.publicapi.pipeline.v1.CreateSourceRequest
-	14,  // 96: synclet.publicapi.pipeline.v1.SourceService.UpdateSource:input_type -> synclet.publicapi.pipeline.v1.UpdateSourceRequest
-	16,  // 97: synclet.publicapi.pipeline.v1.SourceService.DeleteSource:input_type -> synclet.publicapi.pipeline.v1.DeleteSourceRequest
-	18,  // 98: synclet.publicapi.pipeline.v1.SourceService.GetSource:input_type -> synclet.publicapi.pipeline.v1.GetSourceRequest
-	20,  // 99: synclet.publicapi.pipeline.v1.SourceService.ListSources:input_type -> synclet.publicapi.pipeline.v1.ListSourcesRequest
-	22,  // 100: synclet.publicapi.pipeline.v1.SourceService.TestSourceConnection:input_type -> synclet.publicapi.pipeline.v1.TestSourceConnectionRequest
-	24,  // 101: synclet.publicapi.pipeline.v1.SourceService.DiscoverSourceSchema:input_type -> synclet.publicapi.pipeline.v1.DiscoverSourceSchemaRequest
-	26,  // 102: synclet.publicapi.pipeline.v1.SourceService.GetSourceCatalog:input_type -> synclet.publicapi.pipeline.v1.GetSourceCatalogRequest
-	28,  // 103: synclet.publicapi.pipeline.v1.SourceService.GetSystemInfo:input_type -> synclet.publicapi.pipeline.v1.GetSystemInfoRequest
-	30,  // 104: synclet.publicapi.pipeline.v1.SourceService.GetRuntimeDefaults:input_type -> synclet.publicapi.pipeline.v1.GetRuntimeDefaultsRequest
-	36,  // 105: synclet.publicapi.pipeline.v1.SourceService.ListExecutors:input_type -> synclet.publicapi.pipeline.v1.ListExecutorsRequest
-	39,  // 106: synclet.publicapi.pipeline.v1.DestinationService.CreateDestination:input_type -> synclet.publicapi.pipeline.v1.CreateDestinationRequest
-	41,  // 107: synclet.publicapi.pipeline.v1.DestinationService.UpdateDestination:input_type -> synclet.publicapi.pipeline.v1.UpdateDestinationRequest
-	43,  // 108: synclet.publicapi.pipeline.v1.DestinationService.DeleteDestination:input_type -> synclet.publicapi.pipeline.v1.DeleteDestinationRequest
-	45,  // 109: synclet.publicapi.pipeline.v1.DestinationService.GetDestination:input_type -> synclet.publicapi.pipeline.v1.GetDestinationRequest
-	47,  // 110: synclet.publicapi.pipeline.v1.DestinationService.ListDestinations:input_type -> synclet.publicapi.pipeline.v1.ListDestinationsRequest
-	49,  // 111: synclet.publicapi.pipeline.v1.DestinationService.TestDestinationConnection:input_type -> synclet.publicapi.pipeline.v1.TestDestinationConnectionRequest
-	52,  // 112: synclet.publicapi.pipeline.v1.ConnectionService.CreateConnection:input_type -> synclet.publicapi.pipeline.v1.CreateConnectionRequest
-	54,  // 113: synclet.publicapi.pipeline.v1.ConnectionService.UpdateConnection:input_type -> synclet.publicapi.pipeline.v1.UpdateConnectionRequest
-	57,  // 114: synclet.publicapi.pipeline.v1.ConnectionService.DeleteConnection:input_type -> synclet.publicapi.pipeline.v1.DeleteConnectionRequest
-	59,  // 115: synclet.publicapi.pipeline.v1.ConnectionService.GetConnection:input_type -> synclet.publicapi.pipeline.v1.GetConnectionRequest
-	61,  // 116: synclet.publicapi.pipeline.v1.ConnectionService.ListConnections:input_type -> synclet.publicapi.pipeline.v1.ListConnectionsRequest
-	63,  // 117: synclet.publicapi.pipeline.v1.ConnectionService.ListConnectionTags:input_type -> synclet.publicapi.pipeline.v1.ListConnectionTagsRequest
-	66,  // 118: synclet.publicapi.pipeline.v1.ConnectionService.EnableConnection:input_type -> synclet.publicapi.pipeline.v1.EnableConnectionRequest
-	68,  // 119: synclet.publicapi.pipeline.v1.ConnectionService.DisableConnection:input_type -> synclet.publicapi.pipeline.v1.DisableConnectionRequest
-	70,  // 120: synclet.publicapi.pipeline.v1.ConnectionService.DiscoverSchema:input_type -> synclet.publicapi.pipeline.v1.DiscoverSchemaRequest
-	72,  // 121: synclet.publicapi.pipeline.v1.ConnectionService.ConfigureStreams:input_type -> synclet.publicapi.pipeline.v1.ConfigureStreamsRequest
-	80,  // 122: synclet.publicapi.pipeline.v1.ConnectionService.GetDiscoveredCatalog:input_type -> synclet.publicapi.pipeline.v1.GetDiscoveredCatalogRequest
-	82,  // 123: synclet.publicapi.pipeline.v1.ConnectionService.GetConfiguredCatalog:input_type -> synclet.publicapi.pipeline.v1.GetConfiguredCatalogRequest
-	77,  // 124: synclet.publicapi.pipeline.v1.ConnectionService.ValidateMappers:input_type -> synclet.publicapi.pipeline.v1.ValidateMappersRequest
-	84,  // 125: synclet.publicapi.pipeline.v1.ConnectionService.GetSchemaChanges:input_type -> synclet.publicapi.pipeline.v1.GetSchemaChangesRequest
-	87,  // 126: synclet.publicapi.pipeline.v1.ConnectionService.ResetStreamState:input_type -> synclet.publicapi.pipeline.v1.ResetStreamStateRequest
-	89,  // 127: synclet.publicapi.pipeline.v1.ConnectionService.ResetConnectionState:input_type -> synclet.publicapi.pipeline.v1.ResetConnectionStateRequest
-	92,  // 128: synclet.publicapi.pipeline.v1.ConnectionService.ListStreamStates:input_type -> synclet.publicapi.pipeline.v1.ListStreamStatesRequest
-	94,  // 129: synclet.publicapi.pipeline.v1.ConnectionService.UpdateStreamState:input_type -> synclet.publicapi.pipeline.v1.UpdateStreamStateRequest
-	112, // 130: synclet.publicapi.pipeline.v1.ConnectionService.ExportWorkspaceConfig:input_type -> synclet.publicapi.pipeline.v1.ExportWorkspaceConfigRequest
-	114, // 131: synclet.publicapi.pipeline.v1.ConnectionService.ImportWorkspaceConfig:input_type -> synclet.publicapi.pipeline.v1.ImportWorkspaceConfigRequest
-	122, // 132: synclet.publicapi.pipeline.v1.ConnectionService.GetPipelineSettings:input_type -> synclet.publicapi.pipeline.v1.GetPipelineSettingsRequest
-	124, // 133: synclet.publicapi.pipeline.v1.ConnectionService.UpdatePipelineSettings:input_type -> synclet.publicapi.pipeline.v1.UpdatePipelineSettingsRequest
-	99,  // 134: synclet.publicapi.pipeline.v1.JobService.TriggerSync:input_type -> synclet.publicapi.pipeline.v1.TriggerSyncRequest
-	101, // 135: synclet.publicapi.pipeline.v1.JobService.CancelJob:input_type -> synclet.publicapi.pipeline.v1.CancelJobRequest
-	103, // 136: synclet.publicapi.pipeline.v1.JobService.GetJob:input_type -> synclet.publicapi.pipeline.v1.GetJobRequest
-	105, // 137: synclet.publicapi.pipeline.v1.JobService.ListJobs:input_type -> synclet.publicapi.pipeline.v1.ListJobsRequest
-	107, // 138: synclet.publicapi.pipeline.v1.JobService.GetJobLogs:input_type -> synclet.publicapi.pipeline.v1.GetJobLogsRequest
-	110, // 139: synclet.publicapi.pipeline.v1.JobService.DownloadJobLogs:input_type -> synclet.publicapi.pipeline.v1.DownloadJobLogsRequest
-	116, // 140: synclet.publicapi.pipeline.v1.ConnectorTaskService.GetConnectorTaskResult:input_type -> synclet.publicapi.pipeline.v1.GetConnectorTaskResultRequest
-	13,  // 141: synclet.publicapi.pipeline.v1.SourceService.CreateSource:output_type -> synclet.publicapi.pipeline.v1.CreateSourceResponse
-	15,  // 142: synclet.publicapi.pipeline.v1.SourceService.UpdateSource:output_type -> synclet.publicapi.pipeline.v1.UpdateSourceResponse
-	17,  // 143: synclet.publicapi.pipeline.v1.SourceService.DeleteSource:output_type -> synclet.publicapi.pipeline.v1.DeleteSourceResponse
-	19,  // 144: synclet.publicapi.pipeline.v1.SourceService.GetSource:output_type -> synclet.publicapi.pipeline.v1.GetSourceResponse
-	21,  // 145: synclet.publicapi.pipeline.v1.SourceService.ListSources:output_type -> synclet.publicapi.pipeline.v1.ListSourcesResponse
-	23,  // 146: synclet.publicapi.pipeline.v1.SourceService.TestSourceConnection:output_type -> synclet.publicapi.pipeline.v1.TestSourceConnectionResponse
-	25,  // 147: synclet.publicapi.pipeline.v1.SourceService.DiscoverSourceSchema:output_type -> synclet.publicapi.pipeline.v1.DiscoverSourceSchemaResponse
-	27,  // 148: synclet.publicapi.pipeline.v1.SourceService.GetSourceCatalog:output_type -> synclet.publicapi.pipeline.v1.GetSourceCatalogResponse
-	29,  // 149: synclet.publicapi.pipeline.v1.SourceService.GetSystemInfo:output_type -> synclet.publicapi.pipeline.v1.GetSystemInfoResponse
-	31,  // 150: synclet.publicapi.pipeline.v1.SourceService.GetRuntimeDefaults:output_type -> synclet.publicapi.pipeline.v1.GetRuntimeDefaultsResponse
-	37,  // 151: synclet.publicapi.pipeline.v1.SourceService.ListExecutors:output_type -> synclet.publicapi.pipeline.v1.ListExecutorsResponse
-	40,  // 152: synclet.publicapi.pipeline.v1.DestinationService.CreateDestination:output_type -> synclet.publicapi.pipeline.v1.CreateDestinationResponse
-	42,  // 153: synclet.publicapi.pipeline.v1.DestinationService.UpdateDestination:output_type -> synclet.publicapi.pipeline.v1.UpdateDestinationResponse
-	44,  // 154: synclet.publicapi.pipeline.v1.DestinationService.DeleteDestination:output_type -> synclet.publicapi.pipeline.v1.DeleteDestinationResponse
-	46,  // 155: synclet.publicapi.pipeline.v1.DestinationService.GetDestination:output_type -> synclet.publicapi.pipeline.v1.GetDestinationResponse
-	48,  // 156: synclet.publicapi.pipeline.v1.DestinationService.ListDestinations:output_type -> synclet.publicapi.pipeline.v1.ListDestinationsResponse
-	50,  // 157: synclet.publicapi.pipeline.v1.DestinationService.TestDestinationConnection:output_type -> synclet.publicapi.pipeline.v1.TestDestinationConnectionResponse
-	53,  // 158: synclet.publicapi.pipeline.v1.ConnectionService.CreateConnection:output_type -> synclet.publicapi.pipeline.v1.CreateConnectionResponse
-	56,  // 159: synclet.publicapi.pipeline.v1.ConnectionService.UpdateConnection:output_type -> synclet.publicapi.pipeline.v1.UpdateConnectionResponse
-	58,  // 160: synclet.publicapi.pipeline.v1.ConnectionService.DeleteConnection:output_type -> synclet.publicapi.pipeline.v1.DeleteConnectionResponse
-	60,  // 161: synclet.publicapi.pipeline.v1.ConnectionService.GetConnection:output_type -> synclet.publicapi.pipeline.v1.GetConnectionResponse
-	62,  // 162: synclet.publicapi.pipeline.v1.ConnectionService.ListConnections:output_type -> synclet.publicapi.pipeline.v1.ListConnectionsResponse
-	64,  // 163: synclet.publicapi.pipeline.v1.ConnectionService.ListConnectionTags:output_type -> synclet.publicapi.pipeline.v1.ListConnectionTagsResponse
-	67,  // 164: synclet.publicapi.pipeline.v1.ConnectionService.EnableConnection:output_type -> synclet.publicapi.pipeline.v1.EnableConnectionResponse
-	69,  // 165: synclet.publicapi.pipeline.v1.ConnectionService.DisableConnection:output_type -> synclet.publicapi.pipeline.v1.DisableConnectionResponse
-	71,  // 166: synclet.publicapi.pipeline.v1.ConnectionService.DiscoverSchema:output_type -> synclet.publicapi.pipeline.v1.DiscoverSchemaResponse
-	76,  // 167: synclet.publicapi.pipeline.v1.ConnectionService.ConfigureStreams:output_type -> synclet.publicapi.pipeline.v1.ConfigureStreamsResponse
-	81,  // 168: synclet.publicapi.pipeline.v1.ConnectionService.GetDiscoveredCatalog:output_type -> synclet.publicapi.pipeline.v1.GetDiscoveredCatalogResponse
-	83,  // 169: synclet.publicapi.pipeline.v1.ConnectionService.GetConfiguredCatalog:output_type -> synclet.publicapi.pipeline.v1.GetConfiguredCatalogResponse
-	79,  // 170: synclet.publicapi.pipeline.v1.ConnectionService.ValidateMappers:output_type -> synclet.publicapi.pipeline.v1.ValidateMappersResponse
-	86,  // 171: synclet.publicapi.pipeline.v1.ConnectionService.GetSchemaChanges:output_type -> synclet.publicapi.pipeline.v1.GetSchemaChangesResponse
-	88,  // 172: synclet.publicapi.pipeline.v1.ConnectionService.ResetStreamState:output_type -> synclet.publicapi.pipeline.v1.ResetStreamStateResponse
-	90,  // 173: synclet.publicapi.pipeline.v1.ConnectionService.ResetConnectionState:output_type -> synclet.publicapi.pipeline.v1.ResetConnectionStateResponse
-	93,  // 174: synclet.publicapi.pipeline.v1.ConnectionService.ListStreamStates:output_type -> synclet.publicapi.pipeline.v1.ListStreamStatesResponse
-	95,  // 175: synclet.publicapi.pipeline.v1.ConnectionService.UpdateStreamState:output_type -> synclet.publicapi.pipeline.v1.UpdateStreamStateResponse
-	113, // 176: synclet.publicapi.pipeline.v1.ConnectionService.ExportWorkspaceConfig:output_type -> synclet.publicapi.pipeline.v1.ExportWorkspaceConfigResponse
-	115, // 177: synclet.publicapi.pipeline.v1.ConnectionService.ImportWorkspaceConfig:output_type -> synclet.publicapi.pipeline.v1.ImportWorkspaceConfigResponse
-	123, // 178: synclet.publicapi.pipeline.v1.ConnectionService.GetPipelineSettings:output_type -> synclet.publicapi.pipeline.v1.GetPipelineSettingsResponse
-	125, // 179: synclet.publicapi.pipeline.v1.ConnectionService.UpdatePipelineSettings:output_type -> synclet.publicapi.pipeline.v1.UpdatePipelineSettingsResponse
-	100, // 180: synclet.publicapi.pipeline.v1.JobService.TriggerSync:output_type -> synclet.publicapi.pipeline.v1.TriggerSyncResponse
-	102, // 181: synclet.publicapi.pipeline.v1.JobService.CancelJob:output_type -> synclet.publicapi.pipeline.v1.CancelJobResponse
-	104, // 182: synclet.publicapi.pipeline.v1.JobService.GetJob:output_type -> synclet.publicapi.pipeline.v1.GetJobResponse
-	106, // 183: synclet.publicapi.pipeline.v1.JobService.ListJobs:output_type -> synclet.publicapi.pipeline.v1.ListJobsResponse
-	108, // 184: synclet.publicapi.pipeline.v1.JobService.GetJobLogs:output_type -> synclet.publicapi.pipeline.v1.GetJobLogsResponse
-	111, // 185: synclet.publicapi.pipeline.v1.JobService.DownloadJobLogs:output_type -> synclet.publicapi.pipeline.v1.DownloadJobLogsResponse
-	117, // 186: synclet.publicapi.pipeline.v1.ConnectorTaskService.GetConnectorTaskResult:output_type -> synclet.publicapi.pipeline.v1.GetConnectorTaskResultResponse
-	141, // [141:187] is the sub-list for method output_type
-	95,  // [95:141] is the sub-list for method input_type
-	95,  // [95:95] is the sub-list for extension type_name
-	95,  // [95:95] is the sub-list for extension extendee
-	0,   // [0:95] is the sub-list for field type_name
+	121, // 88: synclet.publicapi.pipeline.v1.GetConnectorTaskResultResponse.check_result:type_name -> synclet.publicapi.pipeline.v1.CheckTaskResult
+	122, // 89: synclet.publicapi.pipeline.v1.GetConnectorTaskResultResponse.spec_result:type_name -> synclet.publicapi.pipeline.v1.SpecTaskResult
+	123, // 90: synclet.publicapi.pipeline.v1.GetConnectorTaskResultResponse.discover_result:type_name -> synclet.publicapi.pipeline.v1.DiscoverTaskResult
+	155, // 91: synclet.publicapi.pipeline.v1.SpecTaskResult.spec:type_name -> synclet.protocol.v1.ConnectorSpecification
+	154, // 92: synclet.publicapi.pipeline.v1.DiscoverTaskResult.catalog:type_name -> synclet.protocol.v1.AirbyteCatalog
+	124, // 93: synclet.publicapi.pipeline.v1.GetPipelineSettingsResponse.settings:type_name -> synclet.publicapi.pipeline.v1.PipelineSettings
+	124, // 94: synclet.publicapi.pipeline.v1.UpdatePipelineSettingsResponse.settings:type_name -> synclet.publicapi.pipeline.v1.PipelineSettings
+	153, // 95: synclet.publicapi.pipeline.v1.Workflow.next_scheduled_at:type_name -> google.protobuf.Timestamp
+	129, // 96: synclet.publicapi.pipeline.v1.Workflow.steps:type_name -> synclet.publicapi.pipeline.v1.WorkflowStep
+	153, // 97: synclet.publicapi.pipeline.v1.Workflow.created_at:type_name -> google.protobuf.Timestamp
+	153, // 98: synclet.publicapi.pipeline.v1.Workflow.updated_at:type_name -> google.protobuf.Timestamp
+	13,  // 99: synclet.publicapi.pipeline.v1.WorkflowStepRun.status:type_name -> synclet.publicapi.pipeline.v1.WorkflowStepRunStatus
+	153, // 100: synclet.publicapi.pipeline.v1.WorkflowStepRun.started_at:type_name -> google.protobuf.Timestamp
+	153, // 101: synclet.publicapi.pipeline.v1.WorkflowStepRun.completed_at:type_name -> google.protobuf.Timestamp
+	11,  // 102: synclet.publicapi.pipeline.v1.WorkflowRun.status:type_name -> synclet.publicapi.pipeline.v1.WorkflowRunStatus
+	12,  // 103: synclet.publicapi.pipeline.v1.WorkflowRun.trigger:type_name -> synclet.publicapi.pipeline.v1.WorkflowRunTrigger
+	153, // 104: synclet.publicapi.pipeline.v1.WorkflowRun.started_at:type_name -> google.protobuf.Timestamp
+	153, // 105: synclet.publicapi.pipeline.v1.WorkflowRun.completed_at:type_name -> google.protobuf.Timestamp
+	131, // 106: synclet.publicapi.pipeline.v1.WorkflowRun.step_runs:type_name -> synclet.publicapi.pipeline.v1.WorkflowStepRun
+	133, // 107: synclet.publicapi.pipeline.v1.CreateWorkflowRequest.steps:type_name -> synclet.publicapi.pipeline.v1.WorkflowStepInput
+	130, // 108: synclet.publicapi.pipeline.v1.CreateWorkflowResponse.workflow:type_name -> synclet.publicapi.pipeline.v1.Workflow
+	133, // 109: synclet.publicapi.pipeline.v1.UpdateWorkflowRequest.steps:type_name -> synclet.publicapi.pipeline.v1.WorkflowStepInput
+	130, // 110: synclet.publicapi.pipeline.v1.UpdateWorkflowResponse.workflow:type_name -> synclet.publicapi.pipeline.v1.Workflow
+	130, // 111: synclet.publicapi.pipeline.v1.GetWorkflowResponse.workflow:type_name -> synclet.publicapi.pipeline.v1.Workflow
+	130, // 112: synclet.publicapi.pipeline.v1.ListWorkflowsResponse.workflows:type_name -> synclet.publicapi.pipeline.v1.Workflow
+	132, // 113: synclet.publicapi.pipeline.v1.RunWorkflowResponse.run:type_name -> synclet.publicapi.pipeline.v1.WorkflowRun
+	132, // 114: synclet.publicapi.pipeline.v1.RerunWorkflowRunResponse.run:type_name -> synclet.publicapi.pipeline.v1.WorkflowRun
+	132, // 115: synclet.publicapi.pipeline.v1.ListWorkflowRunsResponse.runs:type_name -> synclet.publicapi.pipeline.v1.WorkflowRun
+	132, // 116: synclet.publicapi.pipeline.v1.GetWorkflowRunResponse.run:type_name -> synclet.publicapi.pipeline.v1.WorkflowRun
+	15,  // 117: synclet.publicapi.pipeline.v1.SourceService.CreateSource:input_type -> synclet.publicapi.pipeline.v1.CreateSourceRequest
+	17,  // 118: synclet.publicapi.pipeline.v1.SourceService.UpdateSource:input_type -> synclet.publicapi.pipeline.v1.UpdateSourceRequest
+	19,  // 119: synclet.publicapi.pipeline.v1.SourceService.DeleteSource:input_type -> synclet.publicapi.pipeline.v1.DeleteSourceRequest
+	21,  // 120: synclet.publicapi.pipeline.v1.SourceService.GetSource:input_type -> synclet.publicapi.pipeline.v1.GetSourceRequest
+	23,  // 121: synclet.publicapi.pipeline.v1.SourceService.ListSources:input_type -> synclet.publicapi.pipeline.v1.ListSourcesRequest
+	25,  // 122: synclet.publicapi.pipeline.v1.SourceService.TestSourceConnection:input_type -> synclet.publicapi.pipeline.v1.TestSourceConnectionRequest
+	27,  // 123: synclet.publicapi.pipeline.v1.SourceService.DiscoverSourceSchema:input_type -> synclet.publicapi.pipeline.v1.DiscoverSourceSchemaRequest
+	29,  // 124: synclet.publicapi.pipeline.v1.SourceService.GetSourceCatalog:input_type -> synclet.publicapi.pipeline.v1.GetSourceCatalogRequest
+	31,  // 125: synclet.publicapi.pipeline.v1.SourceService.GetSystemInfo:input_type -> synclet.publicapi.pipeline.v1.GetSystemInfoRequest
+	33,  // 126: synclet.publicapi.pipeline.v1.SourceService.GetRuntimeDefaults:input_type -> synclet.publicapi.pipeline.v1.GetRuntimeDefaultsRequest
+	39,  // 127: synclet.publicapi.pipeline.v1.SourceService.ListExecutors:input_type -> synclet.publicapi.pipeline.v1.ListExecutorsRequest
+	42,  // 128: synclet.publicapi.pipeline.v1.DestinationService.CreateDestination:input_type -> synclet.publicapi.pipeline.v1.CreateDestinationRequest
+	44,  // 129: synclet.publicapi.pipeline.v1.DestinationService.UpdateDestination:input_type -> synclet.publicapi.pipeline.v1.UpdateDestinationRequest
+	46,  // 130: synclet.publicapi.pipeline.v1.DestinationService.DeleteDestination:input_type -> synclet.publicapi.pipeline.v1.DeleteDestinationRequest
+	48,  // 131: synclet.publicapi.pipeline.v1.DestinationService.GetDestination:input_type -> synclet.publicapi.pipeline.v1.GetDestinationRequest
+	50,  // 132: synclet.publicapi.pipeline.v1.DestinationService.ListDestinations:input_type -> synclet.publicapi.pipeline.v1.ListDestinationsRequest
+	52,  // 133: synclet.publicapi.pipeline.v1.DestinationService.TestDestinationConnection:input_type -> synclet.publicapi.pipeline.v1.TestDestinationConnectionRequest
+	55,  // 134: synclet.publicapi.pipeline.v1.ConnectionService.CreateConnection:input_type -> synclet.publicapi.pipeline.v1.CreateConnectionRequest
+	57,  // 135: synclet.publicapi.pipeline.v1.ConnectionService.UpdateConnection:input_type -> synclet.publicapi.pipeline.v1.UpdateConnectionRequest
+	60,  // 136: synclet.publicapi.pipeline.v1.ConnectionService.DeleteConnection:input_type -> synclet.publicapi.pipeline.v1.DeleteConnectionRequest
+	62,  // 137: synclet.publicapi.pipeline.v1.ConnectionService.GetConnection:input_type -> synclet.publicapi.pipeline.v1.GetConnectionRequest
+	64,  // 138: synclet.publicapi.pipeline.v1.ConnectionService.ListConnections:input_type -> synclet.publicapi.pipeline.v1.ListConnectionsRequest
+	66,  // 139: synclet.publicapi.pipeline.v1.ConnectionService.ListConnectionTags:input_type -> synclet.publicapi.pipeline.v1.ListConnectionTagsRequest
+	69,  // 140: synclet.publicapi.pipeline.v1.ConnectionService.EnableConnection:input_type -> synclet.publicapi.pipeline.v1.EnableConnectionRequest
+	71,  // 141: synclet.publicapi.pipeline.v1.ConnectionService.DisableConnection:input_type -> synclet.publicapi.pipeline.v1.DisableConnectionRequest
+	73,  // 142: synclet.publicapi.pipeline.v1.ConnectionService.DiscoverSchema:input_type -> synclet.publicapi.pipeline.v1.DiscoverSchemaRequest
+	75,  // 143: synclet.publicapi.pipeline.v1.ConnectionService.ConfigureStreams:input_type -> synclet.publicapi.pipeline.v1.ConfigureStreamsRequest
+	83,  // 144: synclet.publicapi.pipeline.v1.ConnectionService.GetDiscoveredCatalog:input_type -> synclet.publicapi.pipeline.v1.GetDiscoveredCatalogRequest
+	85,  // 145: synclet.publicapi.pipeline.v1.ConnectionService.GetConfiguredCatalog:input_type -> synclet.publicapi.pipeline.v1.GetConfiguredCatalogRequest
+	80,  // 146: synclet.publicapi.pipeline.v1.ConnectionService.ValidateMappers:input_type -> synclet.publicapi.pipeline.v1.ValidateMappersRequest
+	87,  // 147: synclet.publicapi.pipeline.v1.ConnectionService.GetSchemaChanges:input_type -> synclet.publicapi.pipeline.v1.GetSchemaChangesRequest
+	90,  // 148: synclet.publicapi.pipeline.v1.ConnectionService.ResetStreamState:input_type -> synclet.publicapi.pipeline.v1.ResetStreamStateRequest
+	92,  // 149: synclet.publicapi.pipeline.v1.ConnectionService.ResetConnectionState:input_type -> synclet.publicapi.pipeline.v1.ResetConnectionStateRequest
+	95,  // 150: synclet.publicapi.pipeline.v1.ConnectionService.ListStreamStates:input_type -> synclet.publicapi.pipeline.v1.ListStreamStatesRequest
+	97,  // 151: synclet.publicapi.pipeline.v1.ConnectionService.UpdateStreamState:input_type -> synclet.publicapi.pipeline.v1.UpdateStreamStateRequest
+	115, // 152: synclet.publicapi.pipeline.v1.ConnectionService.ExportWorkspaceConfig:input_type -> synclet.publicapi.pipeline.v1.ExportWorkspaceConfigRequest
+	117, // 153: synclet.publicapi.pipeline.v1.ConnectionService.ImportWorkspaceConfig:input_type -> synclet.publicapi.pipeline.v1.ImportWorkspaceConfigRequest
+	125, // 154: synclet.publicapi.pipeline.v1.ConnectionService.GetPipelineSettings:input_type -> synclet.publicapi.pipeline.v1.GetPipelineSettingsRequest
+	127, // 155: synclet.publicapi.pipeline.v1.ConnectionService.UpdatePipelineSettings:input_type -> synclet.publicapi.pipeline.v1.UpdatePipelineSettingsRequest
+	102, // 156: synclet.publicapi.pipeline.v1.JobService.TriggerSync:input_type -> synclet.publicapi.pipeline.v1.TriggerSyncRequest
+	104, // 157: synclet.publicapi.pipeline.v1.JobService.CancelJob:input_type -> synclet.publicapi.pipeline.v1.CancelJobRequest
+	106, // 158: synclet.publicapi.pipeline.v1.JobService.GetJob:input_type -> synclet.publicapi.pipeline.v1.GetJobRequest
+	108, // 159: synclet.publicapi.pipeline.v1.JobService.ListJobs:input_type -> synclet.publicapi.pipeline.v1.ListJobsRequest
+	110, // 160: synclet.publicapi.pipeline.v1.JobService.GetJobLogs:input_type -> synclet.publicapi.pipeline.v1.GetJobLogsRequest
+	113, // 161: synclet.publicapi.pipeline.v1.JobService.DownloadJobLogs:input_type -> synclet.publicapi.pipeline.v1.DownloadJobLogsRequest
+	134, // 162: synclet.publicapi.pipeline.v1.WorkflowService.CreateWorkflow:input_type -> synclet.publicapi.pipeline.v1.CreateWorkflowRequest
+	136, // 163: synclet.publicapi.pipeline.v1.WorkflowService.UpdateWorkflow:input_type -> synclet.publicapi.pipeline.v1.UpdateWorkflowRequest
+	138, // 164: synclet.publicapi.pipeline.v1.WorkflowService.DeleteWorkflow:input_type -> synclet.publicapi.pipeline.v1.DeleteWorkflowRequest
+	140, // 165: synclet.publicapi.pipeline.v1.WorkflowService.GetWorkflow:input_type -> synclet.publicapi.pipeline.v1.GetWorkflowRequest
+	142, // 166: synclet.publicapi.pipeline.v1.WorkflowService.ListWorkflows:input_type -> synclet.publicapi.pipeline.v1.ListWorkflowsRequest
+	144, // 167: synclet.publicapi.pipeline.v1.WorkflowService.RunWorkflow:input_type -> synclet.publicapi.pipeline.v1.RunWorkflowRequest
+	146, // 168: synclet.publicapi.pipeline.v1.WorkflowService.RerunWorkflowRun:input_type -> synclet.publicapi.pipeline.v1.RerunWorkflowRunRequest
+	148, // 169: synclet.publicapi.pipeline.v1.WorkflowService.ListWorkflowRuns:input_type -> synclet.publicapi.pipeline.v1.ListWorkflowRunsRequest
+	150, // 170: synclet.publicapi.pipeline.v1.WorkflowService.GetWorkflowRun:input_type -> synclet.publicapi.pipeline.v1.GetWorkflowRunRequest
+	119, // 171: synclet.publicapi.pipeline.v1.ConnectorTaskService.GetConnectorTaskResult:input_type -> synclet.publicapi.pipeline.v1.GetConnectorTaskResultRequest
+	16,  // 172: synclet.publicapi.pipeline.v1.SourceService.CreateSource:output_type -> synclet.publicapi.pipeline.v1.CreateSourceResponse
+	18,  // 173: synclet.publicapi.pipeline.v1.SourceService.UpdateSource:output_type -> synclet.publicapi.pipeline.v1.UpdateSourceResponse
+	20,  // 174: synclet.publicapi.pipeline.v1.SourceService.DeleteSource:output_type -> synclet.publicapi.pipeline.v1.DeleteSourceResponse
+	22,  // 175: synclet.publicapi.pipeline.v1.SourceService.GetSource:output_type -> synclet.publicapi.pipeline.v1.GetSourceResponse
+	24,  // 176: synclet.publicapi.pipeline.v1.SourceService.ListSources:output_type -> synclet.publicapi.pipeline.v1.ListSourcesResponse
+	26,  // 177: synclet.publicapi.pipeline.v1.SourceService.TestSourceConnection:output_type -> synclet.publicapi.pipeline.v1.TestSourceConnectionResponse
+	28,  // 178: synclet.publicapi.pipeline.v1.SourceService.DiscoverSourceSchema:output_type -> synclet.publicapi.pipeline.v1.DiscoverSourceSchemaResponse
+	30,  // 179: synclet.publicapi.pipeline.v1.SourceService.GetSourceCatalog:output_type -> synclet.publicapi.pipeline.v1.GetSourceCatalogResponse
+	32,  // 180: synclet.publicapi.pipeline.v1.SourceService.GetSystemInfo:output_type -> synclet.publicapi.pipeline.v1.GetSystemInfoResponse
+	34,  // 181: synclet.publicapi.pipeline.v1.SourceService.GetRuntimeDefaults:output_type -> synclet.publicapi.pipeline.v1.GetRuntimeDefaultsResponse
+	40,  // 182: synclet.publicapi.pipeline.v1.SourceService.ListExecutors:output_type -> synclet.publicapi.pipeline.v1.ListExecutorsResponse
+	43,  // 183: synclet.publicapi.pipeline.v1.DestinationService.CreateDestination:output_type -> synclet.publicapi.pipeline.v1.CreateDestinationResponse
+	45,  // 184: synclet.publicapi.pipeline.v1.DestinationService.UpdateDestination:output_type -> synclet.publicapi.pipeline.v1.UpdateDestinationResponse
+	47,  // 185: synclet.publicapi.pipeline.v1.DestinationService.DeleteDestination:output_type -> synclet.publicapi.pipeline.v1.DeleteDestinationResponse
+	49,  // 186: synclet.publicapi.pipeline.v1.DestinationService.GetDestination:output_type -> synclet.publicapi.pipeline.v1.GetDestinationResponse
+	51,  // 187: synclet.publicapi.pipeline.v1.DestinationService.ListDestinations:output_type -> synclet.publicapi.pipeline.v1.ListDestinationsResponse
+	53,  // 188: synclet.publicapi.pipeline.v1.DestinationService.TestDestinationConnection:output_type -> synclet.publicapi.pipeline.v1.TestDestinationConnectionResponse
+	56,  // 189: synclet.publicapi.pipeline.v1.ConnectionService.CreateConnection:output_type -> synclet.publicapi.pipeline.v1.CreateConnectionResponse
+	59,  // 190: synclet.publicapi.pipeline.v1.ConnectionService.UpdateConnection:output_type -> synclet.publicapi.pipeline.v1.UpdateConnectionResponse
+	61,  // 191: synclet.publicapi.pipeline.v1.ConnectionService.DeleteConnection:output_type -> synclet.publicapi.pipeline.v1.DeleteConnectionResponse
+	63,  // 192: synclet.publicapi.pipeline.v1.ConnectionService.GetConnection:output_type -> synclet.publicapi.pipeline.v1.GetConnectionResponse
+	65,  // 193: synclet.publicapi.pipeline.v1.ConnectionService.ListConnections:output_type -> synclet.publicapi.pipeline.v1.ListConnectionsResponse
+	67,  // 194: synclet.publicapi.pipeline.v1.ConnectionService.ListConnectionTags:output_type -> synclet.publicapi.pipeline.v1.ListConnectionTagsResponse
+	70,  // 195: synclet.publicapi.pipeline.v1.ConnectionService.EnableConnection:output_type -> synclet.publicapi.pipeline.v1.EnableConnectionResponse
+	72,  // 196: synclet.publicapi.pipeline.v1.ConnectionService.DisableConnection:output_type -> synclet.publicapi.pipeline.v1.DisableConnectionResponse
+	74,  // 197: synclet.publicapi.pipeline.v1.ConnectionService.DiscoverSchema:output_type -> synclet.publicapi.pipeline.v1.DiscoverSchemaResponse
+	79,  // 198: synclet.publicapi.pipeline.v1.ConnectionService.ConfigureStreams:output_type -> synclet.publicapi.pipeline.v1.ConfigureStreamsResponse
+	84,  // 199: synclet.publicapi.pipeline.v1.ConnectionService.GetDiscoveredCatalog:output_type -> synclet.publicapi.pipeline.v1.GetDiscoveredCatalogResponse
+	86,  // 200: synclet.publicapi.pipeline.v1.ConnectionService.GetConfiguredCatalog:output_type -> synclet.publicapi.pipeline.v1.GetConfiguredCatalogResponse
+	82,  // 201: synclet.publicapi.pipeline.v1.ConnectionService.ValidateMappers:output_type -> synclet.publicapi.pipeline.v1.ValidateMappersResponse
+	89,  // 202: synclet.publicapi.pipeline.v1.ConnectionService.GetSchemaChanges:output_type -> synclet.publicapi.pipeline.v1.GetSchemaChangesResponse
+	91,  // 203: synclet.publicapi.pipeline.v1.ConnectionService.ResetStreamState:output_type -> synclet.publicapi.pipeline.v1.ResetStreamStateResponse
+	93,  // 204: synclet.publicapi.pipeline.v1.ConnectionService.ResetConnectionState:output_type -> synclet.publicapi.pipeline.v1.ResetConnectionStateResponse
+	96,  // 205: synclet.publicapi.pipeline.v1.ConnectionService.ListStreamStates:output_type -> synclet.publicapi.pipeline.v1.ListStreamStatesResponse
+	98,  // 206: synclet.publicapi.pipeline.v1.ConnectionService.UpdateStreamState:output_type -> synclet.publicapi.pipeline.v1.UpdateStreamStateResponse
+	116, // 207: synclet.publicapi.pipeline.v1.ConnectionService.ExportWorkspaceConfig:output_type -> synclet.publicapi.pipeline.v1.ExportWorkspaceConfigResponse
+	118, // 208: synclet.publicapi.pipeline.v1.ConnectionService.ImportWorkspaceConfig:output_type -> synclet.publicapi.pipeline.v1.ImportWorkspaceConfigResponse
+	126, // 209: synclet.publicapi.pipeline.v1.ConnectionService.GetPipelineSettings:output_type -> synclet.publicapi.pipeline.v1.GetPipelineSettingsResponse
+	128, // 210: synclet.publicapi.pipeline.v1.ConnectionService.UpdatePipelineSettings:output_type -> synclet.publicapi.pipeline.v1.UpdatePipelineSettingsResponse
+	103, // 211: synclet.publicapi.pipeline.v1.JobService.TriggerSync:output_type -> synclet.publicapi.pipeline.v1.TriggerSyncResponse
+	105, // 212: synclet.publicapi.pipeline.v1.JobService.CancelJob:output_type -> synclet.publicapi.pipeline.v1.CancelJobResponse
+	107, // 213: synclet.publicapi.pipeline.v1.JobService.GetJob:output_type -> synclet.publicapi.pipeline.v1.GetJobResponse
+	109, // 214: synclet.publicapi.pipeline.v1.JobService.ListJobs:output_type -> synclet.publicapi.pipeline.v1.ListJobsResponse
+	111, // 215: synclet.publicapi.pipeline.v1.JobService.GetJobLogs:output_type -> synclet.publicapi.pipeline.v1.GetJobLogsResponse
+	114, // 216: synclet.publicapi.pipeline.v1.JobService.DownloadJobLogs:output_type -> synclet.publicapi.pipeline.v1.DownloadJobLogsResponse
+	135, // 217: synclet.publicapi.pipeline.v1.WorkflowService.CreateWorkflow:output_type -> synclet.publicapi.pipeline.v1.CreateWorkflowResponse
+	137, // 218: synclet.publicapi.pipeline.v1.WorkflowService.UpdateWorkflow:output_type -> synclet.publicapi.pipeline.v1.UpdateWorkflowResponse
+	139, // 219: synclet.publicapi.pipeline.v1.WorkflowService.DeleteWorkflow:output_type -> synclet.publicapi.pipeline.v1.DeleteWorkflowResponse
+	141, // 220: synclet.publicapi.pipeline.v1.WorkflowService.GetWorkflow:output_type -> synclet.publicapi.pipeline.v1.GetWorkflowResponse
+	143, // 221: synclet.publicapi.pipeline.v1.WorkflowService.ListWorkflows:output_type -> synclet.publicapi.pipeline.v1.ListWorkflowsResponse
+	145, // 222: synclet.publicapi.pipeline.v1.WorkflowService.RunWorkflow:output_type -> synclet.publicapi.pipeline.v1.RunWorkflowResponse
+	147, // 223: synclet.publicapi.pipeline.v1.WorkflowService.RerunWorkflowRun:output_type -> synclet.publicapi.pipeline.v1.RerunWorkflowRunResponse
+	149, // 224: synclet.publicapi.pipeline.v1.WorkflowService.ListWorkflowRuns:output_type -> synclet.publicapi.pipeline.v1.ListWorkflowRunsResponse
+	151, // 225: synclet.publicapi.pipeline.v1.WorkflowService.GetWorkflowRun:output_type -> synclet.publicapi.pipeline.v1.GetWorkflowRunResponse
+	120, // 226: synclet.publicapi.pipeline.v1.ConnectorTaskService.GetConnectorTaskResult:output_type -> synclet.publicapi.pipeline.v1.GetConnectorTaskResultResponse
+	172, // [172:227] is the sub-list for method output_type
+	117, // [117:172] is the sub-list for method input_type
+	117, // [117:117] is the sub-list for extension type_name
+	117, // [117:117] is the sub-list for extension extendee
+	0,   // [0:117] is the sub-list for field type_name
 }
 
 func init() { file_synclet_publicapi_pipeline_v1_pipeline_proto_init() }
@@ -8136,15 +9696,20 @@ func file_synclet_publicapi_pipeline_v1_pipeline_proto_init() {
 		(*GetConnectorTaskResultResponse_DiscoverResult)(nil),
 	}
 	file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[113].OneofWrappers = []any{}
+	file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[116].OneofWrappers = []any{}
+	file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[117].OneofWrappers = []any{}
+	file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[118].OneofWrappers = []any{}
+	file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[120].OneofWrappers = []any{}
+	file_synclet_publicapi_pipeline_v1_pipeline_proto_msgTypes[122].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDesc), len(file_synclet_publicapi_pipeline_v1_pipeline_proto_rawDesc)),
-			NumEnums:      11,
-			NumMessages:   115,
+			NumEnums:      14,
+			NumMessages:   138,
 			NumExtensions: 0,
-			NumServices:   5,
+			NumServices:   6,
 		},
 		GoTypes:           file_synclet_publicapi_pipeline_v1_pipeline_proto_goTypes,
 		DependencyIndexes: file_synclet_publicapi_pipeline_v1_pipeline_proto_depIdxs,

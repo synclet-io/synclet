@@ -32,6 +32,11 @@ type Storage interface {
 	ConnectorTasks() ConnectorTasksStorage
 	StreamGenerations() StreamGenerationsStorage
 	Executors() ExecutorsStorage
+	Workflows() WorkflowsStorage
+	WorkflowSteps() WorkflowStepsStorage
+	WorkflowStepDependencies() WorkflowStepDependenciesStorage
+	WorkflowRuns() WorkflowRunsStorage
+	WorkflowStepRuns() WorkflowStepRunsStorage
 	PipelineEvents() PipelineEventsOutbox
 	IdempotencyKeys() idempotency.Storage
 	ExecuteInTransaction(ctx context.Context, cb func(ctx context.Context, tx Storage) error) error
@@ -158,4 +163,9 @@ type ExecutorsStorage interface {
 
 // user code 'Executor definitions'
 // end user code 'Executor definitions'
+type WorkflowsStorage dbutil.EntityStorage[Workflow, WorkflowFilter]
+type WorkflowStepsStorage dbutil.EntityStorage[WorkflowStep, WorkflowStepFilter]
+type WorkflowStepDependenciesStorage dbutil.EntityStorage[WorkflowStepDependency, WorkflowStepDependencyFilter]
+type WorkflowRunsStorage dbutil.EntityStorage[WorkflowRun, WorkflowRunFilter]
+type WorkflowStepRunsStorage dbutil.EntityStorage[WorkflowStepRun, WorkflowStepRunFilter]
 type PipelineEventsOutbox txoutbox.Outbox[PipelineEvent]

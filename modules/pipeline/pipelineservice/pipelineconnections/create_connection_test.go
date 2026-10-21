@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/synclet-io/synclet/modules/pipeline/internal/pipelinefake"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelineconnections"
 )
@@ -123,6 +124,11 @@ type createConnStore struct {
 	connections  *createConnConnectionsStorage
 	connStates   *createConnConnectionStatesStorage
 	streamGens   *createConnStreamGenerationsStorage
+	workflows    *pipelinefake.Storage
+}
+
+func (s *createConnStore) WorkflowSteps() pipelineservice.WorkflowStepsStorage {
+	return s.workflows.WorkflowSteps()
 }
 
 func newCreateConnStore(workspaceID, sourceID, destID uuid.UUID) *createConnStore {
@@ -146,6 +152,7 @@ func newCreateConnStore(workspaceID, sourceID, destID uuid.UUID) *createConnStor
 		streamGens: &createConnStreamGenerationsStorage{
 			records: map[string]*pipelineservice.StreamGeneration{},
 		},
+		workflows: pipelinefake.New(),
 	}
 }
 

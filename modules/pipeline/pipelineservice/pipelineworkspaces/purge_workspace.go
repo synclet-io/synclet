@@ -116,6 +116,12 @@ func (uc *PurgeWorkspace) purgeConnections(ctx context.Context, workspaceID uuid
 			return fmt.Errorf("deleting archived job logs: %w", err)
 		}
 
+		if err := tx.Workflows().Delete(ctx, &pipelineservice.WorkflowFilter{
+			WorkspaceID: filter.Equals(workspaceID),
+		}); err != nil {
+			return fmt.Errorf("deleting workflows: %w", err)
+		}
+
 		if err := tx.Connections().Delete(ctx, &pipelineservice.ConnectionFilter{
 			WorkspaceID: filter.Equals(workspaceID),
 		}); err != nil {

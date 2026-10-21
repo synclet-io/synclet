@@ -616,21 +616,128 @@ func (e ExecutorType) String() string {
 	return names[indexes[e-1]:indexes[e]]
 }
 
+type WorkflowRunStatus byte
+
+const (
+	WorkflowRunStatusRunning WorkflowRunStatus = iota + 1
+	WorkflowRunStatusSucceeded
+	WorkflowRunStatusFailed
+)
+
+// user code 'WorkflowRunStatus methods'
+// end user code 'WorkflowRunStatus methods'
+func (w WorkflowRunStatus) IsValid() bool {
+	return w > 0 && w < 4
+}
+func (w WorkflowRunStatus) IsRunning() bool {
+	return w == WorkflowRunStatusRunning
+}
+func (w WorkflowRunStatus) IsSucceeded() bool {
+	return w == WorkflowRunStatusSucceeded
+}
+func (w WorkflowRunStatus) IsFailed() bool {
+	return w == WorkflowRunStatusFailed
+}
+func (w WorkflowRunStatus) String() string {
+	const names = "RunningSucceededFailed"
+
+	var indexes = [...]int32{0, 7, 16, 22}
+	if w < 1 || w > 3 {
+		return "WorkflowRunStatus(" + strconv.FormatInt(int64(w), 10) + ")"
+	}
+
+	return names[indexes[w-1]:indexes[w]]
+}
+
+type WorkflowRunTrigger byte
+
+const (
+	WorkflowRunTriggerSchedule WorkflowRunTrigger = iota + 1
+	WorkflowRunTriggerManual
+)
+
+// user code 'WorkflowRunTrigger methods'
+// end user code 'WorkflowRunTrigger methods'
+func (w WorkflowRunTrigger) IsValid() bool {
+	return w > 0 && w < 3
+}
+func (w WorkflowRunTrigger) IsSchedule() bool {
+	return w == WorkflowRunTriggerSchedule
+}
+func (w WorkflowRunTrigger) IsManual() bool {
+	return w == WorkflowRunTriggerManual
+}
+func (w WorkflowRunTrigger) String() string {
+	const names = "ScheduleManual"
+
+	var indexes = [...]int32{0, 8, 14}
+	if w < 1 || w > 2 {
+		return "WorkflowRunTrigger(" + strconv.FormatInt(int64(w), 10) + ")"
+	}
+
+	return names[indexes[w-1]:indexes[w]]
+}
+
+type WorkflowStepRunStatus byte
+
+const (
+	WorkflowStepRunStatusPending WorkflowStepRunStatus = iota + 1
+	WorkflowStepRunStatusQueued
+	WorkflowStepRunStatusSucceeded
+	WorkflowStepRunStatusFailed
+	WorkflowStepRunStatusSkipped
+)
+
+// user code 'WorkflowStepRunStatus methods'
+// end user code 'WorkflowStepRunStatus methods'
+func (w WorkflowStepRunStatus) IsValid() bool {
+	return w > 0 && w < 6
+}
+func (w WorkflowStepRunStatus) IsPending() bool {
+	return w == WorkflowStepRunStatusPending
+}
+func (w WorkflowStepRunStatus) IsQueued() bool {
+	return w == WorkflowStepRunStatusQueued
+}
+func (w WorkflowStepRunStatus) IsSucceeded() bool {
+	return w == WorkflowStepRunStatusSucceeded
+}
+func (w WorkflowStepRunStatus) IsFailed() bool {
+	return w == WorkflowStepRunStatusFailed
+}
+func (w WorkflowStepRunStatus) IsSkipped() bool {
+	return w == WorkflowStepRunStatusSkipped
+}
+func (w WorkflowStepRunStatus) String() string {
+	const names = "PendingQueuedSucceededFailedSkipped"
+
+	var indexes = [...]int32{0, 7, 13, 22, 28, 35}
+	if w < 1 || w > 5 {
+		return "WorkflowStepRunStatus(" + strconv.FormatInt(int64(w), 10) + ")"
+	}
+
+	return names[indexes[w-1]:indexes[w]]
+}
+
 type PipelineEventType byte
 
 const (
 	PipelineEventTypeJobCreated PipelineEventType = iota + 1
 	PipelineEventTypeJobUpdated
+	PipelineEventTypeWorkflowRunStarted
 )
 
 // user code 'PipelineEventType methods'
 // end user code 'PipelineEventType methods'
 func (p PipelineEventType) IsValid() bool {
-	return p > 0 && p < 3
+	return p > 0 && p < 4
 }
 func (p PipelineEventType) IsJobCreated() bool {
 	return p == PipelineEventTypeJobCreated
 }
 func (p PipelineEventType) IsJobUpdated() bool {
 	return p == PipelineEventTypeJobUpdated
+}
+func (p PipelineEventType) IsWorkflowRunStarted() bool {
+	return p == PipelineEventTypeWorkflowRunStarted
 }

@@ -202,6 +202,22 @@ func (j *JobUpdatedEventData) PipelineEventDataEquals(to PipelineEventData) bool
 
 	return j.Equals(toTyped)
 }
+func (*WorkflowRunStartedEventData) isPipelineEventData() {}
+func (w *WorkflowRunStartedEventData) PipelineEventDataEquals(to PipelineEventData) bool {
+	if (w == nil) != (to == nil) {
+		return false
+	}
+	if w == nil && to == nil {
+		return true
+	}
+
+	toTyped, ok := to.(*WorkflowRunStartedEventData)
+	if !ok {
+		return false
+	}
+
+	return w.Equals(toTyped)
+}
 
 func copyPipelineEventData(val PipelineEventData) PipelineEventData {
 	if val == nil {
@@ -213,6 +229,9 @@ func copyPipelineEventData(val PipelineEventData) PipelineEventData {
 		valCopy := val.Copy()
 		return &valCopy
 	case *JobUpdatedEventData:
+		valCopy := val.Copy()
+		return &valCopy
+	case *WorkflowRunStartedEventData:
 		valCopy := val.Copy()
 		return &valCopy
 	}
@@ -1449,38 +1468,41 @@ const (
 	JobFieldHeartbeatAt
 	JobFieldK8sJobName
 	JobFieldFailureReason
+	JobFieldWorkflowStepRunID
 	JobFieldCreatedAt
 )
 
 type JobFilter struct {
-	ID           filter.Filter[uuid.UUID]
-	ConnectionID filter.Filter[uuid.UUID]
-	Status       filter.Filter[JobStatus]
-	JobType      filter.Filter[JobType]
-	StartedAt    filter.Filter[*time.Time]
-	HeartbeatAt  filter.Filter[*time.Time]
-	Or           []*JobFilter
-	And          []*JobFilter
+	ID                filter.Filter[uuid.UUID]
+	ConnectionID      filter.Filter[uuid.UUID]
+	Status            filter.Filter[JobStatus]
+	JobType           filter.Filter[JobType]
+	StartedAt         filter.Filter[*time.Time]
+	HeartbeatAt       filter.Filter[*time.Time]
+	WorkflowStepRunID filter.Filter[*uuid.UUID]
+	Or                []*JobFilter
+	And               []*JobFilter
 }
 type JobOrder order.Order[JobField]
 
 type Job struct {
-	ID            uuid.UUID
-	ConnectionID  uuid.UUID
-	Status        JobStatus
-	JobType       JobType
-	ScheduledAt   time.Time
-	StartedAt     *time.Time
-	CompletedAt   *time.Time
-	Error         *string
-	Attempt       int
-	MaxAttempts   int
-	SyncID        *int64
-	WorkerID      *string
-	HeartbeatAt   *time.Time
-	K8sJobName    *string
-	FailureReason *string
-	CreatedAt     time.Time
+	ID                uuid.UUID
+	ConnectionID      uuid.UUID
+	Status            JobStatus
+	JobType           JobType
+	ScheduledAt       time.Time
+	StartedAt         *time.Time
+	CompletedAt       *time.Time
+	Error             *string
+	Attempt           int
+	MaxAttempts       int
+	SyncID            *int64
+	WorkerID          *string
+	HeartbeatAt       *time.Time
+	K8sJobName        *string
+	FailureReason     *string
+	WorkflowStepRunID *uuid.UUID
+	CreatedAt         time.Time
 }
 
 // user code 'Job methods'
@@ -1534,6 +1556,11 @@ func (j *Job) Copy() Job {
 		var tmp7 string
 		tmp7 = (*j.FailureReason)
 		result.FailureReason = &tmp7
+	}
+	if j.WorkflowStepRunID != nil {
+		var tmp8 uuid.UUID
+		tmp8 = (*j.WorkflowStepRunID)
+		result.WorkflowStepRunID = &tmp8
 	}
 	result.CreatedAt = j.CreatedAt
 
@@ -1628,6 +1655,14 @@ func (j *Job) Equals(to *Job) bool {
 	}
 	if j.FailureReason != nil && to.FailureReason != nil {
 		if (*j.FailureReason) != (*to.FailureReason) {
+			return false
+		}
+	}
+	if (j.WorkflowStepRunID == nil) != (to.WorkflowStepRunID == nil) {
+		return false
+	}
+	if j.WorkflowStepRunID != nil && to.WorkflowStepRunID != nil {
+		if (*j.WorkflowStepRunID) != (*to.WorkflowStepRunID) {
 			return false
 		}
 	}
@@ -2959,6 +2994,435 @@ func (e *ExecutorResourceDefaults) Equals(to *ExecutorResourceDefaults) bool {
 	return true
 }
 
+type WorkflowField byte
+
+const (
+	WorkflowFieldID WorkflowField = iota + 1
+	WorkflowFieldWorkspaceID
+	WorkflowFieldName
+	WorkflowFieldSchedule
+	WorkflowFieldNextScheduledAt
+	WorkflowFieldCreatedAt
+	WorkflowFieldUpdatedAt
+)
+
+type WorkflowFilter struct {
+	ID              filter.Filter[uuid.UUID]
+	WorkspaceID     filter.Filter[uuid.UUID]
+	Name            filter.Filter[string]
+	NextScheduledAt filter.Filter[*time.Time]
+	Or              []*WorkflowFilter
+	And             []*WorkflowFilter
+}
+type WorkflowOrder order.Order[WorkflowField]
+
+type Workflow struct {
+	ID              uuid.UUID
+	WorkspaceID     uuid.UUID
+	Name            string
+	Schedule        *string
+	NextScheduledAt *time.Time
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}
+
+// user code 'Workflow methods'
+// end user code 'Workflow methods'
+
+func (w *Workflow) Copy() Workflow {
+	var result Workflow
+	result.ID = w.ID
+	result.WorkspaceID = w.WorkspaceID
+	result.Name = w.Name
+	if w.Schedule != nil {
+		var tmp string
+		tmp = (*w.Schedule)
+		result.Schedule = &tmp
+	}
+	if w.NextScheduledAt != nil {
+		var tmp1 time.Time
+		tmp1 = (*w.NextScheduledAt)
+		result.NextScheduledAt = &tmp1
+	}
+	result.CreatedAt = w.CreatedAt
+	result.UpdatedAt = w.UpdatedAt
+
+	return result
+}
+func (w *Workflow) Equals(to *Workflow) bool {
+	if (w == nil) != (to == nil) {
+		return false
+	}
+	if w == nil && to == nil {
+		return true
+	}
+	if w.ID != to.ID {
+		return false
+	}
+	if w.WorkspaceID != to.WorkspaceID {
+		return false
+	}
+	if w.Name != to.Name {
+		return false
+	}
+	if (w.Schedule == nil) != (to.Schedule == nil) {
+		return false
+	}
+	if w.Schedule != nil && to.Schedule != nil {
+		if (*w.Schedule) != (*to.Schedule) {
+			return false
+		}
+	}
+	if (w.NextScheduledAt == nil) != (to.NextScheduledAt == nil) {
+		return false
+	}
+	if w.NextScheduledAt != nil && to.NextScheduledAt != nil {
+		if (*w.NextScheduledAt) != (*to.NextScheduledAt) {
+			return false
+		}
+	}
+	if w.CreatedAt != to.CreatedAt {
+		return false
+	}
+	if w.UpdatedAt != to.UpdatedAt {
+		return false
+	}
+
+	return true
+}
+
+type WorkflowStepField byte
+
+const (
+	WorkflowStepFieldID WorkflowStepField = iota + 1
+	WorkflowStepFieldWorkflowID
+	WorkflowStepFieldConnectionID
+)
+
+type WorkflowStepFilter struct {
+	ID           filter.Filter[uuid.UUID]
+	WorkflowID   filter.Filter[uuid.UUID]
+	ConnectionID filter.Filter[uuid.UUID]
+	Or           []*WorkflowStepFilter
+	And          []*WorkflowStepFilter
+}
+type WorkflowStepOrder order.Order[WorkflowStepField]
+
+type WorkflowStep struct {
+	ID           uuid.UUID
+	WorkflowID   uuid.UUID
+	ConnectionID uuid.UUID
+}
+
+// user code 'WorkflowStep methods'
+// end user code 'WorkflowStep methods'
+
+func (w *WorkflowStep) Copy() WorkflowStep {
+	var result WorkflowStep
+	result.ID = w.ID
+	result.WorkflowID = w.WorkflowID
+	result.ConnectionID = w.ConnectionID
+
+	return result
+}
+func (w *WorkflowStep) Equals(to *WorkflowStep) bool {
+	if (w == nil) != (to == nil) {
+		return false
+	}
+	if w == nil && to == nil {
+		return true
+	}
+	if w.ID != to.ID {
+		return false
+	}
+	if w.WorkflowID != to.WorkflowID {
+		return false
+	}
+	if w.ConnectionID != to.ConnectionID {
+		return false
+	}
+
+	return true
+}
+
+type WorkflowStepDependencyField byte
+
+const (
+	WorkflowStepDependencyFieldID WorkflowStepDependencyField = iota + 1
+	WorkflowStepDependencyFieldWorkflowID
+	WorkflowStepDependencyFieldStepID
+	WorkflowStepDependencyFieldUpstreamStepID
+)
+
+type WorkflowStepDependencyFilter struct {
+	ID             filter.Filter[uuid.UUID]
+	WorkflowID     filter.Filter[uuid.UUID]
+	StepID         filter.Filter[uuid.UUID]
+	UpstreamStepID filter.Filter[uuid.UUID]
+	Or             []*WorkflowStepDependencyFilter
+	And            []*WorkflowStepDependencyFilter
+}
+type WorkflowStepDependencyOrder order.Order[WorkflowStepDependencyField]
+
+type WorkflowStepDependency struct {
+	ID             uuid.UUID
+	WorkflowID     uuid.UUID
+	StepID         uuid.UUID
+	UpstreamStepID uuid.UUID
+}
+
+// user code 'WorkflowStepDependency methods'
+// end user code 'WorkflowStepDependency methods'
+
+func (w *WorkflowStepDependency) Copy() WorkflowStepDependency {
+	var result WorkflowStepDependency
+	result.ID = w.ID
+	result.WorkflowID = w.WorkflowID
+	result.StepID = w.StepID
+	result.UpstreamStepID = w.UpstreamStepID
+
+	return result
+}
+func (w *WorkflowStepDependency) Equals(to *WorkflowStepDependency) bool {
+	if (w == nil) != (to == nil) {
+		return false
+	}
+	if w == nil && to == nil {
+		return true
+	}
+	if w.ID != to.ID {
+		return false
+	}
+	if w.WorkflowID != to.WorkflowID {
+		return false
+	}
+	if w.StepID != to.StepID {
+		return false
+	}
+	if w.UpstreamStepID != to.UpstreamStepID {
+		return false
+	}
+
+	return true
+}
+
+type WorkflowRunField byte
+
+const (
+	WorkflowRunFieldID WorkflowRunField = iota + 1
+	WorkflowRunFieldWorkflowID
+	WorkflowRunFieldStatus
+	WorkflowRunFieldTrigger
+	WorkflowRunFieldStartedAt
+	WorkflowRunFieldCompletedAt
+	WorkflowRunFieldCreatedAt
+)
+
+type WorkflowRunFilter struct {
+	ID         filter.Filter[uuid.UUID]
+	WorkflowID filter.Filter[uuid.UUID]
+	Status     filter.Filter[WorkflowRunStatus]
+	Trigger    filter.Filter[WorkflowRunTrigger]
+	Or         []*WorkflowRunFilter
+	And        []*WorkflowRunFilter
+}
+type WorkflowRunOrder order.Order[WorkflowRunField]
+
+type WorkflowRun struct {
+	ID          uuid.UUID
+	WorkflowID  uuid.UUID
+	Status      WorkflowRunStatus
+	Trigger     WorkflowRunTrigger
+	StartedAt   time.Time
+	CompletedAt *time.Time
+	CreatedAt   time.Time
+}
+
+// user code 'WorkflowRun methods'
+// end user code 'WorkflowRun methods'
+
+func (w *WorkflowRun) Copy() WorkflowRun {
+	var result WorkflowRun
+	result.ID = w.ID
+	result.WorkflowID = w.WorkflowID
+	result.Status = w.Status   // enum
+	result.Trigger = w.Trigger // enum
+	result.StartedAt = w.StartedAt
+	if w.CompletedAt != nil {
+		var tmp time.Time
+		tmp = (*w.CompletedAt)
+		result.CompletedAt = &tmp
+	}
+	result.CreatedAt = w.CreatedAt
+
+	return result
+}
+func (w *WorkflowRun) Equals(to *WorkflowRun) bool {
+	if (w == nil) != (to == nil) {
+		return false
+	}
+	if w == nil && to == nil {
+		return true
+	}
+	if w.ID != to.ID {
+		return false
+	}
+	if w.WorkflowID != to.WorkflowID {
+		return false
+	}
+	if w.Status != to.Status {
+		return false
+	}
+	if w.Trigger != to.Trigger {
+		return false
+	}
+	if w.StartedAt != to.StartedAt {
+		return false
+	}
+	if (w.CompletedAt == nil) != (to.CompletedAt == nil) {
+		return false
+	}
+	if w.CompletedAt != nil && to.CompletedAt != nil {
+		if (*w.CompletedAt) != (*to.CompletedAt) {
+			return false
+		}
+	}
+	if w.CreatedAt != to.CreatedAt {
+		return false
+	}
+
+	return true
+}
+
+type WorkflowStepRunField byte
+
+const (
+	WorkflowStepRunFieldID WorkflowStepRunField = iota + 1
+	WorkflowStepRunFieldRunID
+	WorkflowStepRunFieldStepID
+	WorkflowStepRunFieldConnectionID
+	WorkflowStepRunFieldStatus
+	WorkflowStepRunFieldJobID
+	WorkflowStepRunFieldError
+	WorkflowStepRunFieldStartedAt
+	WorkflowStepRunFieldCompletedAt
+)
+
+type WorkflowStepRunFilter struct {
+	ID           filter.Filter[uuid.UUID]
+	RunID        filter.Filter[uuid.UUID]
+	StepID       filter.Filter[uuid.UUID]
+	ConnectionID filter.Filter[uuid.UUID]
+	Status       filter.Filter[WorkflowStepRunStatus]
+	JobID        filter.Filter[*uuid.UUID]
+	Or           []*WorkflowStepRunFilter
+	And          []*WorkflowStepRunFilter
+}
+type WorkflowStepRunOrder order.Order[WorkflowStepRunField]
+
+type WorkflowStepRun struct {
+	ID           uuid.UUID
+	RunID        uuid.UUID
+	StepID       uuid.UUID
+	ConnectionID uuid.UUID
+	Status       WorkflowStepRunStatus
+	JobID        *uuid.UUID
+	Error        *string
+	StartedAt    *time.Time
+	CompletedAt  *time.Time
+}
+
+// user code 'WorkflowStepRun methods'
+// end user code 'WorkflowStepRun methods'
+
+func (w *WorkflowStepRun) Copy() WorkflowStepRun {
+	var result WorkflowStepRun
+	result.ID = w.ID
+	result.RunID = w.RunID
+	result.StepID = w.StepID
+	result.ConnectionID = w.ConnectionID
+	result.Status = w.Status // enum
+	if w.JobID != nil {
+		var tmp uuid.UUID
+		tmp = (*w.JobID)
+		result.JobID = &tmp
+	}
+	if w.Error != nil {
+		var tmp1 string
+		tmp1 = (*w.Error)
+		result.Error = &tmp1
+	}
+	if w.StartedAt != nil {
+		var tmp2 time.Time
+		tmp2 = (*w.StartedAt)
+		result.StartedAt = &tmp2
+	}
+	if w.CompletedAt != nil {
+		var tmp3 time.Time
+		tmp3 = (*w.CompletedAt)
+		result.CompletedAt = &tmp3
+	}
+
+	return result
+}
+func (w *WorkflowStepRun) Equals(to *WorkflowStepRun) bool {
+	if (w == nil) != (to == nil) {
+		return false
+	}
+	if w == nil && to == nil {
+		return true
+	}
+	if w.ID != to.ID {
+		return false
+	}
+	if w.RunID != to.RunID {
+		return false
+	}
+	if w.StepID != to.StepID {
+		return false
+	}
+	if w.ConnectionID != to.ConnectionID {
+		return false
+	}
+	if w.Status != to.Status {
+		return false
+	}
+	if (w.JobID == nil) != (to.JobID == nil) {
+		return false
+	}
+	if w.JobID != nil && to.JobID != nil {
+		if (*w.JobID) != (*to.JobID) {
+			return false
+		}
+	}
+	if (w.Error == nil) != (to.Error == nil) {
+		return false
+	}
+	if w.Error != nil && to.Error != nil {
+		if (*w.Error) != (*to.Error) {
+			return false
+		}
+	}
+	if (w.StartedAt == nil) != (to.StartedAt == nil) {
+		return false
+	}
+	if w.StartedAt != nil && to.StartedAt != nil {
+		if (*w.StartedAt) != (*to.StartedAt) {
+			return false
+		}
+	}
+	if (w.CompletedAt == nil) != (to.CompletedAt == nil) {
+		return false
+	}
+	if w.CompletedAt != nil && to.CompletedAt != nil {
+		if (*w.CompletedAt) != (*to.CompletedAt) {
+			return false
+		}
+	}
+
+	return true
+}
+
 type PipelineEventField byte
 
 const (
@@ -3122,6 +3586,57 @@ func (j *JobUpdatedEventData) Equals(to *JobUpdatedEventData) bool {
 		if !(*j.NewData).Equals(&(*to.NewData)) {
 			return false
 		}
+	}
+
+	return true
+}
+
+type WorkflowRunStartedEventDataField byte
+
+const (
+	WorkflowRunStartedEventDataFieldWorkspaceID WorkflowRunStartedEventDataField = iota + 1
+	WorkflowRunStartedEventDataFieldWorkflowID
+	WorkflowRunStartedEventDataFieldRunID
+)
+
+type WorkflowRunStartedEventDataFilter struct {
+	Or  []*WorkflowRunStartedEventDataFilter
+	And []*WorkflowRunStartedEventDataFilter
+}
+type WorkflowRunStartedEventDataOrder order.Order[WorkflowRunStartedEventDataField]
+
+type WorkflowRunStartedEventData struct {
+	WorkspaceID uuid.UUID
+	WorkflowID  uuid.UUID
+	RunID       uuid.UUID
+}
+
+// user code 'WorkflowRunStartedEventData methods'
+// end user code 'WorkflowRunStartedEventData methods'
+
+func (w *WorkflowRunStartedEventData) Copy() WorkflowRunStartedEventData {
+	var result WorkflowRunStartedEventData
+	result.WorkspaceID = w.WorkspaceID
+	result.WorkflowID = w.WorkflowID
+	result.RunID = w.RunID
+
+	return result
+}
+func (w *WorkflowRunStartedEventData) Equals(to *WorkflowRunStartedEventData) bool {
+	if (w == nil) != (to == nil) {
+		return false
+	}
+	if w == nil && to == nil {
+		return true
+	}
+	if w.WorkspaceID != to.WorkspaceID {
+		return false
+	}
+	if w.WorkflowID != to.WorkflowID {
+		return false
+	}
+	if w.RunID != to.RunID {
+		return false
 	}
 
 	return true

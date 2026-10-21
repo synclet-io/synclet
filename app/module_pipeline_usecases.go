@@ -17,6 +17,7 @@ import (
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinestate"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinestats"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinetasks"
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelineworkflows"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelineworkspaces"
 )
 
@@ -85,6 +86,20 @@ func pipelineUseCasesModule() fx.Option {
 			pipelineconnections.NewUpdateConnectionStatus,
 			pipelineconnections.NewEnableConnection,
 			pipelineconnections.NewDisableConnection,
+		),
+
+		// Workflow use cases
+		fx.Provide(
+			pipelinejobs.NewAdvanceWorkflowRuns,
+			pipelineworkflows.NewCreateWorkflow,
+			pipelineworkflows.NewUpdateWorkflow,
+			pipelineworkflows.NewDeleteWorkflow,
+			pipelineworkflows.NewGetWorkflow,
+			pipelineworkflows.NewListWorkflows,
+			pipelineworkflows.NewStartWorkflowRun,
+			pipelineworkflows.NewRerunWorkflowRun,
+			pipelineworkflows.NewListWorkflowRuns,
+			pipelineworkflows.NewGetWorkflowRun,
 		),
 
 		// Config import/export use cases

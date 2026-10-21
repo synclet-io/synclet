@@ -228,6 +228,40 @@ service JobService {
   }
 }
 
+// WorkflowService manages workflows: named graphs of connection steps run in
+// order on a cron schedule or on demand.
+service WorkflowService {
+  rpc CreateWorkflow(CreateWorkflowRequest) returns (CreateWorkflowResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_EDITOR;
+  }
+  rpc UpdateWorkflow(UpdateWorkflowRequest) returns (UpdateWorkflowResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_EDITOR;
+  }
+  rpc DeleteWorkflow(DeleteWorkflowRequest) returns (DeleteWorkflowResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_EDITOR;
+  }
+  rpc GetWorkflow(GetWorkflowRequest) returns (GetWorkflowResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
+  }
+  rpc ListWorkflows(ListWorkflowsRequest) returns (ListWorkflowsResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
+  }
+  // Starts a run now. Rejected with FAILED_PRECONDITION while a run is active.
+  rpc RunWorkflow(RunWorkflowRequest) returns (RunWorkflowResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_EDITOR;
+  }
+  // Reruns a failed run from its failed steps; steps that succeeded are not synced again.
+  rpc RerunWorkflowRun(RerunWorkflowRunRequest) returns (RerunWorkflowRunResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_EDITOR;
+  }
+  rpc ListWorkflowRuns(ListWorkflowRunsRequest) returns (ListWorkflowRunsResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
+  }
+  rpc GetWorkflowRun(GetWorkflowRunRequest) returns (GetWorkflowRunResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
+  }
+}
+
 // ==================== Source Messages ====================
 
 message Source {
@@ -945,4 +979,146 @@ message UpdatePipelineSettingsRequest {
 
 message UpdatePipelineSettingsResponse {
   PipelineSettings settings = 1;
+}
+
+// ==================== Workflow Messages ====================
+
+enum WorkflowRunStatus {
+  WORKFLOW_RUN_STATUS_UNSPECIFIED = 0;
+  WORKFLOW_RUN_STATUS_RUNNING = 1;
+  WORKFLOW_RUN_STATUS_SUCCEEDED = 2;
+  WORKFLOW_RUN_STATUS_FAILED = 3;
+}
+
+enum WorkflowRunTrigger {
+  WORKFLOW_RUN_TRIGGER_UNSPECIFIED = 0;
+  WORKFLOW_RUN_TRIGGER_SCHEDULE = 1;
+  WORKFLOW_RUN_TRIGGER_MANUAL = 2;
+}
+
+enum WorkflowStepRunStatus {
+  WORKFLOW_STEP_RUN_STATUS_UNSPECIFIED = 0;
+  WORKFLOW_STEP_RUN_STATUS_PENDING = 1;
+  WORKFLOW_STEP_RUN_STATUS_QUEUED = 2;
+  WORKFLOW_STEP_RUN_STATUS_SUCCEEDED = 3;
+  WORKFLOW_STEP_RUN_STATUS_FAILED = 4;
+  WORKFLOW_STEP_RUN_STATUS_SKIPPED = 5;
+}
+
+// A step is one connection; it runs once the steps of after_connection_ids have succeeded.
+message WorkflowStep {
+  string id = 1;
+  string connection_id = 2;
+  repeated string after_connection_ids = 3;
+}
+
+message Workflow {
+  string id = 1;
+  string workspace_id = 2;
+  string name = 3;
+  optional string schedule = 4;
+  optional google.protobuf.Timestamp next_scheduled_at = 5;
+  repeated WorkflowStep steps = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+message WorkflowStepRun {
+  string id = 1;
+  string step_id = 2;
+  string connection_id = 3;
+  WorkflowStepRunStatus status = 4;
+  optional string job_id = 5;
+  optional string error = 6;
+  optional google.protobuf.Timestamp started_at = 7;
+  optional google.protobuf.Timestamp completed_at = 8;
+}
+
+message WorkflowRun {
+  string id = 1;
+  string workflow_id = 2;
+  WorkflowRunStatus status = 3;
+  WorkflowRunTrigger trigger = 4;
+  google.protobuf.Timestamp started_at = 5;
+  optional google.protobuf.Timestamp completed_at = 6;
+  repeated WorkflowStepRun step_runs = 7;
+}
+
+// The definition of a step in a create or update request.
+message WorkflowStepInput {
+  string connection_id = 1;
+  repeated string after_connection_ids = 2;
+}
+
+message CreateWorkflowRequest {
+  string name = 1;
+  optional string schedule = 2;
+  repeated WorkflowStepInput steps = 3;
+}
+
+message CreateWorkflowResponse {
+  Workflow workflow = 1;
+}
+
+message UpdateWorkflowRequest {
+  string id = 1;
+  string name = 2;
+  optional string schedule = 3;
+  repeated WorkflowStepInput steps = 4;
+}
+
+message UpdateWorkflowResponse {
+  Workflow workflow = 1;
+}
+
+message DeleteWorkflowRequest {
+  string id = 1;
+}
+
+message DeleteWorkflowResponse {}
+
+message GetWorkflowRequest {
+  string id = 1;
+}
+
+message GetWorkflowResponse {
+  Workflow workflow = 1;
+}
+
+message ListWorkflowsRequest {}
+
+message ListWorkflowsResponse {
+  repeated Workflow workflows = 1;
+}
+
+message RunWorkflowRequest {
+  string id = 1;
+}
+
+message RunWorkflowResponse {
+  WorkflowRun run = 1;
+}
+
+message RerunWorkflowRunRequest {
+  string run_id = 1;
+}
+
+message RerunWorkflowRunResponse {
+  WorkflowRun run = 1;
+}
+
+message ListWorkflowRunsRequest {
+  string workflow_id = 1;
+}
+
+message ListWorkflowRunsResponse {
+  repeated WorkflowRun runs = 1;
+}
+
+message GetWorkflowRunRequest {
+  string run_id = 1;
+}
+
+message GetWorkflowRunResponse {
+  WorkflowRun run = 1;
 }

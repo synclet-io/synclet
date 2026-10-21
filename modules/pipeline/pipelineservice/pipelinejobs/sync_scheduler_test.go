@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/synclet-io/synclet/modules/pipeline/internal/pipelinefake"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
 )
 
@@ -104,6 +105,14 @@ func (w *mockSchedulerStorageWrapper) Connections() pipelineservice.ConnectionsS
 
 func (w *mockSchedulerStorageWrapper) Jobs() pipelineservice.JobsStorage {
 	return &mockSchedulerJobsStorageWrapper{mock: w.mock}
+}
+
+func (w *mockSchedulerStorageWrapper) Workflows() pipelineservice.WorkflowsStorage {
+	return pipelinefake.New().Workflows()
+}
+
+func (w *mockSchedulerStorageWrapper) WorkflowRuns() pipelineservice.WorkflowRunsStorage {
+	return pipelinefake.New().WorkflowRuns()
 }
 
 func (w *mockSchedulerStorageWrapper) PipelineEvents() pipelineservice.PipelineEventsOutbox {

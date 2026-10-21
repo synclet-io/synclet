@@ -143,6 +143,26 @@ const (
 	ErrExecutorResourceDefaultsAlreadyExists = AlreadyExistsError("ExecutorResourceDefaults")
 )
 const (
+	ErrWorkflowNotFound      = NotFoundError("Workflow")
+	ErrWorkflowAlreadyExists = AlreadyExistsError("Workflow")
+)
+const (
+	ErrWorkflowStepNotFound      = NotFoundError("WorkflowStep")
+	ErrWorkflowStepAlreadyExists = AlreadyExistsError("WorkflowStep")
+)
+const (
+	ErrWorkflowStepDependencyNotFound      = NotFoundError("WorkflowStepDependency")
+	ErrWorkflowStepDependencyAlreadyExists = AlreadyExistsError("WorkflowStepDependency")
+)
+const (
+	ErrWorkflowRunNotFound      = NotFoundError("WorkflowRun")
+	ErrWorkflowRunAlreadyExists = AlreadyExistsError("WorkflowRun")
+)
+const (
+	ErrWorkflowStepRunNotFound      = NotFoundError("WorkflowStepRun")
+	ErrWorkflowStepRunAlreadyExists = AlreadyExistsError("WorkflowStepRun")
+)
+const (
 	ErrPipelineEventNotFound      = NotFoundError("PipelineEvent")
 	ErrPipelineEventAlreadyExists = AlreadyExistsError("PipelineEvent")
 )
@@ -153,4 +173,8 @@ const (
 const (
 	ErrJobUpdatedEventDataNotFound      = NotFoundError("JobUpdatedEventData")
 	ErrJobUpdatedEventDataAlreadyExists = AlreadyExistsError("JobUpdatedEventData")
+)
+const (
+	ErrWorkflowRunStartedEventDataNotFound      = NotFoundError("WorkflowRunStartedEventData")
+	ErrWorkflowRunStartedEventDataAlreadyExists = AlreadyExistsError("WorkflowRunStartedEventData")
 )

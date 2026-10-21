@@ -40,6 +40,25 @@ type purgeStore struct {
 	archiveDeleteError error
 }
 
+func (s *purgeStore) Workflows() pipelineservice.WorkflowsStorage {
+	return &purgeWorkflows{store: s}
+}
+
+type purgeWorkflows struct {
+	pipelineservice.WorkflowsStorage
+	store *purgeStore
+}
+
+func (w *purgeWorkflows) Delete(_ context.Context, f *pipelineservice.WorkflowFilter) error {
+	if f.WorkspaceID == nil {
+		return errors.New("workflow delete must be workspace-scoped")
+	}
+
+	w.store.log = append(w.store.log, "delete workflows")
+
+	return nil
+}
+
 func (s *purgeStore) JobLogSegments() pipelineservice.JobLogSegmentsStorage {
 	return &purgeSegments{store: s}
 }
@@ -284,6 +303,7 @@ func TestPurgeWorkspace(t *testing.T) {
 			"cancel job",
 			"lock jobs",
 			"delete archives logs/a/1.ndjson.gz,logs/a/2.ndjson.gz",
+			"delete workflows",
 			"delete connections",
 			"secrets source " + src.ID.String(),
 			"delete sources",

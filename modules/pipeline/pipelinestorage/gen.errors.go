@@ -338,6 +338,101 @@ func wrapExecutorQueryError(err error) error {
 	return err
 }
 
+func wrapWorkflowQueryError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return errors.WithStack(errors1.Join(pipelinesvc.ErrWorkflowNotFound, err))
+	}
+
+	var pgErr *pgconn.PgError
+
+	if errors.As(err, &pgErr) {
+		if pgErr.Code == "23505" {
+			return errors.WithStack(errors1.Join(pipelinesvc.ErrWorkflowAlreadyExists, err))
+		}
+	}
+
+	return err
+}
+func wrapWorkflowStepQueryError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return errors.WithStack(errors1.Join(pipelinesvc.ErrWorkflowStepNotFound, err))
+	}
+
+	var pgErr *pgconn.PgError
+
+	if errors.As(err, &pgErr) {
+		if pgErr.Code == "23505" {
+			return errors.WithStack(errors1.Join(pipelinesvc.ErrWorkflowStepAlreadyExists, err))
+		}
+	}
+
+	return err
+}
+func wrapWorkflowStepDependencyQueryError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return errors.WithStack(errors1.Join(pipelinesvc.ErrWorkflowStepDependencyNotFound, err))
+	}
+
+	var pgErr *pgconn.PgError
+
+	if errors.As(err, &pgErr) {
+		if pgErr.Code == "23505" {
+			return errors.WithStack(errors1.Join(pipelinesvc.ErrWorkflowStepDependencyAlreadyExists, err))
+		}
+	}
+
+	return err
+}
+func wrapWorkflowRunQueryError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return errors.WithStack(errors1.Join(pipelinesvc.ErrWorkflowRunNotFound, err))
+	}
+
+	var pgErr *pgconn.PgError
+
+	if errors.As(err, &pgErr) {
+		if pgErr.Code == "23505" {
+			return errors.WithStack(errors1.Join(pipelinesvc.ErrWorkflowRunAlreadyExists, err))
+		}
+	}
+
+	return err
+}
+func wrapWorkflowStepRunQueryError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return errors.WithStack(errors1.Join(pipelinesvc.ErrWorkflowStepRunNotFound, err))
+	}
+
+	var pgErr *pgconn.PgError
+
+	if errors.As(err, &pgErr) {
+		if pgErr.Code == "23505" {
+			return errors.WithStack(errors1.Join(pipelinesvc.ErrWorkflowStepRunAlreadyExists, err))
+		}
+	}
+
+	return err
+}
 func wrapPipelineEventQueryError(err error) error {
 	if err == nil {
 		return nil

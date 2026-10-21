@@ -140,6 +140,8 @@ func pipelineEventHandlersModule() fx.Option {
 			pnpwatermill.HandlerProvider(pipelineeventhandle.NewWorkspaceCreatedHandler),
 			pnpwatermill.HandlerProvider(pipelineeventhandle.NewWorkspaceDeletedHandler),
 			pnpwatermill.HandlerProvider(pipelineeventhandle.NewJobLogArchiveHandler),
+			pnpwatermill.HandlerProvider(pipelineeventhandle.NewWorkflowJobHandler),
+			pnpwatermill.HandlerProvider(pipelineeventhandle.NewWorkflowRunStartedHandler),
 		),
 	)
 }
@@ -375,6 +377,9 @@ func pipelineHTTPServerModule() fx.Option {
 
 			fx.Annotate(pipelineconnect.NewJobHandler, fx.As(new(pipelinev1connect.JobServiceHandler))),
 			pnpconnectrpchandling.ConnectHandlerConstructorProvider(pipelinev1connect.NewJobServiceHandler),
+
+			fx.Annotate(pipelineconnect.NewWorkflowHandler, fx.As(new(pipelinev1connect.WorkflowServiceHandler))),
+			pnpconnectrpchandling.ConnectHandlerConstructorProvider(pipelinev1connect.NewWorkflowServiceHandler),
 
 			// Stats handler
 			fx.Annotate(pipelineconnect.NewStatsHandler, fx.As(new(statsv1connect.StatsServiceHandler))),
