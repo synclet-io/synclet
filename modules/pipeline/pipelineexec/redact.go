@@ -209,12 +209,9 @@ func jsonEscaped(value string) string {
 }
 
 // RedactHandler wraps handler so log lines and trace errors pass through
-// redactor before handler sees them.
+// redactor before handler sees them, and log lines are cut to MaxLogLineSize
+// once redacted. A nil redactor masks nothing.
 func RedactHandler(handler Handler, redactor *Redactor) Handler {
-	if redactor == nil || redactor.replacer == nil {
-		return handler
-	}
-
 	return &redactingHandler{Handler: handler, redactor: redactor}
 }
 
@@ -225,7 +222,7 @@ type redactingHandler struct {
 }
 
 func (h *redactingHandler) OnLog(ctx context.Context, line string) error {
-	return h.Handler.OnLog(ctx, h.redactor.Redact(line))
+	return h.Handler.OnLog(ctx, truncateLogLine(h.redactor.Redact(line)))
 }
 
 func (h *redactingHandler) OnSourceTrace(ctx context.Context, msg *protocol.AirbyteTraceMessage) error {

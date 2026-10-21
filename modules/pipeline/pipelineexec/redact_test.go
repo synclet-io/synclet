@@ -3,6 +3,7 @@ package pipelineexec
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -51,9 +52,6 @@ func TestRedactorNilAndEmpty(t *testing.T) {
 	var nilRedactor *Redactor
 	assert.Equal(t, "x", nilRedactor.Redact("x"))
 	assert.Equal(t, "x", NewRedactor(json.RawMessage(`{"host":"x"}`)).Redact("x"))
-
-	handler := &recordingHandler{}
-	assert.Same(t, Handler(handler), RedactHandler(handler, NewRedactor()))
 }
 
 type recordingHandler struct {
@@ -123,4 +121,27 @@ func TestRedactor_RedactTruncated(t *testing.T) {
 
 	var nilRedactor *Redactor
 	assert.Equal(t, "hunter2-p", nilRedactor.RedactTruncated("hunter2-p"))
+}
+
+func TestRedactHandler_CutsLongLogLinesAfterRedaction(t *testing.T) {
+	ctx := context.Background()
+	long := strings.Repeat("x", MaxLogLineSize-4) + "hunter2-pass" + strings.Repeat("y", 1<<20)
+
+	for name, redactor := range map[string]*Redactor{
+		"with secrets":    NewRedactor(json.RawMessage(`{"password":"hunter2-pass"}`)),
+		"without secrets": NewRedactor(),
+	} {
+		t.Run(name, func(t *testing.T) {
+			inner := &recordingHandler{}
+			require.NoError(t, RedactHandler(inner, redactor).OnLog(ctx, long))
+
+			require.Len(t, inner.lines, 1)
+			assert.Less(t, len(inner.lines[0]), MaxLogLineSize+64)
+			assert.Contains(t, inner.lines[0], "bytes truncated")
+
+			if redactor.replacer != nil {
+				assert.NotContains(t, inner.lines[0], "hunt", "a secret at the cut is masked, not quoted in part")
+			}
+		})
+	}
 }

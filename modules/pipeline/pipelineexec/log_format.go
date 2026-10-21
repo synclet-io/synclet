@@ -2,6 +2,7 @@ package pipelineexec
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/synclet-io/synclet/pkg/protocol"
 )
@@ -22,4 +23,17 @@ func formatTraceLine(prefix string, msg *protocol.AirbyteTraceMessage) string {
 	}
 
 	return fmt.Sprintf("%s TRACE: %s", prefix, msg.Type)
+}
+
+// MaxLogLineSize bounds a connector log line handed to a Handler.
+const MaxLogLineSize = 64 << 10
+
+func truncateLogLine(line string) string {
+	if len(line) <= MaxLogLineSize {
+		return line
+	}
+
+	kept := strings.ToValidUTF8(line[:MaxLogLineSize], "")
+
+	return fmt.Sprintf("%s... (%d bytes truncated)", kept, len(line)-len(kept))
 }
