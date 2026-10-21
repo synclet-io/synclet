@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/synclet-io/synclet/compare/synclet-helm-v0.10.0...synclet-helm-v0.11.0) (2026-10-21)
+
+
+### Features
+
+* **helm:** mcp.exposure and mcp.paths replace mcp.ingress.mode and paths ([be1b08a](https://github.com/synclet-io/synclet/commit/be1b08a8d86b932c9554d67ad2716a4d7b9e27bf))
+
 ## [0.10.0](https://github.com/synclet-io/synclet/compare/synclet-helm-v0.9.0...synclet-helm-v0.10.0) (2026-10-21)
 
 
