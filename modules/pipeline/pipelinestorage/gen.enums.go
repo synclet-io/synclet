@@ -654,16 +654,18 @@ func convertWorkflowStepRunStatusFromDB(workflowStepRunStatusValue string) (pipe
 }
 
 const (
-	pipelineEventTypeJobCreated         = "job_created"
-	pipelineEventTypeJobUpdated         = "job_updated"
-	pipelineEventTypeWorkflowRunStarted = "workflow_run_started"
+	pipelineEventTypeJobCreated          = "job_created"
+	pipelineEventTypeJobUpdated          = "job_updated"
+	pipelineEventTypeWorkflowRunStarted  = "workflow_run_started"
+	pipelineEventTypeWorkflowRunFinished = "workflow_run_finished"
 )
 
 func convertPipelineEventTypeToDB(pipelineEventTypeValue pipelineservice.PipelineEventType) (string, error) {
 	result, ok := map[pipelineservice.PipelineEventType]string{
-		pipelineservice.PipelineEventTypeJobCreated:         pipelineEventTypeJobCreated,
-		pipelineservice.PipelineEventTypeJobUpdated:         pipelineEventTypeJobUpdated,
-		pipelineservice.PipelineEventTypeWorkflowRunStarted: pipelineEventTypeWorkflowRunStarted,
+		pipelineservice.PipelineEventTypeJobCreated:          pipelineEventTypeJobCreated,
+		pipelineservice.PipelineEventTypeJobUpdated:          pipelineEventTypeJobUpdated,
+		pipelineservice.PipelineEventTypeWorkflowRunStarted:  pipelineEventTypeWorkflowRunStarted,
+		pipelineservice.PipelineEventTypeWorkflowRunFinished: pipelineEventTypeWorkflowRunFinished,
 	}[pipelineEventTypeValue]
 	if !ok {
 		return "", fmt.Errorf("unknown PipelineEventType value: %d", pipelineEventTypeValue)
@@ -673,9 +675,10 @@ func convertPipelineEventTypeToDB(pipelineEventTypeValue pipelineservice.Pipelin
 
 func convertPipelineEventTypeFromDB(pipelineEventTypeValue string) (pipelineservice.PipelineEventType, error) {
 	result, ok := map[string]pipelineservice.PipelineEventType{
-		pipelineEventTypeJobCreated:         pipelineservice.PipelineEventTypeJobCreated,
-		pipelineEventTypeJobUpdated:         pipelineservice.PipelineEventTypeJobUpdated,
-		pipelineEventTypeWorkflowRunStarted: pipelineservice.PipelineEventTypeWorkflowRunStarted,
+		pipelineEventTypeJobCreated:          pipelineservice.PipelineEventTypeJobCreated,
+		pipelineEventTypeJobUpdated:          pipelineservice.PipelineEventTypeJobUpdated,
+		pipelineEventTypeWorkflowRunStarted:  pipelineservice.PipelineEventTypeWorkflowRunStarted,
+		pipelineEventTypeWorkflowRunFinished: pipelineservice.PipelineEventTypeWorkflowRunFinished,
 	}[pipelineEventTypeValue]
 	if !ok {
 		return 0, fmt.Errorf("unknown PipelineEventType db value: %s", pipelineEventTypeValue)

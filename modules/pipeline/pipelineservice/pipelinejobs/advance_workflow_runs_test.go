@@ -304,3 +304,122 @@ func TestAdvanceWorkflowRuns_PausedConnectionSkipsStep(t *testing.T) {
 	require.NoError(t, advancer.ExecuteForJob(ctx, done))
 	assert.Equal(t, pipelineservice.WorkflowRunStatusSucceeded, fx.runStatus(), "a paused-connection skip alone does not fail the run")
 }
+
+func (fx *workflowFixture) finishedEvents() []*pipelineservice.WorkflowRunFinishedEventData {
+	var result []*pipelineservice.WorkflowRunFinishedEventData
+
+	for _, event := range fx.store.Events {
+		if data, ok := event.Data.(*pipelineservice.WorkflowRunFinishedEventData); ok {
+			result = append(result, data)
+		}
+	}
+
+	return result
+}
+
+func TestAdvanceWorkflowRuns_FailedRunPublishesFinishedEvent(t *testing.T) {
+	ctx := context.Background()
+	fx := newWorkflowFixture(t, []string{"A", "B", "X"}, map[string][]string{"B": {"A"}})
+	advancer := newAdvancer(fx.store, 10)
+
+	require.NoError(t, advancer.Execute(ctx, fx.runID))
+
+	failed := fx.finishJob(t, "A", pipelineservice.JobStatusFailed)
+	require.NoError(t, advancer.ExecuteForJob(ctx, failed))
+	assert.Empty(t, fx.finishedEvents(), "a running run publishes nothing")
+
+	done := fx.finishJob(t, "X", pipelineservice.JobStatusCompleted)
+	require.NoError(t, advancer.ExecuteForJob(ctx, done))
+
+	events := fx.finishedEvents()
+	require.Len(t, events, 1)
+
+	workflow := fx.store.WorkflowsTable.Get(fx.store.WorkflowRunsTable.Get(fx.runID).WorkflowID)
+	event := events[0]
+	assert.Equal(t, workflow.WorkspaceID, event.WorkspaceID)
+	assert.Equal(t, workflow.ID, event.WorkflowID)
+	assert.Equal(t, "wf", event.WorkflowName)
+	assert.Equal(t, fx.runID, event.RunID)
+	assert.Equal(t, pipelineservice.WorkflowRunStatusFailed, event.Status)
+	require.NotNil(t, event.Error)
+	assert.Equal(t, "boom", *event.Error, "the error of the failed step")
+	assert.ElementsMatch(t, []uuid.UUID{
+		fx.steps["A"].ConnectionID, fx.steps["B"].ConnectionID, fx.steps["X"].ConnectionID,
+	}, event.ConnectionIDs)
+
+	require.NoError(t, advancer.Execute(ctx, fx.runID))
+	assert.Len(t, fx.finishedEvents(), 1, "a finished run is not published again")
+}
+
+func TestAdvanceWorkflowRuns_SucceededRunPublishesFinishedEvent(t *testing.T) {
+	ctx := context.Background()
+	fx := newWorkflowFixture(t, []string{"A"}, nil)
+	advancer := newAdvancer(fx.store, 10)
+
+	require.NoError(t, advancer.Execute(ctx, fx.runID))
+
+	done := fx.finishJob(t, "A", pipelineservice.JobStatusCompleted)
+	require.NoError(t, advancer.ExecuteForJob(ctx, done))
+
+	events := fx.finishedEvents()
+	require.Len(t, events, 1)
+	assert.Equal(t, pipelineservice.WorkflowRunStatusSucceeded, events[0].Status)
+	assert.Nil(t, events[0].Error)
+}
+
+// failWithoutText fails the job of a queued step, settles the step and
+// clears the step's error text.
+func (fx *workflowFixture) failWithoutText(t *testing.T, advancer *AdvanceWorkflowRuns, name string, at time.Time) {
+	t.Helper()
+
+	ctx := context.Background()
+	job := fx.store.JobsTable.Get(*fx.stepRun(name).JobID)
+	job.Status = pipelineservice.JobStatusFailed
+	job.CompletedAt = &at
+
+	_, err := fx.store.Jobs().Update(ctx, job)
+	require.NoError(t, err)
+	require.NoError(t, advancer.ExecuteForJob(ctx, job))
+
+	stepRun := fx.stepRun(name)
+	require.Equal(t, pipelineservice.WorkflowStepRunStatusFailed, stepRun.Status)
+
+	empty := ""
+	stepRun.Error = &empty
+	_, err = fx.store.WorkflowStepRuns().Update(ctx, stepRun)
+	require.NoError(t, err)
+}
+
+func TestAdvanceWorkflowRuns_FinishedEventErrorSkipsStepsWithoutText(t *testing.T) {
+	ctx := context.Background()
+	fx := newWorkflowFixture(t, []string{"A", "X"}, nil)
+	advancer := newAdvancer(fx.store, 10)
+
+	require.NoError(t, advancer.Execute(ctx, fx.runID))
+	fx.failWithoutText(t, advancer, "A", time.Now().Add(-time.Minute))
+
+	failed := fx.finishJob(t, "X", pipelineservice.JobStatusFailed)
+	require.NoError(t, advancer.ExecuteForJob(ctx, failed))
+
+	events := fx.finishedEvents()
+	require.Len(t, events, 1)
+	require.NotNil(t, events[0].Error, "the earliest failed step with an error text gives the error")
+	assert.Equal(t, "boom", *events[0].Error)
+}
+
+func TestAdvanceWorkflowRuns_FinishedEventWithoutErrorText(t *testing.T) {
+	ctx := context.Background()
+	fx := newWorkflowFixture(t, []string{"A", "X"}, nil)
+	advancer := newAdvancer(fx.store, 10)
+
+	require.NoError(t, advancer.Execute(ctx, fx.runID))
+	fx.failWithoutText(t, advancer, "A", time.Now())
+
+	done := fx.finishJob(t, "X", pipelineservice.JobStatusCompleted)
+	require.NoError(t, advancer.ExecuteForJob(ctx, done))
+
+	events := fx.finishedEvents()
+	require.Len(t, events, 1)
+	assert.Equal(t, pipelineservice.WorkflowRunStatusFailed, events[0].Status)
+	assert.Nil(t, events[0].Error, "no failed step has an error text")
+}

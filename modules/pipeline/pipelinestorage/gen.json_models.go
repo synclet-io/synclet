@@ -2307,3 +2307,70 @@ func convertWorkflowRunStartedEventDataFromJsonModel(src *jsonWorkflowRunStarted
 	result.RunID = src.RunID
 	return result, nil
 }
+
+type jsonWorkflowRunFinishedEventData struct {
+	WorkspaceID   uuid.UUID      `json:"workspace_id"`
+	WorkflowID    uuid.UUID      `json:"workflow_id"`
+	WorkflowName  string         `json:"workflow_name"`
+	RunID         uuid.UUID      `json:"run_id"`
+	Status        string         `json:"status"`
+	Error         *string        `json:"error"`
+	ConnectionIDs uuidSliceValue `json:"connection_i_ds"`
+}
+
+func (w *jsonWorkflowRunFinishedEventData) Scan(value any) error {
+	return json.Unmarshal(value.([]byte), w)
+}
+
+func (w jsonWorkflowRunFinishedEventData) Value() (driver.Value, error) {
+	return json.Marshal(w)
+}
+
+func convertWorkflowRunFinishedEventDataToJsonModel(src *pipelineservice.WorkflowRunFinishedEventData) (*jsonWorkflowRunFinishedEventData, error) {
+	result := &jsonWorkflowRunFinishedEventData{}
+	result.WorkspaceID = src.WorkspaceID
+	result.WorkflowID = src.WorkflowID
+	result.WorkflowName = src.WorkflowName
+	result.RunID = src.RunID
+	tmp4, err := convertWorkflowRunStatusToDB(src.Status)
+	if err != nil {
+		return nil, err
+	}
+	result.Status = tmp4
+	if src.Error == nil {
+		result.Error = nil
+	} else {
+		result.Error = toPtr(fromPtr(src.Error))
+	}
+	tmp7 := make(uuidSliceValue, 0, len(src.ConnectionIDs))
+	for _, el := range src.ConnectionIDs {
+		tmp7 = append(tmp7, el)
+	}
+	result.ConnectionIDs = tmp7
+	return result, nil
+}
+
+func convertWorkflowRunFinishedEventDataFromJsonModel(src *jsonWorkflowRunFinishedEventData) (*pipelineservice.WorkflowRunFinishedEventData, error) {
+	result := &pipelineservice.WorkflowRunFinishedEventData{}
+	result.WorkspaceID = src.WorkspaceID
+	result.WorkflowID = src.WorkflowID
+	result.WorkflowName = src.WorkflowName
+	result.RunID = src.RunID
+	tmp13, err := convertWorkflowRunStatusFromDB(src.Status)
+	if err != nil {
+		return nil, err
+	}
+	result.Status = tmp13
+	if src.Error == nil {
+		result.Error = nil
+	} else {
+		result.Error = toPtr(fromPtr(src.Error))
+	}
+	tmp16 := make([]uuid.UUID, 0, len(src.ConnectionIDs))
+	for _, el := range src.ConnectionIDs {
+
+		tmp16 = append(tmp16, el)
+	}
+	result.ConnectionIDs = tmp16
+	return result, nil
+}

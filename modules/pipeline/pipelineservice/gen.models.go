@@ -218,6 +218,22 @@ func (w *WorkflowRunStartedEventData) PipelineEventDataEquals(to PipelineEventDa
 
 	return w.Equals(toTyped)
 }
+func (*WorkflowRunFinishedEventData) isPipelineEventData() {}
+func (w *WorkflowRunFinishedEventData) PipelineEventDataEquals(to PipelineEventData) bool {
+	if (w == nil) != (to == nil) {
+		return false
+	}
+	if w == nil && to == nil {
+		return true
+	}
+
+	toTyped, ok := to.(*WorkflowRunFinishedEventData)
+	if !ok {
+		return false
+	}
+
+	return w.Equals(toTyped)
+}
 
 func copyPipelineEventData(val PipelineEventData) PipelineEventData {
 	if val == nil {
@@ -232,6 +248,9 @@ func copyPipelineEventData(val PipelineEventData) PipelineEventData {
 		valCopy := val.Copy()
 		return &valCopy
 	case *WorkflowRunStartedEventData:
+		valCopy := val.Copy()
+		return &valCopy
+	case *WorkflowRunFinishedEventData:
 		valCopy := val.Copy()
 		return &valCopy
 	}
@@ -3637,6 +3656,101 @@ func (w *WorkflowRunStartedEventData) Equals(to *WorkflowRunStartedEventData) bo
 	}
 	if w.RunID != to.RunID {
 		return false
+	}
+
+	return true
+}
+
+type WorkflowRunFinishedEventDataField byte
+
+const (
+	WorkflowRunFinishedEventDataFieldWorkspaceID WorkflowRunFinishedEventDataField = iota + 1
+	WorkflowRunFinishedEventDataFieldWorkflowID
+	WorkflowRunFinishedEventDataFieldWorkflowName
+	WorkflowRunFinishedEventDataFieldRunID
+	WorkflowRunFinishedEventDataFieldStatus
+	WorkflowRunFinishedEventDataFieldError
+	WorkflowRunFinishedEventDataFieldConnectionIDs
+)
+
+type WorkflowRunFinishedEventDataFilter struct {
+	Or  []*WorkflowRunFinishedEventDataFilter
+	And []*WorkflowRunFinishedEventDataFilter
+}
+type WorkflowRunFinishedEventDataOrder order.Order[WorkflowRunFinishedEventDataField]
+
+type WorkflowRunFinishedEventData struct {
+	WorkspaceID   uuid.UUID
+	WorkflowID    uuid.UUID
+	WorkflowName  string
+	RunID         uuid.UUID
+	Status        WorkflowRunStatus
+	Error         *string
+	ConnectionIDs []uuid.UUID
+}
+
+// user code 'WorkflowRunFinishedEventData methods'
+// end user code 'WorkflowRunFinishedEventData methods'
+
+func (w *WorkflowRunFinishedEventData) Copy() WorkflowRunFinishedEventData {
+	var result WorkflowRunFinishedEventData
+	result.WorkspaceID = w.WorkspaceID
+	result.WorkflowID = w.WorkflowID
+	result.WorkflowName = w.WorkflowName
+	result.RunID = w.RunID
+	result.Status = w.Status // enum
+	if w.Error != nil {
+		var tmp string
+		tmp = (*w.Error)
+		result.Error = &tmp
+	}
+	tmp1 := make([]uuid.UUID, 0, len(w.ConnectionIDs))
+	for _, i := range w.ConnectionIDs {
+		var itemCopy uuid.UUID
+		itemCopy = i
+		tmp1 = append(tmp1, itemCopy)
+	}
+	result.ConnectionIDs = tmp1
+
+	return result
+}
+func (w *WorkflowRunFinishedEventData) Equals(to *WorkflowRunFinishedEventData) bool {
+	if (w == nil) != (to == nil) {
+		return false
+	}
+	if w == nil && to == nil {
+		return true
+	}
+	if w.WorkspaceID != to.WorkspaceID {
+		return false
+	}
+	if w.WorkflowID != to.WorkflowID {
+		return false
+	}
+	if w.WorkflowName != to.WorkflowName {
+		return false
+	}
+	if w.RunID != to.RunID {
+		return false
+	}
+	if w.Status != to.Status {
+		return false
+	}
+	if (w.Error == nil) != (to.Error == nil) {
+		return false
+	}
+	if w.Error != nil && to.Error != nil {
+		if (*w.Error) != (*to.Error) {
+			return false
+		}
+	}
+	if len(w.ConnectionIDs) != len(to.ConnectionIDs) {
+		return false
+	}
+	for idx := range w.ConnectionIDs {
+		if w.ConnectionIDs[idx] != to.ConnectionIDs[idx] {
+			return false
+		}
 	}
 
 	return true

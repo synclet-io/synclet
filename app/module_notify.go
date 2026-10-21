@@ -57,6 +57,7 @@ func notifyEventHandlersModule() fx.Option {
 		fx.Provide(
 			fx.Annotate(notifyadapt.NewJobInfoLoader, fx.As(new(notifyservice.JobInfoLoader))),
 			pnpwatermill.HandlerProvider(notifyeventhandle.NewJobEventHandler),
+			pnpwatermill.HandlerProvider(notifyeventhandle.NewWorkflowRunEventHandler),
 			pnpwatermill.HandlerProvider(notifyeventhandle.NewWorkspaceDeletedHandler),
 		),
 	)

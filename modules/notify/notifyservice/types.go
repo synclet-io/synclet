@@ -21,8 +21,12 @@ type WebhookEvent struct {
 	// Attempt is the attempt number that triggered this event (1-based).
 	Attempt int `json:"attempt,omitempty"`
 	// RecordsRead, BytesSynced and DurationMs come from the job's latest attempt when available.
-	RecordsRead int64  `json:"records_read,omitempty"`
-	BytesSynced int64  `json:"bytes_synced,omitempty"`
-	DurationMs  int64  `json:"duration_ms,omitempty"`
-	Error       string `json:"error,omitempty"`
+	RecordsRead int64 `json:"records_read,omitempty"`
+	BytesSynced int64 `json:"bytes_synced,omitempty"`
+	DurationMs  int64 `json:"duration_ms,omitempty"`
+	// WorkflowID, WorkflowName and WorkflowRunID identify the workflow run of a workflow event.
+	WorkflowID    string `json:"workflow_id,omitempty"`
+	WorkflowName  string `json:"workflow_name,omitempty"`
+	WorkflowRunID string `json:"workflow_run_id,omitempty"`
+	Error         string `json:"error,omitempty"`
 }

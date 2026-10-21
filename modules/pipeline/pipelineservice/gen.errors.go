@@ -178,3 +178,7 @@ const (
 	ErrWorkflowRunStartedEventDataNotFound      = NotFoundError("WorkflowRunStartedEventData")
 	ErrWorkflowRunStartedEventDataAlreadyExists = AlreadyExistsError("WorkflowRunStartedEventData")
 )
+const (
+	ErrWorkflowRunFinishedEventDataNotFound      = NotFoundError("WorkflowRunFinishedEventData")
+	ErrWorkflowRunFinishedEventDataAlreadyExists = AlreadyExistsError("WorkflowRunFinishedEventData")
+)

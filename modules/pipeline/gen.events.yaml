@@ -5,9 +5,10 @@ types:
         - JobCreatedEventData
         - JobUpdatedEventData
         - WorkflowRunStartedEventData
+        - WorkflowRunFinishedEventData
   enums:
     - name: PipelineEventType
-      values: [ JobCreated, JobUpdated, WorkflowRunStarted ]
+      values: [ JobCreated, JobUpdated, WorkflowRunStarted, WorkflowRunFinished ]
       helpers:
         is_valid: true
         is: true
@@ -40,3 +41,15 @@ types:
         - { name: WorkspaceID, type: uuid }
         - { name: WorkflowID, type: uuid }
         - { name: RunID, type: uuid }
+
+    - name: WorkflowRunFinishedEventData
+      id: 40004
+      do_not_persists: true
+      fields:
+        - { name: WorkspaceID, type: uuid }
+        - { name: WorkflowID, type: uuid }
+        - { name: WorkflowName, type: string }
+        - { name: RunID, type: uuid }
+        - { name: Status, type: "WorkflowRunStatus" }
+        - { name: Error, type: "*string" }
+        - { name: ConnectionIDs, type: "[]uuid" }

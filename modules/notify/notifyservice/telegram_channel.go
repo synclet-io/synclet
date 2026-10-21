@@ -89,6 +89,15 @@ func (t *TelegramChannel) Deliver(ctx context.Context, channel *NotificationChan
 }
 
 func formatTelegramMessage(event WebhookEvent) string {
+	if event.WorkflowID != "" {
+		msg := "[Synclet] Workflow " + event.WorkflowName + " run failed\nWorkflow: " + event.WorkflowID + "\nRun: " + event.WorkflowRunID
+		if event.Error != "" {
+			msg += "\nError: " + event.Error
+		}
+
+		return msg
+	}
+
 	msg := "[Synclet] Sync " + event.Event
 	if event.ConnectionID != "" {
 		msg += "\nConnection: " + event.ConnectionID

@@ -11,12 +11,13 @@ import (
 	"github.com/saturn4er/boilerplate-go/lib/filter"
 )
 
-// NotificationEvent represents a sync lifecycle event type.
+// NotificationEvent is the event a notification reports.
 type NotificationEvent byte
 
 const (
 	NotificationEventCompleted NotificationEvent = iota + 1
 	NotificationEventFailed
+	NotificationEventWorkflowFailed
 )
 
 func (e NotificationEvent) String() string {
@@ -25,18 +26,40 @@ func (e NotificationEvent) String() string {
 		return "sync.completed"
 	case NotificationEventFailed:
 		return "sync.failed"
+	case NotificationEventWorkflowFailed:
+		return "workflow.failed"
 	default:
 		return "unknown"
 	}
 }
 
 // DeliverNotificationParams holds parameters for delivering notifications.
+// A sync event names its connection in ConnectionID. A workflow event names
+// the connections of the workflow's steps in ConnectionIDs, and a rule on
+// any of them applies.
 type DeliverNotificationParams struct {
 	WorkspaceID         uuid.UUID
 	ConnectionID        uuid.UUID
+	ConnectionIDs       []uuid.UUID
 	Event               NotificationEvent
 	ConsecutiveFailures int
 	RecordsSynced       int64
+	WorkflowID          uuid.UUID
+	WorkflowName        string
+	WorkflowRunID       uuid.UUID
+	Error               string
+}
+
+func (p DeliverNotificationParams) isWorkflowEvent() bool {
+	return p.WorkflowID != uuid.Nil
+}
+
+func (p DeliverNotificationParams) connectionIDs() []uuid.UUID {
+	if len(p.ConnectionIDs) > 0 {
+		return p.ConnectionIDs
+	}
+
+	return []uuid.UUID{p.ConnectionID}
 }
 
 // DeliverNotification evaluates notification rules and dispatches to matching channels.
@@ -58,13 +81,13 @@ func NewDeliverNotification(storage Storage, deliverers map[ChannelType]ChannelD
 // Execute evaluates all applicable rules and dispatches notifications to matching channels.
 // Notification delivery is best-effort: errors are logged but do not cause the operation to fail.
 func (uc *DeliverNotification) Execute(ctx context.Context, params DeliverNotificationParams) error {
-	// Load all enabled rules for this workspace that either match the specific connection
+	// Load all enabled rules for this workspace that either match the event's connections
 	// or are workspace-level defaults (ConnectionID is zero UUID).
 	rules, err := uc.storage.NotificationRules().Find(ctx, &NotificationRuleFilter{
 		WorkspaceID: filter.Equals(params.WorkspaceID),
 		Enabled:     filter.Equals(true),
 		Or: []*NotificationRuleFilter{
-			{ConnectionID: filter.Equals(params.ConnectionID)},
+			{ConnectionID: filter.In(params.connectionIDs()...)},
 			{ConnectionID: filter.Equals(uuid.Nil)},
 		},
 	})
@@ -76,13 +99,14 @@ func (uc *DeliverNotification) Execute(ctx context.Context, params DeliverNotifi
 	// to avoid duplicate notifications from workspace-level defaults.
 	dispatchedChannels := make(map[uuid.UUID]bool)
 
-	// Process connection-specific rules first.
+	// Process connection-specific rules first. A workflow event reaches each
+	// channel once, however many of its connections have rules for it.
 	for _, rule := range rules {
 		if rule.ConnectionID == uuid.Nil {
 			continue
 		}
 
-		if !evaluateCondition(rule, params) {
+		if (params.isWorkflowEvent() && dispatchedChannels[rule.ChannelID]) || !evaluateCondition(rule, params) {
 			continue
 		}
 
@@ -113,7 +137,7 @@ func (uc *DeliverNotification) Execute(ctx context.Context, params DeliverNotifi
 func evaluateCondition(rule *NotificationRule, params DeliverNotificationParams) bool {
 	switch rule.Condition {
 	case NotificationConditionOnFailure:
-		return params.Event == NotificationEventFailed
+		return params.Event == NotificationEventFailed || params.Event == NotificationEventWorkflowFailed
 	case NotificationConditionOnConsecutiveFailures:
 		return params.Event == NotificationEventFailed && params.ConsecutiveFailures >= rule.ConditionValue
 	case NotificationConditionOnZeroRecords:
@@ -148,7 +172,15 @@ func (uc *DeliverNotification) dispatchToChannel(ctx context.Context, channelID,
 	event := WebhookEvent{
 		Event:        params.Event.String(),
 		Timestamp:    time.Now(),
-		ConnectionID: params.ConnectionID.String(),
+		WorkflowName: params.WorkflowName,
+		Error:        params.Error,
+	}
+
+	if params.isWorkflowEvent() {
+		event.WorkflowID = params.WorkflowID.String()
+		event.WorkflowRunID = params.WorkflowRunID.String()
+	} else {
+		event.ConnectionID = params.ConnectionID.String()
 	}
 
 	if err := deliverer.Deliver(ctx, channel, event); err != nil {

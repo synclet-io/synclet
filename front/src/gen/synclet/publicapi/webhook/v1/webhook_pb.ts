@@ -287,7 +287,7 @@ export const TestWebhookResponseSchema: GenMessage<TestWebhookResponse> = /*@__P
 
 /**
  * WebhookService manages webhook subscriptions.
- * Available events: sync.completed, sync.failed, connection.paused, schema.changed, * (all).
+ * Available events: sync.completed, sync.failed, workflow.failed, connection.paused, schema.changed, * (all).
  *
  * @generated from service synclet.publicapi.webhook.v1.WebhookService
  */

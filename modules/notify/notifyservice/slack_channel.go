@@ -85,6 +85,15 @@ func (s *SlackChannel) Deliver(ctx context.Context, channel *NotificationChannel
 }
 
 func formatSlackMessage(event WebhookEvent) string {
+	if event.WorkflowID != "" {
+		msg := fmt.Sprintf("[Synclet] Workflow %s run failed (workflow: %s, run: %s)", event.WorkflowName, event.WorkflowID, event.WorkflowRunID)
+		if event.Error != "" {
+			msg += ": " + event.Error
+		}
+
+		return msg
+	}
+
 	msg := "[Synclet] Connection sync " + event.Event
 	if event.ConnectionID != "" {
 		msg += fmt.Sprintf(" (connection: %s)", event.ConnectionID)

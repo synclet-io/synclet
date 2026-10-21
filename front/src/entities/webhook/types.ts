@@ -1,6 +1,7 @@
 export type WebhookEvent
   = | 'sync.completed'
     | 'sync.failed'
+    | 'workflow.failed'
     | 'connection.paused'
     | 'schema.changed'
     | '*'
@@ -8,6 +9,7 @@ export type WebhookEvent
 export const WEBHOOK_EVENTS: { value: WebhookEvent, label: string }[] = [
   { value: 'sync.completed', label: 'Sync completed' },
   { value: 'sync.failed', label: 'Sync failed' },
+  { value: 'workflow.failed', label: 'Workflow failed' },
   { value: 'connection.paused', label: 'Connection paused' },
   { value: 'schema.changed', label: 'Schema changed' },
   { value: '*', label: 'All events' },

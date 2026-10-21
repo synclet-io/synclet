@@ -225,3 +225,29 @@ func TestJobStatusFromString(t *testing.T) {
 	_, err := jobStatusFromString("unknown")
 	require.Error(t, err)
 }
+
+func TestEncodeDecode_WorkflowRunFinishedRoundTrip(t *testing.T) {
+	reason := "boom"
+	data := &pipelineservice.WorkflowRunFinishedEventData{
+		WorkspaceID:   uuid.New(),
+		WorkflowID:    uuid.New(),
+		WorkflowName:  "nightly",
+		RunID:         uuid.New(),
+		Status:        pipelineservice.WorkflowRunStatusFailed,
+		Error:         &reason,
+		ConnectionIDs: []uuid.UUID{uuid.New(), uuid.New()},
+	}
+	event := &pipelineservice.PipelineEvent{EventType: pipelineservice.PipelineEventTypeWorkflowRunFinished, Data: data}
+
+	metadata, body, err := EncodePipelineEvent(event)
+	require.NoError(t, err)
+	assert.Equal(t, "workflow_run.finished", metadata[eventutil.MetadataKeyEventType])
+
+	decoded, err := DecodePipelineEvent(metadata, body)
+	require.NoError(t, err)
+	require.True(t, event.Equals(decoded))
+
+	key, err := OrderingKey(event)
+	require.NoError(t, err)
+	assert.Equal(t, data.WorkflowID.String(), key)
+}

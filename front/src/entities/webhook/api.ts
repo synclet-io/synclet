@@ -8,6 +8,7 @@ function mapEvent(value: string): WebhookEvent | null {
   switch (value) {
     case 'sync.completed':
     case 'sync.failed':
+    case 'workflow.failed':
     case 'connection.paused':
     case 'schema.changed':
     case '*':

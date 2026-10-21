@@ -491,3 +491,59 @@ func TestDeliverNotification_DisabledRulesSkipped(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 0, mock.deliveryCount())
 }
+
+func TestDeliverNotification_SyncEventSendsOncePerMatchingRule(t *testing.T) {
+	channelID := uuid.New()
+	wsID := uuid.New()
+	connID := uuid.New()
+
+	channel := &NotificationChannel{ID: channelID, WorkspaceID: wsID, ChannelType: ChannelTypeSlack, Enabled: true}
+	rule := func(condition NotificationCondition) *NotificationRule {
+		return &NotificationRule{
+			ID: uuid.New(), WorkspaceID: wsID, ChannelID: channelID, ConnectionID: connID, Condition: condition, Enabled: true,
+		}
+	}
+
+	mock := &mockChannelDeliverer{}
+	storage := newTestStorage(
+		[]*NotificationChannel{channel},
+		[]*NotificationRule{rule(NotificationConditionOnFailure), rule(NotificationConditionOnConsecutiveFailures)},
+	)
+	uc := NewDeliverNotification(storage, map[ChannelType]ChannelDeliverer{ChannelTypeSlack: mock}, nil)
+
+	err := uc.Execute(context.Background(), DeliverNotificationParams{
+		WorkspaceID:         wsID,
+		ConnectionID:        connID,
+		Event:               NotificationEventFailed,
+		ConsecutiveFailures: 1,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, 2, mock.deliveryCount(), "each matching rule of a sync event sends")
+}
+
+func TestDeliverNotification_WorkflowEventSendsOncePerChannel(t *testing.T) {
+	channelID := uuid.New()
+	wsID := uuid.New()
+	connA, connB := uuid.New(), uuid.New()
+
+	channel := &NotificationChannel{ID: channelID, WorkspaceID: wsID, ChannelType: ChannelTypeSlack, Enabled: true}
+	rule := func(connID uuid.UUID) *NotificationRule {
+		return &NotificationRule{
+			ID: uuid.New(), WorkspaceID: wsID, ChannelID: channelID, ConnectionID: connID, Condition: NotificationConditionOnFailure, Enabled: true,
+		}
+	}
+
+	mock := &mockChannelDeliverer{}
+	storage := newTestStorage([]*NotificationChannel{channel}, []*NotificationRule{rule(connA), rule(connB)})
+	uc := NewDeliverNotification(storage, map[ChannelType]ChannelDeliverer{ChannelTypeSlack: mock}, nil)
+
+	err := uc.Execute(context.Background(), DeliverNotificationParams{
+		WorkspaceID:   wsID,
+		ConnectionIDs: []uuid.UUID{connA, connB},
+		Event:         NotificationEventWorkflowFailed,
+		WorkflowID:    uuid.New(),
+		WorkflowRunID: uuid.New(),
+	})
+	require.NoError(t, err)
+	assert.Equal(t, 1, mock.deliveryCount(), "a workflow failure reaches each channel once")
+}

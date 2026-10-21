@@ -125,3 +125,39 @@ func mustJSON(v interface{}) string {
 
 	return string(b)
 }
+
+func TestFormatMessages_WorkflowFailed(t *testing.T) {
+	event := WebhookEvent{
+		Event:         "workflow.failed",
+		WorkflowID:    "wf-id",
+		WorkflowName:  "nightly",
+		WorkflowRunID: "run-id",
+		Error:         "boom",
+	}
+
+	assert.Equal(t, "[Synclet] Workflow nightly run failed (workflow: wf-id, run: run-id): boom", formatSlackMessage(event))
+	assert.Equal(t, "[Synclet] Workflow nightly run failed\nWorkflow: wf-id\nRun: run-id\nError: boom", formatTelegramMessage(event))
+	assert.Contains(t, formatEmailBody(event), "<p><strong>Workflow:</strong> nightly (wf-id)</p>")
+}
+
+func TestFormatEmailBody_EscapesEventValues(t *testing.T) {
+	const markup = `<a href="https://evil">x</a>`
+
+	const escaped = `&lt;a href=&#34;https://evil&#34;&gt;x&lt;/a&gt;`
+
+	for name, event := range map[string]WebhookEvent{
+		"sync": {
+			Event: markup, ConnectionID: markup, JobID: markup, Error: markup,
+		},
+		"workflow": {
+			Event: markup, WorkflowID: markup, WorkflowName: markup, WorkflowRunID: markup, Error: markup,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			body := formatEmailBody(event)
+
+			assert.NotContains(t, body, "<a ")
+			assert.Contains(t, body, "<p><strong>Error:</strong> "+escaped+"</p>")
+		})
+	}
+}

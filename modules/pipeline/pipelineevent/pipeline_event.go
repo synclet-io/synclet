@@ -23,9 +23,10 @@ const PipelineEventTopic = "pipeline.pipeline_event"
 // Wire-format strings. Kept distinct from the in-process enum so the wire
 // format is stable across enum re-orderings.
 const (
-	pipelineEventTypeJobCreated         = "job.created"
-	pipelineEventTypeJobUpdated         = "job.updated"
-	pipelineEventTypeWorkflowRunStarted = "workflow_run.started"
+	pipelineEventTypeJobCreated          = "job.created"
+	pipelineEventTypeJobUpdated          = "job.updated"
+	pipelineEventTypeWorkflowRunStarted  = "workflow_run.started"
+	pipelineEventTypeWorkflowRunFinished = "workflow_run.finished"
 )
 
 func eventTypeToString(eventType pipelineservice.PipelineEventType) (string, error) {
@@ -36,6 +37,8 @@ func eventTypeToString(eventType pipelineservice.PipelineEventType) (string, err
 		return pipelineEventTypeJobUpdated, nil
 	case pipelineservice.PipelineEventTypeWorkflowRunStarted:
 		return pipelineEventTypeWorkflowRunStarted, nil
+	case pipelineservice.PipelineEventTypeWorkflowRunFinished:
+		return pipelineEventTypeWorkflowRunFinished, nil
 	default:
 		return "", fmt.Errorf("unknown PipelineEventType: %d", eventType)
 	}
@@ -49,6 +52,8 @@ func eventTypeFromString(value string) (pipelineservice.PipelineEventType, error
 		return pipelineservice.PipelineEventTypeJobUpdated, nil
 	case pipelineEventTypeWorkflowRunStarted:
 		return pipelineservice.PipelineEventTypeWorkflowRunStarted, nil
+	case pipelineEventTypeWorkflowRunFinished:
+		return pipelineservice.PipelineEventTypeWorkflowRunFinished, nil
 	default:
 		return 0, fmt.Errorf("unknown PipelineEventType string: %q", value)
 	}
@@ -143,6 +148,16 @@ type workflowRunStartedPayload struct {
 	RunID       uuid.UUID `json:"run_id"`
 }
 
+type workflowRunFinishedPayload struct {
+	WorkspaceID   uuid.UUID   `json:"workspace_id"`
+	WorkflowID    uuid.UUID   `json:"workflow_id"`
+	WorkflowName  string      `json:"workflow_name"`
+	RunID         uuid.UUID   `json:"run_id"`
+	Status        string      `json:"status"`
+	Error         *string     `json:"error,omitempty"`
+	ConnectionIDs []uuid.UUID `json:"connection_ids"`
+}
+
 // EncodePipelineEvent serializes a domain event into its (metadata, data)
 // wire form. The returned metadata always includes
 // eventutil.MetadataKeyEventType so consumers can dispatch without inspecting
@@ -188,6 +203,20 @@ func EncodePipelineEvent(event *pipelineservice.PipelineEvent) (metadata map[str
 			WorkspaceID: data.WorkspaceID,
 			WorkflowID:  data.WorkflowID,
 			RunID:       data.RunID,
+		}
+	case *pipelineservice.WorkflowRunFinishedEventData:
+		if data == nil {
+			return nil, nil, errors.New("workflow_run.finished event missing data")
+		}
+
+		payload = workflowRunFinishedPayload{
+			WorkspaceID:   data.WorkspaceID,
+			WorkflowID:    data.WorkflowID,
+			WorkflowName:  data.WorkflowName,
+			RunID:         data.RunID,
+			Status:        data.Status.String(),
+			Error:         data.Error,
+			ConnectionIDs: data.ConnectionIDs,
 		}
 	default:
 		return nil, nil, fmt.Errorf("unsupported PipelineEventData type: %T", event.Data)
@@ -268,6 +297,26 @@ func DecodePipelineEvent(metadata map[string]string, body []byte) (*pipelineserv
 			WorkflowID:  payload.WorkflowID,
 			RunID:       payload.RunID,
 		}
+	case pipelineEventTypeWorkflowRunFinished:
+		payload := workflowRunFinishedPayload{}
+		if err := json.Unmarshal(body, &payload); err != nil {
+			return nil, fmt.Errorf("unmarshalling workflow_run.finished payload: %w", err)
+		}
+
+		status, err := workflowRunStatusFromString(payload.Status)
+		if err != nil {
+			return nil, fmt.Errorf("decoding run status: %w", err)
+		}
+
+		data = &pipelineservice.WorkflowRunFinishedEventData{
+			WorkspaceID:   payload.WorkspaceID,
+			WorkflowID:    payload.WorkflowID,
+			WorkflowName:  payload.WorkflowName,
+			RunID:         payload.RunID,
+			Status:        status,
+			Error:         payload.Error,
+			ConnectionIDs: payload.ConnectionIDs,
+		}
 	default:
 		return nil, fmt.Errorf("unsupported event type: %s", eventTypeStr)
 	}
@@ -276,6 +325,19 @@ func DecodePipelineEvent(metadata map[string]string, body []byte) (*pipelineserv
 		EventType: eventType,
 		Data:      data,
 	}, nil
+}
+
+func workflowRunStatusFromString(value string) (pipelineservice.WorkflowRunStatus, error) {
+	switch value {
+	case pipelineservice.WorkflowRunStatusRunning.String():
+		return pipelineservice.WorkflowRunStatusRunning, nil
+	case pipelineservice.WorkflowRunStatusSucceeded.String():
+		return pipelineservice.WorkflowRunStatusSucceeded, nil
+	case pipelineservice.WorkflowRunStatusFailed.String():
+		return pipelineservice.WorkflowRunStatusFailed, nil
+	default:
+		return 0, fmt.Errorf("unknown WorkflowRunStatus: %q", value)
+	}
 }
 
 func jobTypeFromString(value string) (pipelineservice.JobType, error) {
@@ -334,6 +396,12 @@ func OrderingKey(event *pipelineservice.PipelineEvent) (string, error) {
 	case *pipelineservice.WorkflowRunStartedEventData:
 		if data == nil {
 			return "", errors.New("workflow_run.started event missing data")
+		}
+
+		return data.WorkflowID.String(), nil
+	case *pipelineservice.WorkflowRunFinishedEventData:
+		if data == nil {
+			return "", errors.New("workflow_run.finished event missing data")
 		}
 
 		return data.WorkflowID.String(), nil

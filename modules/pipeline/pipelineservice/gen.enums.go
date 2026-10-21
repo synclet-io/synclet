@@ -725,12 +725,13 @@ const (
 	PipelineEventTypeJobCreated PipelineEventType = iota + 1
 	PipelineEventTypeJobUpdated
 	PipelineEventTypeWorkflowRunStarted
+	PipelineEventTypeWorkflowRunFinished
 )
 
 // user code 'PipelineEventType methods'
 // end user code 'PipelineEventType methods'
 func (p PipelineEventType) IsValid() bool {
-	return p > 0 && p < 4
+	return p > 0 && p < 5
 }
 func (p PipelineEventType) IsJobCreated() bool {
 	return p == PipelineEventTypeJobCreated
@@ -740,4 +741,7 @@ func (p PipelineEventType) IsJobUpdated() bool {
 }
 func (p PipelineEventType) IsWorkflowRunStarted() bool {
 	return p == PipelineEventTypeWorkflowRunStarted
+}
+func (p PipelineEventType) IsWorkflowRunFinished() bool {
+	return p == PipelineEventTypeWorkflowRunFinished
 }

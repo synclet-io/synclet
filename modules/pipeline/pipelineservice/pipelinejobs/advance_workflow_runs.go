@@ -198,7 +198,68 @@ func advanceWorkflowRun(ctx context.Context, tx pipelineservice.Storage, runID u
 		return fmt.Errorf("completing run: %w", err)
 	}
 
+	return publishRunFinished(ctx, tx, run, stepRuns)
+}
+
+// publishRunFinished sends workflow_run.finished for a run that reached its
+// final status. Error is the error text of the first failed step that has
+// one.
+func publishRunFinished(
+	ctx context.Context,
+	tx pipelineservice.Storage,
+	run *pipelineservice.WorkflowRun,
+	stepRuns []*pipelineservice.WorkflowStepRun,
+) error {
+	workflow, err := tx.Workflows().First(ctx, &pipelineservice.WorkflowFilter{ID: filter.Equals(run.WorkflowID)})
+	if err != nil {
+		return fmt.Errorf("getting workflow %s: %w", run.WorkflowID, err)
+	}
+
+	connectionIDs := make([]uuid.UUID, 0, len(stepRuns))
+
+	var firstFailed *pipelineservice.WorkflowStepRun
+
+	for _, stepRun := range stepRuns {
+		connectionIDs = append(connectionIDs, stepRun.ConnectionID)
+
+		if stepRun.Status != pipelineservice.WorkflowStepRunStatusFailed || stepRun.Error == nil || *stepRun.Error == "" {
+			continue
+		}
+
+		if firstFailed == nil || completedBefore(stepRun, firstFailed) {
+			firstFailed = stepRun
+		}
+	}
+
+	var runError *string
+	if firstFailed != nil {
+		runError = firstFailed.Error
+	}
+
+	if err := tx.PipelineEvents().Send(ctx, &pipelineservice.PipelineEvent{
+		EventType: pipelineservice.PipelineEventTypeWorkflowRunFinished,
+		Data: &pipelineservice.WorkflowRunFinishedEventData{
+			WorkspaceID:   workflow.WorkspaceID,
+			WorkflowID:    workflow.ID,
+			WorkflowName:  workflow.Name,
+			RunID:         run.ID,
+			Status:        run.Status,
+			Error:         runError,
+			ConnectionIDs: connectionIDs,
+		},
+	}); err != nil {
+		return fmt.Errorf("publishing workflow_run.finished event for run %s: %w", run.ID, err)
+	}
+
 	return nil
+}
+
+func completedBefore(a, b *pipelineservice.WorkflowStepRun) bool {
+	if a.CompletedAt == nil || b.CompletedAt == nil {
+		return a.CompletedAt != nil
+	}
+
+	return a.CompletedAt.Before(*b.CompletedAt)
 }
 
 type runState struct {
