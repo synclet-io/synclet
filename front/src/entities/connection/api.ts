@@ -99,6 +99,7 @@ function mapConnection(proto: ProtoConnection): Connection {
     sourceConnectorName: proto.sourceConnectorName,
     destinationConnectorName: proto.destinationConnectorName,
     tags: proto.tags ?? [],
+    workflows: (proto.workflows ?? []).map(w => ({ id: w.id, name: w.name })),
   }
 }
 

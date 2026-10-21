@@ -24,6 +24,9 @@ const canEditTags = computed(() => {
   return role === 'editor' || role === 'admin'
 })
 
+const workflows = computed(() => connection.value?.workflows ?? [])
+const runByWorkflow = computed(() => workflows.value.length > 0)
+
 const schemaChangePolicyOptions = [
   { label: 'Propagate changes', value: 'propagate' },
   { label: 'Ignore changes', value: 'ignore' },
@@ -73,7 +76,7 @@ async function saveSettings() {
     await updateMutation.mutateAsync({
       id: id.value,
       name: editForm.value.name,
-      schedule: editForm.value.schedule,
+      ...(runByWorkflow.value ? {} : { schedule: editForm.value.schedule }),
       schemaChangePolicy: editForm.value.schemaChangePolicy,
       maxAttempts: Number(editForm.value.maxAttempts),
       namespaceDefinition: editForm.value.namespaceDefinition,
@@ -115,7 +118,17 @@ async function saveSettings() {
 
     <!-- Schedule -->
     <SCard title="Schedule">
-      <div>
+      <div v-if="runByWorkflow" data-testid="run-by-workflow" class="text-sm text-text-secondary">
+        This connection is run by
+        <template v-for="(workflow, i) in workflows" :key="workflow.id">
+          <span v-if="i > 0">, </span>
+          <RouterLink :to="`/workflows/${workflow.id}`" class="font-medium text-primary hover:underline">
+            {{ workflow.name }}
+          </RouterLink>
+        </template>
+        and has no schedule of its own. Sync Now still starts a sync at any time.
+      </div>
+      <div v-else>
         <SCronEditor v-model="editForm.schedule" />
       </div>
     </SCard>

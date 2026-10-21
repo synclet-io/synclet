@@ -53,6 +53,7 @@ function mkConn(id: string, name: string, srcId: string, destId: string, status:
     sourceConnectorName: '',
     destinationConnectorName: '',
     tags: [],
+    workflows: [],
   }
 }
 

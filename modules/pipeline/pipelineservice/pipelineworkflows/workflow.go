@@ -6,8 +6,10 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/saturn4er/boilerplate-go/lib/dbutil"
 	"github.com/saturn4er/boilerplate-go/lib/filter"
 
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
@@ -194,6 +196,44 @@ func saveSteps(ctx context.Context, tx pipelineservice.Storage, workflowID uuid.
 	if len(deps) > 0 {
 		if _, err := tx.WorkflowStepDependencies().BatchCreate(ctx, deps); err != nil {
 			return fmt.Errorf("creating step dependencies: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// handOverSchedules turns off the own schedule of every step's connection:
+// a connection in a workflow is run by the workflow. It locks the connection
+// rows, so a concurrent UpdateConnection either commits first or sees the step.
+func handOverSchedules(ctx context.Context, tx pipelineservice.Storage, workspaceID uuid.UUID, steps []pipelineservice.WorkflowGraphStep) error {
+	if len(steps) == 0 {
+		return nil
+	}
+
+	ids := make([]uuid.UUID, 0, len(steps))
+	for _, step := range steps {
+		ids = append(ids, step.ConnectionID)
+	}
+
+	conns, err := tx.Connections().Find(ctx, &pipelineservice.ConnectionFilter{
+		ID:          filter.In(ids...),
+		WorkspaceID: filter.Equals(workspaceID),
+	}, dbutil.WithForUpdate())
+	if err != nil {
+		return fmt.Errorf("locking step connections: %w", err)
+	}
+
+	for _, conn := range conns {
+		if conn.Schedule == nil && conn.NextScheduledAt == nil {
+			continue
+		}
+
+		conn.Schedule = nil
+		conn.NextScheduledAt = nil
+		conn.UpdatedAt = time.Now()
+
+		if _, err := tx.Connections().Update(ctx, conn); err != nil {
+			return fmt.Errorf("turning off schedule of connection %s: %w", conn.ID, err)
 		}
 	}
 

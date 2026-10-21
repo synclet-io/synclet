@@ -37,6 +37,10 @@ type fakeStore struct {
 func (s *fakeStore) Sources() pipelineservice.SourcesStorage           { return s.sources }
 func (s *fakeStore) Destinations() pipelineservice.DestinationsStorage { return s.destinations }
 func (s *fakeStore) Connections() pipelineservice.ConnectionsStorage   { return s.connections }
+
+func (s *fakeStore) ExecuteInTransaction(ctx context.Context, cb func(ctx context.Context, tx pipelineservice.Storage) error) error {
+	return cb(ctx, s)
+}
 func (s *fakeStore) ManagedConnectors() pipelineservice.ManagedConnectorsStorage {
 	return s.connectors
 }

@@ -42,6 +42,13 @@ export const jobKeys = {
   detail: (workspaceId: string, id: string) => [...jobKeys.all(workspaceId), 'detail', id] as const,
 } as const
 
+export const workflowKeys = {
+  all: (workspaceId: string) => ['workflows', workspaceId] as const,
+  list: (workspaceId: string) => [...workflowKeys.all(workspaceId), 'list'] as const,
+  detail: (workspaceId: string, id: string) => [...workflowKeys.all(workspaceId), 'detail', id] as const,
+  runs: (workspaceId: string, workflowId: string) => [...workflowKeys.all(workspaceId), 'runs', workflowId] as const,
+} as const
+
 export const repositoryKeys = {
   all: (workspaceId: string) => ['repositories', workspaceId] as const,
   list: (workspaceId: string) => [...repositoryKeys.all(workspaceId), 'list'] as const,

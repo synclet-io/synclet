@@ -6,6 +6,7 @@ import ConnectionSettingsPage from '../ConnectionSettingsPage.vue'
 
 const mocks = vi.hoisted(() => ({
   role: 'editor',
+  workflows: [] as { id: string, name: string }[],
   mutateAsync: vi.fn(),
   toastError: vi.fn(),
 }))
@@ -31,6 +32,7 @@ vi.mock('@entities/connection', () => ({
       customNamespaceFormat: '',
       streamPrefix: '',
       tags: ['eu'],
+      workflows: mocks.workflows,
     }),
   }),
   useUpdateConnection: () => ({ mutateAsync: mocks.mutateAsync, isPending: ref(false) }),
@@ -43,7 +45,7 @@ vi.mock('@shared/ui', async importOriginal => ({
 
 function mountPage() {
   return mount(ConnectionSettingsPage, {
-    global: { stubs: { SCronEditor: true } },
+    global: { stubs: { SCronEditor: true, RouterLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } } },
     attachTo: document.body,
   })
 }
@@ -60,6 +62,7 @@ describe('connection settings tags', () => {
   beforeEach(() => {
     document.body.innerHTML = ''
     mocks.role = 'editor'
+    mocks.workflows = []
     mocks.mutateAsync.mockReset()
     mocks.toastError.mockReset()
   })
@@ -128,5 +131,43 @@ describe('connection settings tags', () => {
     expect(w.find('[data-tag="eu"]').exists()).toBe(true)
     expect(w.find('input[role="combobox"]').exists()).toBe(false)
     expect(w.find('button[aria-label^="Remove tag"]').exists()).toBe(false)
+  })
+})
+
+describe('connection settings schedule', () => {
+  beforeEach(() => {
+    document.body.innerHTML = ''
+    mocks.role = 'editor'
+    mocks.workflows = []
+    mocks.mutateAsync.mockReset()
+    mocks.mutateAsync.mockResolvedValue({})
+  })
+
+  it('edits the schedule of a connection in no workflow', async () => {
+    const w = mountPage()
+    await flushPromises()
+
+    expect(w.findComponent({ name: 'SCronEditor' }).exists()).toBe(true)
+    expect(w.find('[data-testid="run-by-workflow"]').exists()).toBe(false)
+
+    await saveButton(w).trigger('click')
+    await flushPromises()
+    expect(mocks.mutateAsync).toHaveBeenCalledWith(expect.objectContaining({ schedule: '' }))
+  })
+
+  it('says a step connection is run by its workflows and sends no schedule', async () => {
+    mocks.workflows = [{ id: 'w1', name: 'Nightly' }, { id: 'w2', name: 'Hourly' }]
+    const w = mountPage()
+    await flushPromises()
+
+    expect(w.findComponent({ name: 'SCronEditor' }).exists()).toBe(false)
+    const note = w.get('[data-testid="run-by-workflow"]')
+    expect(note.text()).toContain('run by')
+    expect(note.findAll('a').map(a => [a.text(), a.attributes('href')])).toEqual([['Nightly', '/workflows/w1'], ['Hourly', '/workflows/w2']])
+
+    await saveButton(w).trigger('click')
+    await flushPromises()
+    expect(mocks.mutateAsync).toHaveBeenCalledTimes(1)
+    expect(mocks.mutateAsync.mock.calls[0]![0]).not.toHaveProperty('schedule')
   })
 })

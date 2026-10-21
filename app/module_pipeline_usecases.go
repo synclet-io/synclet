@@ -100,6 +100,7 @@ func pipelineUseCasesModule() fx.Option {
 			pipelineworkflows.NewRerunWorkflowRun,
 			pipelineworkflows.NewListWorkflowRuns,
 			pipelineworkflows.NewGetWorkflowRun,
+			pipelineworkflows.NewListConnectionWorkflows,
 		),
 
 		// Config import/export use cases

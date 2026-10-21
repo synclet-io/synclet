@@ -6,7 +6,7 @@ import { GlobalSearchModal } from '@features/global-search'
 import { DarkModeToggle, SButton, SyncletLogo } from '@shared/ui'
 import SDropdown from '@shared/ui/SDropdown.vue'
 import { useMediaQuery } from '@vueuse/core'
-import { ArrowRightLeft, ChevronDown, Database, History, LayoutDashboard, LogOut, Menu, Network, Search, Server, Settings } from 'lucide-vue-next'
+import { ArrowRightLeft, ChevronDown, Database, History, LayoutDashboard, LogOut, Menu, Network, Search, Server, Settings, Workflow } from 'lucide-vue-next'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { isNavActive } from './isNavActive'
@@ -75,6 +75,7 @@ const navItems = [
   { name: 'Sources', to: '/sources', icon: Database },
   { name: 'Destinations', to: '/destinations', icon: Server },
   { name: 'Connections', to: '/connections', icon: ArrowRightLeft },
+  { name: 'Workflows', to: '/workflows', icon: Workflow },
   { name: 'Topology', to: '/topology', icon: Network },
   { name: 'Jobs', to: '/jobs', icon: History },
 ]

@@ -547,6 +547,15 @@ message Connection {
   string status_reason = 22;
   // Tags of the connection, normalised to lowercase and sorted.
   repeated string tags = 23;
+  // Workflows the connection is a step of. Such a connection has no schedule
+  // of its own: its workflows run it. Set by GetConnection and ListConnections.
+  repeated ConnectionWorkflow workflows = 24;
+}
+
+// ConnectionWorkflow names a workflow a connection is a step of.
+message ConnectionWorkflow {
+  string id = 1;
+  string name = 2;
 }
 
 message CreateConnectionRequest {

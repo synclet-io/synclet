@@ -3,7 +3,7 @@ import { AuditService } from '@/gen/synclet/publicapi/audit/v1/audit_pb'
 import { AuthService } from '@/gen/synclet/publicapi/auth/v1/auth_pb'
 
 import { NotificationService } from '@/gen/synclet/publicapi/notify/v1/notify_pb'
-import { ConfiguredStreamSchema, ConnectionService, ConnectorTaskService, DestinationService, JobService, SourceService } from '@/gen/synclet/publicapi/pipeline/v1/pipeline_pb'
+import { ConfiguredStreamSchema, ConnectionService, ConnectorTaskService, DestinationService, JobService, SourceService, WorkflowService } from '@/gen/synclet/publicapi/pipeline/v1/pipeline_pb'
 import { ConnectorRegistryService } from '@/gen/synclet/publicapi/registry/v1/registry_pb'
 import { WebhookService } from '@/gen/synclet/publicapi/webhook/v1/webhook_pb'
 import { WorkspaceService } from '@/gen/synclet/publicapi/workspace/v1/workspace_pb'
@@ -19,6 +19,7 @@ export const connectorTaskClient = createClient(ConnectorTaskService, transport)
 export const notificationClient = createClient(NotificationService, transport)
 export const registryClient = createClient(ConnectorRegistryService, transport)
 export const webhookClient = createClient(WebhookService, transport)
+export const workflowClient = createClient(WorkflowService, transport)
 export const auditClient = createClient(AuditService, transport)
 
 export { create } from '@bufbuild/protobuf'

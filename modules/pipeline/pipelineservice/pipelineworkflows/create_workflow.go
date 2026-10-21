@@ -56,6 +56,10 @@ func (uc *CreateWorkflow) Execute(ctx context.Context, params CreateWorkflowPara
 			return fmt.Errorf("creating workflow: %w", err)
 		}
 
+		if err := handOverSchedules(ctx, tx, params.WorkspaceID, params.Steps); err != nil {
+			return err
+		}
+
 		if err := saveSteps(ctx, tx, workflow.ID, params.Steps); err != nil {
 			return err
 		}

@@ -29,6 +29,13 @@ export interface Connection {
   sourceConnectorName: string
   destinationConnectorName: string
   tags: string[]
+  /** Workflows the connection is a step of; such a connection has no schedule of its own. */
+  workflows: ConnectionWorkflow[]
+}
+
+export interface ConnectionWorkflow {
+  id: string
+  name: string
 }
 
 export interface ConnectionTag {

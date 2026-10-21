@@ -77,6 +77,10 @@ func (uc *UpdateWorkflow) Execute(ctx context.Context, params UpdateWorkflowPara
 			return fmt.Errorf("updating workflow: %w", err)
 		}
 
+		if err := handOverSchedules(ctx, tx, params.WorkspaceID, params.Steps); err != nil {
+			return err
+		}
+
 		if err := saveSteps(ctx, tx, workflow.ID, params.Steps); err != nil {
 			return err
 		}

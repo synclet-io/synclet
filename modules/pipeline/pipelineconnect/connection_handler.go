@@ -22,6 +22,7 @@ import (
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinesettings"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinestate"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinetasks"
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelineworkflows"
 	"github.com/synclet-io/synclet/pkg/connectutil"
 	"github.com/synclet-io/synclet/pkg/protocol"
 )
@@ -40,6 +41,8 @@ type ConnectionHandler struct {
 	listConnectionTags *pipelineconnections.ListConnectionTags
 
 	resolveConnectionEndpoints *pipelineconnections.ResolveConnectionEndpoints
+
+	listConnectionWorkflows *pipelineworkflows.ListConnectionWorkflows
 
 	// Composite connection use cases (with workspace verification)
 	enableConnection  *pipelineconnections.EnableConnection
@@ -80,6 +83,7 @@ func NewConnectionHandler(
 	listConnections *pipelineconnections.ListConnections,
 	listConnectionTags *pipelineconnections.ListConnectionTags,
 	resolveConnectionEndpoints *pipelineconnections.ResolveConnectionEndpoints,
+	listConnectionWorkflows *pipelineworkflows.ListConnectionWorkflows,
 	enableConnection *pipelineconnections.EnableConnection,
 	disableConnection *pipelineconnections.DisableConnection,
 	createDiscoverTask *pipelinetasks.CreateDiscoverTask,
@@ -106,6 +110,7 @@ func NewConnectionHandler(
 		listConnections:                   listConnections,
 		listConnectionTags:                listConnectionTags,
 		resolveConnectionEndpoints:        resolveConnectionEndpoints,
+		listConnectionWorkflows:           listConnectionWorkflows,
 		enableConnection:                  enableConnection,
 		disableConnection:                 disableConnection,
 		createDiscoverTask:                createDiscoverTask,
@@ -306,6 +311,10 @@ func (h *ConnectionHandler) GetConnection(ctx context.Context, req *connect.Requ
 		return nil, err
 	}
 
+	if err := h.setWorkflows(ctx, workspaceID, []*pipelineservice.Connection{conn}, protoConns); err != nil {
+		return nil, err
+	}
+
 	return connect.NewResponse(&pipelinev1.GetConnectionResponse{
 		Connection: protoConns[0],
 	}), nil
@@ -363,6 +372,10 @@ func (h *ConnectionHandler) ListConnections(ctx context.Context, req *connect.Re
 		protoConns[i].SourceConnectorName = ep.SourceConnectorName
 		protoConns[i].DestinationName = ep.DestinationName
 		protoConns[i].DestinationConnectorName = ep.DestinationConnectorName
+	}
+
+	if err := h.setWorkflows(ctx, workspaceID, page, protoConns); err != nil {
+		return nil, err
 	}
 
 	return connect.NewResponse(&pipelinev1.ListConnectionsResponse{
@@ -863,6 +876,29 @@ func (h *ConnectionHandler) UpdatePipelineSettings(
 			MaxJobsPerWorkspace: int32(settings.MaxJobsPerWorkspace),
 		},
 	}), nil
+}
+
+// setWorkflows fills each proto connection with the workflows its connection
+// is a step of; protoConns[i] is the proto of conns[i].
+func (h *ConnectionHandler) setWorkflows(ctx context.Context, workspaceID uuid.UUID, conns []*pipelineservice.Connection, protoConns []*pipelinev1.Connection) error {
+	workflows, err := h.listConnectionWorkflows.Execute(ctx, pipelineworkflows.ListConnectionWorkflowsParams{
+		WorkspaceID:   workspaceID,
+		ConnectionIDs: lo.Map(conns, func(c *pipelineservice.Connection, _ int) uuid.UUID { return c.ID }),
+	})
+	if err != nil {
+		return mapError(err)
+	}
+
+	for i, conn := range conns {
+		for _, workflow := range workflows[conn.ID] {
+			protoConns[i].Workflows = append(protoConns[i].Workflows, &pipelinev1.ConnectionWorkflow{
+				Id:   workflow.ID.String(),
+				Name: workflow.Name,
+			})
+		}
+	}
+
+	return nil
 }
 
 func connectionToProto(conn *pipelineservice.Connection) *pipelinev1.Connection {

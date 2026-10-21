@@ -145,6 +145,21 @@ export const router = createRouter({
           component: () => import('@pages/JobsPage.vue'),
         },
         {
+          path: 'workflows',
+          name: 'workflows',
+          component: () => import('@pages/WorkflowsPage.vue'),
+        },
+        {
+          path: 'workflows/new',
+          name: 'workflow-new',
+          component: () => import('@pages/WorkflowPage.vue'),
+        },
+        {
+          path: 'workflows/:id',
+          name: 'workflow-detail',
+          component: () => import('@pages/WorkflowPage.vue'),
+        },
+        {
           path: 'topology',
           name: 'topology',
           component: () => import('@pages/TopologyPage.vue'),

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/saturn4er/boilerplate-go/lib/dbutil"
 	"github.com/saturn4er/boilerplate-go/lib/filter"
 
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
@@ -37,18 +38,56 @@ func NewUpdateConnection(storage pipelineservice.Storage, audit pipelineservice.
 	return &UpdateConnection{storage: storage, audit: audit}
 }
 
-// Execute finds the connection by ID and workspace, applies updates, and persists.
+// Execute finds the connection by ID and workspace, applies updates, and
+// persists them. The connection row stays locked from the read to the write,
+// so a workflow that takes the connection as a step in the meantime is seen.
 func (uc *UpdateConnection) Execute(ctx context.Context, params UpdateConnectionParams) (*pipelineservice.Connection, error) {
-	conn, err := uc.storage.Connections().First(ctx, &pipelineservice.ConnectionFilter{
-		ID:          filter.Equals(params.ID),
-		WorkspaceID: filter.Equals(params.WorkspaceID),
+	var before map[string]any
+
+	var updated *pipelineservice.Connection
+
+	err := uc.storage.ExecuteInTransaction(ctx, func(ctx context.Context, tx pipelineservice.Storage) error {
+		conn, err := tx.Connections().First(ctx, &pipelineservice.ConnectionFilter{
+			ID:          filter.Equals(params.ID),
+			WorkspaceID: filter.Equals(params.WorkspaceID),
+		}, dbutil.WithForUpdate())
+		if err != nil {
+			return fmt.Errorf("getting connection: %w", err)
+		}
+
+		before = connectionToAuditPayload(conn)
+
+		if err := applyConnectionUpdate(ctx, tx, conn, params); err != nil {
+			return err
+		}
+
+		conn.UpdatedAt = time.Now()
+
+		updated, err = tx.Connections().Update(ctx, conn)
+		if err != nil {
+			return fmt.Errorf("updating connection: %w", err)
+		}
+
+		return nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("getting connection: %w", err)
+		return nil, err
 	}
 
-	before := connectionToAuditPayload(conn)
+	uc.audit.Record(ctx, pipelineservice.AuditEvent{
+		WorkspaceID:   params.WorkspaceID,
+		Action:        "update",
+		ResourceType:  "connection",
+		ResourceID:    updated.ID,
+		ResourceLabel: updated.Name,
+		Before:        before,
+		After:         connectionToAuditPayload(updated),
+	})
 
+	return updated, nil
+}
+
+func applyConnectionUpdate(ctx context.Context, tx pipelineservice.Storage, conn *pipelineservice.Connection, params UpdateConnectionParams) error {
 	if params.Name != nil {
 		conn.Name = *params.Name
 	}
@@ -56,7 +95,13 @@ func (uc *UpdateConnection) Execute(ctx context.Context, params UpdateConnection
 	if params.Schedule != nil {
 		schedule := emptyToNil(*params.Schedule)
 		if err := validateSchedule(schedule); err != nil {
-			return nil, err
+			return err
+		}
+
+		if schedule != nil {
+			if err := rejectScheduleOfWorkflowStep(ctx, tx, conn.ID); err != nil {
+				return err
+			}
 		}
 
 		conn.Schedule = schedule
@@ -86,28 +131,28 @@ func (uc *UpdateConnection) Execute(ctx context.Context, params UpdateConnection
 	if params.Tags != nil {
 		tags, err := NormalizeTags(*params.Tags)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		conn.Tags = tags
 	}
 
-	conn.UpdatedAt = time.Now()
+	return nil
+}
 
-	updated, err := uc.storage.Connections().Update(ctx, conn)
+// rejectScheduleOfWorkflowStep returns a *ValidationError when the connection
+// is a step of a workflow, which runs it in place of a schedule of its own.
+func rejectScheduleOfWorkflowStep(ctx context.Context, tx pipelineservice.Storage, connectionID uuid.UUID) error {
+	steps, err := tx.WorkflowSteps().Count(ctx, &pipelineservice.WorkflowStepFilter{
+		ConnectionID: filter.Equals(connectionID),
+	})
 	if err != nil {
-		return nil, fmt.Errorf("updating connection: %w", err)
+		return fmt.Errorf("checking workflow steps of connection: %w", err)
 	}
 
-	uc.audit.Record(ctx, pipelineservice.AuditEvent{
-		WorkspaceID:   params.WorkspaceID,
-		Action:        "update",
-		ResourceType:  "connection",
-		ResourceID:    updated.ID,
-		ResourceLabel: updated.Name,
-		Before:        before,
-		After:         connectionToAuditPayload(updated),
-	})
+	if steps > 0 {
+		return &pipelineservice.ValidationError{Field: "schedule", Message: "the connection is run by a workflow and has no schedule of its own"}
+	}
 
-	return updated, nil
+	return nil
 }
