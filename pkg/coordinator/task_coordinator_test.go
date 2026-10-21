@@ -18,6 +18,7 @@ import (
 
 	executorv1 "github.com/synclet-io/synclet/gen/proto/synclet/internalapi/executor/v1"
 	"github.com/synclet-io/synclet/gen/proto/synclet/internalapi/executor/v1/executorv1connect"
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineexec"
 	"github.com/synclet-io/synclet/pkg/protocol"
 )
 
@@ -208,4 +209,29 @@ func TestRunTask_TimeoutReportsTheTailOfConnectorOutput(t *testing.T) {
 	assert.Contains(t, msg, "Traceback: auth with")
 	assert.NotContains(t, msg, "airtable-secret-42")
 	assert.Less(t, len(msg), 2*connectorOutputTailSize)
+}
+
+func TestConnectorOutputTail_MasksASecretCutByTheTail(t *testing.T) {
+	const secret = "airtable-secret-42"
+
+	redactor := pipelineexec.NewRedactor(json.RawMessage(`{"api_key":"` + secret + `"}`))
+
+	tests := map[string]string{
+		"secret straddling the tail start": strings.Repeat("x", 10000) + secret + strings.Repeat("y", connectorOutputTailSize-len(secret)/2),
+		"output cut off inside a secret":   "Traceback\nconnecting with " + secret[:12],
+	}
+
+	for name, output := range tests {
+		t.Run(name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "connector-stdout.log")
+			require.NoError(t, os.WriteFile(path, []byte(output), 0o600))
+
+			tail := connectorOutputTail(path, connectorOutputTailSize, redactor)
+
+			assert.NotEmpty(t, tail)
+			assert.LessOrEqual(t, len(tail), connectorOutputTailSize)
+			assert.NotContains(t, tail, "secret-42")
+			assert.NotContains(t, tail, "airtable-sec")
+		})
+	}
 }

@@ -1,7 +1,6 @@
 package coordinator
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -23,8 +22,13 @@ import (
 	"github.com/synclet-io/synclet/pkg/protocol"
 )
 
-// connectorOutputTailSize bounds the connector output quoted in a task failure.
-const connectorOutputTailSize = 4096
+const (
+	// connectorOutputTailSize bounds the connector output quoted in a task failure.
+	connectorOutputTailSize = 4096
+	// connectorOutputWindow is how much output before the tail is redacted
+	// with it; it exceeds any config secret.
+	connectorOutputWindow = 64 << 10
+)
 
 // connectorTaskTimeout bounds how long a connector task may run.
 //
@@ -84,8 +88,7 @@ func RunTask(ctx context.Context, cfg TaskConfig) error {
 	if err := waitForFile(ctx, exitCodePath, connectorTaskTimeout); err != nil {
 		err = fmt.Errorf("waiting for connector completion: %w", err)
 
-		if tail := connectorOutputTail(stdoutPath, connectorOutputTailSize); tail != "" {
-			tail = cfg.redactor.Redact(tail)
+		if tail := connectorOutputTail(stdoutPath, connectorOutputTailSize, cfg.redactor); tail != "" {
 			slog.Warn("task coordinator: connector did not finish", "task_id", cfg.TaskID, "output_tail", tail)
 
 			err = fmt.Errorf("%w; last connector output:\n%s", err, tail)
@@ -99,7 +102,7 @@ func RunTask(ctx context.Context, cfg TaskConfig) error {
 
 	// 4. Read connector stdout log and parse messages.
 	slog.Debug("task coordinator: connector output tail", "task_id", cfg.TaskID,
-		"output", cfg.redactor.Redact(connectorOutputTail(stdoutPath, connectorOutputTailSize)))
+		"output", connectorOutputTail(stdoutPath, connectorOutputTailSize, cfg.redactor))
 
 	stdoutFile, err := os.Open(stdoutPath) //nolint:gosec // path is constructed internally
 	if err != nil {
@@ -167,9 +170,13 @@ func readTaskMessages(r io.Reader) ([]*protocol.AirbyteMessage, error) {
 }
 
 // connectorOutputTail returns up to size trailing bytes of the connector output
-// at path, starting at a line boundary when one falls inside the tail. It
-// returns "" when the output is missing or empty.
-func connectorOutputTail(path string, size int64) string {
+// at path with config secrets masked, starting at a line boundary when one
+// falls inside the tail. It returns "" when the output is missing or empty.
+//
+// Redaction runs over connectorOutputWindow bytes before the tail as well, so
+// a secret the tail would cut is masked whole. Output that does not end in a
+// newline may stop inside a secret, so a trailing secret prefix is masked too.
+func connectorOutputTail(path string, size int, redactor *pipelineexec.Redactor) string {
 	file, err := os.Open(path) //nolint:gosec // path is constructed internally
 	if err != nil {
 		return ""
@@ -182,20 +189,28 @@ func connectorOutputTail(path string, size int64) string {
 		return ""
 	}
 
-	offset := max(info.Size()-size, 0)
+	offset := max(info.Size()-int64(size+connectorOutputWindow), 0)
 
 	data := make([]byte, info.Size()-offset)
 	if _, err := file.ReadAt(data, offset); err != nil && !errors.Is(err, io.EOF) {
 		return ""
 	}
 
-	if offset > 0 {
-		if i := bytes.IndexByte(data, '\n'); i >= 0 && i < len(data)-1 {
-			data = data[i+1:]
+	text := string(data)
+	if strings.HasSuffix(text, "\n") {
+		text = redactor.Redact(text)
+	} else {
+		text = redactor.RedactTruncated(text)
+	}
+
+	if len(text) > size {
+		text = text[len(text)-size:]
+		if i := strings.IndexByte(text, '\n'); i >= 0 && i < len(text)-1 {
+			text = text[i+1:]
 		}
 	}
 
-	return strings.ToValidUTF8(string(bytes.TrimSpace(data)), "")
+	return strings.ToValidUTF8(strings.TrimSpace(text), "")
 }
 
 // extractTaskResult extracts the relevant Airbyte message based on task type

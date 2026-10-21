@@ -38,6 +38,7 @@ var secretKeySubstrings = []string{
 // value and nil redact nothing.
 type Redactor struct {
 	replacer *strings.Replacer
+	secrets  []string
 }
 
 // NewRedactor collects secret values from connector configs: string values of
@@ -85,7 +86,7 @@ func NewRedactor(configs ...json.RawMessage) *Redactor {
 		pairs = append(pairs, secret, RedactedMask)
 	}
 
-	return &Redactor{replacer: strings.NewReplacer(pairs...)}
+	return &Redactor{replacer: strings.NewReplacer(pairs...), secrets: secrets}
 }
 
 // Redact returns s with every secret value replaced by RedactedMask.
@@ -95,6 +96,34 @@ func (r *Redactor) Redact(s string) string {
 	}
 
 	return r.replacer.Replace(s)
+}
+
+// RedactTruncated is Redact for text cut off at its end, such as output still
+// being written: it also masks a trailing prefix, of at least minSecretLen
+// bytes, of a secret value.
+func (r *Redactor) RedactTruncated(text string) string {
+	text = r.Redact(text)
+	if r == nil {
+		return text
+	}
+
+	cut := len(text)
+
+	for _, secret := range r.secrets {
+		for n := min(len(secret)-1, len(text)); n >= minSecretLen; n-- {
+			if strings.HasSuffix(text, secret[:n]) {
+				cut = min(cut, len(text)-n)
+
+				break
+			}
+		}
+	}
+
+	if cut == len(text) {
+		return text
+	}
+
+	return text[:cut] + RedactedMask
 }
 
 type secretness int

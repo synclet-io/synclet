@@ -99,3 +99,28 @@ func TestRedactHandler(t *testing.T) {
 	assert.Equal(t, "at connect(***)", inner.traces[0].Error.StackTrace)
 	assert.Equal(t, "auth failed hunter2-pass", original.Error.Message, "input message is not mutated")
 }
+
+func TestRedactor_RedactTruncated(t *testing.T) {
+	redactor := NewRedactor(json.RawMessage(`{"password":"hunter2-pass"}`))
+
+	tests := map[string]struct {
+		in, out string
+	}{
+		"whole secret":               {"pw hunter2-pass", "pw ***"},
+		"text cut inside a secret":   {"pw hunter2-p", "pw ***"},
+		"cut before minSecretLen":    {"pw hun", "pw hun"},
+		"secret then cut inside one": {"pw hunter2-pass and hunter", "pw *** and ***"},
+		"no secret":                  {"plain text", "plain text"},
+		"whole secret ends the text": {"hunter2-pass", "***"},
+		"prefix not at the very end": {"hunter2- then more", "hunter2- then more"},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			assert.Equal(t, tt.out, redactor.RedactTruncated(tt.in))
+		})
+	}
+
+	var nilRedactor *Redactor
+	assert.Equal(t, "hunter2-p", nilRedactor.RedactTruncated("hunter2-p"))
+}
