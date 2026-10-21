@@ -80,6 +80,7 @@ func workspaceDependenciesModule() fx.Option {
 func workspaceUseCasesModule() fx.Option {
 	return fx.Provide(
 		workspaceservice.NewAutoAssignMember,
+		workspaceservice.NewApplyDefaultWorkspaceRole,
 		workspaceservice.NewCreateWorkspace,
 		workspaceservice.NewBootstrapDefaultWorkspace,
 		workspaceservice.NewUpdateWorkspace,

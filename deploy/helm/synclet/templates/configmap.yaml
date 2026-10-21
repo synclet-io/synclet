@@ -118,6 +118,9 @@ data:
   {{- if .defaultRole }}
   AUTH_OIDC_{{ $slug }}_DEFAULT_ROLE: {{ .defaultRole | quote }}
   {{- end }}
+  {{- if .roleSync }}
+  AUTH_OIDC_{{ $slug }}_ROLE_SYNC: {{ .roleSync | quote }}
+  {{- end }}
   {{- if not (kindIs "invalid" .autoCreateUser) }}
   AUTH_OIDC_{{ $slug }}_AUTO_CREATE_USER: {{ .autoCreateUser | quote }}
   {{- end }}

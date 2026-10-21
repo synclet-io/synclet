@@ -364,6 +364,10 @@ oidc:
   ## Expected keys: oidc-{slug}-client-secret (e.g. oidc-google-client-secret).
   existingSecret: ""
   ## List of OIDC providers. Each entry configures one SSO provider.
+  ## The role keys (roleClaim, roleMap*, defaultRole, roleSync) set the user's role in the default
+  ## workspace and apply in single-workspace mode only; in multi-workspace mode the server ignores
+  ## them and logs a warning. The workspace's first member always joins as admin, and a sync never
+  ## demotes its last admin.
   providers: []
   # - slug: google                           # unique identifier, used in callback URLs
   #   issuer: https://accounts.google.com    # OIDC issuer URL (must support .well-known/openid-configuration)
@@ -375,9 +379,21 @@ oidc:
   #   roleMapAdmin: ""                       # claim value that maps to admin role
   #   roleMapEditor: ""                      # claim value that maps to editor role
   #   roleMapViewer: ""                      # claim value that maps to viewer role
-  #   defaultRole: viewer                    # role assigned when no role claim matches
+  #   defaultRole: viewer                    # role when no role claim matches: admin, editor or viewer
+  #   roleSync: login                        # login: apply the claim on every login, overwriting roles set in the UI;
+  #                                          # first_login: only when the user joins the workspace
   #   autoCreateUser: true                   # create user on first login (false = reject unknown users)
   #   allowedDomains: ""                     # comma-separated email domains to allow (empty = all)
+  # - slug: authentik                        # authentik puts the user's group names in the "groups" list claim
+  #   issuer: https://auth.example.com/application/o/synclet/
+  #   clientID: ""
+  #   clientSecret: ""
+  #   displayName: authentik
+  #   roleClaim: groups
+  #   roleMapAdmin: synclet-admins
+  #   roleMapEditor: synclet-editors
+  #   defaultRole: viewer
+  #   roleSync: login
 
 ## @section SMTP parameters
 ## Configure SMTP for email delivery (invitations, notifications).

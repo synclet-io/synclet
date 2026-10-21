@@ -9,30 +9,39 @@ import (
 	"github.com/google/uuid"
 	"github.com/saturn4er/boilerplate-go/lib/filter"
 	"golang.org/x/oauth2"
+
+	"github.com/synclet-io/synclet/pkg/connectutil"
 )
+
+// DefaultWorkspaceRoleApplier puts a user into the default workspace with the
+// given role: a non-member joins (the first member as admin), and an existing
+// member's role changes only when syncExisting is set.
+type DefaultWorkspaceRoleApplier interface {
+	Apply(ctx context.Context, userID uuid.UUID, role string, syncExisting bool) error
+}
 
 // HandleOIDCCallback processes the OIDC callback, exchanges the code, verifies
 // the ID token, validates claims, and returns Synclet JWT tokens.
 type HandleOIDCCallback struct {
-	providers             map[string]*OIDCProvider
-	stateStore            *StateStore
-	storage               Storage
-	config                Config
-	workspaceAutoAssigner WorkspaceAutoAssigner
-	audit                 AuditRecorder
-	logger                *logging.Logger
+	providers   map[string]*OIDCProvider
+	stateStore  *StateStore
+	storage     Storage
+	config      Config
+	roleApplier DefaultWorkspaceRoleApplier
+	audit       AuditRecorder
+	logger      *logging.Logger
 }
 
 // NewHandleOIDCCallback creates a new HandleOIDCCallback use case.
-func NewHandleOIDCCallback(providers map[string]*OIDCProvider, stateStore *StateStore, storage Storage, config Config, workspaceAutoAssigner WorkspaceAutoAssigner, audit AuditRecorder, logger *logging.Logger) *HandleOIDCCallback {
+func NewHandleOIDCCallback(providers map[string]*OIDCProvider, stateStore *StateStore, storage Storage, config Config, roleApplier DefaultWorkspaceRoleApplier, audit AuditRecorder, logger *logging.Logger) *HandleOIDCCallback {
 	return &HandleOIDCCallback{
-		providers:             providers,
-		stateStore:            stateStore,
-		storage:               storage,
-		config:                config,
-		workspaceAutoAssigner: workspaceAutoAssigner,
-		audit:                 audit,
-		logger:                logger,
+		providers:   providers,
+		stateStore:  stateStore,
+		storage:     storage,
+		config:      config,
+		roleApplier: roleApplier,
+		audit:       audit,
+		logger:      logger,
 	}
 }
 
@@ -91,14 +100,14 @@ func (uc *HandleOIDCCallback) Execute(ctx context.Context, providerSlug, code, s
 		return nil, fmt.Errorf("email domain validation: %w", err)
 	}
 
-	// Map role from claims.
-	role := MapRole(provider.Config.RoleClaim, provider.Config.RoleMapping, provider.Config.DefaultRole, allClaims)
-	_ = role // Role will be used for workspace membership in future; stored for now.
-
 	// Find or create user and OIDC identity link.
 	user, err := uc.findOrCreateUser(ctx, provider.Config, sub, email, name)
 	if err != nil {
 		return nil, fmt.Errorf("find or create user: %w", err)
+	}
+
+	if err := uc.applyDefaultWorkspaceRole(ctx, provider.Config, user.ID, allClaims); err != nil {
+		return nil, fmt.Errorf("applying default workspace role: %w", err)
 	}
 
 	tokens, err := generateTokenPair(ctx, uc.storage, uc.config, user)
@@ -169,13 +178,6 @@ func (uc *HandleOIDCCallback) findOrCreateUser(ctx context.Context, cfg OIDCProv
 			return nil, fmt.Errorf("creating user: %w", err)
 		}
 
-		// Auto-assign to default workspace in single-workspace mode.
-		if uc.config.SingleWorkspaceMode {
-			if err := uc.workspaceAutoAssigner.AutoAssign(ctx, user.ID); err != nil {
-				return nil, fmt.Errorf("auto-assigning to default workspace: %w", err)
-			}
-		}
-
 		recordUserCreated(ctx, uc.audit, user)
 	}
 
@@ -194,4 +196,18 @@ func (uc *HandleOIDCCallback) findOrCreateUser(ctx context.Context, cfg OIDCProv
 	}
 
 	return user, nil
+}
+
+// applyDefaultWorkspaceRole gives the user the role mapped from the claims in
+// the default workspace, acting as the user logging in. It does nothing in
+// multi-workspace mode.
+func (uc *HandleOIDCCallback) applyDefaultWorkspaceRole(ctx context.Context, cfg OIDCProviderConfig, userID uuid.UUID, claims map[string]interface{}) error {
+	if !uc.config.SingleWorkspaceMode {
+		return nil
+	}
+
+	role := MapRole(cfg.RoleClaim, cfg.RoleMapping, cfg.DefaultRole, claims)
+	syncExisting := cfg.RoleClaim != "" && cfg.RoleSync == RoleSyncLogin
+
+	return uc.roleApplier.Apply(connectutil.ContextWithUserID(ctx, userID), userID, role, syncExisting)
 }

@@ -5,6 +5,17 @@ import (
 	"strings"
 )
 
+// RoleSync says when the role from the OIDC claim is applied to a user who is
+// already a member of the default workspace.
+type RoleSync string
+
+const (
+	// RoleSyncLogin applies the claim on every login.
+	RoleSyncLogin RoleSync = "login"
+	// RoleSyncFirstLogin applies the claim only when the user joins.
+	RoleSyncFirstLogin RoleSync = "first_login"
+)
+
 // OIDCProviderConfig holds per-provider OIDC configuration parsed from env vars.
 type OIDCProviderConfig struct {
 	Slug           string
@@ -16,6 +27,7 @@ type OIDCProviderConfig struct {
 	RoleClaim      string            // e.g. "groups" or "roles"
 	RoleMapping    map[string]string // workspace role -> claim value (e.g. "admin" -> "synclet-admins")
 	DefaultRole    string            // default: "viewer"
+	RoleSync       RoleSync          // default: RoleSyncLogin
 	BoundClaims    map[string]string // claim_name -> required_value
 	AllowedDomains []string          // email domain restrictions
 	AutoCreateUser bool              // default: true

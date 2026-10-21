@@ -57,6 +57,9 @@ func authModule(options *RunAppOptions) fx.Option {
 		authUseCasesModule(),
 		authEventHandlersModule(),
 		authJobsModule(options),
+		conditionalFxOptions(options.RunPublicHTTPServer, func() fx.Option {
+			return fx.Invoke(warnOIDCRoleSettingsInMultiWorkspace)
+		}),
 	)
 }
 
@@ -70,11 +73,18 @@ func authConfigModule() fx.Option {
 	)
 }
 
+func warnOIDCRoleSettingsInMultiWorkspace(cfg *authConfig, wsCfg *workspaceConfig, logger *logging.Logger) {
+	for _, warning := range oidcRoleSettingsWarnings(cfg.OIDCProviders, WorkspaceModeSingle == wsCfg.Mode) {
+		logger.Warn(context.Background(), warning)
+	}
+}
+
 func authDependenciesModule() fx.Option {
 	return fx.Provide(
 		fx.Annotate(authstorage.NewStorages, fx.As(new(authservice.Storage))),
 		fx.Annotate(authstorage.NewUserIDStorage, fx.As(new(authservice.UserIDStorage))),
 		fx.Annotate(authadapt.NewWorkspaceAutoAssigner, fx.As(new(authservice.WorkspaceAutoAssigner))),
+		fx.Annotate(authadapt.NewDefaultWorkspaceRoleApplier, fx.As(new(authservice.DefaultWorkspaceRoleApplier))),
 		fx.Annotate(authadapt.NewAuditRecorder, fx.As(new(authservice.AuditRecorder))),
 		fx.Annotate(authadapt.NewWorkspaceMembershipLister, fx.As(new(authservice.WorkspaceMembershipLister))),
 		fx.Annotate(authadapt.NewPasswordResetEmailSender, fx.As(new(authservice.PasswordResetEmailSender))),

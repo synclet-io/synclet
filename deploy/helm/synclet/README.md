@@ -77,6 +77,7 @@ A namespace set there must exist before install.
 | `postgresql.enabled` | Run the bundled PostgreSQL, meant for development and testing | `true` |
 | `externalDatabase.*` | External database (host, port, user, password, database, sslmode) or `existingSecret` with a full DSN | empty |
 | `cors.*` | CORS of the public API (`allowAllOrigins`, `allowedOrigins`, `allowedOriginGlobs`, ...); unset keys keep server defaults | unset |
+| `oidc.providers` | SSO providers; each entry sets `slug`, `issuer`, `clientID`, `clientSecret` and optional role mapping (`roleClaim`, `roleMapAdmin`, `roleMapEditor`, `roleMapViewer`, `defaultRole`, `roleSync`) | `[]` |
 | `extraEnv` | Extra env vars of every Synclet container; `server.extraEnv`, `jobs.extraEnv` and `executor.extraEnv` add to one component | `[]` |
 | `executor.enabled` | Run the executor StatefulSet in distributed mode | `true` |
 | `executor.replicaCount` | Executor replicas in distributed mode | `1` |
@@ -85,6 +86,29 @@ A namespace set there must exist before install.
 | `logArchive.garage.enabled` | Run a bundled single-node Garage S3 store for log archives | `false` |
 
 `values.yaml` documents every value.
+
+## OIDC role mapping
+
+In single-workspace mode an OIDC login sets the user's role in the default workspace from a claim of the ID token.
+`roleClaim` names the claim, a string or a list such as authentik's `groups`, and `roleMapAdmin`, `roleMapEditor` and `roleMapViewer` name the claim value of each role, checked in that order.
+A claim that matches no mapping gives `defaultRole` (`viewer` when unset).
+The workspace's first member always joins as admin.
+`roleSync: login`, the default, applies the claim on every login, so a role changed in the UI is overwritten; `roleSync: first_login` applies it only when the user joins.
+A sync never demotes the workspace's last admin.
+In multi-workspace mode the role keys are ignored and the server logs a warning.
+
+```yaml
+oidc:
+  providers:
+    - slug: authentik
+      issuer: https://auth.example.com/application/o/synclet/
+      clientID: synclet
+      clientSecret: "<client secret>"
+      roleClaim: groups
+      roleMapAdmin: synclet-admins
+      roleMapEditor: synclet-editors
+      roleSync: login
+```
 
 ## Documentation
 

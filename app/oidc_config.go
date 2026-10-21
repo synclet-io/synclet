@@ -67,6 +67,21 @@ func parseOIDCProviderConfig(slug string) (authservice.OIDCProviderConfig, error
 		defaultRole = "viewer"
 	}
 
+	switch defaultRole {
+	case "admin", "editor", "viewer":
+	default:
+		return authservice.OIDCProviderConfig{}, fmt.Errorf("%sDEFAULT_ROLE must be admin, editor or viewer, got %q", prefix, defaultRole)
+	}
+
+	roleSync := authservice.RoleSync(os.Getenv(prefix + "ROLE_SYNC"))
+	switch roleSync {
+	case "":
+		roleSync = authservice.RoleSyncLogin
+	case authservice.RoleSyncLogin, authservice.RoleSyncFirstLogin:
+	default:
+		return authservice.OIDCProviderConfig{}, fmt.Errorf("%sROLE_SYNC must be login or first_login, got %q", prefix, roleSync)
+	}
+
 	autoCreate := os.Getenv(prefix + "AUTO_CREATE_USER")
 	autoCreateUser := autoCreate == "" || autoCreate == "true"
 
@@ -84,6 +99,7 @@ func parseOIDCProviderConfig(slug string) (authservice.OIDCProviderConfig, error
 		RoleClaim:      os.Getenv(prefix + "ROLE_CLAIM"),
 		RoleMapping:    roleMapping,
 		DefaultRole:    defaultRole,
+		RoleSync:       roleSync,
 		BoundClaims:    boundClaims,
 		AllowedDomains: allowedDomains,
 		AutoCreateUser: autoCreateUser,
@@ -144,4 +160,45 @@ func parseOIDCBoundClaims(prefix string) map[string]string {
 	}
 
 	return boundClaims
+}
+
+var oidcRoleSettingSuffixes = []string{
+	"ROLE_CLAIM",
+	"ROLE_MAP_ADMIN",
+	"ROLE_MAP_EDITOR",
+	"ROLE_MAP_VIEWER",
+	"DEFAULT_ROLE",
+	"ROLE_SYNC",
+}
+
+// oidcRoleSettingsWarnings returns one warning per provider that sets a role
+// setting while the server runs in multi-workspace mode, where role settings
+// have no effect.
+func oidcRoleSettingsWarnings(slugs []string, singleWorkspace bool) []string {
+	if singleWorkspace {
+		return nil
+	}
+
+	var warnings []string
+
+	for _, slug := range slugs {
+		prefix := "AUTH_OIDC_" + strings.TrimSpace(strings.ToUpper(slug)) + "_"
+
+		var set []string
+
+		for _, suffix := range oidcRoleSettingSuffixes {
+			if _, ok := os.LookupEnv(prefix + suffix); ok {
+				set = append(set, prefix+suffix)
+			}
+		}
+
+		if len(set) > 0 {
+			warnings = append(warnings, fmt.Sprintf(
+				"OIDC provider %s sets %s, but OIDC role settings apply to single-workspace mode only and are ignored in multi-workspace mode",
+				slug, strings.Join(set, ", "),
+			))
+		}
+	}
+
+	return warnings
 }
