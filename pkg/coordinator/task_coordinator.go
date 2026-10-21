@@ -1,6 +1,7 @@
 package coordinator
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -11,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -20,6 +22,14 @@ import (
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineexec"
 	"github.com/synclet-io/synclet/pkg/protocol"
 )
+
+// connectorOutputTailSize bounds the connector output quoted in a task failure.
+const connectorOutputTailSize = 4096
+
+// connectorTaskTimeout bounds how long a connector task may run.
+//
+//nolint:gochecknoglobals // tests shorten it
+var connectorTaskTimeout = 5 * time.Minute
 
 // TaskConfig holds configuration for the task mode coordinator.
 type TaskConfig struct {
@@ -69,27 +79,27 @@ func RunTask(ctx context.Context, cfg TaskConfig) error {
 
 	// 3. Wait for connector to finish by polling for exit code file.
 	exitCodePath := filepath.Join(cfg.DataDir, "connector.exitcode")
-	if err := waitForFile(ctx, exitCodePath, 5*time.Minute); err != nil {
-		return reportTaskError(cfg, fmt.Errorf("waiting for connector completion: %w", err))
+	stdoutPath := filepath.Join(cfg.DataDir, "connector-stdout.log")
+
+	if err := waitForFile(ctx, exitCodePath, connectorTaskTimeout); err != nil {
+		err = fmt.Errorf("waiting for connector completion: %w", err)
+
+		if tail := connectorOutputTail(stdoutPath, connectorOutputTailSize); tail != "" {
+			tail = cfg.redactor.Redact(tail)
+			slog.Warn("task coordinator: connector did not finish", "task_id", cfg.TaskID, "output_tail", tail)
+
+			err = fmt.Errorf("%w; last connector output:\n%s", err, tail)
+		}
+
+		return reportTaskError(cfg, err)
 	}
 
 	exitCode := waitForExitCode(exitCodePath, 10*time.Second)
 	slog.Info("task coordinator: connector finished", "task_id", cfg.TaskID, "exit_code", exitCode)
 
 	// 4. Read connector stdout log and parse messages.
-	stdoutPath := filepath.Join(cfg.DataDir, "connector-stdout.log")
-
-	// Log raw connector output for debugging (especially useful for non-zero exit codes).
-	if rawOutput, readErr := os.ReadFile(stdoutPath); readErr == nil { //nolint:gosec // path is constructed internally
-		output := string(rawOutput)
-		if len(output) > 4096 {
-			output = output[:4096] + "... (truncated)"
-		}
-
-		slog.Debug("task coordinator: connector output", "task_id", cfg.TaskID, "output", cfg.redactor.Redact(output))
-	} else {
-		slog.Warn("task coordinator: could not read connector output", "task_id", cfg.TaskID, "error", readErr)
-	}
+	slog.Debug("task coordinator: connector output tail", "task_id", cfg.TaskID,
+		"output", cfg.redactor.Redact(connectorOutputTail(stdoutPath, connectorOutputTailSize)))
 
 	stdoutFile, err := os.Open(stdoutPath) //nolint:gosec // path is constructed internally
 	if err != nil {
@@ -98,22 +108,9 @@ func RunTask(ctx context.Context, cfg TaskConfig) error {
 
 	defer func() { _ = stdoutFile.Close() }()
 
-	reader := protocol.NewMessageReader(stdoutFile)
-	var messages []*protocol.AirbyteMessage
-
-	for {
-		msg, err := reader.Read()
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				break
-			}
-
-			slog.Warn("task coordinator: skipping unparseable message", "error", err)
-
-			continue
-		}
-
-		messages = append(messages, msg)
+	messages, err := readTaskMessages(stdoutFile)
+	if err != nil {
+		return reportTaskError(cfg, fmt.Errorf("reading connector output: %w", err))
 	}
 
 	slog.Info("task coordinator: parsed messages", "task_id", cfg.TaskID, "count", len(messages))
@@ -146,6 +143,59 @@ func RunTask(ctx context.Context, cfg TaskConfig) error {
 	slog.Info("task coordinator: result extracted", "task_id", cfg.TaskID, "task_type", cfg.TaskType)
 
 	return reportTaskResult(cfg, true, "", resultBytes)
+}
+
+// readTaskMessages reads every message of a connector's output. A read error,
+// including a message over protocol.MaxMessageSize, ends the read.
+func readTaskMessages(r io.Reader) ([]*protocol.AirbyteMessage, error) {
+	reader := protocol.NewMessageReader(r)
+
+	var messages []*protocol.AirbyteMessage
+
+	for {
+		msg, err := reader.Read()
+		if errors.Is(err, io.EOF) {
+			return messages, nil
+		}
+
+		if err != nil {
+			return messages, err //nolint:wrapcheck // the caller adds the context
+		}
+
+		messages = append(messages, msg)
+	}
+}
+
+// connectorOutputTail returns up to size trailing bytes of the connector output
+// at path, starting at a line boundary when one falls inside the tail. It
+// returns "" when the output is missing or empty.
+func connectorOutputTail(path string, size int64) string {
+	file, err := os.Open(path) //nolint:gosec // path is constructed internally
+	if err != nil {
+		return ""
+	}
+
+	defer func() { _ = file.Close() }()
+
+	info, err := file.Stat()
+	if err != nil || !info.Mode().IsRegular() {
+		return ""
+	}
+
+	offset := max(info.Size()-size, 0)
+
+	data := make([]byte, info.Size()-offset)
+	if _, err := file.ReadAt(data, offset); err != nil && !errors.Is(err, io.EOF) {
+		return ""
+	}
+
+	if offset > 0 {
+		if i := bytes.IndexByte(data, '\n'); i >= 0 && i < len(data)-1 {
+			data = data[i+1:]
+		}
+	}
+
+	return strings.ToValidUTF8(string(bytes.TrimSpace(data)), "")
 }
 
 // extractTaskResult extracts the relevant Airbyte message based on task type
