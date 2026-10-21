@@ -45,6 +45,9 @@ func newOrchestrateCommand() *cobra.Command {
 		Use:    "_orchestrate",
 		Short:  "Run the in-pod coordinator process (internal use only)",
 		Hidden: true,
+		// main prints the returned error; usage text would bury it in pod logs.
+		SilenceUsage:  true,
+		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx, stop := signal.NotifyContext(cmd.Context(), syscall.SIGTERM, os.Interrupt)
 			defer stop()
