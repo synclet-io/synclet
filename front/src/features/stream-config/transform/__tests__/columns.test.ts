@@ -212,3 +212,29 @@ describe('walkColumns', () => {
     expect(walk([{ filter: 'true' }]).issues).toEqual([])
   })
 })
+
+describe('schemaColumns airbyte types', () => {
+  it('reads airbyte_type and WellKnownTypes refs, not only format', () => {
+    const cols = schemaColumns({
+      properties: {
+        created_at: { type: 'string', airbyte_type: 'timestamp_without_timezone' },
+        updated_at: { type: ['null', 'string'], airbyte_type: 'timestamp_with_timezone' },
+        born_on: { type: 'string', airbyte_type: 'date' },
+        seen_at: { $ref: 'WellKnownTypes.json#/definitions/TimestampWithoutTimezone' },
+        day: { $ref: 'WellKnownTypes.json#/definitions/Date' },
+        visits: { type: 'number', airbyte_type: 'integer' },
+        name: { type: 'string' },
+      },
+    })
+    const types = Object.fromEntries(cols.map(c => [c.name, c.type]))
+    expect(types).toMatchObject({
+      created_at: 'timestamp',
+      updated_at: 'timestamp',
+      born_on: 'date',
+      seen_at: 'timestamp',
+      day: 'date',
+      visits: 'integer',
+      name: 'string',
+    })
+  })
+})

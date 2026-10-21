@@ -48,8 +48,32 @@ export function fieldNameProblem(name: string): string | undefined {
   return undefined
 }
 
+const WELL_KNOWN_TYPE_REF = /WellKnownTypes\.json#\/definitions\/(\w+)$/
+
+const WELL_KNOWN_TYPES: Record<string, string> = {
+  TimestampWithTimezone: 'timestamp',
+  TimestampWithoutTimezone: 'timestamp',
+  Date: 'date',
+  Integer: 'integer',
+  Number: 'number',
+  Boolean: 'boolean',
+  String: 'string',
+}
+
+const AIRBYTE_TYPES: Record<string, string> = {
+  timestamp_with_timezone: 'timestamp',
+  timestamp_without_timezone: 'timestamp',
+  date: 'date',
+  integer: 'integer',
+}
+
 export function schemaType(prop: unknown): string {
-  const p = (prop ?? {}) as { type?: string | string[], format?: string }
+  const p = (prop ?? {}) as { type?: string | string[], format?: string, airbyte_type?: string, $ref?: string }
+  const wellKnown = p.$ref?.match(WELL_KNOWN_TYPE_REF)?.[1]
+  if (wellKnown && WELL_KNOWN_TYPES[wellKnown])
+    return WELL_KNOWN_TYPES[wellKnown]
+  if (p.airbyte_type && AIRBYTE_TYPES[p.airbyte_type])
+    return AIRBYTE_TYPES[p.airbyte_type]
   const types = (Array.isArray(p.type) ? p.type : [p.type]).filter((t): t is string => !!t && t !== 'null')
   const type = types[0]
   if (!type)
