@@ -240,7 +240,7 @@ func routeSourceMessages(ctx context.Context, reader *protocol.MessageReader, wr
 		case protocol.MessageTypeLog:
 			// Log messages stay local, not forwarded to destination.
 			if msg.Log != nil {
-				logger.WithFields(map[string]interface{}{"level": msg.Log.Level, "message": logSafe(cfg.Redactor, msg.Log.Message)}).Info(ctx, "source log")
+				logger.WithFields(logFields(cfg.Redactor, msg.Log)).Info(ctx, "source log")
 
 				if err := handler.OnLog(ctx, formatLogLine("[src]", msg.Log)); err != nil {
 					logger.WithError(err).Error(ctx, "failed to handle log")
@@ -396,7 +396,7 @@ func readDestOutput(ctx context.Context, reader *protocol.MessageReader, handler
 
 		case protocol.MessageTypeLog:
 			if msg.Log != nil {
-				logger.WithFields(map[string]interface{}{"level": msg.Log.Level, "message": logSafe(redactor, msg.Log.Message)}).Info(ctx, "dest log")
+				logger.WithFields(logFields(redactor, msg.Log)).Info(ctx, "dest log")
 
 				if err := handler.OnLog(ctx, formatLogLine("[dst]", msg.Log)); err != nil {
 					logger.WithError(err).Error(ctx, "failed to handle log")
@@ -430,6 +430,10 @@ func readDestOutput(ctx context.Context, reader *protocol.MessageReader, handler
 // masked first, then the text is cut to MaxLogLineSize.
 func logSafe(redactor *Redactor, text string) string {
 	return truncateLogLine(redactor.Redact(text))
+}
+
+func logFields(redactor *Redactor, msg *protocol.AirbyteLogMessage) map[string]interface{} {
+	return map[string]interface{}{"level": logSafe(redactor, string(msg.Level)), "message": logSafe(redactor, msg.Message)}
 }
 
 func analyticsFields(redactor *Redactor, msg *protocol.AirbyteAnalyticsTraceMessage) map[string]interface{} {

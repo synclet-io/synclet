@@ -38,10 +38,12 @@ func TestRun_RedactsConnectorTextInProcessLogs(t *testing.T) {
 	longMessage := strings.Repeat("x", MaxLogLineSize-4) + secret + strings.Repeat("y", 1<<10)
 	source := strings.Join([]string{
 		`{"type":"LOG","log":{"level":"INFO","message":"src ` + secret + `"}}`,
+		`{"type":"LOG","log":{"level":"` + secret + `","message":"odd level"}}`,
 		`{"type":"LOG","log":{"level":"INFO","message":"` + longMessage + `"}}`,
 		`{"type":"TRACE","trace":{"type":"ANALYTICS","emitted_at":0,"analytics":{"type":"` + secret + `","value":"` + secret + `"}}}`,
 	}, "\n") + "\n"
 	dest := `{"type":"LOG","log":{"level":"WARN","message":"dst ` + secret + `"}}` + "\n" +
+		`{"type":"LOG","log":{"level":"` + secret + `","message":"odd level"}}` + "\n" +
 		`{"type":"TRACE","trace":{"type":"ANALYTICS","emitted_at":0,"analytics":{"type":"auth","value":"` + secret + `"}}}` + "\n"
 
 	var logs logtest.Recorder
