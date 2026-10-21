@@ -96,3 +96,34 @@ describe('workflowStepsEditor', () => {
     expect(w.get('[data-step="b"]').text()).toContain('Orders')
   })
 })
+
+describe('workflowStepsEditor streams', () => {
+  const withUnconfigured = [
+    { id: 'a', name: 'Orders', streamsConfigured: true },
+    { id: 'b', name: 'Customers', streamsConfigured: false },
+  ]
+
+  function mountWith(steps: WorkflowStepInput[]) {
+    return mount(WorkflowStepsEditor, {
+      props: { modelValue: steps, connections: withUnconfigured },
+      global: { stubs: { RouterLink: { props: ['to'], template: '<a :href="to" v-bind="$attrs"><slot /></a>' } } },
+    })
+  }
+
+  it('offers a connection without configured streams as a disabled option with the reason', () => {
+    const w = mountWith([])
+
+    const option = w.get('option[value="b"]')
+    expect(option.attributes('disabled')).toBeDefined()
+    expect(option.attributes('title')).toBe('Configure streams first')
+    expect(w.get('option[value="a"]').attributes('disabled')).toBeUndefined()
+  })
+
+  it('marks a step whose connection has no configured streams with a link to its streams', () => {
+    const w = mountWith([{ connectionId: 'b', afterConnectionIds: [] }])
+
+    const badge = w.get('[data-step="b"] a')
+    expect(badge.attributes('href')).toBe('/connections/b/streams')
+    expect(badge.text()).toBe('Streams not configured')
+  })
+})

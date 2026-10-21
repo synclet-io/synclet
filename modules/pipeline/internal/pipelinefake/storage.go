@@ -1,12 +1,13 @@
 // Package pipelinefake is an in-memory pipelineservice.Storage for use-case
-// tests. It holds sources, catalog discoveries, connections, jobs, workflows
-// and their runs; every other
+// tests. It holds sources, catalog discoveries, connections, configured
+// catalogs, jobs, workflows and their runs; every other
 // storage panics when used. Transactions run the callback on the same store
 // without rollback.
 package pipelinefake
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"slices"
 	"time"
@@ -17,6 +18,7 @@ import (
 	"github.com/saturn4er/boilerplate-go/lib/filter"
 
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
+	"github.com/synclet-io/synclet/pkg/protocol"
 )
 
 // Storage is the in-memory store.
@@ -26,6 +28,7 @@ type Storage struct {
 	SourcesTable                  *Table[pipelineservice.Source, pipelineservice.SourceFilter]
 	CatalogDiscoveriesTable       *Table[pipelineservice.CatalogDiscovery, pipelineservice.CatalogDiscoveryFilter]
 	ConnectionsTable              *Table[pipelineservice.Connection, pipelineservice.ConnectionFilter]
+	ConfiguredCatalogsTable       *Table[pipelineservice.ConfiguredCatalog, pipelineservice.ConfiguredCatalogFilter]
 	JobsTable                     *Table[pipelineservice.Job, pipelineservice.JobFilter]
 	WorkflowsTable                *Table[pipelineservice.Workflow, pipelineservice.WorkflowFilter]
 	WorkflowStepsTable            *Table[pipelineservice.WorkflowStep, pipelineservice.WorkflowStepFilter]
@@ -46,6 +49,8 @@ func New() *Storage {
 			func(e *pipelineservice.CatalogDiscovery) uuid.UUID { return e.ID }, matchCatalogDiscovery),
 		ConnectionsTable: newTable(pipelineservice.ErrConnectionNotFound,
 			func(e *pipelineservice.Connection) uuid.UUID { return e.ID }, matchConnection),
+		ConfiguredCatalogsTable: newTable(pipelineservice.ErrConfiguredCatalogNotFound,
+			func(e *pipelineservice.ConfiguredCatalog) uuid.UUID { return e.ID }, matchConfiguredCatalog),
 		JobsTable: newTable(pipelineservice.ErrJobNotFound,
 			func(e *pipelineservice.Job) uuid.UUID { return e.ID }, matchJob),
 		WorkflowsTable: newTable(pipelineservice.ErrWorkflowNotFound,
@@ -78,7 +83,35 @@ func (s *Storage) CatalogDiscoveries() pipelineservice.CatalogDiscoveriesStorage
 }
 
 func (s *Storage) Connections() pipelineservice.ConnectionsStorage {
-	return &connections{Table: s.ConnectionsTable}
+	return &connections{Table: s.ConnectionsTable, catalogs: s.ConfiguredCatalogsTable}
+}
+
+func (s *Storage) ConfiguredCatalogs() pipelineservice.ConfiguredCatalogsStorage {
+	return s.ConfiguredCatalogsTable
+}
+
+// ConfigureStreams stores a configured catalog for the connection holding
+// one full-refresh stream per name.
+func (s *Storage) ConfigureStreams(connectionID uuid.UUID, names ...string) {
+	streams := make([]protocol.ConfiguredAirbyteStream, len(names))
+	for i, name := range names {
+		streams[i] = protocol.ConfiguredAirbyteStream{
+			Stream:              protocol.AirbyteStream{Name: name},
+			SyncMode:            protocol.SyncModeFullRefresh,
+			DestinationSyncMode: protocol.DestinationSyncModeOverwrite,
+		}
+	}
+
+	raw, err := json.Marshal(streams)
+	if err != nil {
+		panic(err)
+	}
+
+	s.ConfiguredCatalogsTable.Insert(&pipelineservice.ConfiguredCatalog{
+		ID:           uuid.New(),
+		ConnectionID: connectionID,
+		StreamsJSON:  string(raw),
+	})
 }
 
 func (s *Storage) Jobs() pipelineservice.JobsStorage { return &jobs{Table: s.JobsTable} }
@@ -114,6 +147,29 @@ type unimplementedConnections struct {
 type connections struct {
 	unimplementedConnections
 	*Table[pipelineservice.Connection, pipelineservice.ConnectionFilter]
+
+	catalogs *Table[pipelineservice.ConfiguredCatalog, pipelineservice.ConfiguredCatalogFilter]
+}
+
+func (c *connections) WithConfiguredStreams(_ context.Context, ids []uuid.UUID) (map[uuid.UUID]bool, error) {
+	configured := make(map[uuid.UUID]bool, len(ids))
+
+	for _, catalog := range c.catalogs.All() {
+		if !slices.Contains(ids, catalog.ConnectionID) {
+			continue
+		}
+
+		var streams []json.RawMessage
+		if err := json.Unmarshal([]byte(catalog.StreamsJSON), &streams); err != nil {
+			return nil, fmt.Errorf("decoding configured catalog of connection %s: %w", catalog.ConnectionID, err)
+		}
+
+		if len(streams) > 0 {
+			configured[catalog.ConnectionID] = true
+		}
+	}
+
+	return configured, nil
 }
 
 func (c *connections) FindDueConnections(context.Context, int) ([]pipelineservice.DueConnection, error) {
@@ -379,6 +435,12 @@ func matchConnection(cond *pipelineservice.ConnectionFilter, row *pipelineservic
 		value(cond.ID, row.ID) && value(cond.WorkspaceID, row.WorkspaceID) && value(cond.Name, row.Name) &&
 			value(cond.Status, row.Status) && value(cond.SourceID, row.SourceID) && value(cond.DestinationID, row.DestinationID),
 		matchConnection)
+}
+
+func matchConfiguredCatalog(cond *pipelineservice.ConfiguredCatalogFilter, row *pipelineservice.ConfiguredCatalog) bool {
+	return combine(row, cond.Or, cond.And,
+		value(cond.ID, row.ID) && value(cond.ConnectionID, row.ConnectionID),
+		matchConfiguredCatalog)
 }
 
 func matchJob(cond *pipelineservice.JobFilter, row *pipelineservice.Job) bool {

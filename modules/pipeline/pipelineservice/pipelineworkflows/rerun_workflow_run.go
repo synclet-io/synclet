@@ -36,8 +36,10 @@ func NewRerunWorkflowRun(storage pipelineservice.Storage, audit pipelineservice.
 // event. Steps that succeeded keep
 // their result and are not synced again. A step removed from the workflow
 // since the run is skipped; a step added since joins the run as pending. It
-// returns ErrWorkflowRunNotFailed for a run that did not fail, and
-// ErrWorkflowRunActive while another run of the workflow is running.
+// returns ErrWorkflowRunNotFailed for a run that did not fail,
+// ErrWorkflowRunActive while another run of the workflow is running, and a
+// *NoConfiguredStreamsError when a step the rerun syncs has a connection with
+// no configured stream.
 func (uc *RerunWorkflowRun) Execute(ctx context.Context, params RerunWorkflowRunParams) (*WorkflowRunDetail, error) {
 	var (
 		detail       *WorkflowRunDetail
@@ -67,6 +69,10 @@ func (uc *RerunWorkflowRun) Execute(ctx context.Context, params RerunWorkflowRun
 
 		if active {
 			return pipelineservice.ErrWorkflowRunActive
+		}
+
+		if err := requireRerunnableSteps(ctx, tx, run); err != nil {
+			return err
 		}
 
 		if err := resetStepRuns(ctx, tx, run); err != nil {
@@ -102,6 +108,36 @@ func (uc *RerunWorkflowRun) Execute(ctx context.Context, params RerunWorkflowRun
 	})
 
 	return detail, nil
+}
+
+// requireRerunnableSteps checks the connections of the steps a rerun syncs:
+// the workflow's steps whose step run in the run did not succeed.
+func requireRerunnableSteps(ctx context.Context, tx pipelineservice.Storage, run *pipelineservice.WorkflowRun) error {
+	steps, err := tx.WorkflowSteps().Find(ctx, &pipelineservice.WorkflowStepFilter{WorkflowID: filter.Equals(run.WorkflowID)})
+	if err != nil {
+		return fmt.Errorf("listing steps: %w", err)
+	}
+
+	stepRuns, err := tx.WorkflowStepRuns().Find(ctx, &pipelineservice.WorkflowStepRunFilter{RunID: filter.Equals(run.ID)})
+	if err != nil {
+		return fmt.Errorf("listing step runs: %w", err)
+	}
+
+	succeeded := make(map[uuid.UUID]bool, len(stepRuns))
+	for _, stepRun := range stepRuns {
+		if stepRun.Status == pipelineservice.WorkflowStepRunStatusSucceeded {
+			succeeded[stepRun.StepID] = true
+		}
+	}
+
+	toSync := make([]*pipelineservice.WorkflowStep, 0, len(steps))
+	for _, step := range steps {
+		if !succeeded[step.ID] {
+			toSync = append(toSync, step)
+		}
+	}
+
+	return requireRunnableSteps(ctx, tx, toSync)
 }
 
 func resetStepRuns(ctx context.Context, tx pipelineservice.Storage, run *pipelineservice.WorkflowRun) error {

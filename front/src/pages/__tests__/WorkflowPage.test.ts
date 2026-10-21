@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   run: vi.fn(),
   rerun: vi.fn(),
   push: vi.fn(),
+  connections: [] as Array<Record<string, unknown>>,
 }))
 
 vi.mock('vue-router', () => ({
@@ -29,7 +30,7 @@ vi.mock('@entities/auth', () => ({
 }))
 vi.mock('@entities/connection', () => ({
   useConnections: () => ({
-    data: ref({ items: [{ id: 'a', name: 'Orders' }, { id: 'b', name: 'Customers' }, { id: 'c', name: 'Revenue' }], total: 3 }),
+    data: ref({ items: mocks.connections, total: mocks.connections.length }),
   }),
 }))
 vi.mock('@entities/workflow', () => ({
@@ -113,8 +114,43 @@ describe('workflow page', () => {
     mocks.params = { id: 'w1' }
     mocks.workflow = workflow
     mocks.runs = []
+    mocks.connections = [
+      { id: 'a', name: 'Orders', streamsConfigured: true },
+      { id: 'b', name: 'Customers', streamsConfigured: true },
+      { id: 'c', name: 'Revenue', streamsConfigured: true },
+    ]
     for (const fn of [mocks.update, mocks.create, mocks.run, mocks.rerun, mocks.push])
       fn.mockReset()
+  })
+
+  it('disables Run now while a step\'s connection has no configured streams, with the reason on its wrapper', async () => {
+    mocks.connections[1]!.streamsConfigured = false
+    const w = mountPage()
+    await flushPromises()
+
+    const wrapper = w.get('[data-testid="run-now"]')
+    expect(wrapper.attributes('title')).toBe('Configure streams first: Customers')
+    expect(wrapper.attributes('disabled')).toBeUndefined()
+    expect(button(w, 'Run now')!.attributes('disabled')).toBeDefined()
+  })
+
+  it('enables Run now when every step has configured streams', async () => {
+    const w = mountPage()
+    await flushPromises()
+
+    expect(w.get('[data-testid="run-now"]').attributes('title')).toBeUndefined()
+    expect(button(w, 'Run now')!.attributes('disabled')).toBeUndefined()
+  })
+
+  it('shows a connection without configured streams as disabled in the step picker', async () => {
+    mocks.connections[2]!.streamsConfigured = false
+    const w = mountPage()
+    await flushPromises()
+
+    const option = w.get('select[aria-label="Connection to add"] option[value="c"]')
+    expect(option.attributes('disabled')).toBeDefined()
+    expect(option.attributes('title')).toBe('Configure streams first')
+    expect(option.text()).toBe('Revenue (Configure streams first)')
   })
 
   it('saves the edited steps as a list with their after connections', async () => {

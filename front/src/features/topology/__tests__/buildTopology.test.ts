@@ -54,6 +54,7 @@ function mkConn(id: string, name: string, srcId: string, destId: string, status:
     destinationConnectorName: '',
     tags: [],
     workflows: [],
+    streamsConfigured: true,
   }
 }
 

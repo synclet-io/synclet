@@ -9,9 +9,14 @@ import (
 	pipelinesvc "github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
 )
 
+// hasStreamsSQL is true for a configured_catalogs row (aliased cc) that holds
+// at least one stream.
+const hasStreamsSQL = `CASE WHEN jsonb_typeof(cc.streams_json) = 'array' THEN jsonb_array_length(cc.streams_json) > 0 ELSE FALSE END`
+
 // FindDueConnections finds active connections whose next_scheduled_at has passed.
-// Excludes connections that already have a scheduled/starting/running job and
-// connections whose workspace no longer exists.
+// Excludes connections without a configured stream, connections that already
+// have a scheduled/starting/running job and connections whose workspace no
+// longer exists.
 // Ordered by next_scheduled_at ASC (earliest-due first).
 func (s *ConnectionsStorage) FindDueConnections(ctx context.Context, limit int) ([]pipelinesvc.DueConnection, error) {
 	type row struct {
@@ -31,6 +36,10 @@ func (s *ConnectionsStorage) FindDueConnections(ctx context.Context, limit int) 
 		     WHERE c.status = ?
 		       AND c.next_scheduled_at IS NOT NULL
 		       AND c.next_scheduled_at <= NOW()
+		       AND EXISTS (
+		         SELECT 1 FROM pipeline.configured_catalogs cc
+		         WHERE cc.connection_id = c.id AND `+hasStreamsSQL+`
+		       )
 		       AND NOT EXISTS (
 		         SELECT 1 FROM pipeline.jobs j
 		         WHERE j.connection_id = c.id
@@ -88,4 +97,31 @@ func (s *ConnectionsStorage) ListTagCounts(ctx context.Context, workspaceID uuid
 	}
 
 	return counts, nil
+}
+
+// WithConfiguredStreams returns the IDs among ids of the connections that have
+// at least one configured stream.
+func (s *ConnectionsStorage) WithConfiguredStreams(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]bool, error) {
+	configured := make(map[uuid.UUID]bool, len(ids))
+	if len(ids) == 0 {
+		return configured, nil
+	}
+
+	var found []uuid.UUID
+
+	result := s.DB.WithContext(ctx).
+		Raw(`SELECT cc.connection_id
+		     FROM pipeline.configured_catalogs cc
+		     WHERE cc.connection_id IN ? AND `+hasStreamsSQL,
+			ids).
+		Scan(&found)
+	if result.Error != nil {
+		return nil, fmt.Errorf("finding connections with configured streams: %w", result.Error)
+	}
+
+	for _, id := range found {
+		configured[id] = true
+	}
+
+	return configured, nil
 }

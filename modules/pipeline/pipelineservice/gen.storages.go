@@ -65,6 +65,9 @@ type ConnectionsStorage interface {
 	// ListTagCounts returns every tag used by the workspace's connections with the
 	// number of connections carrying it, ordered by tag.
 	ListTagCounts(ctx context.Context, workspaceID uuid.UUID) ([]TagCount, error)
+	// WithConfiguredStreams returns the IDs among ids of the connections that
+	// have at least one configured stream.
+	WithConfiguredStreams(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]bool, error)
 	// end user code 'Connection metods'
 }
 

@@ -10,6 +10,8 @@ import (
 	"github.com/saturn4er/boilerplate-go/lib/filter"
 
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinecatalog"
+	"github.com/synclet-io/synclet/pkg/protocol"
 )
 
 // CreateConnectionParams holds parameters for creating a connection.
@@ -27,10 +29,13 @@ type CreateConnectionParams struct {
 	Tags                  []string
 	// Status defaults to active when not a valid connection status.
 	Status pipelineservice.ConnectionStatus
+	// Streams, when given, are configured in the same transaction, with the
+	// validation of ConfigureStreams.
+	Streams []protocol.ConfiguredAirbyteStream
 }
 
-// CreateConnection creates a new connection between a source and a destination.
-// It validates that the source and destination exist within the workspace using
+// CreateConnection creates a new connection between a source and a destination,
+// and configures its streams when they are given. It validates that the source and destination exist within the workspace using
 // direct storage queries, eliminating the need for SourceValidator and
 // DestinationValidator adapter interfaces.
 type CreateConnection struct {
@@ -116,9 +121,30 @@ func (uc *CreateConnection) Execute(ctx context.Context, params CreateConnection
 	}
 	pipelineservice.RecomputeNextScheduledAt(conn, now)
 
-	created, err := uc.storage.Connections().Create(ctx, conn)
+	var created *pipelineservice.Connection
+
+	err = uc.storage.ExecuteInTransaction(ctx, func(ctx context.Context, tx pipelineservice.Storage) error {
+		if len(params.Streams) > 0 {
+			if err := pipelinecatalog.PrepareStreams(ctx, tx, params.SourceID, params.Streams); err != nil {
+				return err
+			}
+		}
+
+		created, err = tx.Connections().Create(ctx, conn)
+		if err != nil {
+			return fmt.Errorf("creating connection: %w", err)
+		}
+
+		if len(params.Streams) > 0 {
+			if _, err := pipelinecatalog.SaveStreams(ctx, tx, created.ID, params.Streams); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
 	if err != nil {
-		return nil, fmt.Errorf("creating connection: %w", err)
+		return nil, err
 	}
 
 	uc.audit.Record(ctx, pipelineservice.AuditEvent{

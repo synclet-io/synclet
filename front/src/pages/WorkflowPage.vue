@@ -12,6 +12,7 @@ import {
   useWorkflow,
   useWorkflowRuns,
 } from '@entities/workflow'
+import { CONFIGURE_STREAMS_FIRST } from '@features/stream-config/streamsConfigured'
 import { WorkflowStepsEditor } from '@features/workflow-editor'
 import { runStatusVariant, sortStepRunsByGraph, stepDisplayStatus, stepStatusVariant, WorkflowGraph } from '@features/workflow-graph'
 import { describeCron } from '@shared/lib/cron'
@@ -38,7 +39,7 @@ const { data: workflow, error: workflowError } = useWorkflow(id)
 const { data: runs } = useWorkflowRuns(id)
 const { data: connectionPage } = useConnections()
 
-const connections = computed(() => (connectionPage.value?.items ?? []).map(c => ({ id: c.id, name: c.name })))
+const connections = computed(() => (connectionPage.value?.items ?? []).map(c => ({ id: c.id, name: c.name, streamsConfigured: c.streamsConfigured })))
 const connectionNames = computed(() => new Map(connections.value.map(c => [c.id, c.name])))
 
 function connectionName(connectionId: string): string {
@@ -59,6 +60,17 @@ watch(workflow, (w) => {
 
 const selectedRunId = ref('')
 const activeRun = computed(() => runs.value?.find(r => r.status === 'running'))
+const stepsWithoutStreams = computed(() => {
+  const configured = new Map(connections.value.map(c => [c.id, c.streamsConfigured]))
+  return (workflow.value?.steps ?? []).filter(s => configured.get(s.connectionId) === false)
+})
+const runBlockedReason = computed(() => {
+  if (activeRun.value)
+    return 'A run is in progress'
+  if (stepsWithoutStreams.value.length > 0)
+    return `${CONFIGURE_STREAMS_FIRST}: ${stepsWithoutStreams.value.map(s => connectionName(s.connectionId)).join(', ')}`
+  return undefined
+})
 
 const createMutation = useCreateWorkflow()
 const updateMutation = useUpdateWorkflow()
@@ -182,15 +194,16 @@ const title = computed(() => (isNew.value ? 'New workflow' : workflow.value?.nam
 <template>
   <PageHeader :title="title" back-to="/workflows" back-label="Workflows">
     <template v-if="!isNew && canEdit" #actions>
-      <SButton
-        size="sm"
-        :loading="runMutation.isPending.value"
-        :disabled="!!activeRun"
-        :title="activeRun ? 'A run is in progress' : undefined"
-        @click="runNow"
-      >
-        Run now
-      </SButton>
+      <span class="inline-flex" data-testid="run-now" :title="runBlockedReason">
+        <SButton
+          size="sm"
+          :loading="runMutation.isPending.value"
+          :disabled="!!runBlockedReason"
+          @click="runNow"
+        >
+          Run now
+        </SButton>
+      </span>
       <SButton variant="danger" size="sm" :disabled="!!activeRun" @click="confirmingDelete = true">
         Delete
       </SButton>

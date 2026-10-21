@@ -9,7 +9,7 @@ const props = defineProps<{
   label?: string
   error?: string
   tooltip?: string
-  options: Array<{ label: string, value: string | number }>
+  options: Array<{ label: string, value: string | number, disabled?: boolean, title?: string }>
   modelValue?: string | number
   placeholder?: string
   required?: boolean
@@ -57,7 +57,7 @@ const errorId = computed(() => props.error ? `${selectId.value}-error` : undefin
         <option v-if="placeholder" value="" disabled>
           {{ placeholder }}
         </option>
-        <option v-for="opt in options" :key="opt.value" :value="opt.value">
+        <option v-for="opt in options" :key="opt.value" :value="opt.value" :disabled="opt.disabled" :title="opt.title">
           {{ opt.label }}
         </option>
       </select>

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/saturn4er/boilerplate-go/lib/filter"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -42,6 +43,7 @@ func newWorkflowFixture(t *testing.T, names []string, after map[string][]string)
 	for _, name := range names {
 		conn := &pipelineservice.Connection{ID: uuid.New(), WorkspaceID: workspaceID, Name: name, Status: pipelineservice.ConnectionStatusActive, MaxAttempts: 2}
 		store.ConnectionsTable.Insert(conn)
+		store.ConfigureStreams(conn.ID, "users")
 
 		step := &pipelineservice.WorkflowStep{ID: uuid.New(), WorkflowID: workflow.ID, ConnectionID: conn.ID}
 		store.WorkflowStepsTable.Insert(step)
@@ -303,6 +305,28 @@ func TestAdvanceWorkflowRuns_PausedConnectionSkipsStep(t *testing.T) {
 	done := fx.finishJob(t, "X", pipelineservice.JobStatusCompleted)
 	require.NoError(t, advancer.ExecuteForJob(ctx, done))
 	assert.Equal(t, pipelineservice.WorkflowRunStatusSucceeded, fx.runStatus(), "a paused-connection skip alone does not fail the run")
+}
+
+func TestAdvanceWorkflowRuns_ConnectionWithoutStreamsFailsStep(t *testing.T) {
+	ctx := context.Background()
+	fx := newWorkflowFixture(t, []string{"A", "B", "X"}, map[string][]string{"B": {"A"}})
+
+	require.NoError(t, fx.store.ConfiguredCatalogs().Delete(ctx, &pipelineservice.ConfiguredCatalogFilter{
+		ConnectionID: filter.Equals(fx.steps["A"].ConnectionID),
+	}))
+
+	advancer := newAdvancer(fx.store, 10)
+	require.NoError(t, advancer.Execute(ctx, fx.runID))
+
+	assert.Equal(t, pipelineservice.WorkflowStepRunStatusFailed, fx.status("A"), "a step whose connection has no configured streams fails")
+	require.NotNil(t, fx.stepRun("A").Error)
+	assert.Contains(t, *fx.stepRun("A").Error, `connection "A" has no configured streams`)
+	assert.Empty(t, fx.jobsFor("A"), "no job is created for it")
+	assert.Equal(t, pipelineservice.WorkflowStepRunStatusSkipped, fx.status("B"), "everything downstream of it is skipped")
+
+	done := fx.finishJob(t, "X", pipelineservice.JobStatusCompleted)
+	require.NoError(t, advancer.ExecuteForJob(ctx, done))
+	assert.Equal(t, pipelineservice.WorkflowRunStatusFailed, fx.runStatus())
 }
 
 func (fx *workflowFixture) finishedEvents() []*pipelineservice.WorkflowRunFinishedEventData {

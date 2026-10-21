@@ -4,6 +4,7 @@ package pipelineworkflows
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -61,7 +62,7 @@ func workflowToAuditPayload(detail *WorkflowDetail) map[string]any {
 }
 
 // validateDefinition checks a workflow's name, schedule and graph, and that
-// every step is a connection of the workspace.
+// every step is a connection of the workspace with configured streams.
 func validateDefinition(
 	ctx context.Context,
 	tx pipelineservice.Storage,
@@ -108,7 +109,34 @@ func validateDefinition(
 		}
 	}
 
-	return nil
+	var noStreams *pipelineservice.NoConfiguredStreamsError
+
+	err = pipelineservice.RequireConfiguredStreams(ctx, tx, conns...)
+	if errors.As(err, &noStreams) {
+		return &pipelineservice.ValidationError{Field: "steps", Message: noStreams.Error()}
+	}
+
+	return err
+}
+
+// requireRunnableSteps returns a *NoConfiguredStreamsError when a connection
+// of the given steps has no configured stream.
+func requireRunnableSteps(ctx context.Context, tx pipelineservice.Storage, steps []*pipelineservice.WorkflowStep) error {
+	if len(steps) == 0 {
+		return nil
+	}
+
+	ids := make([]uuid.UUID, len(steps))
+	for i, step := range steps {
+		ids[i] = step.ConnectionID
+	}
+
+	conns, err := tx.Connections().Find(ctx, &pipelineservice.ConnectionFilter{ID: filter.In(ids...)})
+	if err != nil {
+		return fmt.Errorf("loading step connections: %w", err)
+	}
+
+	return pipelineservice.RequireConfiguredStreams(ctx, tx, conns...)
 }
 
 func normalizeSchedule(schedule *string) *string {

@@ -31,6 +31,8 @@ export interface Connection {
   tags: string[]
   /** Workflows the connection is a step of; such a connection has no schedule of its own. */
   workflows: ConnectionWorkflow[]
+  /** Whether at least one stream is configured; a connection without one cannot sync. */
+  streamsConfigured: boolean
 }
 
 export interface ConnectionWorkflow {

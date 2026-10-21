@@ -36,9 +36,13 @@ func mapError(err error) error {
 		return connect.NewError(connect.CodeFailedPrecondition, inUseErr)
 	}
 
+	if noStreamsErr, ok := lo.ErrorsAs[*pipelineservice.NoConfiguredStreamsError](err); ok {
+		return connect.NewError(connect.CodeFailedPrecondition, noStreamsErr)
+	}
+
 	if errors.Is(err, pipelineservice.ErrConnectorNotLinked) || errors.Is(err, pipelineservice.ErrNoCachedSpec) ||
 		errors.Is(err, pipelineservice.ErrWorkflowRunActive) || errors.Is(err, pipelineservice.ErrWorkflowRunNotFailed) ||
-		errors.Is(err, pipelineservice.ErrConnectionInWorkflow) {
+		errors.Is(err, pipelineservice.ErrConnectionInWorkflow) || errors.Is(err, pipelineservice.ErrCatalogNotReady) {
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	}
 

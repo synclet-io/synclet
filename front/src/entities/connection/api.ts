@@ -100,6 +100,7 @@ function mapConnection(proto: ProtoConnection): Connection {
     destinationConnectorName: proto.destinationConnectorName,
     tags: proto.tags ?? [],
     workflows: (proto.workflows ?? []).map(w => ({ id: w.id, name: w.name })),
+    streamsConfigured: proto.streamsConfigured ?? false,
   }
 }
 

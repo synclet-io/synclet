@@ -10,7 +10,6 @@ import (
 	"github.com/saturn4er/boilerplate-go/lib/filter"
 
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
-	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelineconnections"
 	"github.com/synclet-io/synclet/pkg/protocol"
 )
 
@@ -22,26 +21,19 @@ type GetDiscoveredCatalogForConnectionParams struct {
 
 // GetDiscoveredCatalogForConnection resolves the source from a connection and reads the cached catalog.
 type GetDiscoveredCatalogForConnection struct {
-	getConnection *pipelineconnections.GetConnection
-	storage       pipelineservice.Storage
+	storage pipelineservice.Storage
 }
 
 // NewGetDiscoveredCatalogForConnection creates a new GetDiscoveredCatalogForConnection use case.
-func NewGetDiscoveredCatalogForConnection(
-	getConnection *pipelineconnections.GetConnection,
-	storage pipelineservice.Storage,
-) *GetDiscoveredCatalogForConnection {
-	return &GetDiscoveredCatalogForConnection{
-		getConnection: getConnection,
-		storage:       storage,
-	}
+func NewGetDiscoveredCatalogForConnection(storage pipelineservice.Storage) *GetDiscoveredCatalogForConnection {
+	return &GetDiscoveredCatalogForConnection{storage: storage}
 }
 
 // Execute resolves connection -> source -> read cached catalog from CatalogDiscovery.
 func (uc *GetDiscoveredCatalogForConnection) Execute(ctx context.Context, params GetDiscoveredCatalogForConnectionParams) (*protocol.AirbyteCatalog, error) {
-	conn, err := uc.getConnection.Execute(ctx, pipelineconnections.GetConnectionParams{
-		ID:          params.ConnectionID,
-		WorkspaceID: params.WorkspaceID,
+	conn, err := uc.storage.Connections().First(ctx, &pipelineservice.ConnectionFilter{
+		ID:          filter.Equals(params.ConnectionID),
+		WorkspaceID: filter.Equals(params.WorkspaceID),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("getting connection: %w", err)

@@ -197,10 +197,16 @@ async function saveConfig() {
     return
   }
 
+  const configured = toConfiguredStreams(streams.value)
+  if (configured.length === 0) {
+    error.value = 'Enable at least one stream: a connection without streams cannot sync.'
+    return
+  }
+
   saving.value = true
   error.value = ''
   try {
-    await configureStreamsMutation.mutateAsync({ connectionId: id, streams: toConfiguredStreams(streams.value) })
+    await configureStreamsMutation.mutateAsync({ connectionId: id, streams: configured })
     savedSnapshot.value = configSnapshot(streams.value)
     router.push(`/connections/${id}`)
   }

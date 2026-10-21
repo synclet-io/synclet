@@ -40,6 +40,7 @@ func TestWorkflowHandler(t *testing.T) {
 	a, b := uuid.New(), uuid.New()
 	for _, id := range []uuid.UUID{a, b} {
 		store.ConnectionsTable.Insert(&pipelineservice.Connection{ID: id, WorkspaceID: workspaceID, Status: pipelineservice.ConnectionStatusActive})
+		store.ConfigureStreams(id, "users")
 	}
 
 	foreign := uuid.New()

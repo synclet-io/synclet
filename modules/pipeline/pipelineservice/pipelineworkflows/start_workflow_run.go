@@ -2,9 +2,11 @@ package pipelineworkflows
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/saturn4er/boilerplate-go/lib/filter"
 
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinejobs"
@@ -56,6 +58,15 @@ func (uc *StartWorkflowRun) Execute(ctx context.Context, params StartWorkflowRun
 
 		if active {
 			return pipelineservice.ErrWorkflowRunActive
+		}
+
+		steps, err := tx.WorkflowSteps().Find(ctx, &pipelineservice.WorkflowStepFilter{WorkflowID: filter.Equals(workflow.ID)})
+		if err != nil {
+			return fmt.Errorf("listing steps: %w", err)
+		}
+
+		if err := requireRunnableSteps(ctx, tx, steps); err != nil {
+			return err
 		}
 
 		run, err := pipelinejobs.CreateWorkflowRun(ctx, tx, workflow.ID, pipelineservice.WorkflowRunTriggerManual, time.Now())

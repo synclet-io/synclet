@@ -12,10 +12,11 @@ const DST_S3 = '44444444-4444-4444-8444-444444444444'
 
 const mocks = vi.hoisted(() => ({
   connections: [] as Array<Record<string, unknown>>,
+  triggerSync: vi.fn(),
 }))
 
 function conn(id: string, name: string, sourceId: string, destinationId: string, tags: string[] = []) {
-  return { id, name, sourceId, destinationId, sourceName: '', destinationName: '', status: 'active', schedule: '', pendingSchemaChanges: 0, tags }
+  return { id, name, sourceId, destinationId, sourceName: '', destinationName: '', status: 'active', schedule: '', pendingSchemaChanges: 0, tags, streamsConfigured: true }
 }
 
 vi.mock('@entities/connection', () => ({
@@ -38,6 +39,9 @@ vi.mock('@entities/connection/api', () => ({
   enableConnection: vi.fn(),
   disableConnection: vi.fn(),
   listConnections: vi.fn(),
+}))
+vi.mock('@entities/job', () => ({
+  useTriggerSync: () => ({ mutateAsync: mocks.triggerSync, isPending: ref(false) }),
 }))
 vi.mock('@entities/source', () => ({
   useSources: () => ({ data: ref({ items: [{ id: SRC_PG, name: 'Postgres' }, { id: SRC_MYSQL, name: 'MySQL' }] }) }),
@@ -223,5 +227,39 @@ describe('connectionsPage tags', () => {
     await wrapper.findAll('button').find(b => b.text() === 'Clear filters')!.trigger('click')
     await flushPromises()
     expect(router.currentRoute.value.query).toEqual({})
+  })
+})
+
+describe('connectionsPage streams', () => {
+  beforeEach(() => {
+    document.body.innerHTML = ''
+    mocks.connections = [
+      conn('c1', 'PG to BQ', SRC_PG, DST_BQ),
+      { ...conn('c2', 'MySQL to BQ', SRC_MYSQL, DST_BQ), streamsConfigured: false },
+    ]
+  })
+
+  it('disables Sync Now for a connection without configured streams, with the reason on its wrapper', async () => {
+    mocks.triggerSync.mockReset()
+    const { wrapper } = await mountAt()
+
+    const blocked = wrapper.find('[data-sync-now="c2"]')
+    expect(blocked.attributes('title')).toBe('Configure streams first')
+    expect(blocked.attributes('disabled')).toBeUndefined()
+    expect(blocked.find('button').attributes('disabled')).toBeDefined()
+
+    const ready = wrapper.find('[data-sync-now="c1"]')
+    expect(ready.find('button').attributes('disabled')).toBeUndefined()
+    await ready.find('button').trigger('click')
+    expect(mocks.triggerSync).toHaveBeenCalledWith('c1')
+  })
+
+  it('marks a connection without configured streams and links to its streams', async () => {
+    const { wrapper } = await mountAt()
+
+    const badges = wrapper.findAll('a[href$="/streams"]')
+    expect(badges).toHaveLength(1)
+    expect(badges[0]!.attributes('href')).toBe('/connections/c2/streams')
+    expect(badges[0]!.text()).toBe('Streams not configured')
   })
 })

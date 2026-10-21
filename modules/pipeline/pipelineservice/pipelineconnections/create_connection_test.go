@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"encoding/json"
+
 	"github.com/go-pnp/go-pnp/pkg/optionutil"
 	"github.com/google/uuid"
 	"github.com/saturn4er/boilerplate-go/lib/dbutil"
@@ -14,6 +16,7 @@ import (
 	"github.com/synclet-io/synclet/modules/pipeline/internal/pipelinefake"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelineconnections"
+	"github.com/synclet-io/synclet/pkg/protocol"
 )
 
 // TestCreateConnection_DoesNotCarryStateFromAnotherConnection verifies that the
@@ -124,11 +127,19 @@ type createConnStore struct {
 	connections  *createConnConnectionsStorage
 	connStates   *createConnConnectionStatesStorage
 	streamGens   *createConnStreamGenerationsStorage
-	workflows    *pipelinefake.Storage
+	fake         *pipelinefake.Storage
 }
 
 func (s *createConnStore) WorkflowSteps() pipelineservice.WorkflowStepsStorage {
-	return s.workflows.WorkflowSteps()
+	return s.fake.WorkflowSteps()
+}
+
+func (s *createConnStore) CatalogDiscoveries() pipelineservice.CatalogDiscoveriesStorage {
+	return s.fake.CatalogDiscoveries()
+}
+
+func (s *createConnStore) ConfiguredCatalogs() pipelineservice.ConfiguredCatalogsStorage {
+	return s.fake.ConfiguredCatalogs()
 }
 
 func (s *createConnStore) ExecuteInTransaction(ctx context.Context, cb func(ctx context.Context, tx pipelineservice.Storage) error) error {
@@ -156,7 +167,7 @@ func newCreateConnStore(workspaceID, sourceID, destID uuid.UUID) *createConnStor
 		streamGens: &createConnStreamGenerationsStorage{
 			records: map[string]*pipelineservice.StreamGeneration{},
 		},
-		workflows: pipelinefake.New(),
+		fake: pipelinefake.New(),
 	}
 }
 
@@ -277,4 +288,101 @@ func TestCreateConnection_InvalidTagIsValidationError(t *testing.T) {
 	assert.Equal(t, "tags", validationErr.Field)
 	assert.Contains(t, err.Error(), `"fin ance"`)
 	assert.Empty(t, store.connections.records)
+}
+
+func seedDiscovery(t *testing.T, store *createConnStore, sourceID uuid.UUID, streams ...string) {
+	t.Helper()
+
+	catalog := protocol.AirbyteCatalog{}
+	for _, name := range streams {
+		catalog.Streams = append(catalog.Streams, protocol.AirbyteStream{
+			Name:               name,
+			JSONSchema:         json.RawMessage(`{"properties":{"id":{"type":"integer"}}}`),
+			SupportedSyncModes: []protocol.SyncMode{protocol.SyncModeFullRefresh},
+		})
+	}
+
+	raw, err := json.Marshal(catalog)
+	require.NoError(t, err)
+
+	store.fake.CatalogDiscoveriesTable.Insert(&pipelineservice.CatalogDiscovery{
+		ID:          uuid.New(),
+		SourceID:    sourceID,
+		Version:     1,
+		CatalogJSON: string(raw),
+	})
+}
+
+func fullRefresh(name string) protocol.ConfiguredAirbyteStream {
+	return protocol.ConfiguredAirbyteStream{
+		Stream:              protocol.AirbyteStream{Name: name},
+		SyncMode:            protocol.SyncModeFullRefresh,
+		DestinationSyncMode: protocol.DestinationSyncModeOverwrite,
+	}
+}
+
+func TestCreateConnection_Streams(t *testing.T) {
+	workspaceID, sourceID, destID := uuid.New(), uuid.New(), uuid.New()
+
+	create := func(store *createConnStore, streams ...protocol.ConfiguredAirbyteStream) (*pipelineservice.Connection, error) {
+		uc := pipelineconnections.NewCreateConnection(store, pipelineservice.Config{DefaultMaxAttempts: 3}, pipelineservice.NoopAuditRecorder{})
+
+		return uc.Execute(context.Background(), pipelineconnections.CreateConnectionParams{
+			WorkspaceID:   workspaceID,
+			Name:          "pg-to-bq",
+			SourceID:      sourceID,
+			DestinationID: destID,
+			Streams:       streams,
+		})
+	}
+
+	t.Run("configures the given streams with the connection", func(t *testing.T) {
+		store := newCreateConnStore(workspaceID, sourceID, destID)
+		seedDiscovery(t, store, sourceID, "users", "orders")
+
+		created, err := create(store, fullRefresh("users"))
+		require.NoError(t, err)
+
+		catalogs := store.fake.ConfiguredCatalogsTable.All()
+		require.Len(t, catalogs, 1)
+		assert.Equal(t, created.ID, catalogs[0].ConnectionID)
+
+		var stored []protocol.ConfiguredAirbyteStream
+		require.NoError(t, json.Unmarshal([]byte(catalogs[0].StreamsJSON), &stored))
+		require.Len(t, stored, 1)
+		assert.Equal(t, "users", stored[0].Stream.Name)
+		assert.JSONEq(t, `{"properties":{"id":{"type":"integer"}}}`, string(stored[0].Stream.JSONSchema),
+			"the stream is enriched from the discovered catalog")
+	})
+
+	t.Run("catalog not discovered yet creates nothing", func(t *testing.T) {
+		store := newCreateConnStore(workspaceID, sourceID, destID)
+
+		_, err := create(store, fullRefresh("users"))
+		require.ErrorIs(t, err, pipelineservice.ErrCatalogNotReady)
+		assert.Contains(t, err.Error(), "retry")
+		assert.Empty(t, store.connections.records)
+		assert.Empty(t, store.fake.ConfiguredCatalogsTable.All())
+	})
+
+	t.Run("invalid stream creates nothing", func(t *testing.T) {
+		store := newCreateConnStore(workspaceID, sourceID, destID)
+		seedDiscovery(t, store, sourceID, "users")
+
+		_, err := create(store, fullRefresh("missing"))
+
+		var validationErr *pipelineservice.ValidationError
+		require.ErrorAs(t, err, &validationErr)
+		assert.Empty(t, store.connections.records)
+		assert.Empty(t, store.fake.ConfiguredCatalogsTable.All())
+	})
+
+	t.Run("without streams the connection is created unconfigured", func(t *testing.T) {
+		store := newCreateConnStore(workspaceID, sourceID, destID)
+
+		created, err := create(store)
+		require.NoError(t, err)
+		assert.Contains(t, store.connections.records, created.ID)
+		assert.Empty(t, store.fake.ConfiguredCatalogsTable.All())
+	})
 }

@@ -313,7 +313,7 @@ func TestDeleteConnection(t *testing.T) {
 		store := newCreateConnStore(ws, uuid.New(), uuid.New())
 		conn := &pipelineservice.Connection{ID: uuid.New(), WorkspaceID: ws}
 		seedConnection(t, store, conn)
-		store.workflows.WorkflowStepsTable.Insert(&pipelineservice.WorkflowStep{ID: uuid.New(), WorkflowID: uuid.New(), ConnectionID: conn.ID})
+		store.fake.WorkflowStepsTable.Insert(&pipelineservice.WorkflowStep{ID: uuid.New(), WorkflowID: uuid.New(), ConnectionID: conn.ID})
 
 		audit := &recordingAudit{}
 		uc := pipelineconnections.NewDeleteConnection(store, audit)

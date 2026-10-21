@@ -349,7 +349,9 @@ func (s *runState) settleQueued(ctx context.Context, tx pipelineservice.Storage)
 
 // enqueueReady creates a sync job for each ready step whose connection is
 // active and has no active job, while budget lasts. A step of a connection
-// that is not active is skipped with everything downstream of it.
+// that is not active is skipped with everything downstream of it; a step of
+// a connection with no configured stream fails, and what lies downstream of
+// it is skipped.
 func (s *runState) enqueueReady(ctx context.Context, tx pipelineservice.Storage, budget *int) error {
 	for _, stepID := range pipelineservice.ReadySteps(s.statuses(), s.deps) {
 		stepRun := s.byStep[stepID]
@@ -379,6 +381,18 @@ func (s *runState) enqueueReady(ctx context.Context, tx pipelineservice.Storage,
 		}
 
 		if active > 0 || *budget <= 0 {
+			continue
+		}
+
+		if err := pipelineservice.RequireConfiguredStreams(ctx, tx, conn); err != nil {
+			var noStreams *pipelineservice.NoConfiguredStreamsError
+			if !errors.As(err, &noStreams) {
+				return err
+			}
+
+			reason := noStreams.Error()
+			s.finish(stepRun, pipelineservice.WorkflowStepRunStatusFailed, &reason, s.now)
+
 			continue
 		}
 

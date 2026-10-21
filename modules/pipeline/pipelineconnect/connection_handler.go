@@ -38,7 +38,8 @@ type ConnectionHandler struct {
 	getConnection    *pipelineconnections.GetConnection
 	listConnections  *pipelineconnections.ListConnections
 
-	listConnectionTags *pipelineconnections.ListConnectionTags
+	listConnectionTags         *pipelineconnections.ListConnectionTags
+	listConnectionsWithStreams *pipelineconnections.ListConnectionsWithStreams
 
 	resolveConnectionEndpoints *pipelineconnections.ResolveConnectionEndpoints
 
@@ -82,6 +83,7 @@ func NewConnectionHandler(
 	getConnection *pipelineconnections.GetConnection,
 	listConnections *pipelineconnections.ListConnections,
 	listConnectionTags *pipelineconnections.ListConnectionTags,
+	listConnectionsWithStreams *pipelineconnections.ListConnectionsWithStreams,
 	resolveConnectionEndpoints *pipelineconnections.ResolveConnectionEndpoints,
 	listConnectionWorkflows *pipelineworkflows.ListConnectionWorkflows,
 	enableConnection *pipelineconnections.EnableConnection,
@@ -109,6 +111,7 @@ func NewConnectionHandler(
 		getConnection:                     getConnection,
 		listConnections:                   listConnections,
 		listConnectionTags:                listConnectionTags,
+		listConnectionsWithStreams:        listConnectionsWithStreams,
 		resolveConnectionEndpoints:        resolveConnectionEndpoints,
 		listConnectionWorkflows:           listConnectionWorkflows,
 		enableConnection:                  enableConnection,
@@ -168,6 +171,11 @@ func (h *ConnectionHandler) CreateConnection(ctx context.Context, req *connect.R
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid destination_id: %w", err))
 	}
 
+	streams, err := streamsFromProto(req.Msg.GetStreams())
+	if err != nil {
+		return nil, err
+	}
+
 	conn, err := h.createConnection.Execute(ctx, pipelineconnections.CreateConnectionParams{
 		WorkspaceID:           workspaceID,
 		Name:                  req.Msg.GetName(),
@@ -180,13 +188,19 @@ func (h *ConnectionHandler) CreateConnection(ctx context.Context, req *connect.R
 		CustomNamespaceFormat: stringPtrFromProto(req.Msg.GetCustomNamespaceFormat()),
 		StreamPrefix:          stringPtrFromProto(req.Msg.GetStreamPrefix()),
 		Tags:                  req.Msg.GetTags(),
+		Streams:               streams,
 	})
 	if err != nil {
 		return nil, mapError(err)
 	}
 
+	protoConn := connectionToProto(conn)
+	if err := h.setStreamsConfigured(ctx, []*pipelineservice.Connection{conn}, []*pipelinev1.Connection{protoConn}); err != nil {
+		return nil, err
+	}
+
 	return connect.NewResponse(&pipelinev1.CreateConnectionResponse{
-		Connection: connectionToProto(conn),
+		Connection: protoConn,
 	}), nil
 }
 
@@ -315,6 +329,10 @@ func (h *ConnectionHandler) GetConnection(ctx context.Context, req *connect.Requ
 		return nil, err
 	}
 
+	if err := h.setStreamsConfigured(ctx, []*pipelineservice.Connection{conn}, protoConns); err != nil {
+		return nil, err
+	}
+
 	return connect.NewResponse(&pipelinev1.GetConnectionResponse{
 		Connection: protoConns[0],
 	}), nil
@@ -375,6 +393,10 @@ func (h *ConnectionHandler) ListConnections(ctx context.Context, req *connect.Re
 	}
 
 	if err := h.setWorkflows(ctx, workspaceID, page, protoConns); err != nil {
+		return nil, err
+	}
+
+	if err := h.setStreamsConfigured(ctx, page, protoConns); err != nil {
 		return nil, err
 	}
 
@@ -519,36 +541,9 @@ func (h *ConnectionHandler) ConfigureStreams(ctx context.Context, req *connect.R
 		return nil, mapError(err)
 	}
 
-	streams := make([]protocol.ConfiguredAirbyteStream, len(req.Msg.GetStreams()))
-	for i, stream := range req.Msg.GetStreams() {
-		primaryKey := make([][]string, len(stream.GetPrimaryKey()))
-		for j, ck := range stream.GetPrimaryKey() {
-			primaryKey[j] = ck.GetFieldPath()
-		}
-
-		selectedFields := make([]protocol.SelectedField, len(stream.GetSelectedFields()))
-		for j, f := range stream.GetSelectedFields() {
-			selectedFields[j] = protocol.SelectedField{FieldPath: f.GetFieldPath()}
-		}
-
-		streams[i] = protocol.ConfiguredAirbyteStream{
-			Stream: protocol.AirbyteStream{
-				Name:      stream.GetStreamName(),
-				Namespace: stream.GetNamespace(),
-			},
-			SyncMode:            protoToSyncMode(stream.GetSyncMode()),
-			DestinationSyncMode: protoToDestinationSyncMode(stream.GetDestinationSyncMode()),
-			CursorField:         stream.GetCursorField(),
-			PrimaryKey:          primaryKey,
-			SelectedFields:      selectedFields,
-		}
-
-		mappers, err := mappersToJSON(stream.GetMappers())
-		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, err)
-		}
-
-		streams[i].Mappers = mappers
+	streams, err := streamsFromProto(req.Msg.GetStreams())
+	if err != nil {
+		return nil, err
 	}
 
 	if err := h.configureStreams.Execute(ctx, pipelinecatalog.ConfigureStreamsParams{
@@ -896,6 +891,58 @@ func (h *ConnectionHandler) setWorkflows(ctx context.Context, workspaceID uuid.U
 				Name: workflow.Name,
 			})
 		}
+	}
+
+	return nil
+}
+
+// streamsFromProto converts the configured streams of a request.
+func streamsFromProto(protoStreams []*pipelinev1.ConfiguredStream) ([]protocol.ConfiguredAirbyteStream, error) {
+	streams := make([]protocol.ConfiguredAirbyteStream, len(protoStreams))
+	for i, stream := range protoStreams {
+		primaryKey := make([][]string, len(stream.GetPrimaryKey()))
+		for j, ck := range stream.GetPrimaryKey() {
+			primaryKey[j] = ck.GetFieldPath()
+		}
+
+		selectedFields := make([]protocol.SelectedField, len(stream.GetSelectedFields()))
+		for j, f := range stream.GetSelectedFields() {
+			selectedFields[j] = protocol.SelectedField{FieldPath: f.GetFieldPath()}
+		}
+
+		streams[i] = protocol.ConfiguredAirbyteStream{
+			Stream: protocol.AirbyteStream{
+				Name:      stream.GetStreamName(),
+				Namespace: stream.GetNamespace(),
+			},
+			SyncMode:            protoToSyncMode(stream.GetSyncMode()),
+			DestinationSyncMode: protoToDestinationSyncMode(stream.GetDestinationSyncMode()),
+			CursorField:         stream.GetCursorField(),
+			PrimaryKey:          primaryKey,
+			SelectedFields:      selectedFields,
+		}
+
+		mappers, err := mappersToJSON(stream.GetMappers())
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+
+		streams[i].Mappers = mappers
+	}
+
+	return streams, nil
+}
+
+// setStreamsConfigured marks each proto connection whose connection has a
+// configured stream; protoConns[i] is the proto of conns[i].
+func (h *ConnectionHandler) setStreamsConfigured(ctx context.Context, conns []*pipelineservice.Connection, protoConns []*pipelinev1.Connection) error {
+	configured, err := h.listConnectionsWithStreams.Execute(ctx, lo.Map(conns, func(c *pipelineservice.Connection, _ int) uuid.UUID { return c.ID }))
+	if err != nil {
+		return mapError(err)
+	}
+
+	for i, conn := range conns {
+		protoConns[i].StreamsConfigured = configured[conn.ID]
 	}
 
 	return nil

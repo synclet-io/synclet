@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
-	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelineconnections"
 	"github.com/synclet-io/synclet/pkg/protocol"
 )
 
@@ -230,7 +229,7 @@ func TestGetDiscoveredCatalogForConnection(t *testing.T) {
 	params := GetDiscoveredCatalogForConnectionParams{ConnectionID: conn.ID, WorkspaceID: workspaceID}
 
 	newUC := func(store *fakeStore) *GetDiscoveredCatalogForConnection {
-		return NewGetDiscoveredCatalogForConnection(pipelineconnections.NewGetConnection(store), store)
+		return NewGetDiscoveredCatalogForConnection(store)
 	}
 
 	t.Run("returns latest cached catalog", func(t *testing.T) {

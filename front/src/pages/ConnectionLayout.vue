@@ -4,6 +4,8 @@ import type { Tab } from '@shared/ui'
 import { useConnection, useDisableConnection, useEnableConnection } from '@entities/connection'
 import { useActiveJob, useCancelJob, useTriggerSync } from '@entities/job'
 import { useConnectionStats } from '@entities/stats'
+import { CONFIGURE_STREAMS_FIRST } from '@features/stream-config/streamsConfigured'
+import StreamsNotConfiguredBadge from '@features/stream-config/StreamsNotConfiguredBadge.vue'
 import { getErrorMessage } from '@shared/lib/errorUtils'
 import { statusVariant } from '@shared/lib/format'
 import { PageHeader, SAlert, SBadge, SButton, SConfirmDialog, SSkeleton, STabs, useToast } from '@shared/ui'
@@ -110,6 +112,7 @@ async function toggleEnabled() {
         <SBadge :variant="statusVariant(connection.status)" dot>
           {{ connection.status }}
         </SBadge>
+        <StreamsNotConfiguredBadge v-if="!connection.streamsConfigured" :connection-id="id" />
         <SBadge v-if="activeJob" :variant="statusVariant(activeJob.status)" dot>
           Sync {{ activeJob.status }}
         </SBadge>
@@ -127,10 +130,17 @@ async function toggleEnabled() {
           <XCircle class="w-4 h-4" />
           Cancel Sync
         </SButton>
-        <SButton v-else :loading="syncing" @click="triggerSync">
-          <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': syncing }" />
-          Sync Now
-        </SButton>
+        <span
+          v-else
+          class="inline-flex"
+          data-testid="sync-now"
+          :title="connection.streamsConfigured ? undefined : CONFIGURE_STREAMS_FIRST"
+        >
+          <SButton :loading="syncing" :disabled="!connection.streamsConfigured" @click="triggerSync">
+            <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': syncing }" />
+            Sync Now
+          </SButton>
+        </span>
       </template>
     </PageHeader>
 

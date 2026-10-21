@@ -550,6 +550,10 @@ message Connection {
   // Workflows the connection is a step of. Such a connection has no schedule
   // of its own: its workflows run it. Set by GetConnection and ListConnections.
   repeated ConnectionWorkflow workflows = 24;
+  // Whether the connection has at least one configured stream. A connection
+  // without one cannot sync, run in a workflow or be added to one. Set by
+  // GetConnection, ListConnections and CreateConnection.
+  bool streams_configured = 25;
 }
 
 // ConnectionWorkflow names a workflow a connection is a step of.
@@ -573,6 +577,12 @@ message CreateConnectionRequest {
   // Tags of the connection: 1-32 characters of a-z, 0-9, '_', '.', ':' or '-',
   // starting with a letter or digit; at most 20. Trimmed, lowercased and deduplicated.
   repeated string tags = 12;
+  // Streams to configure with the connection, validated as ConfigureStreams
+  // validates them. A connection runs only once it has a configured stream,
+  // so a connection created without streams needs ConfigureStreams before it
+  // can sync. Giving streams before the source's catalog is discovered fails
+  // with FAILED_PRECONDITION and creates nothing; retry once discovery ends.
+  repeated ConfiguredStream streams = 13;
 }
 
 message CreateConnectionResponse {
@@ -671,6 +681,7 @@ message DiscoverSchemaResponse {
 
 message ConfigureStreamsRequest {
   string connection_id = 1;
+  // The streams to sync; at least one.
   repeated ConfiguredStream streams = 2;
 }
 

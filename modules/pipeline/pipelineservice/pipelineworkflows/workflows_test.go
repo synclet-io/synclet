@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/saturn4er/boilerplate-go/lib/filter"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -33,10 +34,20 @@ func newEnv(t *testing.T, names ...string) *env {
 		e.store.ConnectionsTable.Insert(&pipelineservice.Connection{
 			ID: id, WorkspaceID: e.workspaceID, Name: name, Status: pipelineservice.ConnectionStatusActive, MaxAttempts: 1,
 		})
+		e.store.ConfigureStreams(id, "users")
 		e.conns[name] = id
 	}
 
 	return e
+}
+
+// unconfigure removes the configured streams of the named connection.
+func (e *env) unconfigure(t *testing.T, name string) {
+	t.Helper()
+
+	require.NoError(t, e.store.ConfiguredCatalogs().Delete(e.ctx, &pipelineservice.ConfiguredCatalogFilter{
+		ConnectionID: filter.Equals(e.conns[name]),
+	}))
 }
 
 func (e *env) step(name string, after ...string) pipelineservice.WorkflowGraphStep {
@@ -166,6 +177,59 @@ func TestCreateWorkflow_Rejects(t *testing.T) {
 			assert.Empty(t, e.store.WorkflowsTable.All(), "nothing is stored")
 		})
 	}
+}
+
+func TestCreateAndUpdateWorkflow_RejectConnectionWithoutStreams(t *testing.T) {
+	e := newEnv(t, "A", "B", "C")
+	e.unconfigure(t, "C")
+
+	_, err := NewCreateWorkflow(e.store, pipelineservice.NoopAuditRecorder{}).Execute(e.ctx, CreateWorkflowParams{
+		WorkspaceID: e.workspaceID, Name: "wf", Steps: []pipelineservice.WorkflowGraphStep{e.step("A"), e.step("C", "A")},
+	})
+	requireValidationError(t, err, `connection "C" has no configured streams`)
+	assert.Empty(t, e.store.WorkflowsTable.All(), "nothing is stored")
+
+	detail := e.create(t, e.step("A"), e.step("B", "A"))
+
+	_, err = NewUpdateWorkflow(e.store, pipelineservice.NoopAuditRecorder{}).Execute(e.ctx, UpdateWorkflowParams{
+		ID: detail.Workflow.ID, WorkspaceID: e.workspaceID, Name: "nightly",
+		Steps: []pipelineservice.WorkflowGraphStep{e.step("A"), e.step("C", "A")},
+	})
+	requireValidationError(t, err, `connection "C" has no configured streams`)
+	assert.Len(t, e.store.WorkflowStepsTable.All(), 2, "the steps stay as they were")
+}
+
+func TestRunWorkflow_RefusesConnectionWithoutStreams(t *testing.T) {
+	e := newEnv(t, "A", "B")
+	detail := e.create(t, e.step("A"), e.step("B", "A"))
+	e.unconfigure(t, "B")
+
+	_, err := NewStartWorkflowRun(e.store, pipelineservice.NoopAuditRecorder{}).Execute(e.ctx, StartWorkflowRunParams{
+		WorkflowID: detail.Workflow.ID, WorkspaceID: e.workspaceID,
+	})
+
+	var noStreams *pipelineservice.NoConfiguredStreamsError
+	require.ErrorAs(t, err, &noStreams)
+	assert.Equal(t, []string{"B"}, noStreams.ConnectionNames)
+	assert.Empty(t, e.store.WorkflowRunsTable.All(), "no run is created")
+	assert.Empty(t, e.store.JobsTable.All(), "no job is created")
+}
+
+func TestRerunWorkflowRun_RefusesConnectionWithoutStreams(t *testing.T) {
+	e := newEnv(t, "A")
+	detail := e.create(t, e.step("A"))
+	runID := e.start(t, detail.Workflow.ID).Run.ID
+	e.finish(t, runID, "A", pipelineservice.JobStatusFailed)
+	e.unconfigure(t, "A")
+	jobsBefore := e.jobsFor("A")
+
+	_, err := NewRerunWorkflowRun(e.store, pipelineservice.NoopAuditRecorder{}).Execute(e.ctx, RerunWorkflowRunParams{RunID: runID, WorkspaceID: e.workspaceID})
+
+	var noStreams *pipelineservice.NoConfiguredStreamsError
+	require.ErrorAs(t, err, &noStreams)
+	assert.Equal(t, pipelineservice.WorkflowRunStatusFailed, e.store.WorkflowRunsTable.Get(runID).Status, "the run stays failed")
+	assert.Equal(t, pipelineservice.WorkflowStepRunStatusFailed, e.stepRunOf(runID, "A").Status)
+	assert.Equal(t, jobsBefore, e.jobsFor("A"), "no job is created")
 }
 
 func TestUpdateWorkflow(t *testing.T) {

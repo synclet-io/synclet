@@ -44,116 +44,160 @@ func (uc *ConfigureStreams) Execute(ctx context.Context, params ConfigureStreams
 		return fmt.Errorf("getting connection: %w", err)
 	}
 
-	availableStreams, err := latestDiscoveredStreams(ctx, uc.storage, params.SourceID)
+	if err := PrepareStreams(ctx, uc.storage, params.SourceID, params.Streams); err != nil {
+		return err
+	}
+
+	previous, err := SaveStreams(ctx, uc.storage, params.ConnectionID, params.Streams)
+	if err != nil {
+		return err
+	}
+
+	uc.recordAudit(ctx, conn, previous, params.Streams)
+
+	return nil
+}
+
+// PrepareStreams validates streams against the source's latest discovered
+// catalog and fills in, in place, the schema, sync modes, cursor and primary
+// key the catalog defines. An empty list is a *ValidationError, and a source
+// with no discovered catalog yet is ErrCatalogNotReady.
+func PrepareStreams(ctx context.Context, storage pipelineservice.Storage, sourceID uuid.UUID, streams []protocol.ConfiguredAirbyteStream) error {
+	if len(streams) == 0 {
+		return streamValidationError("at least one stream must be configured")
+	}
+
+	availableStreams, err := latestDiscoveredStreams(ctx, storage, sourceID)
+	if errors.Is(err, pipelineservice.ErrCatalogDiscoveryNotFound) {
+		return pipelineservice.ErrCatalogNotReady
+	}
+
 	if err != nil {
 		return fmt.Errorf("getting latest catalog for validation: %w", err)
 	}
 
-	// Validate each configured stream.
-	for i, configured := range params.Streams {
-		key := streamKey(configured.Stream.Namespace, configured.Stream.Name)
-
-		available, ok := availableStreams[key]
-		if !ok {
-			return streamValidationError("stream %q not found in discovered catalog", key)
-		}
-
-		// Enrich configured stream with schema and metadata from the discovered catalog.
-		// The Airbyte CDK requires json_schema.properties to be present during read.
-		params.Streams[i].Stream.JSONSchema = available.JSONSchema
-		params.Streams[i].Stream.SupportedSyncModes = available.SupportedSyncModes
-		params.Streams[i].Stream.SourceDefinedCursor = available.SourceDefinedCursor
-		params.Streams[i].Stream.DefaultCursorField = available.DefaultCursorField
-		params.Streams[i].Stream.SourceDefinedPrimaryKey = available.SourceDefinedPrimaryKey
-
-		if !syncModeSupported(available.SupportedSyncModes, configured.SyncMode) {
-			return streamValidationError("sync mode %q not supported for stream %q", configured.SyncMode, key)
-		}
-
-		// Reject incompatible sync mode combinations.
-		if configured.SyncMode == protocol.SyncModeFullRefresh &&
-			configured.DestinationSyncMode == protocol.DestinationSyncModeAppendDedup {
-			return streamValidationError("sync mode full_refresh is incompatible with destination sync mode append_dedup for stream %q", key)
-		}
-
-		// Use source-defined primary key when available.
-		if len(available.SourceDefinedPrimaryKey) > 0 {
-			params.Streams[i].PrimaryKey = available.SourceDefinedPrimaryKey
-		}
-
-		// Use source-defined cursor when available.
-		if available.SourceDefinedCursor {
-			params.Streams[i].CursorField = available.DefaultCursorField
-		}
-
-		// Validate cursor field for incremental sync when source doesn't define one.
-		if configured.SyncMode == protocol.SyncModeIncremental &&
-			!available.SourceDefinedCursor &&
-			len(configured.CursorField) == 0 {
-			return streamValidationError("cursor field required for incremental sync on stream %q (source does not define cursor)", key)
-		}
-
-		// Validate primary key for append_dedup when source doesn't define one.
-		if configured.DestinationSyncMode == protocol.DestinationSyncModeAppendDedup &&
-			len(available.SourceDefinedPrimaryKey) == 0 &&
-			len(configured.PrimaryKey) == 0 {
-			return streamValidationError("primary key required for append_dedup on stream %q (source does not define primary key)", key)
-		}
-
-		// Validate and enhance selected fields.
-		if len(configured.SelectedFields) > 0 {
-			if err := pipelineservice.ValidateSelectedFields(configured.SelectedFields, available.JSONSchema); err != nil {
-				return streamValidationError("invalid selected fields for stream %q: %v", key, err)
-			}
-
-			params.Streams[i].SelectedFields = pipelineservice.ForceIncludeFields(
-				configured.SelectedFields,
-				params.Streams[i].CursorField,
-				params.Streams[i].PrimaryKey,
-			)
-		}
-
-		if pipelineservice.HasMappers(&params.Streams[i]) {
-			if err := validateStreamMappers(key, &params.Streams[i]); err != nil {
-				return err
-			}
-		} else {
-			params.Streams[i].Mappers = nil
+	for i, configured := range streams {
+		if err := prepareStream(availableStreams, &streams[i], configured); err != nil {
+			return err
 		}
 	}
 
-	streamsJSON, err := json.Marshal(params.Streams)
+	return nil
+}
+
+func prepareStream(
+	availableStreams map[string]protocol.AirbyteStream,
+	stream *protocol.ConfiguredAirbyteStream,
+	configured protocol.ConfiguredAirbyteStream,
+) error {
+	key := streamKey(configured.Stream.Namespace, configured.Stream.Name)
+
+	available, ok := availableStreams[key]
+	if !ok {
+		return streamValidationError("stream %q not found in discovered catalog", key)
+	}
+
+	// Enrich configured stream with schema and metadata from the discovered catalog.
+	// The Airbyte CDK requires json_schema.properties to be present during read.
+	stream.Stream.JSONSchema = available.JSONSchema
+	stream.Stream.SupportedSyncModes = available.SupportedSyncModes
+	stream.Stream.SourceDefinedCursor = available.SourceDefinedCursor
+	stream.Stream.DefaultCursorField = available.DefaultCursorField
+	stream.Stream.SourceDefinedPrimaryKey = available.SourceDefinedPrimaryKey
+
+	if !syncModeSupported(available.SupportedSyncModes, configured.SyncMode) {
+		return streamValidationError("sync mode %q not supported for stream %q", configured.SyncMode, key)
+	}
+
+	// Reject incompatible sync mode combinations.
+	if configured.SyncMode == protocol.SyncModeFullRefresh &&
+		configured.DestinationSyncMode == protocol.DestinationSyncModeAppendDedup {
+		return streamValidationError("sync mode full_refresh is incompatible with destination sync mode append_dedup for stream %q", key)
+	}
+
+	// Use source-defined primary key when available.
+	if len(available.SourceDefinedPrimaryKey) > 0 {
+		stream.PrimaryKey = available.SourceDefinedPrimaryKey
+	}
+
+	// Use source-defined cursor when available.
+	if available.SourceDefinedCursor {
+		stream.CursorField = available.DefaultCursorField
+	}
+
+	// Validate cursor field for incremental sync when source doesn't define one.
+	if configured.SyncMode == protocol.SyncModeIncremental &&
+		!available.SourceDefinedCursor &&
+		len(configured.CursorField) == 0 {
+		return streamValidationError("cursor field required for incremental sync on stream %q (source does not define cursor)", key)
+	}
+
+	// Validate primary key for append_dedup when source doesn't define one.
+	if configured.DestinationSyncMode == protocol.DestinationSyncModeAppendDedup &&
+		len(available.SourceDefinedPrimaryKey) == 0 &&
+		len(configured.PrimaryKey) == 0 {
+		return streamValidationError("primary key required for append_dedup on stream %q (source does not define primary key)", key)
+	}
+
+	// Validate and enhance selected fields.
+	if len(configured.SelectedFields) > 0 {
+		if err := pipelineservice.ValidateSelectedFields(configured.SelectedFields, available.JSONSchema); err != nil {
+			return streamValidationError("invalid selected fields for stream %q: %v", key, err)
+		}
+
+		stream.SelectedFields = pipelineservice.ForceIncludeFields(
+			configured.SelectedFields,
+			stream.CursorField,
+			stream.PrimaryKey,
+		)
+	}
+
+	if pipelineservice.HasMappers(stream) {
+		return validateStreamMappers(key, stream)
+	}
+
+	stream.Mappers = nil
+
+	return nil
+}
+
+// SaveStreams stores streams as the connection's configured catalog and
+// returns the streams it replaced, nil when the connection had none.
+func SaveStreams(
+	ctx context.Context,
+	storage pipelineservice.Storage,
+	connectionID uuid.UUID,
+	streams []protocol.ConfiguredAirbyteStream,
+) ([]protocol.ConfiguredAirbyteStream, error) {
+	streamsJSON, err := json.Marshal(streams)
 	if err != nil {
-		return fmt.Errorf("marshaling configured streams: %w", err)
+		return nil, fmt.Errorf("marshaling configured streams: %w", err)
 	}
 
 	now := time.Now()
 
-	// Check if configured catalog already exists for this connection.
-	existing, err := uc.storage.ConfiguredCatalogs().First(ctx, &pipelineservice.ConfiguredCatalogFilter{
-		ConnectionID: filter.Equals(params.ConnectionID),
+	existing, err := storage.ConfiguredCatalogs().First(ctx, &pipelineservice.ConfiguredCatalogFilter{
+		ConnectionID: filter.Equals(connectionID),
 	})
 	if err != nil {
 		var nfe pipelineservice.NotFoundError
 		if !errors.As(err, &nfe) {
-			return fmt.Errorf("getting configured catalog: %w", err)
+			return nil, fmt.Errorf("getting configured catalog: %w", err)
 		}
 
 		record := &pipelineservice.ConfiguredCatalog{
 			ID:           uuid.New(),
-			ConnectionID: params.ConnectionID,
+			ConnectionID: connectionID,
 			StreamsJSON:  string(streamsJSON),
 			CreatedAt:    now,
 			UpdatedAt:    now,
 		}
 
-		if _, err := uc.storage.ConfiguredCatalogs().Create(ctx, record); err != nil {
-			return fmt.Errorf("creating configured catalog: %w", err)
+		if _, err := storage.ConfiguredCatalogs().Create(ctx, record); err != nil {
+			return nil, fmt.Errorf("creating configured catalog: %w", err)
 		}
 
-		uc.recordAudit(ctx, conn, nil, params.Streams)
-
-		return nil
+		return nil, nil
 	}
 
 	var previousStreams []protocol.ConfiguredAirbyteStream
@@ -164,13 +208,11 @@ func (uc *ConfigureStreams) Execute(ctx context.Context, params ConfigureStreams
 	existing.StreamsJSON = string(streamsJSON)
 	existing.UpdatedAt = now
 
-	if _, err := uc.storage.ConfiguredCatalogs().Update(ctx, existing); err != nil {
-		return fmt.Errorf("updating configured catalog: %w", err)
+	if _, err := storage.ConfiguredCatalogs().Update(ctx, existing); err != nil {
+		return nil, fmt.Errorf("updating configured catalog: %w", err)
 	}
 
-	uc.recordAudit(ctx, conn, previousStreams, params.Streams)
-
-	return nil
+	return previousStreams, nil
 }
 
 func (uc *ConfigureStreams) recordAudit(

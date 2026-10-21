@@ -30,6 +30,17 @@ describe('listConnections', () => {
     expect(items[0]).toMatchObject({ status: 'unknown', pendingSchemaChanges: 3 })
   })
 
+  it('carries whether streams are configured', async () => {
+    connectionClient.listConnections.mockResolvedValue({
+      connections: [{ id: 'c1', streamsConfigured: true }, { id: 'c2' }],
+      total: 2,
+    })
+
+    const { items } = await listConnections({ pageSize: 20 })
+
+    expect(items.map(c => c.streamsConfigured)).toEqual([true, false])
+  })
+
   it('forwards source and destination filters and maps endpoint names', async () => {
     connectionClient.listConnections.mockResolvedValue({
       connections: [{

@@ -31,7 +31,9 @@ func NewQueueJob(storage pipelineservice.Storage, cfg pipelineservice.Config) *Q
 }
 
 // Execute creates a new pending job. It reads retry config from the connection
-// if MaxAttempts is not provided. It also checks for duplicate pending/running jobs.
+// if MaxAttempts is not provided. It also checks for duplicate pending/running
+// jobs, and refuses a sync of a connection with no configured stream with a
+// *NoConfiguredStreamsError.
 func (uc *QueueJob) Execute(ctx context.Context, params QueueJobParams) (*pipelineservice.Job, error) {
 	// Load connection to get retry config if not provided.
 	conn, err := uc.storage.Connections().First(ctx, &pipelineservice.ConnectionFilter{
@@ -39,6 +41,12 @@ func (uc *QueueJob) Execute(ctx context.Context, params QueueJobParams) (*pipeli
 	})
 	if err != nil {
 		return nil, fmt.Errorf("loading connection for retry config: %w", err)
+	}
+
+	if params.JobType == pipelineservice.JobTypeSync {
+		if err := pipelineservice.RequireConfiguredStreams(ctx, uc.storage, conn); err != nil {
+			return nil, err
+		}
 	}
 
 	// Enforce one active job per connection (also enforced by DB unique index).

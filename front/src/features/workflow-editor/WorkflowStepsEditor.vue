@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import type { WorkflowStepInput } from '@entities/workflow'
+import { CONFIGURE_STREAMS_FIRST } from '@features/stream-config/streamsConfigured'
+import StreamsNotConfiguredBadge from '@features/stream-config/StreamsNotConfiguredBadge.vue'
 import { wouldCreateCycle } from '@features/workflow-graph'
 import { SButton, SCheckbox, SSelect } from '@shared/ui'
 import { Trash2 } from 'lucide-vue-next'
@@ -8,7 +10,8 @@ import { addStep, removeStep, setAfter } from './steps'
 
 const props = defineProps<{
   modelValue: WorkflowStepInput[]
-  connections: { id: string, name: string }[]
+  /** Connections a step can run; one without configured streams cannot be added. */
+  connections: { id: string, name: string, streamsConfigured?: boolean }[]
   readonly?: boolean
 }>()
 
@@ -28,8 +31,12 @@ const addOptions = computed(() => [
   { label: 'Choose a connection…', value: '' },
   ...props.connections
     .filter(c => !props.modelValue.some(s => s.connectionId === c.id))
-    .map(c => ({ label: c.name, value: c.id })),
+    .map(c => c.streamsConfigured === false
+      ? { label: `${c.name} (${CONFIGURE_STREAMS_FIRST})`, value: c.id, disabled: true, title: CONFIGURE_STREAMS_FIRST }
+      : { label: c.name, value: c.id }),
 ])
+
+const unconfigured = computed(() => new Set(props.connections.filter(c => c.streamsConfigured === false).map(c => c.id)))
 
 function add() {
   emit('update:modelValue', addStep(props.modelValue, newConnectionId.value))
@@ -71,8 +78,9 @@ function upstreamOptions(step: WorkflowStepInput) {
         :data-step="step.connectionId"
       >
         <div class="flex items-center justify-between gap-2">
-          <span class="text-sm font-medium text-heading">
-            <span class="text-text-muted">{{ index + 1 }}.</span> {{ nameOf(step.connectionId) }}
+          <span class="flex items-center gap-2 text-sm font-medium text-heading">
+            <span><span class="text-text-muted">{{ index + 1 }}.</span> {{ nameOf(step.connectionId) }}</span>
+            <StreamsNotConfiguredBadge v-if="unconfigured.has(step.connectionId)" :connection-id="step.connectionId" />
           </span>
           <SButton
             v-if="!readonly"

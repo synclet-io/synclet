@@ -4,16 +4,19 @@ import { useAuth } from '@entities/auth'
 import { useConnections, useConnectionTags } from '@entities/connection'
 import * as connectionApi from '@entities/connection/api'
 import { useDestinations } from '@entities/destination'
+import { useTriggerSync } from '@entities/job'
 import { useSources } from '@entities/source'
 import { BulkActionToolbar, useBulkConnectionActions, useConnectionSelection } from '@features/connection-bulk-ops'
 import { buildConnectionListQuery, parseConnectionListQuery } from '@features/connection-filters/listQuery'
 import SchemaDriftBadge from '@features/schema-changes/SchemaDriftBadge.vue'
+import { CONFIGURE_STREAMS_FIRST } from '@features/stream-config/streamsConfigured'
+import StreamsNotConfiguredBadge from '@features/stream-config/StreamsNotConfiguredBadge.vue'
 import { getErrorMessage } from '@shared/lib/errorUtils'
 import { statusVariant } from '@shared/lib/format'
 import { connectionKeys } from '@shared/lib/queryKeys'
 import { PageHeader, SAlert, SBadge, SButton, SCheckbox, SCombobox, SConfirmDialog, SEmptyState, SPagination, STable, STagInput, useToast } from '@shared/ui'
 import { useQueryClient } from '@tanstack/vue-query'
-import { Copy, FilterX, Pause, Play, Plus, Trash2 } from 'lucide-vue-next'
+import { Copy, FilterX, Pause, Play, Plus, RefreshCw, Trash2 } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
@@ -61,6 +64,22 @@ const showFilters = computed(() => hasFilters.value || (data.value?.total ?? 0) 
 const qc = useQueryClient()
 const { currentWorkspaceId } = useAuth()
 const toast = useToast()
+const triggerSyncMutation = useTriggerSync()
+const syncingId = ref('')
+
+async function syncNow(connectionId: string) {
+  syncingId.value = connectionId
+  try {
+    await triggerSyncMutation.mutateAsync(connectionId)
+    toast.success('Sync triggered')
+  }
+  catch (e: unknown) {
+    toast.error(`Error: ${getErrorMessage(e)}`)
+  }
+  finally {
+    syncingId.value = ''
+  }
+}
 
 const selection = useConnectionSelection()
 const bulk = useBulkConnectionActions()
@@ -277,6 +296,7 @@ const columns: Column[] = [
           {{ row.name }}
         </RouterLink>
         <SchemaDriftBadge :connection-id="row.id" :count="row.pendingSchemaChanges" />
+        <StreamsNotConfiguredBadge v-if="!row.streamsConfigured" :connection-id="row.id" />
       </div>
     </template>
     <template #cell-tags="{ row }">
@@ -322,6 +342,17 @@ const columns: Column[] = [
     </template>
     <template #cell-actions="{ row }">
       <div class="flex items-center justify-end gap-1">
+        <span class="inline-flex" :data-sync-now="row.id" :title="row.streamsConfigured ? `Sync ${row.name} now` : CONFIGURE_STREAMS_FIRST">
+          <SButton
+            variant="ghost"
+            size="icon"
+            :aria-label="`Sync ${row.name} now`"
+            :disabled="!row.streamsConfigured || syncingId === row.id"
+            @click="syncNow(row.id)"
+          >
+            <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': syncingId === row.id }" />
+          </SButton>
+        </span>
         <SButton
           :to="`/connections/new?cloneFrom=${row.id}`"
           variant="ghost"

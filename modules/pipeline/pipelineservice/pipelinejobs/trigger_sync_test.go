@@ -16,14 +16,16 @@ import (
 
 type triggerSyncStorage struct {
 	pipelineservice.Storage
-	conn *pipelineservice.Connection
+	conn         *pipelineservice.Connection
+	unconfigured bool
+	jobs         triggerSyncJobs
 }
 
 func (s *triggerSyncStorage) Connections() pipelineservice.ConnectionsStorage {
-	return &triggerSyncConnections{conn: s.conn}
+	return &triggerSyncConnections{conn: s.conn, configured: !s.unconfigured}
 }
 
-func (s *triggerSyncStorage) Jobs() pipelineservice.JobsStorage { return &triggerSyncJobs{} }
+func (s *triggerSyncStorage) Jobs() pipelineservice.JobsStorage { return &s.jobs }
 
 func (s *triggerSyncStorage) PipelineEvents() pipelineservice.PipelineEventsOutbox {
 	return &mockPipelineEventsOutbox{}
@@ -35,7 +37,17 @@ func (s *triggerSyncStorage) ExecuteInTransaction(ctx context.Context, cb func(c
 
 type triggerSyncConnections struct {
 	pipelineservice.ConnectionsStorage
-	conn *pipelineservice.Connection
+	conn       *pipelineservice.Connection
+	configured bool
+}
+
+func (c *triggerSyncConnections) WithConfiguredStreams(_ context.Context, ids []uuid.UUID) (map[uuid.UUID]bool, error) {
+	configured := map[uuid.UUID]bool{}
+	for _, id := range ids {
+		configured[id] = c.configured
+	}
+
+	return configured, nil
 }
 
 func (c *triggerSyncConnections) First(_ context.Context, _ *pipelineservice.ConnectionFilter, _ ...optionutil.Option[dbutil.SelectOptions]) (*pipelineservice.Connection, error) {
@@ -44,6 +56,7 @@ func (c *triggerSyncConnections) First(_ context.Context, _ *pipelineservice.Con
 
 type triggerSyncJobs struct {
 	pipelineservice.JobsStorage
+	created []*pipelineservice.Job
 }
 
 func (j *triggerSyncJobs) Find(_ context.Context, _ *pipelineservice.JobFilter, _ ...optionutil.Option[dbutil.SelectOptions]) ([]*pipelineservice.Job, error) {
@@ -51,6 +64,8 @@ func (j *triggerSyncJobs) Find(_ context.Context, _ *pipelineservice.JobFilter, 
 }
 
 func (j *triggerSyncJobs) Create(_ context.Context, job *pipelineservice.Job) (*pipelineservice.Job, error) {
+	j.created = append(j.created, job)
+
 	return job, nil
 }
 
@@ -85,4 +100,26 @@ func TestTriggerSync_RecordsAuditEvent(t *testing.T) {
 	assert.Equal(t, conn.ID, event.ResourceID)
 	assert.Equal(t, "pg-to-bq", event.ResourceLabel)
 	assert.Equal(t, map[string]any{"job_id": job.ID}, event.After)
+}
+
+func TestTriggerSync_RefusesConnectionWithoutStreams(t *testing.T) {
+	wsID := uuid.New()
+	conn := &pipelineservice.Connection{ID: uuid.New(), WorkspaceID: wsID, Name: "pg-to-bq", MaxAttempts: 3}
+	storage := &triggerSyncStorage{conn: conn, unconfigured: true}
+	recorder := &capturingAuditRecorder{}
+
+	uc := NewTriggerSync(
+		pipelineconnections.NewGetConnection(storage),
+		NewQueueJob(storage, pipelineservice.Config{}),
+		recorder,
+	)
+
+	_, err := uc.Execute(context.Background(), TriggerSyncParams{ConnectionID: conn.ID, WorkspaceID: wsID})
+
+	var noStreams *pipelineservice.NoConfiguredStreamsError
+	require.ErrorAs(t, err, &noStreams)
+	assert.Equal(t, []string{"pg-to-bq"}, noStreams.ConnectionNames)
+	assert.Contains(t, err.Error(), `connection "pg-to-bq" has no configured streams`)
+	assert.Empty(t, storage.jobs.created, "no job is created")
+	assert.Empty(t, recorder.events)
 }

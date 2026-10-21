@@ -289,6 +289,8 @@ var (
 	}}
 )
 
+var sourceCatalog = &pipelinev1.GetSourceCatalogResponse{Catalog: discoveredCatalog.GetCatalog(), Version: 3}
+
 func mustStruct(m map[string]any) *structpb.Struct {
 	s, err := structpb.NewStruct(m)
 	if err != nil {
@@ -316,6 +318,12 @@ func (f *fakeServices) GetDiscoveredCatalog(ctx context.Context, r *connect.Requ
 	f.record(ctx, "GetDiscoveredCatalog", r.Msg)
 
 	return connect.NewResponse(discoveredCatalog), nil
+}
+
+func (f *fakeServices) GetSourceCatalog(ctx context.Context, r *connect.Request[pipelinev1.GetSourceCatalogRequest]) (*connect.Response[pipelinev1.GetSourceCatalogResponse], error) {
+	f.record(ctx, "GetSourceCatalog", r.Msg)
+
+	return connect.NewResponse(sourceCatalog), nil
 }
 
 func (f *fakeServices) ListManagedConnectors(ctx context.Context, r *connect.Request[registryv1.ListManagedConnectorsRequest]) (*connect.Response[registryv1.ListManagedConnectorsResponse], error) {
@@ -513,7 +521,7 @@ var (
 	readTools = []string{
 		"list_connections", "get_connection", "list_sources", "get_source", "list_destinations",
 		"get_destination", "list_jobs", "get_job", "list_workflows", "get_workflow", "list_workflow_runs",
-		"get_workflow_run", "get_connection_stats", "get_schema_changes", "get_configured_catalog", "get_discovered_catalog", "list_connectors",
+		"get_workflow_run", "get_connection_stats", "get_schema_changes", "get_configured_catalog", "get_discovered_catalog", "get_source_catalog", "list_connectors",
 		"get_connector_spec",
 	}
 	actionTools = []string{
@@ -621,6 +629,7 @@ var toolMethods = map[string]string{
 	"get_schema_changes":     "GetSchemaChanges",
 	"get_configured_catalog": "GetConfiguredCatalog",
 	"get_discovered_catalog": "GetDiscoveredCatalog",
+	"get_source_catalog":     "GetSourceCatalog",
 	"list_connectors":        "ListManagedConnectors",
 	"get_connector_spec":     "GetConnectorSpec",
 	"trigger_sync":           "TriggerSync",
@@ -677,6 +686,23 @@ func TestMCP_ReadTools(t *testing.T) {
 
 		res = callTool(t, session, "get_connection", map[string]any{"bogus": 1})
 		assert.True(t, res.IsError)
+	})
+
+	t.Run("get_source_catalog returns a source's streams to a viewer", func(t *testing.T) {
+		endpoint, fake := newTestServer(t, true)
+		session, _ := connectClient(t, endpoint, viewerKey)
+
+		res := callTool(t, session, "get_source_catalog", map[string]any{"source_id": "s-1"})
+		require.False(t, res.IsError, resultText(t, res))
+
+		call := fake.last()
+		assert.Equal(t, "GetSourceCatalog", call.method)
+		assert.Equal(t, viewerUserID, call.userID)
+		assert.Equal(t, "s-1", call.req.(*pipelinev1.GetSourceCatalogRequest).GetSourceId())
+
+		wantJSON, err := protojson.Marshal(sourceCatalog)
+		require.NoError(t, err)
+		assert.JSONEq(t, string(wantJSON), resultText(t, res))
 	})
 
 	t.Run("catalog tools return the public API's data to a viewer", func(t *testing.T) {
@@ -803,6 +829,26 @@ func TestMCP_WriteTools(t *testing.T) {
 		session, _ := connectClient(t, endpoint, viewerKey)
 
 		assert.Contains(t, listTools(t, session)["configure_streams"].Description, "configure_stream ")
+	})
+
+	t.Run("create_connection takes streams", func(t *testing.T) {
+		endpoint, _ := newTestServer(t, true)
+		session, _ := connectClient(t, endpoint, viewerKey)
+		tool := listTools(t, session)["create_connection"]
+
+		raw, err := json.Marshal(tool.InputSchema)
+		require.NoError(t, err)
+
+		var schema struct {
+			Properties map[string]struct {
+				Type string `json:"type"`
+			} `json:"properties"`
+		}
+		require.NoError(t, json.Unmarshal(raw, &schema))
+
+		assert.Equal(t, "array", schema.Properties["streams"].Type)
+		assert.Contains(t, tool.Description, "Pass streams")
+		assert.Contains(t, tool.Description, "cannot sync")
 	})
 
 	t.Run("create_source schema takes config as an object", func(t *testing.T) {
@@ -1041,7 +1087,7 @@ func TestMCP_ToolSet(t *testing.T) {
 
 	want := slices.Concat(readTools, actionTools, writeTools)
 	assert.ElementsMatch(t, want, names)
-	assert.Len(t, names, 38)
+	assert.Len(t, names, 39)
 
 	for _, def := range toolDefs((&fakeServices{}).services()) {
 		for _, procedure := range def.procedures {

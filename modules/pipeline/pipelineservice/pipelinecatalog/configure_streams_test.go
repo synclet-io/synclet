@@ -75,6 +75,10 @@ func (f *configureFixture) execute(streams ...protocol.ConfiguredAirbyteStream) 
 	})
 }
 
+func eventsStream() protocol.ConfiguredAirbyteStream {
+	return configured("", "events", protocol.SyncModeFullRefresh, protocol.DestinationSyncModeOverwrite)
+}
+
 func configured(namespace, name string, mode protocol.SyncMode, destMode protocol.DestinationSyncMode) protocol.ConfiguredAirbyteStream {
 	return protocol.ConfiguredAirbyteStream{
 		Stream:              protocol.AirbyteStream{Namespace: namespace, Name: name},
@@ -241,6 +245,19 @@ func TestConfigureStreams_ValidationErrors(t *testing.T) {
 	}
 }
 
+func TestConfigureStreams_RejectsEmptyList(t *testing.T) {
+	f := newConfigureFixture(t)
+	seedConfigured(t, f.store, f.conn.ID, []protocol.ConfiguredAirbyteStream{eventsStream()})
+
+	err := f.execute()
+
+	var validationErr *pipelineservice.ValidationError
+	require.ErrorAs(t, err, &validationErr)
+	assert.Contains(t, validationErr.Message, "at least one stream")
+	assert.Len(t, storedStreams(t, f.store, f.conn.ID), 1, "the configured streams stay as they were")
+	assert.Empty(t, f.audit.events)
+}
+
 func TestConfigureStreams_StorageErrors(t *testing.T) {
 	t.Run("connection not found", func(t *testing.T) {
 		f := newConfigureFixture(t)
@@ -253,21 +270,22 @@ func TestConfigureStreams_StorageErrors(t *testing.T) {
 		f := newConfigureFixture(t)
 		f.store.discoveries.records = nil
 
-		require.ErrorIs(t, f.execute(), pipelineservice.ErrCatalogDiscoveryNotFound)
+		require.ErrorIs(t, f.execute(eventsStream()), pipelineservice.ErrCatalogNotReady)
+		assert.Empty(t, f.store.configured.records)
 	})
 
 	t.Run("corrupt discovered catalog", func(t *testing.T) {
 		f := newConfigureFixture(t)
 		f.store.discoveries.records[1].CatalogJSON = "{"
 
-		require.ErrorContains(t, f.execute(), "unmarshaling latest catalog")
+		require.ErrorContains(t, f.execute(eventsStream()), "unmarshaling latest catalog")
 	})
 
 	t.Run("configured catalog lookup fails", func(t *testing.T) {
 		f := newConfigureFixture(t)
 		f.store.configured.firstErr = errStorage
 
-		require.ErrorIs(t, f.execute(), errStorage)
+		require.ErrorIs(t, f.execute(eventsStream()), errStorage)
 	})
 
 	t.Run("update fails", func(t *testing.T) {
@@ -275,7 +293,7 @@ func TestConfigureStreams_StorageErrors(t *testing.T) {
 		seedConfigured(t, f.store, f.conn.ID, nil)
 		f.store.configured.updateErr = errStorage
 
-		require.ErrorIs(t, f.execute(), errStorage)
+		require.ErrorIs(t, f.execute(eventsStream()), errStorage)
 		assert.Empty(t, f.audit.events)
 	})
 }

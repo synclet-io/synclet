@@ -32,3 +32,17 @@ func TestMapErrorNoCachedSpec(t *testing.T) {
 
 	assert.Equal(t, connect.CodeFailedPrecondition, connect.CodeOf(err))
 }
+
+func TestMapErrorCatalogNotReady(t *testing.T) {
+	err := mapError(pipelineservice.ErrCatalogNotReady)
+
+	assert.Equal(t, connect.CodeFailedPrecondition, connect.CodeOf(err))
+	assert.Contains(t, err.Error(), "catalog is not discovered yet; retry")
+}
+
+func TestMapErrorNoConfiguredStreams(t *testing.T) {
+	err := mapError(fmt.Errorf("queuing job: %w", &pipelineservice.NoConfiguredStreamsError{ConnectionNames: []string{"pg-to-bq"}}))
+
+	assert.Equal(t, connect.CodeFailedPrecondition, connect.CodeOf(err))
+	assert.Contains(t, err.Error(), `connection "pg-to-bq" has no configured streams`)
+}

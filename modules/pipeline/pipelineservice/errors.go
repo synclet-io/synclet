@@ -18,6 +18,7 @@ const (
 	ErrWorkflowRunActive      baseErr = "the workflow has an active run; wait for it to end"
 	ErrWorkflowRunNotFailed   baseErr = "only a failed workflow run can be rerun"
 	ErrConnectionInWorkflow   baseErr = "the connection is a step of a workflow; remove it from the workflow first"
+	ErrCatalogNotReady        baseErr = "the source's catalog is not discovered yet; retry once its discovery finishes"
 )
 
 // ValidationError indicates invalid input.

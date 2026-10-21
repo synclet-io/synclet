@@ -130,6 +130,9 @@ func toolDefs(services Services) []toolDef {
 			pc.ConnectionServiceGetConfiguredCatalogProcedure, services.Connections.GetConfiguredCatalog),
 		rpcTool("get_discovered_catalog", "Get the streams the connection's source offers, as last discovered: their schemas, supported sync modes, default cursors and primary keys.", kindRead,
 			pc.ConnectionServiceGetDiscoveredCatalogProcedure, services.Connections.GetDiscoveredCatalog),
+		rpcTool("get_source_catalog", "Get the streams a source offers, as last discovered: their schemas, supported sync modes, default cursors and primary keys. "+
+			"Read it before create_connection to pick the streams to pass. It fails while the source has not been discovered yet.", kindRead,
+			pc.SourceServiceGetSourceCatalogProcedure, services.Sources.GetSourceCatalog),
 		rpcTool("list_connectors", "List the connectors installed in the workspace; their ids are the managed_connector_id of sources and destinations.", kindRead,
 			registryv1connect.ConnectorRegistryServiceListManagedConnectorsProcedure, services.Registry.ListManagedConnectors),
 		rpcTool("get_connector_spec", "Get the configuration spec (JSON Schema) of a connector.", kindRead,
@@ -156,7 +159,11 @@ func toolDefs(services Services) []toolDef {
 			pc.DestinationServiceCreateDestinationProcedure, services.Destinations.CreateDestination),
 		destructive(rpcTool("update_destination", "Update a destination. Masked secret values passed back unchanged keep the stored secrets.", kindWrite,
 			pc.DestinationServiceUpdateDestinationProcedure, services.Destinations.UpdateDestination)),
-		rpcTool("create_connection", "Create a connection between a source and a destination.", kindWrite,
+		rpcTool("create_connection", "Create a connection between a source and a destination. "+
+			"Pass streams to configure the streams it syncs in the same call, in the shape configure_streams takes; "+
+			"a connection without a configured stream cannot sync, run in a workflow or be added to one. "+
+			"Read get_source_catalog for the source's streams. If the source's catalog is not discovered yet, "+
+			"the call fails and creates nothing: wait for discovery and retry.", kindWrite,
 			pc.ConnectionServiceCreateConnectionProcedure, services.Connections.CreateConnection),
 		destructive(rpcTool("update_connection", "Update a connection's settings and schedule.", kindWrite,
 			pc.ConnectionServiceUpdateConnectionProcedure, services.Connections.UpdateConnection)),
