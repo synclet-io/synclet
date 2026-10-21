@@ -107,6 +107,42 @@ func (r *Redactor) RedactTruncated(text string) string {
 		return text
 	}
 
+	return r.maskTrailingPrefix(text)
+}
+
+// RedactHeadTruncated is Redact for text whose beginning was cut off, such as
+// the newest part of a bounded buffer: it also masks a leading suffix, of at
+// least minSecretLen bytes, of a secret value.
+func (r *Redactor) RedactHeadTruncated(text string) string {
+	text = r.Redact(text)
+	if r == nil {
+		return text
+	}
+
+	return r.maskLeadingSuffix(text)
+}
+
+func (r *Redactor) maskLeadingSuffix(text string) string {
+	start := 0
+
+	for _, secret := range r.secrets {
+		for n := min(len(secret)-1, len(text)); n >= minSecretLen; n-- {
+			if strings.HasPrefix(text, secret[len(secret)-n:]) {
+				start = max(start, n)
+
+				break
+			}
+		}
+	}
+
+	if start == 0 {
+		return text
+	}
+
+	return RedactedMask + text[start:]
+}
+
+func (r *Redactor) maskTrailingPrefix(text string) string {
 	cut := len(text)
 
 	for _, secret := range r.secrets {

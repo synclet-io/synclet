@@ -250,13 +250,31 @@ func (r *exitAwareReader) Read(p []byte) (int, error) {
 }
 
 func (r *exitAwareReader) exitError() *pipelineservice.ExitCodeError {
-	stderrContent, _ := io.ReadAll(r.stderr)
-
 	return &pipelineservice.ExitCodeError{
 		ExitCode: *r.exitCode,
 		Role:     r.role,
-		Stderr:   truncateString(r.redactor.Redact(string(bytes.TrimSpace(stderrContent))), 1024),
+		Stderr:   stderrText(r.stderr, r.redactor),
 	}
+}
+
+// headDiscarder is a stderr reader that may have dropped its oldest output.
+type headDiscarder interface {
+	HeadDiscarded() bool
+}
+
+// stderrText returns a container's stderr redacted and cut to 1024 bytes.
+// When the oldest output was dropped, a secret cut at the start is masked too.
+func stderrText(stderr io.Reader, redactor *pipelineexec.Redactor) string {
+	content, _ := io.ReadAll(stderr)
+	text := string(bytes.TrimSpace(content))
+
+	if discarder, ok := stderr.(headDiscarder); ok && discarder.HeadDiscarded() {
+		text = redactor.RedactHeadTruncated(text)
+	} else {
+		text = redactor.Redact(text)
+	}
+
+	return truncateString(text, 1024)
 }
 
 func (r *exitAwareReader) Close() error {
@@ -343,10 +361,7 @@ func (c *ConnectorClient) runAndCollect(ctx context.Context, redactor *pipelinee
 
 	// If the container exited with a non-zero code, return an error with stderr content.
 	if result.ExitCode != 0 {
-		stderrContent, _ := io.ReadAll(result.Stderr)
-		stderrStr := truncateString(redactor.Redact(string(bytes.TrimSpace(stderrContent))), 1024)
-
-		return nil, fmt.Errorf("container exited with code %d: %s", result.ExitCode, stderrStr)
+		return nil, fmt.Errorf("container exited with code %d: %s", result.ExitCode, stderrText(result.Stderr, redactor))
 	}
 
 	return messages, nil

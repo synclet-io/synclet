@@ -65,6 +65,30 @@ func TestBoundedBuffer_MultipleSmallWrites(t *testing.T) {
 	assert.Equal(t, "defghijk", string(out[:n]))
 }
 
+func TestBoundedBuffer_HeadDiscarded(t *testing.T) {
+	tests := map[string]struct {
+		writes    []string
+		discarded bool
+	}{
+		"under limit":               {writes: []string{"abc", "de"}, discarded: false},
+		"exactly at limit":          {writes: []string{"abcde"}, discarded: false},
+		"single write over limit":   {writes: []string{"abcdef"}, discarded: true},
+		"writes overflow":           {writes: []string{"abc", "def"}, discarded: true},
+		"full write after buffered": {writes: []string{"a", "bcdef"}, discarded: true},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			buf := newBoundedBuffer(5)
+			for _, w := range tt.writes {
+				_, _ = buf.Write([]byte(w))
+			}
+
+			assert.Equal(t, tt.discarded, buf.HeadDiscarded())
+		})
+	}
+}
+
 func TestBoundedBuffer_EmptyRead(t *testing.T) {
 	buf := newBoundedBuffer(10)
 	out := make([]byte, 10)

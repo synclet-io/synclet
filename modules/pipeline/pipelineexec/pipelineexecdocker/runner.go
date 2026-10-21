@@ -43,9 +43,10 @@ const (
 // oldest data when the limit is exceeded. Used for stderr to prevent unbounded
 // memory growth from verbose connectors while keeping the most recent output.
 type boundedBuffer struct {
-	mu      sync.Mutex
-	buf     []byte
-	maxSize int
+	mu        sync.Mutex
+	buf       []byte
+	maxSize   int
+	discarded bool
 }
 
 func newBoundedBuffer(maxSize int) *boundedBuffer {
@@ -57,6 +58,7 @@ func (b *boundedBuffer) Write(data []byte) (int, error) {
 	defer b.mu.Unlock()
 	// If the incoming data alone exceeds maxSize, keep only the tail.
 	if len(data) >= b.maxSize {
+		b.discarded = b.discarded || len(b.buf) > 0 || len(data) > b.maxSize
 		b.buf = make([]byte, b.maxSize)
 		copy(b.buf, data[len(data)-b.maxSize:])
 
@@ -66,12 +68,24 @@ func (b *boundedBuffer) Write(data []byte) (int, error) {
 	if len(b.buf)+len(data) > b.maxSize {
 		overflow := len(b.buf) + len(data) - b.maxSize
 		b.buf = b.buf[overflow:]
+		b.discarded = true
 	}
 
 	b.buf = append(b.buf, data...)
 
 	return len(data), nil
 }
+
+// HeadDiscarded reports whether any output was dropped to stay within maxSize.
+func (b *boundedBuffer) HeadDiscarded() bool {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	return b.discarded
+}
+
+// Close does nothing; the buffer holds no resources.
+func (b *boundedBuffer) Close() error { return nil }
 
 func (b *boundedBuffer) Read(dest []byte) (int, error) {
 	b.mu.Lock()
@@ -371,7 +385,7 @@ func (r *ContainerRunner) Run(ctx context.Context, opts RunOptions) (*RunResult,
 
 	result := &RunResult{
 		Stdout:      stdoutReader,
-		Stderr:      io.NopCloser(stderrBuf),
+		Stderr:      stderrBuf,
 		ContainerID: containerID,
 	}
 

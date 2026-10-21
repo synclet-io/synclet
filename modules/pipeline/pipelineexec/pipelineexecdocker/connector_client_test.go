@@ -271,6 +271,37 @@ func TestConnectorClientRedactsSecrets(t *testing.T) {
 		require.ErrorAs(t, err, &exitErr)
 		assert.Equal(t, "password=***", exitErr.Stderr)
 	})
+
+	t.Run("stderr whose oldest part was discarded inside a secret", func(t *testing.T) {
+		clippedStderr := func(exitCode int) *pkgcontainer.RunResult {
+			stderr := newBoundedBuffer(len("ter2-pass\nTraceback"))
+			_, _ = stderr.Write([]byte("password=hunter2-pass\nTraceback"))
+
+			result := finishedRunResult("", "", exitCode)
+			result.Stderr = stderr
+
+			return result
+		}
+
+		runner := &mockContainerRunner{runResults: []*pkgcontainer.RunResult{clippedStderr(2), clippedStderr(1)}}
+		client := NewConnectorClient(runner)
+
+		stdout, cleanup, err := client.Read(ctx, "img", config, &protocol.ConfiguredAirbyteCatalog{}, nil, nil, ResourceLimits{})
+		require.NoError(t, err)
+
+		defer cleanup()
+
+		_, err = io.ReadAll(stdout)
+
+		var exitErr *pipelineservice.ExitCodeError
+		require.ErrorAs(t, err, &exitErr)
+		assert.Equal(t, "***\nTraceback", exitErr.Stderr)
+
+		_, err = client.Check(ctx, "img", config)
+		require.Error(t, err)
+		assert.NotContains(t, err.Error(), "ter2-pass")
+		assert.Contains(t, err.Error(), "***\nTraceback")
+	})
 }
 
 func TestConnectorClientDrainTimeoutCarriesExit(t *testing.T) {

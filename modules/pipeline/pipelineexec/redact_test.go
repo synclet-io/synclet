@@ -123,6 +123,30 @@ func TestRedactor_RedactTruncated(t *testing.T) {
 	assert.Equal(t, "hunter2-p", nilRedactor.RedactTruncated("hunter2-p"))
 }
 
+func TestRedactor_RedactHeadTruncated(t *testing.T) {
+	redactor := NewRedactor(json.RawMessage(`{"password":"hunter2-pass"}`))
+
+	tests := map[string]struct {
+		in, out string
+	}{
+		"text starts inside a secret":  {"ter2-pass then more", "*** then more"},
+		"suffix below minSecretLen":    {"ass then", "ass then"},
+		"whole secret inside":          {"pw hunter2-pass ok", "pw *** ok"},
+		"suffix not at the very start": {"x ter2-pass", "x ter2-pass"},
+		"text ends inside a secret":    {"pw hunter2-p", "pw hunter2-p"},
+		"no secret":                    {"plain text", "plain text"},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			assert.Equal(t, tt.out, redactor.RedactHeadTruncated(tt.in))
+		})
+	}
+
+	var nilRedactor *Redactor
+	assert.Equal(t, "ter2-pass", nilRedactor.RedactHeadTruncated("ter2-pass"))
+}
+
 func TestRedactHandler_CutsLongLogLinesAfterRedaction(t *testing.T) {
 	ctx := context.Background()
 	long := strings.Repeat("x", MaxLogLineSize-4) + "hunter2-pass" + strings.Repeat("y", 1<<20)
