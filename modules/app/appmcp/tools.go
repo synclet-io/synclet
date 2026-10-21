@@ -126,6 +126,10 @@ func toolDefs(services Services) []toolDef {
 			statsv1connect.StatsServiceGetConnectionStatsProcedure, services.Stats.GetConnectionStats),
 		rpcTool("get_schema_changes", "Get the pending source schema changes of a connection.", kindRead,
 			pc.ConnectionServiceGetSchemaChangesProcedure, services.Connections.GetSchemaChanges),
+		rpcTool("get_configured_catalog", "Get a connection's current stream configuration: each selected stream with its sync mode, cursor, primary key, selected fields and mappers. Read it before configure_streams.", kindRead,
+			pc.ConnectionServiceGetConfiguredCatalogProcedure, services.Connections.GetConfiguredCatalog),
+		rpcTool("get_discovered_catalog", "Get the streams the connection's source offers, as last discovered: their schemas, supported sync modes, default cursors and primary keys.", kindRead,
+			pc.ConnectionServiceGetDiscoveredCatalogProcedure, services.Connections.GetDiscoveredCatalog),
 		rpcTool("list_connectors", "List the connectors installed in the workspace; their ids are the managed_connector_id of sources and destinations.", kindRead,
 			registryv1connect.ConnectorRegistryServiceListManagedConnectorsProcedure, services.Registry.ListManagedConnectors),
 		rpcTool("get_connector_spec", "Get the configuration spec (JSON Schema) of a connector.", kindRead,
@@ -156,8 +160,11 @@ func toolDefs(services Services) []toolDef {
 			pc.ConnectionServiceCreateConnectionProcedure, services.Connections.CreateConnection),
 		destructive(rpcTool("update_connection", "Update a connection's settings and schedule.", kindWrite,
 			pc.ConnectionServiceUpdateConnectionProcedure, services.Connections.UpdateConnection)),
-		destructive(rpcTool("configure_streams", "Set which streams a connection syncs and how.", kindWrite,
+		destructive(rpcTool("configure_streams", "Set which streams a connection syncs and how. It replaces the whole stream configuration: "+
+			"streams left out stop syncing. Read get_configured_catalog first and send every stream back, changing only the ones you mean to change. "+
+			"To change, add or remove a single stream, use configure_stream instead.", kindWrite,
 			pc.ConnectionServiceConfigureStreamsProcedure, services.Connections.ConfigureStreams)),
+		configureStreamTool(services.Connections),
 		rpcTool("create_workflow", "Create a workflow.", kindWrite,
 			pc.WorkflowServiceCreateWorkflowProcedure, services.Workflows.CreateWorkflow),
 		destructive(rpcTool("update_workflow", "Update a workflow.", kindWrite,

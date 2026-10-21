@@ -3,6 +3,7 @@ package appmcp
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"maps"
@@ -21,8 +22,11 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/structpb"
 
+	protocolv1 "github.com/synclet-io/synclet/gen/proto/synclet/protocol/v1"
 	pipelinev1 "github.com/synclet-io/synclet/gen/proto/synclet/publicapi/pipeline/v1"
 	"github.com/synclet-io/synclet/gen/proto/synclet/publicapi/pipeline/v1/pipelinev1connect"
 	registryv1 "github.com/synclet-io/synclet/gen/proto/synclet/publicapi/registry/v1"
@@ -113,6 +117,9 @@ type fakeServices struct {
 	mu       sync.Mutex
 	calls    []recordedCall
 	logLines int
+
+	configuredCatalog    *pipelinev1.GetConfiguredCatalogResponse
+	configuredCatalogErr error
 }
 
 func (f *fakeServices) record(ctx context.Context, method string, req proto.Message) {
@@ -229,6 +236,86 @@ func (f *fakeServices) GetConnectionStats(ctx context.Context, r *connect.Reques
 
 func (f *fakeServices) GetSchemaChanges(ctx context.Context, r *connect.Request[pipelinev1.GetSchemaChangesRequest]) (*connect.Response[pipelinev1.GetSchemaChangesResponse], error) {
 	return respond[pipelinev1.GetSchemaChangesResponse](ctx, f, "GetSchemaChanges", r.Msg)
+}
+
+var (
+	configuredCatalog = &pipelinev1.GetConfiguredCatalogResponse{Catalog: mustStruct(map[string]any{
+		"streams": []any{
+			map[string]any{
+				"stream":                map[string]any{"name": "users", "namespace": "public", "json_schema": map[string]any{}},
+				"sync_mode":             "incremental",
+				"destination_sync_mode": "append_dedup",
+				"cursor_field":          []any{"updated_at"},
+				"primary_key":           []any{[]any{"id"}},
+				"selected_fields":       []any{map[string]any{"field_path": []any{"id"}}, map[string]any{"field_path": []any{"updated_at"}}},
+				"mappers":               []any{map[string]any{"type": "hash", "field": "email"}},
+				"generation_id":         0,
+				"minimum_generation_id": 0,
+				"sync_id":               0,
+			},
+			map[string]any{
+				"stream":                map[string]any{"name": "orders", "namespace": "public", "json_schema": map[string]any{}},
+				"sync_mode":             "full_refresh",
+				"destination_sync_mode": "overwrite",
+				"generation_id":         0,
+				"minimum_generation_id": 0,
+				"sync_id":               0,
+			},
+		},
+	})}
+	configuredUsers = &pipelinev1.ConfiguredStream{
+		StreamName:          "users",
+		Namespace:           "public",
+		SyncMode:            pipelinev1.SyncMode_SYNC_MODE_INCREMENTAL,
+		DestinationSyncMode: pipelinev1.DestinationSyncMode_DESTINATION_SYNC_MODE_APPEND_DEDUP,
+		CursorField:         []string{"updated_at"},
+		PrimaryKey:          []*pipelinev1.CompositeKey{{FieldPath: []string{"id"}}},
+		SelectedFields:      []*pipelinev1.SelectedField{{FieldPath: []string{"id"}}, {FieldPath: []string{"updated_at"}}},
+		Mappers:             []*structpb.Struct{mustStruct(map[string]any{"type": "hash", "field": "email"})},
+	}
+	configuredOrders = &pipelinev1.ConfiguredStream{
+		StreamName:          "orders",
+		Namespace:           "public",
+		SyncMode:            pipelinev1.SyncMode_SYNC_MODE_FULL_REFRESH,
+		DestinationSyncMode: pipelinev1.DestinationSyncMode_DESTINATION_SYNC_MODE_OVERWRITE,
+	}
+	discoveredCatalog = &pipelinev1.GetDiscoveredCatalogResponse{Catalog: &protocolv1.AirbyteCatalog{
+		Streams: []*protocolv1.AirbyteStream{{
+			Name:               "users",
+			Namespace:          "public",
+			SupportedSyncModes: []string{"full_refresh", "incremental"},
+			DefaultCursorField: []string{"updated_at"},
+		}},
+	}}
+)
+
+func mustStruct(m map[string]any) *structpb.Struct {
+	s, err := structpb.NewStruct(m)
+	if err != nil {
+		panic(err)
+	}
+
+	return s
+}
+
+func (f *fakeServices) GetConfiguredCatalog(ctx context.Context, r *connect.Request[pipelinev1.GetConfiguredCatalogRequest]) (*connect.Response[pipelinev1.GetConfiguredCatalogResponse], error) {
+	f.record(ctx, "GetConfiguredCatalog", r.Msg)
+
+	if f.configuredCatalogErr != nil {
+		return nil, f.configuredCatalogErr
+	}
+
+	if f.configuredCatalog != nil {
+		return connect.NewResponse(f.configuredCatalog), nil
+	}
+
+	return connect.NewResponse(configuredCatalog), nil
+}
+
+func (f *fakeServices) GetDiscoveredCatalog(ctx context.Context, r *connect.Request[pipelinev1.GetDiscoveredCatalogRequest]) (*connect.Response[pipelinev1.GetDiscoveredCatalogResponse], error) {
+	f.record(ctx, "GetDiscoveredCatalog", r.Msg)
+
+	return connect.NewResponse(discoveredCatalog), nil
 }
 
 func (f *fakeServices) ListManagedConnectors(ctx context.Context, r *connect.Request[registryv1.ListManagedConnectorsRequest]) (*connect.Response[registryv1.ListManagedConnectorsResponse], error) {
@@ -426,14 +513,15 @@ var (
 	readTools = []string{
 		"list_connections", "get_connection", "list_sources", "get_source", "list_destinations",
 		"get_destination", "list_jobs", "get_job", "list_workflows", "get_workflow", "list_workflow_runs",
-		"get_workflow_run", "get_connection_stats", "get_schema_changes", "list_connectors", "get_connector_spec",
+		"get_workflow_run", "get_connection_stats", "get_schema_changes", "get_configured_catalog", "get_discovered_catalog", "list_connectors",
+		"get_connector_spec",
 	}
 	actionTools = []string{
 		"trigger_sync", "cancel_job", "pause_connection", "resume_connection", "run_workflow", "rerun_workflow_run",
 	}
 	writeTools = []string{
 		"create_source", "update_source", "create_destination", "update_destination", "create_connection",
-		"update_connection", "configure_streams", "create_workflow", "update_workflow", "delete_source",
+		"update_connection", "configure_streams", "configure_stream", "create_workflow", "update_workflow", "delete_source",
 		"delete_destination", "delete_connection", "delete_workflow",
 	}
 )
@@ -517,41 +605,48 @@ func TestMCP_Auth(t *testing.T) {
 }
 
 var toolMethods = map[string]string{
-	"list_connections":     "ListConnections",
-	"get_connection":       "GetConnection",
-	"list_sources":         "ListSources",
-	"get_source":           "GetSource",
-	"list_destinations":    "ListDestinations",
-	"get_destination":      "GetDestination",
-	"list_jobs":            "ListJobs",
-	"get_job":              "GetJob",
-	"list_workflows":       "ListWorkflows",
-	"get_workflow":         "GetWorkflow",
-	"list_workflow_runs":   "ListWorkflowRuns",
-	"get_workflow_run":     "GetWorkflowRun",
-	"get_connection_stats": "GetConnectionStats",
-	"get_schema_changes":   "GetSchemaChanges",
-	"list_connectors":      "ListManagedConnectors",
-	"get_connector_spec":   "GetConnectorSpec",
-	"trigger_sync":         "TriggerSync",
-	"cancel_job":           "CancelJob",
-	"pause_connection":     "DisableConnection",
-	"resume_connection":    "EnableConnection",
-	"run_workflow":         "RunWorkflow",
-	"rerun_workflow_run":   "RerunWorkflowRun",
-	"create_source":        "CreateSource",
-	"update_source":        "UpdateSource",
-	"create_destination":   "CreateDestination",
-	"update_destination":   "UpdateDestination",
-	"create_connection":    "CreateConnection",
-	"update_connection":    "UpdateConnection",
-	"configure_streams":    "ConfigureStreams",
-	"create_workflow":      "CreateWorkflow",
-	"update_workflow":      "UpdateWorkflow",
-	"delete_source":        "DeleteSource",
-	"delete_destination":   "DeleteDestination",
-	"delete_connection":    "DeleteConnection",
-	"delete_workflow":      "DeleteWorkflow",
+	"list_connections":       "ListConnections",
+	"get_connection":         "GetConnection",
+	"list_sources":           "ListSources",
+	"get_source":             "GetSource",
+	"list_destinations":      "ListDestinations",
+	"get_destination":        "GetDestination",
+	"list_jobs":              "ListJobs",
+	"get_job":                "GetJob",
+	"list_workflows":         "ListWorkflows",
+	"get_workflow":           "GetWorkflow",
+	"list_workflow_runs":     "ListWorkflowRuns",
+	"get_workflow_run":       "GetWorkflowRun",
+	"get_connection_stats":   "GetConnectionStats",
+	"get_schema_changes":     "GetSchemaChanges",
+	"get_configured_catalog": "GetConfiguredCatalog",
+	"get_discovered_catalog": "GetDiscoveredCatalog",
+	"list_connectors":        "ListManagedConnectors",
+	"get_connector_spec":     "GetConnectorSpec",
+	"trigger_sync":           "TriggerSync",
+	"cancel_job":             "CancelJob",
+	"pause_connection":       "DisableConnection",
+	"resume_connection":      "EnableConnection",
+	"run_workflow":           "RunWorkflow",
+	"rerun_workflow_run":     "RerunWorkflowRun",
+	"create_source":          "CreateSource",
+	"update_source":          "UpdateSource",
+	"create_destination":     "CreateDestination",
+	"update_destination":     "UpdateDestination",
+	"create_connection":      "CreateConnection",
+	"update_connection":      "UpdateConnection",
+	"configure_streams":      "ConfigureStreams",
+	"configure_stream":       "ConfigureStreams",
+	"create_workflow":        "CreateWorkflow",
+	"update_workflow":        "UpdateWorkflow",
+	"delete_source":          "DeleteSource",
+	"delete_destination":     "DeleteDestination",
+	"delete_connection":      "DeleteConnection",
+	"delete_workflow":        "DeleteWorkflow",
+}
+
+var toolArgs = map[string]map[string]any{
+	"configure_stream": {"stream_name": "events"},
 }
 
 func assertToolsCallHandlers(t *testing.T, names []string) {
@@ -561,7 +656,7 @@ func assertToolsCallHandlers(t *testing.T, names []string) {
 	session, _ := connectClient(t, endpoint, editorKey)
 
 	for _, name := range names {
-		res := callTool(t, session, name, nil)
+		res := callTool(t, session, name, toolArgs[name])
 		require.False(t, res.IsError, "%s: %s", name, resultText(t, res))
 
 		assert.Contains(t, fake.methods(), toolMethods[name], name)
@@ -582,6 +677,28 @@ func TestMCP_ReadTools(t *testing.T) {
 
 		res = callTool(t, session, "get_connection", map[string]any{"bogus": 1})
 		assert.True(t, res.IsError)
+	})
+
+	t.Run("catalog tools return the public API's data to a viewer", func(t *testing.T) {
+		for name, want := range map[string]proto.Message{
+			"get_configured_catalog": configuredCatalog,
+			"get_discovered_catalog": discoveredCatalog,
+		} {
+			endpoint, fake := newTestServer(t, true)
+			session, _ := connectClient(t, endpoint, viewerKey)
+
+			res := callTool(t, session, name, map[string]any{"connection_id": "c-1"})
+			require.False(t, res.IsError, "%s: %s", name, resultText(t, res))
+
+			call := fake.last()
+			assert.Equal(t, toolMethods[name], call.method, name)
+			assert.Equal(t, viewerUserID, call.userID, name)
+			assert.Equal(t, "c-1", call.req.(interface{ GetConnectionId() string }).GetConnectionId(), name)
+
+			wantJSON, err := protojson.Marshal(want)
+			require.NoError(t, err)
+			assert.JSONEq(t, string(wantJSON), resultText(t, res), name)
+		}
 	})
 
 	t.Run("get_job returns the tail of the logs", func(t *testing.T) {
@@ -638,7 +755,7 @@ func TestMCP_WriteTools(t *testing.T) {
 			require.NotNil(t, annotations, name)
 			assert.False(t, annotations.ReadOnlyHint, name)
 
-			if strings.HasPrefix(name, "delete_") {
+			if strings.HasPrefix(name, "delete_") || strings.HasPrefix(name, "configure_") {
 				require.NotNil(t, annotations.DestructiveHint, name)
 				assert.True(t, *annotations.DestructiveHint, name)
 			}
@@ -662,6 +779,32 @@ func TestMCP_WriteTools(t *testing.T) {
 		assert.Len(t, tools, len(readTools)+len(actionTools))
 	})
 
+	t.Run("configure_streams says it replaces the whole configuration", func(t *testing.T) {
+		endpoint, _ := newTestServer(t, true)
+		session, _ := connectClient(t, endpoint, viewerKey)
+		description := listTools(t, session)["configure_streams"].Description
+
+		assert.Contains(t, description, "replaces the whole stream configuration")
+		assert.Contains(t, description, "get_configured_catalog")
+		assert.Contains(t, description, "every stream")
+	})
+
+	t.Run("configure_stream says omitted fields are cleared", func(t *testing.T) {
+		endpoint, _ := newTestServer(t, true)
+		session, _ := connectClient(t, endpoint, editorKey)
+
+		description := listTools(t, session)["configure_stream"].Description
+		assert.Contains(t, description, "every field left out is cleared")
+		assert.Contains(t, description, "send the full stream as get_configured_catalog returns it")
+	})
+
+	t.Run("configure_streams points to configure_stream", func(t *testing.T) {
+		endpoint, _ := newTestServer(t, true)
+		session, _ := connectClient(t, endpoint, viewerKey)
+
+		assert.Contains(t, listTools(t, session)["configure_streams"].Description, "configure_stream ")
+	})
+
 	t.Run("create_source schema takes config as an object", func(t *testing.T) {
 		endpoint, _ := newTestServer(t, true)
 		session, _ := connectClient(t, endpoint, viewerKey)
@@ -683,6 +826,208 @@ func TestMCP_WriteTools(t *testing.T) {
 	})
 }
 
+func configureStream(t *testing.T, args map[string]any) []*pipelinev1.ConfiguredStream {
+	t.Helper()
+
+	return configureStreamOn(t, func(*fakeServices) {}, args)
+}
+
+func configureStreamOn(t *testing.T, setup func(*fakeServices), args map[string]any) []*pipelinev1.ConfiguredStream {
+	t.Helper()
+
+	endpoint, fake := newTestServer(t, true)
+	setup(fake)
+
+	session, _ := connectClient(t, endpoint, editorKey)
+
+	res := callTool(t, session, "configure_stream", args)
+	require.False(t, res.IsError, resultText(t, res))
+
+	assert.Equal(t, []string{"GetConfiguredCatalog", "ConfigureStreams"}, fake.methods())
+
+	call := fake.last()
+	assert.Equal(t, editorUserID, call.userID)
+
+	req, ok := call.req.(*pipelinev1.ConfigureStreamsRequest)
+	require.True(t, ok)
+	assert.Equal(t, "c-1", req.GetConnectionId())
+
+	return req.GetStreams()
+}
+
+func assertStreams(t *testing.T, want, got []*pipelinev1.ConfiguredStream) {
+	t.Helper()
+
+	require.Len(t, got, len(want))
+
+	for i := range want {
+		assert.True(t, proto.Equal(want[i], got[i]), "stream %d: want %v, got %v", i, want[i], got[i])
+	}
+}
+
+func TestMCP_ConfigureStream(t *testing.T) {
+	t.Run("changes one stream and keeps the other", func(t *testing.T) {
+		streams := configureStream(t, map[string]any{
+			"connection_id":         "c-1",
+			"namespace":             "public",
+			"stream_name":           "orders",
+			"sync_mode":             "SYNC_MODE_INCREMENTAL",
+			"destination_sync_mode": "DESTINATION_SYNC_MODE_APPEND",
+			"cursor_field":          []any{"placed_at"},
+		})
+
+		assertStreams(t, []*pipelinev1.ConfiguredStream{
+			configuredUsers,
+			{
+				StreamName:          "orders",
+				Namespace:           "public",
+				SyncMode:            pipelinev1.SyncMode_SYNC_MODE_INCREMENTAL,
+				DestinationSyncMode: pipelinev1.DestinationSyncMode_DESTINATION_SYNC_MODE_APPEND,
+				CursorField:         []string{"placed_at"},
+			},
+		}, streams)
+	})
+
+	t.Run("adds a stream that is not configured", func(t *testing.T) {
+		streams := configureStream(t, map[string]any{
+			"connection_id":         "c-1",
+			"namespace":             "public",
+			"stream_name":           "events",
+			"sync_mode":             "SYNC_MODE_INCREMENTAL",
+			"destination_sync_mode": "DESTINATION_SYNC_MODE_APPEND",
+			"cursor_field":          []any{"created_at"},
+		})
+
+		assertStreams(t, []*pipelinev1.ConfiguredStream{
+			configuredUsers,
+			configuredOrders,
+			{
+				StreamName:          "events",
+				Namespace:           "public",
+				SyncMode:            pipelinev1.SyncMode_SYNC_MODE_INCREMENTAL,
+				DestinationSyncMode: pipelinev1.DestinationSyncMode_DESTINATION_SYNC_MODE_APPEND,
+				CursorField:         []string{"created_at"},
+			},
+		}, streams)
+	})
+
+	t.Run("enabled false removes the stream", func(t *testing.T) {
+		streams := configureStream(t, map[string]any{
+			"connection_id": "c-1",
+			"namespace":     "public",
+			"stream_name":   "users",
+			"enabled":       false,
+		})
+
+		assertStreams(t, []*pipelinev1.ConfiguredStream{configuredOrders}, streams)
+	})
+
+	t.Run("a stream is matched by namespace and name", func(t *testing.T) {
+		streams := configureStream(t, map[string]any{
+			"connection_id": "c-1",
+			"namespace":     "other",
+			"stream_name":   "users",
+			"enabled":       false,
+		})
+
+		assertStreams(t, []*pipelinev1.ConfiguredStream{configuredUsers, configuredOrders}, streams)
+	})
+
+	t.Run("adds the first stream to a connection without a configuration", func(t *testing.T) {
+		streams := configureStreamOn(t, func(f *fakeServices) {
+			f.configuredCatalogErr = connect.NewError(connect.CodeNotFound, errors.New("configured catalog not found"))
+		}, map[string]any{
+			"connection_id":         "c-1",
+			"namespace":             "public",
+			"stream_name":           "events",
+			"sync_mode":             "SYNC_MODE_FULL_REFRESH",
+			"destination_sync_mode": "DESTINATION_SYNC_MODE_OVERWRITE",
+		})
+
+		assertStreams(t, []*pipelinev1.ConfiguredStream{{
+			StreamName:          "events",
+			Namespace:           "public",
+			SyncMode:            pipelinev1.SyncMode_SYNC_MODE_FULL_REFRESH,
+			DestinationSyncMode: pipelinev1.DestinationSyncMode_DESTINATION_SYNC_MODE_OVERWRITE,
+		}}, streams)
+	})
+
+	t.Run("numbers in an untouched stream's mapper config survive", func(t *testing.T) {
+		streams := configureStreamOn(t, func(f *fakeServices) {
+			f.configuredCatalog = &pipelinev1.GetConfiguredCatalogResponse{Catalog: mustStruct(map[string]any{
+				"streams": []any{
+					map[string]any{
+						"stream":                map[string]any{"name": "users", "namespace": "public"},
+						"sync_mode":             "full_refresh",
+						"destination_sync_mode": "overwrite",
+						"mappers":               []any{map[string]any{"type": "truncate", "field": "bio", "length": 120, "ratio": 0.25}},
+					},
+				},
+			})}
+		}, map[string]any{
+			"connection_id":         "c-1",
+			"namespace":             "public",
+			"stream_name":           "orders",
+			"sync_mode":             "SYNC_MODE_FULL_REFRESH",
+			"destination_sync_mode": "DESTINATION_SYNC_MODE_OVERWRITE",
+		})
+
+		require.Len(t, streams, 2)
+		require.Len(t, streams[0].GetMappers(), 1)
+		assert.True(t, proto.Equal(
+			mustStruct(map[string]any{"type": "truncate", "field": "bio", "length": 120, "ratio": 0.25}),
+			streams[0].GetMappers()[0],
+		), "mapper: %v", streams[0].GetMappers()[0])
+	})
+
+	for _, mode := range []string{"update", "soft_delete"} {
+		t.Run("stored destination sync mode "+mode+" fails without writing", func(t *testing.T) {
+			endpoint, fake := newTestServer(t, true)
+			fake.configuredCatalog = &pipelinev1.GetConfiguredCatalogResponse{Catalog: mustStruct(map[string]any{
+				"streams": []any{
+					map[string]any{
+						"stream":                map[string]any{"name": "users", "namespace": "public"},
+						"sync_mode":             "incremental",
+						"destination_sync_mode": mode,
+					},
+				},
+			})}
+			session, _ := connectClient(t, endpoint, editorKey)
+
+			res := callTool(t, session, "configure_stream", map[string]any{"connection_id": "c-1", "namespace": "public", "stream_name": "orders"})
+			assert.True(t, res.IsError)
+			assert.Contains(t, resultText(t, res), "failed_precondition")
+			assert.Equal(t, []string{"GetConfiguredCatalog"}, fake.methods())
+		})
+	}
+
+	t.Run("stream_name is required", func(t *testing.T) {
+		endpoint, fake := newTestServer(t, true)
+		session, _ := connectClient(t, endpoint, editorKey)
+
+		res := callTool(t, session, "configure_stream", map[string]any{"connection_id": "c-1"})
+		assert.True(t, res.IsError)
+		assert.Empty(t, fake.methods())
+	})
+
+	t.Run("viewer is refused", func(t *testing.T) {
+		endpoint, fake := newTestServer(t, true)
+		session, _ := connectClient(t, endpoint, viewerKey)
+
+		res := callTool(t, session, "configure_stream", map[string]any{"connection_id": "c-1", "stream_name": "users"})
+		assert.True(t, res.IsError)
+		assert.Contains(t, resultText(t, res), "permission_denied")
+		assert.Empty(t, fake.methods())
+	})
+
+	t.Run("hidden with write tools off", func(t *testing.T) {
+		endpoint, _ := newTestServer(t, false)
+		session, _ := connectClient(t, endpoint, editorKey)
+
+		assert.NotContains(t, listTools(t, session), "configure_stream")
+	})
+}
+
 func TestMCP_ToolSet(t *testing.T) {
 	endpoint, _ := newTestServer(t, true)
 	session, _ := connectClient(t, endpoint, viewerKey)
@@ -696,7 +1041,7 @@ func TestMCP_ToolSet(t *testing.T) {
 
 	want := slices.Concat(readTools, actionTools, writeTools)
 	assert.ElementsMatch(t, want, names)
-	assert.Len(t, names, 35)
+	assert.Len(t, names, 38)
 
 	for _, def := range toolDefs((&fakeServices{}).services()) {
 		for _, procedure := range def.procedures {
