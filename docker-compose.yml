@@ -1,4 +1,4 @@
-x-synclet-image: &synclet-image ghcr.io/synclet-io/synclet:0.14.0 # x-release-please-version
+x-synclet-image: &synclet-image ghcr.io/synclet-io/synclet:0.15.0 # x-release-please-version
 
 x-synclet-env: &synclet-env
   DB_DSN: postgres://synclet:synclet@postgres:5432/synclet?sslmode=disable
