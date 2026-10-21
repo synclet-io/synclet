@@ -43,6 +43,13 @@ helm upgrade synclet oci://ghcr.io/synclet-io/charts/synclet \
 Read the [CHANGELOG](https://github.com/synclet-io/synclet/blob/main/deploy/helm/synclet/CHANGELOG.md) before upgrading.
 Charts before 0.4.0 ran the executor as a Deployment: in distributed mode, delete it first with `kubectl delete deployment <fullname>-executor`.
 
+### Upgrading from 0.9.0
+
+`mcp.ingress.mode: separate` now gives each enabled exposure of the server its own MCP twin. Two 0.9.0 setups render differently:
+
+- With `server.gateway.enabled`, separate mode renders an MCP HTTPRoute and requires `mcp.gateway.parentRefs`; set it before upgrading, or rendering fails.
+- With `server.ingress.enabled: false`, separate mode no longer renders an MCP Ingress. Expose MCP through the gateway (`server.gateway.enabled` and `mcp.gateway.parentRefs`), or keep the Ingress enabled.
+
 ## Uninstall
 
 ```bash
@@ -73,6 +80,8 @@ A namespace set there must exist before install.
 | `server.ingress.hostname`, `server.ingress.ingressClassName` | Ingress host and class | `synclet.local`, `nginx` |
 | `server.ingress.tls` | TLS on the Ingress, with the `<fullname>-tls` Secret | `false` |
 | `server.gateway.enabled` | Create a Gateway API HTTPRoute attached to `server.gateway.parentRefs` | `false` |
+| `mcp.enabled` | Run the MCP server for AI clients, with a `<fullname>-mcp` Service | `false` |
+| `mcp.ingress.mode` | `shared`: MCP paths on the main Ingress and HTTPRoute; `separate`: each enabled exposure of the server gets an MCP-only twin, and the main Ingress and HTTPRoute carry no MCP paths: with `server.ingress.enabled` an Ingress on `mcp.ingress.hostname` (required), with `server.gateway.enabled` an HTTPRoute attached to `mcp.gateway.parentRefs` (required; `mcp.gateway.hostnames`, `mcp.gateway.timeouts`, `mcp.gateway.labels` and `mcp.gateway.annotations` optional); with neither, only the MCP Service | `shared` |
 | `server.publicUrl` | URL users reach Synclet at; required when both Ingress and HTTPRoute are enabled | derived |
 | `postgresql.enabled` | Run the bundled PostgreSQL, meant for development and testing | `true` |
 | `externalDatabase.*` | External database (host, port, user, password, database, sslmode) or `existingSecret` with a full DSN | empty |

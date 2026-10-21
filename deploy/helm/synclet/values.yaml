@@ -198,9 +198,16 @@ mcp:
   service:
     port: 80
   ingress:
-    ## shared: the paths below are routed to the MCP Service on the main Ingress and HTTPRoute.
-    ## separate: an Ingress of its own on mcp.ingress.hostname, so MCP alone can be public
-    ## while the main Ingress stays private. The HTTPRoute is not changed in this mode.
+    ## In both modes MCP follows the way the server is exposed. server.ingress and
+    ## server.gateway can run alone or side by side, to migrate from Ingress to the Gateway
+    ## API gradually, and MCP moves along with the UI.
+    ## shared: the paths below are routed to the MCP Service on every enabled main route, the
+    ## main Ingress and the main HTTPRoute.
+    ## separate: MCP gets routes of its own, so MCP alone can be public while the UI stays
+    ## private, and the main Ingress and HTTPRoute carry no MCP paths. Each enabled exposure
+    ## of the server gets an MCP twin: with server.ingress.enabled an Ingress on
+    ## mcp.ingress.hostname (required), with server.gateway.enabled an HTTPRoute configured
+    ## under mcp.gateway (parentRefs required). With neither, only the MCP Service renders.
     mode: shared
     paths:
       - /mcp
@@ -213,6 +220,23 @@ mcp:
     ingressClassName: nginx
     tls: false
     tlsSecretName: ""  # defaults to {fullname}-mcp-tls
+    annotations: {}
+  ## The HTTPRoute {fullname}-mcp of separate mode with server.gateway.enabled, the Gateway
+  ## API twin of the MCP Ingress; with server.ingress.enabled too, both render, as during a
+  ## migration from Ingress to the Gateway API. It routes mcp.ingress.paths to the MCP
+  ## Service. parentRefs is required; hostnames is optional.
+  gateway:
+    ## Gateways (and optionally listeners) the MCP route attaches to, e.g. a public Gateway
+    ## while server.gateway.parentRefs names a private one.
+    parentRefs: []
+    # - name: public-gateway
+    #   namespace: gateway-system
+    #   sectionName: https
+    hostnames: []
+    # - mcp.example.com
+    ## Timeouts of the MCP rule (request, backendRequest), as in server.gateway.timeouts.
+    timeouts: {}
+    labels: {}
     annotations: {}
 
 ## @section Jobs parameters (distributed mode only)

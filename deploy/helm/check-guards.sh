@@ -56,6 +56,12 @@ expect_fail "gateway without parentRefs" \
   "server.gateway.enabled needs server.gateway.parentRefs (the Gateway the HTTPRoute attaches to)" \
   --set server.gateway.enabled=true --set 'server.gateway.hostnames[0]=synclet.example.com'
 
+expect_fail "separate MCP on the gateway without parentRefs" \
+  "mcp.gateway.parentRefs is required when mcp.ingress.mode is separate and server.gateway.enabled is true" \
+  --set mcp.enabled=true --set mcp.ingress.mode=separate --set server.ingress.enabled=false \
+  --set server.gateway.enabled=true --set 'server.gateway.parentRefs[0].name=gw' \
+  --set 'mcp.gateway.hostnames[0]=mcp.example.com'
+
 expect_fail "garage with another archive backend" \
   'logArchive.garage.enabled selects the s3 backend and wires it to Garage; leave logArchive.backend at none (got "s3")' \
   --set logArchive.garage.enabled=true --set logArchive.backend=s3 --set logArchive.s3.bucket=logs
@@ -81,7 +87,7 @@ expect_fail "vso database without path" \
   --set vso.enabled=true --set vso.appSecrets.path=synclet/app --set vso.database.enabled=true
 
 expect_fail "mcp separate without hostname" \
-  "mcp.ingress.hostname is required when mcp.ingress.mode is separate" \
+  "mcp.ingress.hostname is required when mcp.ingress.mode is separate and server.ingress.enabled is true" \
   --set mcp.enabled=true --set mcp.ingress.mode=separate
 
 expect_fail "mcp unknown ingress mode" \

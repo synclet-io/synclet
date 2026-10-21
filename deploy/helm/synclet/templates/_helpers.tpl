@@ -783,6 +783,22 @@ K8S_EXECUTOR_LOCAL_VOLUME_CLAIM: {{ .Values.k8s.localVolume | quote }}
 {{- end }}
 
 {{/*
+synclet.mcpIngress is non-empty when separate mode renders the MCP Ingress: the
+server's Ingress is enabled.
+*/}}
+{{- define "synclet.mcpIngress" -}}
+{{- if and (include "synclet.mcpEnabled" .) (not (include "synclet.mcpShared" .)) (dig "ingress" "enabled" false .Values.server) -}}true{{- end -}}
+{{- end -}}
+
+{{/*
+synclet.mcpRoute is non-empty when separate mode renders the MCP HTTPRoute: the
+server's gateway route is enabled.
+*/}}
+{{- define "synclet.mcpRoute" -}}
+{{- if and (include "synclet.mcpEnabled" .) (not (include "synclet.mcpShared" .)) (dig "gateway" "enabled" false .Values.server) -}}true{{- end -}}
+{{- end -}}
+
+{{/*
 synclet.mcpShared is non-empty when MCP is on and its paths are routed through
 the main Ingress and HTTPRoute. It fails on an unknown mcp.ingress.mode.
 */}}
@@ -804,6 +820,7 @@ block render. Read it with: include "synclet.mcp" . | fromYaml
 {{- define "synclet.mcp" -}}
 {{- $mcp := .Values.mcp | default dict -}}
 {{- $ingress := dig "ingress" dict $mcp -}}
+{{- $gateway := dig "gateway" dict $mcp -}}
 {{- $paths := list "/mcp" "/.well-known/oauth-protected-resource" "/.well-known/oauth-authorization-server" "/oauth/register" "/oauth/token" -}}
 {{- dict
   "containerPort" (dig "containerPort" 8082 $mcp)
@@ -819,6 +836,12 @@ block render. Read it with: include "synclet.mcp" . | fromYaml
     "tls" (dig "tls" false $ingress)
     "tlsSecretName" (dig "tlsSecretName" "" $ingress)
     "annotations" (dig "annotations" dict $ingress))
+  "gateway" (dict
+    "parentRefs" (dig "parentRefs" list $gateway)
+    "hostnames" (dig "hostnames" list $gateway)
+    "timeouts" (dig "timeouts" dict $gateway)
+    "labels" (dig "labels" dict $gateway)
+    "annotations" (dig "annotations" dict $gateway))
   | toYaml -}}
 {{- end -}}
 
