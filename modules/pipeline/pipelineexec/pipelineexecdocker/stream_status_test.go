@@ -27,7 +27,9 @@ type pairRunner struct {
 	mockContainerRunner
 
 	sourceOutput string
+	sourceStderr string
 	sourceExit   int
+	destOutput   string
 	destDone     chan struct{}
 
 	mu       sync.Mutex
@@ -48,7 +50,7 @@ func (r *pairRunner) Run(_ context.Context, opts pkgcontainer.RunOptions) (*pkgc
 
 		return &pkgcontainer.RunResult{
 			Stdout:   io.NopCloser(strings.NewReader(r.sourceOutput)),
-			Stderr:   io.NopCloser(strings.NewReader("")),
+			Stderr:   io.NopCloser(strings.NewReader(r.sourceStderr)),
 			ExitCode: r.sourceExit,
 			Done:     done,
 		}, nil
@@ -62,6 +64,8 @@ func (r *pairRunner) Run(_ context.Context, opts pkgcontainer.RunOptions) (*pkgc
 		r.mu.Lock()
 		r.destRead.Write(input)
 		r.mu.Unlock()
+
+		_, _ = io.WriteString(stdoutWriter, r.destOutput)
 
 		close(done)
 		close(r.destDone)

@@ -17,6 +17,9 @@ type RunConfig struct {
 	IdleTimeout time.Duration      // Kill if no RECORD for this duration. 0 = disabled.
 	Rewriter    *NamespaceRewriter // Rewrite namespace/prefix on messages to the destination and restore source names on confirmed STATE. nil = no rewriting.
 	Transformer *RecordTransformer // Run stream mappers and field selection on RECORDs before they are counted and forwarded. nil = records pass unchanged.
+	// Redactor masks connector config secrets in every connector-provided
+	// text the handler receives or the router logs. nil = nothing is masked.
+	Redactor *Redactor
 
 	// Catalog is the source's configured catalog. After the source succeeds,
 	// every stream in it without a COMPLETE or INCOMPLETE status from the
@@ -61,6 +64,7 @@ func (s *internalStats) export() *Stats {
 // It blocks until both source and dest readers reach EOF or ctx is cancelled.
 func Run(ctx context.Context, sourceStdout io.Reader, destStdin io.WriteCloser, destStdout io.ReadCloser, handler Handler, cfg RunConfig, logger *logging.Logger) (*Stats, error) {
 	stats := &internalStats{startTime: time.Now()}
+	handler = RedactHandler(handler, cfg.Redactor)
 
 	srcReader := protocol.NewMessageReader(sourceStdout, protocol.SyncMessageMaxSize)
 	destWriter := protocol.NewMessageWriter(destStdin)
@@ -74,7 +78,7 @@ func Run(ctx context.Context, sourceStdout io.Reader, destStdin io.WriteCloser, 
 	go func() {
 		defer wg.Done()
 
-		destErr = readDestOutput(ctx, destReader, handler, cfg.Rewriter, logger)
+		destErr = readDestOutput(ctx, destReader, handler, cfg.Rewriter, cfg.Redactor, logger)
 	}()
 
 	// Read source output, route messages to dest.
@@ -236,7 +240,7 @@ func routeSourceMessages(ctx context.Context, reader *protocol.MessageReader, wr
 		case protocol.MessageTypeLog:
 			// Log messages stay local, not forwarded to destination.
 			if msg.Log != nil {
-				logger.WithFields(map[string]interface{}{"level": msg.Log.Level, "message": msg.Log.Message}).Info(ctx, "source log")
+				logger.WithFields(map[string]interface{}{"level": msg.Log.Level, "message": logSafe(cfg.Redactor, msg.Log.Message)}).Info(ctx, "source log")
 
 				if err := handler.OnLog(ctx, formatLogLine("[src]", msg.Log)); err != nil {
 					logger.WithError(err).Error(ctx, "failed to handle log")
@@ -257,7 +261,7 @@ func routeSourceMessages(ctx context.Context, reader *protocol.MessageReader, wr
 				case protocol.TraceTypeAnalytics:
 					// Analytics traces are logged but not forwarded.
 					if msg.Trace.Analytics != nil {
-						logger.WithFields(map[string]interface{}{"type": msg.Trace.Analytics.Type, "value": msg.Trace.Analytics.Value}).Info(ctx, "source analytics trace")
+						logger.WithFields(analyticsFields(cfg.Redactor, msg.Trace.Analytics)).Info(ctx, "source analytics trace")
 					}
 
 					if err := handler.OnLog(ctx, formatTraceLine("[src]", msg.Trace)); err != nil {
@@ -358,7 +362,7 @@ func completeOpenStreams(writer *protocol.MessageWriter, cfg RunConfig, ended ma
 // readDestOutput reads messages from the destination's stdout and dispatches
 // side effects to the handler. Confirmed STATE carries the source catalog's
 // stream names when rewriter is set.
-func readDestOutput(ctx context.Context, reader *protocol.MessageReader, handler Handler, rewriter *NamespaceRewriter, logger *logging.Logger) error {
+func readDestOutput(ctx context.Context, reader *protocol.MessageReader, handler Handler, rewriter *NamespaceRewriter, redactor *Redactor, logger *logging.Logger) error {
 	for {
 		msg, err := reader.Read()
 		if err != nil {
@@ -392,7 +396,7 @@ func readDestOutput(ctx context.Context, reader *protocol.MessageReader, handler
 
 		case protocol.MessageTypeLog:
 			if msg.Log != nil {
-				logger.WithFields(map[string]interface{}{"level": msg.Log.Level, "message": msg.Log.Message}).Info(ctx, "dest log")
+				logger.WithFields(map[string]interface{}{"level": msg.Log.Level, "message": logSafe(redactor, msg.Log.Message)}).Info(ctx, "dest log")
 
 				if err := handler.OnLog(ctx, formatLogLine("[dst]", msg.Log)); err != nil {
 					logger.WithError(err).Error(ctx, "failed to handle log")
@@ -409,7 +413,7 @@ func readDestOutput(ctx context.Context, reader *protocol.MessageReader, handler
 		case protocol.MessageTypeTrace:
 			if msg.Trace != nil {
 				if msg.Trace.Type == protocol.TraceTypeAnalytics && msg.Trace.Analytics != nil {
-					logger.WithFields(map[string]interface{}{"type": msg.Trace.Analytics.Type, "value": msg.Trace.Analytics.Value}).Info(ctx, "dest analytics trace")
+					logger.WithFields(analyticsFields(redactor, msg.Trace.Analytics)).Info(ctx, "dest analytics trace")
 				}
 
 				if msg.Trace.Type == protocol.TraceTypeAnalytics || msg.Trace.Type == protocol.TraceTypeError {
@@ -420,4 +424,14 @@ func readDestOutput(ctx context.Context, reader *protocol.MessageReader, handler
 			}
 		}
 	}
+}
+
+// logSafe prepares connector-provided text for the process log: secrets are
+// masked first, then the text is cut to MaxLogLineSize.
+func logSafe(redactor *Redactor, text string) string {
+	return truncateLogLine(redactor.Redact(text))
+}
+
+func analyticsFields(redactor *Redactor, msg *protocol.AirbyteAnalyticsTraceMessage) map[string]interface{} {
+	return map[string]interface{}{"type": logSafe(redactor, msg.Type), "value": logSafe(redactor, msg.Value)}
 }

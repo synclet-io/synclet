@@ -219,8 +219,9 @@ func runPipeline(ctx context.Context, cfg Config, reporter *Reporter) (*pipeline
 	// Route messages using the shared router.
 	routeCfg := routerConfig(cfg)
 	routeCfg.Transformer = transformer
+	routeCfg.Redactor = connectorConfigRedactor(cfg.SecretsDir)
 
-	return pipelineexec.Run(ctx, sourceStdout, destStdin, destStdout, pipelineexec.RedactHandler(handler, connectorConfigRedactor(cfg.SecretsDir)), routeCfg, nil)
+	return pipelineexec.Run(ctx, sourceStdout, destStdin, destStdout, handler, routeCfg, nil)
 }
 
 // routerConfig gives the router the source catalog, a namespace rewriter when

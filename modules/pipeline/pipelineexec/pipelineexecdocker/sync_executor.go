@@ -174,10 +174,9 @@ func (e *DockerSyncExecutor) Execute(ctx context.Context, bundle *pipelineexec.S
 	rewriter := pipelineexec.NewNamespaceRewriter(catalog, bundle.NamespaceDefinition, bundle.CustomNamespaceFormat, bundle.StreamPrefix)
 
 	// Route messages using the shared router.
-	redactor := pipelineexec.NewRedactor(bundle.SourceConfig, bundle.DestConfig)
-
-	routeStats, routeErr := pipelineexec.Run(ctx, sourceStdout, srcPipeWriter, destStdout, pipelineexec.RedactHandler(handler, redactor), pipelineexec.RunConfig{
+	routeStats, routeErr := pipelineexec.Run(ctx, sourceStdout, srcPipeWriter, destStdout, handler, pipelineexec.RunConfig{
 		IdleTimeout: e.idleTimeout,
+		Redactor:    pipelineexec.NewRedactor(bundle.SourceConfig, bundle.DestConfig),
 		Rewriter:    rewriter,
 		Catalog:     catalog,
 		Transformer: transformer,
