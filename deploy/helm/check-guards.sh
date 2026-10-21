@@ -80,6 +80,14 @@ expect_fail "vso database without path" \
   "vso.database.path is required when vso.database.enabled=true" \
   --set vso.enabled=true --set vso.appSecrets.path=synclet/app --set vso.database.enabled=true
 
+expect_fail "mcp separate without hostname" \
+  "mcp.ingress.hostname is required when mcp.ingress.mode is separate" \
+  --set mcp.enabled=true --set mcp.ingress.mode=separate
+
+expect_fail "mcp unknown ingress mode" \
+  "mcp.ingress.mode must be shared or separate" \
+  --set mcp.enabled=true --set mcp.ingress.mode=public
+
 if [ "$failures" -gt 0 ]; then
   echo "$failures check(s) failed"
   exit 1

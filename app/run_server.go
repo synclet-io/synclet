@@ -36,6 +36,8 @@ func RunServer(optionsList ...RunOption) error {
 
 	applyEnvDefaults(bootLogger)
 
+	options.RunMCPServer = runsMCPServer(options)
+
 	fx.New(
 		NewFxAppOptions(options),
 		fx.StopTimeout(shutdownTimeout),

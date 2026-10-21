@@ -10,6 +10,12 @@ data:
   PUBLIC_HTTP_SERVER_ADDR: {{ printf "0.0.0.0:%v" .Values.server.containerPorts.public | quote }}
   {{- with include "synclet.corsEnv" . }}{{ . | trim | nindent 2 }}{{ end }}
   INTERNAL_HTTP_SERVER_ADDR: {{ printf "0.0.0.0:%v" .Values.server.containerPorts.internal | quote }}
+  {{- if include "synclet.mcpEnabled" . }}
+  ## MCP
+  MCP_ENABLED: "true"
+  MCP_WRITE_TOOLS: {{ .Values.mcp.writeTools | quote }}
+  MCP_HTTP_SERVER_ADDR: {{ printf "0.0.0.0:%v" .Values.mcp.containerPort | quote }}
+  {{- end }}
   ## Auth
   AUTH_REGISTRATION_ENABLED: {{ .Values.auth.registrationEnabled | quote }}
   AUTH_SECURE_COOKIES: {{ dig "secureCookies" true .Values.auth | quote }}

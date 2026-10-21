@@ -28,6 +28,17 @@ spec:
     - host: {{ .Values.server.ingress.hostname }}
       http:
         paths:
+          {{- if include "synclet.mcpShared" . }}
+          {{- range .Values.mcp.ingress.paths }}
+          - path: {{ . }}
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "synclet.fullname" $ }}-mcp
+                port:
+                  number: {{ $.Values.mcp.service.port }}
+          {{- end }}
+          {{- end }}
           - path: /
             pathType: Prefix
             backend:

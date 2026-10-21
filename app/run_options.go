@@ -24,10 +24,14 @@ type RunAppOptions struct {
 	RunConsumers          bool
 	RunPublicHTTPServer   bool
 	RunInternalHTTPServer bool
+	RunMCPServer          bool
 	RunJobs               bool
 	DockerExecutor        bool
 	K8sExecutor           bool
 	fxOptions             []fx.Option
+	// serverFxOptions are added inside the fx module of the HTTP server with
+	// that module name, where its private values are visible.
+	serverFxOptions map[string][]fx.Option
 }
 
 func (r *RunAppOptions) needToRunModule(module string) bool {

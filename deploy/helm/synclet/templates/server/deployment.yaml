@@ -61,6 +61,11 @@ spec:
             - name: internal
               containerPort: {{ .Values.server.containerPorts.internal }}
               protocol: TCP
+            {{- if include "synclet.mcpEnabled" . }}
+            - name: mcp
+              containerPort: {{ .Values.mcp.containerPort }}
+              protocol: TCP
+            {{- end }}
           envFrom:
             - configMapRef:
                 name: {{ include "synclet.fullname" . }}

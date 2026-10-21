@@ -180,6 +180,33 @@ server:
   tolerations: []
   affinity: {}
 
+## @section MCP server parameters
+## An MCP endpoint (Streamable HTTP at /mcp) for AI clients such as Claude Code, on its own port
+## and Service. Clients authenticate with a workspace API key and act with its user's role.
+mcp:
+  enabled: false
+  containerPort: 8082
+  ## false removes the tools that create, edit and delete sources, destinations, connections
+  ## and workflows; read and operational tools (sync, cancel, pause, resume, run) stay.
+  writeTools: true
+  service:
+    port: 80
+  ingress:
+    ## shared: the paths below are routed to the MCP Service on the main Ingress and HTTPRoute.
+    ## separate: an Ingress of its own on mcp.ingress.hostname, so MCP alone can be public
+    ## while the main Ingress stays private. The HTTPRoute is not changed in this mode.
+    mode: shared
+    paths:
+      - /mcp
+      - /.well-known/oauth-protected-resource
+      - /.well-known/oauth-authorization-server
+    ## The settings below apply to the separate Ingress only.
+    hostname: ""
+    ingressClassName: nginx
+    tls: false
+    tlsSecretName: ""  # defaults to {fullname}-mcp-tls
+    annotations: {}
+
 ## @section Jobs parameters (distributed mode only)
 jobs:
   replicaCount: 1

@@ -34,6 +34,17 @@ spec:
     {{- toYaml . | nindent 4 }}
   {{- end }}
   rules:
+    {{- if include "synclet.mcpShared" . }}
+    - matches:
+        {{- range .Values.mcp.ingress.paths }}
+        - path:
+            type: PathPrefix
+            value: {{ . | quote }}
+        {{- end }}
+      backendRefs:
+        - name: {{ include "synclet.fullname" . }}-mcp
+          port: {{ .Values.mcp.service.port }}
+    {{- end }}
     - matches:
         {{- range .Values.server.gateway.paths }}
         - path:

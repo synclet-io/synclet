@@ -108,6 +108,12 @@ func (i *RoleInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc
 	}
 }
 
+// Authorize refuses the caller in ctx when its workspace role is below the
+// required_role of procedure, as the interceptor does for an RPC.
+func (i *RoleInterceptor) Authorize(ctx context.Context, procedure string) error {
+	return i.checkRole(ctx, procedure)
+}
+
 func (i *RoleInterceptor) checkRole(ctx context.Context, procedure string) error {
 	requiredRole, exists := i.roleMap[procedure]
 	if !exists {

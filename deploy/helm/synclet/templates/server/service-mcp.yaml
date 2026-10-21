@@ -1,0 +1,17 @@
+{{- if include "synclet.mcpEnabled" . }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "synclet.fullname" . }}-mcp
+  labels:
+    {{- include "synclet.server.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.mcp.service.port }}
+      targetPort: mcp
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "synclet.server.selectorLabels" . | nindent 4 }}
+{{- end }}

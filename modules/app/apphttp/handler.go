@@ -16,12 +16,16 @@ func NewHandler() *Handler {
 	return &Handler{}
 }
 
-func (h Handler) Register(r *mux.Router) {
+func (h Handler) Register(router *mux.Router) {
 	distFS, _ := fs.Sub(front.DistFS, "dist")
 	fileServer := http.FileServer(http.FS(distFS))
 
+	// MCP is served by its own server; here /mcp is not found rather than the SPA.
+	router.Path("/mcp").Handler(http.NotFoundHandler())
+	router.PathPrefix("/mcp/").Handler(http.NotFoundHandler())
+
 	// Use NotFoundHandler so the SPA only serves when no API route matched.
-	r.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	router.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		// Try serving the static file first; fall back to index.html for SPA routing.
 		path := req.URL.Path
 		if len(path) > 1 {

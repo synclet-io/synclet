@@ -80,6 +80,8 @@ func NewFxAppOptions(options *RunAppOptions) fx.Option {
 			healthcheckModule(options.RunJobs, options.RunConsumers),
 			conditionalFxOptions(options.RunInternalHTTPServer, pipelineInternalHTTPServerModule),
 		),
+		mcpConfigModule(options),
+		conditionalFxOptions(options.RunMCPServer, func() fx.Option { return mcpHTTPServerModule(options) }),
 
 		// Domain modules
 		authModule(options),

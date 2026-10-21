@@ -781,3 +781,24 @@ K8S_EXECUTOR_IMAGE_PULL_SECRET: {{ .Values.k8s.imagePullSecret | quote }}
 K8S_EXECUTOR_LOCAL_VOLUME_CLAIM: {{ .Values.k8s.localVolume | quote }}
 {{- end }}
 {{- end }}
+
+{{/*
+synclet.mcpShared is non-empty when MCP is on and its paths are routed through
+the main Ingress and HTTPRoute. It fails on an unknown mcp.ingress.mode.
+*/}}
+{{- define "synclet.mcpShared" -}}
+{{- if include "synclet.mcpEnabled" . -}}
+{{- if not (has .Values.mcp.ingress.mode (list "shared" "separate")) -}}
+{{- fail "mcp.ingress.mode must be shared or separate" -}}
+{{- end -}}
+{{- if eq .Values.mcp.ingress.mode "shared" -}}true{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+synclet.mcpEnabled is non-empty when mcp.enabled is set; values reused from a
+release older than the mcp block have none.
+*/}}
+{{- define "synclet.mcpEnabled" -}}
+{{- if dig "enabled" false (.Values.mcp | default dict) -}}true{{- end -}}
+{{- end -}}

@@ -11,6 +11,7 @@ import (
 type runMatrix struct {
 	publicAPI   bool
 	internalAPI bool
+	mcp         bool
 	jobs        bool
 	consumers   bool
 	executor    string
@@ -36,6 +37,7 @@ func TestFxGraph(t *testing.T) {
 	cases := []struct {
 		name     string
 		inK8s    bool
+		mcpEnv   string
 		defaults func() *RunAppOptions
 		opts     []RunOption
 		want     runMatrix
@@ -69,6 +71,27 @@ func TestFxGraph(t *testing.T) {
 			opts:     JobsCommandOptions(),
 			want:     runMatrix{jobs: true, consumers: true},
 		},
+		{
+			name:     "server with MCP",
+			mcpEnv:   "true",
+			defaults: serverDefaultOptions,
+			opts:     ServerCommandOptions(false),
+			want:     runMatrix{publicAPI: true, internalAPI: true, mcp: true},
+		},
+		{
+			name:     "server with MCP disabled",
+			mcpEnv:   "false",
+			defaults: serverDefaultOptions,
+			opts:     ServerCommandOptions(false),
+			want:     runMatrix{publicAPI: true, internalAPI: true},
+		},
+		{
+			name:     "jobs with MCP_ENABLED",
+			mcpEnv:   "true",
+			defaults: func() *RunAppOptions { return &RunAppOptions{} },
+			opts:     JobsCommandOptions(),
+			want:     runMatrix{jobs: true, consumers: true},
+		},
 	}
 
 	for _, tc := range cases {
@@ -79,11 +102,19 @@ func TestFxGraph(t *testing.T) {
 				unsetEnv(t, "KUBERNETES_SERVICE_HOST")
 			}
 
+			if tc.mcpEnv != "" {
+				t.Setenv("MCP_ENABLED", tc.mcpEnv)
+			} else {
+				unsetEnv(t, "MCP_ENABLED")
+			}
+
 			options := optionutil.ApplyOptions(tc.defaults(), tc.opts...)
+			options.RunMCPServer = runsMCPServer(options)
 
 			assert.Equal(t, tc.want, runMatrix{
 				publicAPI:   options.RunPublicHTTPServer,
 				internalAPI: options.RunInternalHTTPServer,
+				mcp:         options.RunMCPServer,
 				jobs:        options.RunJobs,
 				consumers:   options.RunConsumers,
 				executor:    executorKind(options),

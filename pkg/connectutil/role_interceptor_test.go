@@ -276,3 +276,18 @@ func TestMeetsMinimumRole(t *testing.T) {
 		assert.False(t, meetsMinimumRole("admin", optionsv1.RequiredRole_REQUIRED_ROLE_ADMIN))
 	})
 }
+
+func TestRoleInterceptor_Authorize(t *testing.T) {
+	procedure := "/synclet.publicapi.test.v1.TestService/Edit"
+	interceptor := newRoleInterceptorWithMap(
+		map[string]optionsv1.RequiredRole{procedure: optionsv1.RequiredRole_REQUIRED_ROLE_EDITOR},
+		&mockMembershipChecker{role: "Viewer"},
+	)
+
+	ctx := ContextWithWorkspaceID(context.Background(), uuid.New())
+	ctx = ContextWithUserID(ctx, uuid.New())
+
+	err := interceptor.Authorize(ctx, procedure)
+	require.Error(t, err)
+	assert.Equal(t, connect.CodePermissionDenied, connect.CodeOf(err))
+}

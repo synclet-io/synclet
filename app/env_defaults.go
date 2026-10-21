@@ -25,6 +25,9 @@ var envDefaults = map[string]string{
 	"INTERNAL_HTTP_SERVER_ADDR":                "0.0.0.0:8081",
 	"INTERNAL_HTTP_SERVER_READ_HEADER_TIMEOUT": "10s",
 	"INTERNAL_HTTP_SERVER_IDLE_TIMEOUT":        "120s",
+	"MCP_HTTP_SERVER_ADDR":                     "0.0.0.0:8082",
+	"MCP_HTTP_SERVER_READ_HEADER_TIMEOUT":      "10s",
+	"MCP_HTTP_SERVER_IDLE_TIMEOUT":             "120s",
 }
 
 // controlPlaneOnlyKeys are read by the server and jobs processes alone. An

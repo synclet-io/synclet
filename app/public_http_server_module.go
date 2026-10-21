@@ -25,11 +25,14 @@ import (
 	"github.com/synclet-io/synclet/pkg/connectutil"
 )
 
-const publicCORSConfigPrefix = "PUBLIC_HTTP_SERVER_CORS_"
+const (
+	publicCORSConfigPrefix     = "PUBLIC_HTTP_SERVER_CORS_"
+	publicHTTPServerModuleName = "http-server"
+)
 
 func publicHTTPServerModule(options *RunAppOptions) fx.Option {
 	return fx.Module(
-		"http-server",
+		publicHTTPServerModuleName,
 		pnphttpserverrecovery.Module(pnphttpserverrecovery.WithFxPrivate()),
 		pnphttpservercors.Module(
 			pnphttpservercors.WithFxPrivate(),
@@ -77,6 +80,7 @@ func publicHTTPServerModule(options *RunAppOptions) fx.Option {
 		pipelineHTTPServerModule(),
 		notifyHTTPServerModule(),
 		auditHTTPServerModule(),
+		fx.Options(options.serverFxOptions[publicHTTPServerModuleName]...),
 	)
 }
 
