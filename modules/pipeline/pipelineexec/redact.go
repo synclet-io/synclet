@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/synclet-io/synclet/pkg/protocol"
 )
@@ -35,8 +36,10 @@ var secretKeySubstrings = []string{
 }
 
 // Redactor masks secret configuration values in connector output. The zero
-// value and nil redact nothing.
+// value and nil redact nothing. It is safe for concurrent use.
 type Redactor struct {
+	mu       sync.RWMutex
+	values   map[string]struct{}
 	replacer *strings.Replacer
 	secrets  []string
 }
@@ -47,7 +50,27 @@ type Redactor struct {
 // string values that hold a JSON object. Configs that are not JSON objects are
 // skipped.
 func NewRedactor(configs ...json.RawMessage) *Redactor {
-	values := map[string]struct{}{}
+	r := &Redactor{}
+	r.Add(configs...)
+
+	return r
+}
+
+// Add masks the secrets of configs as well, such as a config a connector
+// replaced during a sync. It does nothing on a nil Redactor.
+func (r *Redactor) Add(configs ...json.RawMessage) {
+	if r == nil {
+		return
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if r.values == nil {
+		r.values = map[string]struct{}{}
+	}
+
+	known := len(r.values)
 
 	for _, raw := range configs {
 		var obj map[string]any
@@ -55,15 +78,15 @@ func NewRedactor(configs ...json.RawMessage) *Redactor {
 			continue
 		}
 
-		collectSecrets(obj, notSecret, values)
+		collectSecrets(obj, notSecret, r.values)
 	}
 
-	if len(values) == 0 {
-		return &Redactor{}
+	if len(r.values) == known {
+		return
 	}
 
-	secrets := make([]string, 0, len(values)*2)
-	for value := range values {
+	secrets := make([]string, 0, len(r.values)*2)
+	for value := range r.values {
 		secrets = append(secrets, value)
 
 		if escaped := jsonEscaped(value); escaped != value {
@@ -86,16 +109,24 @@ func NewRedactor(configs ...json.RawMessage) *Redactor {
 		pairs = append(pairs, secret, RedactedMask)
 	}
 
-	return &Redactor{replacer: strings.NewReplacer(pairs...), secrets: secrets}
+	r.replacer = strings.NewReplacer(pairs...)
+	r.secrets = secrets
 }
 
-// Redact returns s with every secret value replaced by RedactedMask.
-func (r *Redactor) Redact(s string) string {
-	if r == nil || r.replacer == nil {
-		return s
+// Redact returns text with every secret value replaced by RedactedMask.
+func (r *Redactor) Redact(text string) string {
+	if r == nil {
+		return text
 	}
 
-	return r.replacer.Replace(s)
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	if r.replacer == nil {
+		return text
+	}
+
+	return r.replacer.Replace(text)
 }
 
 // RedactTruncated is Redact for text cut off at its end, such as output still
@@ -123,6 +154,9 @@ func (r *Redactor) RedactHeadTruncated(text string) string {
 }
 
 func (r *Redactor) maskLeadingSuffix(text string) string {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
 	start := 0
 
 	for _, secret := range r.secrets {
@@ -143,6 +177,9 @@ func (r *Redactor) maskLeadingSuffix(text string) string {
 }
 
 func (r *Redactor) maskTrailingPrefix(text string) string {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
 	cut := len(text)
 
 	for _, secret := range r.secrets {
@@ -246,7 +283,8 @@ func jsonEscaped(value string) string {
 
 // RedactHandler wraps handler so log lines and trace errors pass through
 // redactor before handler sees them, and log lines are cut to MaxLogLineSize
-// once redacted. A nil redactor masks nothing.
+// once redacted. Secrets of a config a connector replaces through CONTROL are
+// added to redactor. A nil redactor masks nothing.
 func RedactHandler(handler Handler, redactor *Redactor) Handler {
 	return &redactingHandler{Handler: handler, redactor: redactor}
 }
@@ -261,13 +299,33 @@ func (h *redactingHandler) OnLog(ctx context.Context, line string) error {
 	return h.Handler.OnLog(ctx, truncateLogLine(h.redactor.Redact(line)))
 }
 
+func (h *redactingHandler) OnSourceControl(ctx context.Context, msg *protocol.AirbyteControlMessage) error {
+	h.redactor.Add(controlConfig(msg)...)
+
+	return h.Handler.OnSourceControl(ctx, msg)
+}
+
+func (h *redactingHandler) OnDestControl(ctx context.Context, msg *protocol.AirbyteControlMessage) error {
+	h.redactor.Add(controlConfig(msg)...)
+
+	return h.Handler.OnDestControl(ctx, msg)
+}
+
+func controlConfig(msg *protocol.AirbyteControlMessage) []json.RawMessage {
+	if msg == nil || msg.ConnectorConfig == nil {
+		return nil
+	}
+
+	return []json.RawMessage{msg.ConnectorConfig.Config}
+}
+
 func (h *redactingHandler) OnSourceTrace(ctx context.Context, msg *protocol.AirbyteTraceMessage) error {
 	return h.Handler.OnSourceTrace(ctx, h.redactor.RedactTrace(msg))
 }
 
 // RedactTrace returns a copy of msg with its error texts redacted.
 func (r *Redactor) RedactTrace(msg *protocol.AirbyteTraceMessage) *protocol.AirbyteTraceMessage {
-	if msg == nil || msg.Error == nil || r == nil || r.replacer == nil {
+	if msg == nil || msg.Error == nil || r == nil {
 		return msg
 	}
 

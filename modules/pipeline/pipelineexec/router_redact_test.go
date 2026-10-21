@@ -67,3 +67,38 @@ func TestRun_RedactsConnectorTextInProcessLogs(t *testing.T) {
 	require.NotEmpty(t, handler.lines)
 	assert.NotContains(t, strings.Join(handler.lines, "\n"), secret)
 }
+
+func TestRun_RedactsSecretsFromConnectorConfigUpdates(t *testing.T) {
+	const (
+		srcRotated  = "rotated-source-token"
+		destRotated = "rotated-dest-token"
+	)
+
+	control := func(token string) string {
+		return `{"type":"CONTROL","control":{"type":"CONNECTOR_CONFIG","emitted_at":0,"connectorConfig":{"config":{"access_token":"` + token + `"}}}}`
+	}
+	source := control(srcRotated) + "\n" +
+		`{"type":"LOG","log":{"level":"INFO","message":"refreshed to ` + srcRotated + `"}}` + "\n"
+	dest := control(destRotated) + "\n" +
+		`{"type":"LOG","log":{"level":"INFO","message":"refreshed to ` + destRotated + `"}}` + "\n"
+
+	var logs logtest.Recorder
+
+	handler := &lockedLogHandler{}
+
+	_, err := Run(context.Background(), strings.NewReader(source), discardWriteCloser{}, io.NopCloser(strings.NewReader(dest)), handler, RunConfig{
+		Redactor: NewRedactor(json.RawMessage(`{"access_token":"initial-token"}`)),
+	}, logs.Logger())
+	require.NoError(t, err)
+
+	output := logs.String()
+	require.Contains(t, output, "source log")
+	require.Contains(t, output, "dest log")
+	assert.NotContains(t, output, srcRotated)
+	assert.NotContains(t, output, destRotated)
+
+	lines := strings.Join(handler.lines, "\n")
+	require.Len(t, handler.lines, 2)
+	assert.NotContains(t, lines, srcRotated)
+	assert.NotContains(t, lines, destRotated)
+}
