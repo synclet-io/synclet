@@ -800,15 +800,15 @@ server's gateway route is enabled.
 
 {{/*
 synclet.mcpShared is non-empty when MCP is on and its paths are routed through
-the main Ingress and HTTPRoute. It fails on an unknown mcp.ingress.mode.
+the main Ingress and HTTPRoute. It fails on an unknown exposure.
 */}}
 {{- define "synclet.mcpShared" -}}
 {{- if include "synclet.mcpEnabled" . -}}
-{{- $mode := (include "synclet.mcp" . | fromYaml).ingress.mode -}}
-{{- if not (has $mode (list "shared" "separate")) -}}
-{{- fail "mcp.ingress.mode must be shared or separate" -}}
+{{- $exposure := (include "synclet.mcp" . | fromYaml).exposure -}}
+{{- if not (has $exposure (list "shared" "separate")) -}}
+{{- fail (printf "mcp.exposure must be shared or separate (got %q)" $exposure) -}}
 {{- end -}}
-{{- if eq $mode "shared" -}}true{{- end -}}
+{{- if eq $exposure "shared" -}}true{{- end -}}
 {{- end -}}
 {{- end -}}
 
@@ -827,10 +827,10 @@ block render. Read it with: include "synclet.mcp" . | fromYaml
   "writeTools" (dig "writeTools" true $mcp)
   "publicUrl" (dig "publicUrl" "" $mcp)
   "uiUrl" (dig "uiUrl" "" $mcp)
+  "exposure" (dig "exposure" "shared" $mcp)
+  "paths" (dig "paths" $paths $mcp)
   "service" (dict "port" (dig "service" "port" 80 $mcp))
   "ingress" (dict
-    "mode" (dig "mode" "shared" $ingress)
-    "paths" (dig "paths" $paths $ingress)
     "hostname" (dig "hostname" "" $ingress)
     "ingressClassName" (dig "ingressClassName" "nginx" $ingress)
     "tls" (dig "tls" false $ingress)

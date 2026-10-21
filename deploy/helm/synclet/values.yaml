@@ -195,27 +195,28 @@ mcp:
   ## Base URL of the UI that serves the OAuth consent page (MCP_UI_URL). Empty takes
   ## frontend.url, else server.publicUrl, else the URL derived from the Ingress or HTTPRoute.
   uiUrl: ""
+  ## How MCP is exposed, on the Ingress and the Gateway API alike. MCP follows the way the
+  ## server is exposed. server.ingress and server.gateway can run alone or side by side, to
+  ## migrate from Ingress to the Gateway API gradually, and MCP moves along with the UI.
+  ## shared: mcp.paths are routed to the MCP Service on every enabled main route, the
+  ## main Ingress and the main HTTPRoute.
+  ## separate: MCP gets routes of its own, so MCP alone can be public while the UI stays
+  ## private, and the main Ingress and HTTPRoute carry no MCP paths. Each enabled exposure
+  ## of the server gets an MCP twin: with server.ingress.enabled an Ingress on
+  ## mcp.ingress.hostname (required), with server.gateway.enabled an HTTPRoute configured
+  ## under mcp.gateway (parentRefs required). With neither, only the MCP Service renders.
+  exposure: shared
+  ## Paths routed to the MCP Service: the MCP endpoint and the OAuth paths.
+  paths:
+    - /mcp
+    - /.well-known/oauth-protected-resource
+    - /.well-known/oauth-authorization-server
+    - /oauth/register
+    - /oauth/token
   service:
     port: 80
   ingress:
-    ## In both modes MCP follows the way the server is exposed. server.ingress and
-    ## server.gateway can run alone or side by side, to migrate from Ingress to the Gateway
-    ## API gradually, and MCP moves along with the UI.
-    ## shared: the paths below are routed to the MCP Service on every enabled main route, the
-    ## main Ingress and the main HTTPRoute.
-    ## separate: MCP gets routes of its own, so MCP alone can be public while the UI stays
-    ## private, and the main Ingress and HTTPRoute carry no MCP paths. Each enabled exposure
-    ## of the server gets an MCP twin: with server.ingress.enabled an Ingress on
-    ## mcp.ingress.hostname (required), with server.gateway.enabled an HTTPRoute configured
-    ## under mcp.gateway (parentRefs required). With neither, only the MCP Service renders.
-    mode: shared
-    paths:
-      - /mcp
-      - /.well-known/oauth-protected-resource
-      - /.well-known/oauth-authorization-server
-      - /oauth/register
-      - /oauth/token
-    ## The settings below apply to the separate Ingress only.
+    ## The settings of the separate Ingress.
     hostname: ""
     ingressClassName: nginx
     tls: false
@@ -223,7 +224,7 @@ mcp:
     annotations: {}
   ## The HTTPRoute {fullname}-mcp of separate mode with server.gateway.enabled, the Gateway
   ## API twin of the MCP Ingress; with server.ingress.enabled too, both render, as during a
-  ## migration from Ingress to the Gateway API. It routes mcp.ingress.paths to the MCP
+  ## migration from Ingress to the Gateway API. It routes mcp.paths to the MCP
   ## Service. parentRefs is required; hostnames is optional.
   gateway:
     ## Gateways (and optionally listeners) the MCP route attaches to, e.g. a public Gateway

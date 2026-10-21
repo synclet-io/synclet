@@ -1,7 +1,7 @@
 {{- if include "synclet.mcpRoute" . }}
 {{- $mcp := include "synclet.mcp" . | fromYaml }}
 {{- if not $mcp.gateway.parentRefs }}
-{{- fail "mcp.gateway.parentRefs is required when mcp.ingress.mode is separate and server.gateway.enabled is true" }}
+{{- fail "mcp.gateway.parentRefs is required when mcp.exposure is separate and server.gateway.enabled is true" }}
 {{- end }}
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -36,7 +36,7 @@ spec:
   {{- end }}
   rules:
     - matches:
-        {{- range $mcp.ingress.paths }}
+        {{- range $mcp.paths }}
         - path:
             type: PathPrefix
             value: {{ . | quote }}

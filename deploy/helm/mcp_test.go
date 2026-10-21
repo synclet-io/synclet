@@ -3,8 +3,16 @@ package helm_test
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
+	"maps"
+	"os"
 	"os/exec"
+	"path/filepath"
+	"regexp"
+	"slices"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -137,10 +145,11 @@ func TestChart_MCPDisabled(t *testing.T) {
 
 func TestChart_MCPShared(t *testing.T) {
 	args := []string{"--set", "mcp.enabled=true"}
-	docs := renderRoutes(t, append(args,
+	docs := renderRoutes(t,
+		"--set", "mcp.enabled=true",
 		"--set", "mcp.gateway.parentRefs[0].name=public-gw",
 		"--set", "mcp.gateway.hostnames[0]=mcp.example.com",
-	)...)
+	)
 
 	cm := renderChart(t, args...).get(t, "ConfigMap", "t-synclet")
 	assert.Equal(t, "true", cm.Data["MCP_ENABLED"])
@@ -228,19 +237,20 @@ func TestChart_MCPSharedGateway(t *testing.T) {
 }
 
 const (
-	mcpHostnameRequired   = "mcp.ingress.hostname is required when mcp.ingress.mode is separate and server.ingress.enabled is true"
-	mcpParentRefsRequired = "mcp.gateway.parentRefs is required when mcp.ingress.mode is separate and server.gateway.enabled is true"
+	mcpHostnameRequired   = "mcp.ingress.hostname is required when mcp.exposure is separate and server.ingress.enabled is true"
+	mcpParentRefsRequired = "mcp.gateway.parentRefs is required when mcp.exposure is separate and server.gateway.enabled is true"
+	mcpUnknownExposure    = "mcp.exposure must be shared or separate"
 )
 
 // assertMCPIngress checks that the MCP Ingress routes exactly the MCP paths to
-// the MCP Service on host.
-func assertMCPIngress(t *testing.T, docs map[string]routeDoc, host string) {
+// the MCP Service on mcp.example.com.
+func assertMCPIngress(t *testing.T, docs map[string]routeDoc) {
 	t.Helper()
 
 	mcpIngress, ok := docs["Ingress/t-synclet-mcp"]
 	require.True(t, ok)
 	require.Len(t, mcpIngress.Spec.Rules, 1)
-	assert.Equal(t, host, mcpIngress.Spec.Rules[0].Host)
+	assert.Equal(t, "mcp.example.com", mcpIngress.Spec.Rules[0].Host)
 
 	paths := ingressPaths(mcpIngress)
 	assert.Len(t, paths, len(mcpPaths))
@@ -253,12 +263,12 @@ func assertMCPIngress(t *testing.T, docs map[string]routeDoc, host string) {
 func TestChart_MCPSeparate(t *testing.T) {
 	docs := renderRoutes(t,
 		"--set", "mcp.enabled=true",
-		"--set", "mcp.ingress.mode=separate",
+		"--set", "mcp.exposure=separate",
 		"--set", "mcp.ingress.hostname=mcp.example.com",
 	)
 
 	assert.Equal(t, map[string]string{"/": "t-synclet"}, ingressPaths(docs["Ingress/t-synclet"]))
-	assertMCPIngress(t, docs, "mcp.example.com")
+	assertMCPIngress(t, docs)
 	assert.NotContains(t, docs, "HTTPRoute/t-synclet")
 	assert.NotContains(t, docs, "HTTPRoute/t-synclet-mcp")
 }
@@ -266,7 +276,7 @@ func TestChart_MCPSeparate(t *testing.T) {
 func TestChart_MCPSeparateIngressAndGateway(t *testing.T) {
 	docs := renderRoutes(t,
 		"--set", "mcp.enabled=true",
-		"--set", "mcp.ingress.mode=separate",
+		"--set", "mcp.exposure=separate",
 		"--set", "mcp.ingress.hostname=mcp.example.com",
 		"--set", "mcp.gateway.parentRefs[0].name=public-gw",
 		"--set", "server.gateway.enabled=true",
@@ -276,7 +286,7 @@ func TestChart_MCPSeparateIngressAndGateway(t *testing.T) {
 	)
 
 	assert.Equal(t, map[string]string{"/": "t-synclet"}, ingressPaths(docs["Ingress/t-synclet"]))
-	assertMCPIngress(t, docs, "mcp.example.com")
+	assertMCPIngress(t, docs)
 
 	main := docs["HTTPRoute/t-synclet"]
 	require.Len(t, main.Spec.Rules, 1)
@@ -291,7 +301,7 @@ func TestChart_MCPSeparateIngressAndGateway(t *testing.T) {
 func TestChart_MCPSeparateWithoutExposure(t *testing.T) {
 	docs := renderRoutes(t,
 		"--set", "mcp.enabled=true",
-		"--set", "mcp.ingress.mode=separate",
+		"--set", "mcp.exposure=separate",
 		"--set", "server.ingress.enabled=false",
 	)
 
@@ -314,7 +324,7 @@ func routeMatches(doc routeDoc, rule int) []string {
 
 var separateGatewayArgs = []string{
 	"--set", "mcp.enabled=true",
-	"--set", "mcp.ingress.mode=separate",
+	"--set", "mcp.exposure=separate",
 	"--set", "server.ingress.enabled=false",
 	"--set", "server.gateway.enabled=true",
 	"--set", "server.gateway.parentRefs[0].name=private-gw",
@@ -390,11 +400,11 @@ func TestChart_MCPSeparateGatewayNeedsParentRefs(t *testing.T) {
 }
 
 func TestChart_MCPSeparateNeedsHostname(t *testing.T) {
-	out, err := helmTemplate(t, "--set", "mcp.enabled=true", "--set", "mcp.ingress.mode=separate").CombinedOutput()
+	out, err := helmTemplate(t, "--set", "mcp.enabled=true", "--set", "mcp.exposure=separate").CombinedOutput()
 	require.Error(t, err)
 	assert.Contains(t, string(out), mcpHostnameRequired)
 
-	out, err = helmTemplate(t, "--set", "mcp.enabled=true", "--set", "mcp.ingress.mode=separate",
+	out, err = helmTemplate(t, "--set", "mcp.enabled=true", "--set", "mcp.exposure=separate",
 		"--set", "mcp.gateway.parentRefs[0].name=public-gw",
 		"--set", "server.gateway.enabled=true",
 		"--set", "server.gateway.parentRefs[0].name=gw",
@@ -403,9 +413,9 @@ func TestChart_MCPSeparateNeedsHostname(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, string(out), mcpHostnameRequired)
 
-	out, err = helmTemplate(t, "--set", "mcp.enabled=true", "--set", "mcp.ingress.mode=public").CombinedOutput()
+	out, err = helmTemplate(t, "--set", "mcp.enabled=true", "--set", "mcp.exposure=public").CombinedOutput()
 	require.Error(t, err)
-	assert.Contains(t, string(out), "mcp.ingress.mode must be shared or separate")
+	assert.Contains(t, string(out), mcpUnknownExposure)
 }
 
 func TestChart_MCPUIURLDefaultsToFrontend(t *testing.T) {
@@ -499,7 +509,7 @@ func TestChart_MCPOverReusedValues(t *testing.T) {
 	})
 
 	t.Run("separate", func(t *testing.T) {
-		docs := reusedRoutes(t, "mcp.enabled=true,mcp.ingress.mode=separate,mcp.ingress.hostname=mcp.example.com")
+		docs := reusedRoutes(t, "mcp.enabled=true,mcp.exposure=separate,mcp.ingress.hostname=mcp.example.com")
 
 		assert.Equal(t, map[string]string{"/": "t-synclet"}, ingressPaths(docs["Ingress/t-synclet"]))
 
@@ -511,7 +521,7 @@ func TestChart_MCPOverReusedValues(t *testing.T) {
 	})
 
 	t.Run("separate with ingress and gateway", func(t *testing.T) {
-		docs := reusedRoutes(t, "mcp.enabled=true,mcp.ingress.mode=separate,mcp.ingress.hostname=mcp.example.com,"+
+		docs := reusedRoutes(t, "mcp.enabled=true,mcp.exposure=separate,mcp.ingress.hostname=mcp.example.com,"+
 			"mcp.gateway.parentRefs[0].name=public-gw,"+
 			"server.gateway.enabled=true,server.gateway.parentRefs[0].name=gw,server.publicUrl=https://synclet.example.com")
 
@@ -527,7 +537,7 @@ func TestChart_MCPOverReusedValues(t *testing.T) {
 	})
 
 	t.Run("separate without ingress or gateway", func(t *testing.T) {
-		docs := reusedRoutes(t, "mcp.enabled=true,mcp.ingress.mode=separate,mcp.ingress.hostname=mcp.example.com,"+
+		docs := reusedRoutes(t, "mcp.enabled=true,mcp.exposure=separate,mcp.ingress.hostname=mcp.example.com,"+
 			"server.ingress.enabled=false")
 
 		assert.Contains(t, docs, "Service/t-synclet-mcp")
@@ -536,7 +546,7 @@ func TestChart_MCPOverReusedValues(t *testing.T) {
 	})
 
 	t.Run("separate gateway", func(t *testing.T) {
-		docs := reusedRoutes(t, "mcp.enabled=true,mcp.ingress.mode=separate,server.ingress.enabled=false,"+
+		docs := reusedRoutes(t, "mcp.enabled=true,mcp.exposure=separate,server.ingress.enabled=false,"+
 			"server.gateway.enabled=true,server.gateway.parentRefs[0].name=private-gw,server.gateway.hostnames[0]=synclet.internal,"+
 			"mcp.gateway.parentRefs[0].name=public-gw,mcp.gateway.hostnames[0]=mcp.example.com")
 
@@ -553,13 +563,153 @@ func TestChart_MCPOverReusedValues(t *testing.T) {
 	})
 
 	t.Run("separate gateway without parentRefs", func(t *testing.T) {
-		out := reusedRenderFailure(t, "mcp.enabled=true,mcp.ingress.mode=separate,mcp.ingress.hostname=m.ex,"+
+		out := reusedRenderFailure(t, "mcp.enabled=true,mcp.exposure=separate,mcp.ingress.hostname=m.ex,"+
 			"server.ingress.enabled=false,server.gateway.enabled=true,server.gateway.parentRefs[0].name=gw")
 		assert.Contains(t, out, mcpParentRefsRequired)
 	})
 
 	t.Run("separate without hostname", func(t *testing.T) {
-		out := reusedRenderFailure(t, "mcp.enabled=true,mcp.ingress.mode=separate")
+		out := reusedRenderFailure(t, "mcp.enabled=true,mcp.exposure=separate")
 		assert.Contains(t, out, mcpHostnameRequired)
 	})
+}
+
+// mcpShapeArgs lists the helm arguments of every combination of MCP exposure,
+// server.ingress.enabled, server.gateway.enabled, MCP hostname, MCP parentRefs
+// and default or custom MCP paths, keyed by a name of the combination.
+func mcpShapeArgs() map[string][]string {
+	shapes := map[string][]string{}
+
+	for _, exposure := range []string{"shared", "separate"} {
+		for _, ingress := range []bool{true, false} {
+			for _, gateway := range []bool{true, false} {
+				for _, hostname := range []bool{true, false} {
+					for _, parentRefs := range []bool{true, false} {
+						for _, custom := range []bool{true, false} {
+							args := []string{
+								"--set", "mcp.enabled=true",
+								"--set", "mcp.exposure=" + exposure,
+								"--set", "server.ingress.enabled=" + strconv.FormatBool(ingress),
+								"--set", "server.gateway.enabled=" + strconv.FormatBool(gateway),
+							}
+							if gateway {
+								args = append(args, "--set", "server.gateway.parentRefs[0].name=gw",
+									"--set", "server.gateway.hostnames[0]=synclet.example.com")
+							}
+
+							if gateway && ingress {
+								args = append(args, "--set", "server.publicUrl=https://synclet.example.com")
+							}
+
+							if hostname {
+								args = append(args, "--set", "mcp.ingress.hostname=mcp.example.com")
+							}
+
+							if parentRefs {
+								args = append(args, "--set", "mcp.gateway.parentRefs[0].name=public-gw")
+							}
+
+							if custom {
+								args = append(args, "--set", "mcp.paths={/mcp,/custom}")
+							}
+
+							name := fmt.Sprintf("%s/ingress=%t/gateway=%t/hostname=%t/parentRefs=%t/customPaths=%t",
+								exposure, ingress, gateway, hostname, parentRefs, custom)
+							shapes[name] = args
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return shapes
+}
+
+// versionLabels matches the labels that carry the chart and app versions.
+var versionLabels = regexp.MustCompile(`(?m)^(\s*(?:helm\.sh/chart|app\.kubernetes\.io/version)):.*$`)
+
+// renderRoutesText renders the chart and returns its Ingress and HTTPRoute
+// documents, version labels masked, or the error of a failed render.
+func renderRoutesText(t *testing.T, args ...string) string {
+	t.Helper()
+
+	cmd := helmTemplate(t, args...)
+
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+
+	out, err := cmd.Output()
+	if err != nil {
+		return "error: " + strings.TrimSpace(strings.SplitN(stderr.String(), "\n", 2)[0]) + "\n"
+	}
+
+	var b strings.Builder
+
+	for _, doc := range strings.Split(normalizeManifests(string(out)), "---\n") {
+		if strings.Contains(doc, "\nkind: Ingress\n") || strings.Contains(doc, "\nkind: HTTPRoute\n") {
+			b.WriteString("---\n")
+			b.WriteString(versionLabels.ReplaceAllString(doc, "$1: VERSION"))
+		}
+	}
+
+	return b.String()
+}
+
+// TestChart_MCPShapesGolden compares the Ingresses and HTTPRoutes of every MCP
+// shape, or its render error, with testdata/mcp-shapes.golden.yaml. Run with
+// -update to rewrite it after an intended template change.
+func TestChart_MCPShapesGolden(t *testing.T) {
+	shapes := mcpShapeArgs()
+	names := slices.Sorted(maps.Keys(shapes))
+	renders := make([]string, len(names))
+
+	t.Run("render", func(t *testing.T) {
+		for i, name := range names {
+			t.Run(name, func(t *testing.T) {
+				t.Parallel()
+
+				renders[i] = renderRoutesText(t, shapes[name]...)
+			})
+		}
+	})
+
+	var got strings.Builder
+	for i, name := range names {
+		fmt.Fprintf(&got, "### %s\n%s", name, renders[i])
+	}
+
+	golden := filepath.Join("testdata", "mcp-shapes.golden.yaml")
+
+	if *update {
+		require.NoError(t, os.WriteFile(golden, []byte(got.String()), 0o600))
+	}
+
+	want, err := os.ReadFile(golden) //nolint:gosec // fixed testdata path
+	require.NoError(t, err, "run go test ./deploy/helm/ -run TestChart_MCPShapesGolden -update to create it")
+	assert.Equal(t, string(want), got.String(), "render differs from %s; rerun with -update if the change is intended", golden)
+}
+
+func TestChart_MCPIngressKeysNotRead(t *testing.T) {
+	docs := renderRoutes(t,
+		"--set", "mcp.enabled=true",
+		"--set", "mcp.ingress.mode=separate",
+		"--set", "mcp.ingress.hostname=mcp.example.com",
+		"--set", "mcp.ingress.paths={/old}",
+	)
+
+	assert.NotContains(t, docs, "Ingress/t-synclet-mcp")
+
+	paths := ingressPaths(docs["Ingress/t-synclet"])
+	assert.Len(t, paths, len(mcpPaths)+1)
+
+	for _, path := range mcpPaths {
+		assert.Equal(t, "t-synclet-mcp", paths[path], path)
+	}
+}
+
+func TestChart_MCPUnknownExposure(t *testing.T) {
+	out, err := helmTemplate(t, "--set", "mcp.enabled=true", "--set", "mcp.exposure=public").CombinedOutput()
+	require.Error(t, err)
+	assert.Contains(t, string(out), mcpUnknownExposure)
 }

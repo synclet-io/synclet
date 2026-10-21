@@ -57,8 +57,8 @@ expect_fail "gateway without parentRefs" \
   --set server.gateway.enabled=true --set 'server.gateway.hostnames[0]=synclet.example.com'
 
 expect_fail "separate MCP on the gateway without parentRefs" \
-  "mcp.gateway.parentRefs is required when mcp.ingress.mode is separate and server.gateway.enabled is true" \
-  --set mcp.enabled=true --set mcp.ingress.mode=separate --set server.ingress.enabled=false \
+  "mcp.gateway.parentRefs is required when mcp.exposure is separate and server.gateway.enabled is true" \
+  --set mcp.enabled=true --set mcp.exposure=separate --set server.ingress.enabled=false \
   --set server.gateway.enabled=true --set 'server.gateway.parentRefs[0].name=gw' \
   --set 'mcp.gateway.hostnames[0]=mcp.example.com'
 
@@ -87,12 +87,12 @@ expect_fail "vso database without path" \
   --set vso.enabled=true --set vso.appSecrets.path=synclet/app --set vso.database.enabled=true
 
 expect_fail "mcp separate without hostname" \
-  "mcp.ingress.hostname is required when mcp.ingress.mode is separate and server.ingress.enabled is true" \
-  --set mcp.enabled=true --set mcp.ingress.mode=separate
+  "mcp.ingress.hostname is required when mcp.exposure is separate and server.ingress.enabled is true" \
+  --set mcp.enabled=true --set mcp.exposure=separate
 
-expect_fail "mcp unknown ingress mode" \
-  "mcp.ingress.mode must be shared or separate" \
-  --set mcp.enabled=true --set mcp.ingress.mode=public
+expect_fail "mcp unknown exposure" \
+  'mcp.exposure must be shared or separate (got "public")' \
+  --set mcp.enabled=true --set mcp.exposure=public
 
 if [ "$failures" -gt 0 ]; then
   echo "$failures check(s) failed"

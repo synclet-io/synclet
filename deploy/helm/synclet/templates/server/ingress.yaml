@@ -30,7 +30,7 @@ spec:
         paths:
           {{- if include "synclet.mcpShared" . }}
           {{- $mcp := include "synclet.mcp" . | fromYaml }}
-          {{- range $mcp.ingress.paths }}
+          {{- range $mcp.paths }}
           - path: {{ . }}
             pathType: Prefix
             backend:

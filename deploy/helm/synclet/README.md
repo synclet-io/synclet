@@ -45,7 +45,10 @@ Charts before 0.4.0 ran the executor as a Deployment: in distributed mode, delet
 
 ### Upgrading from 0.9.0
 
-`mcp.ingress.mode: separate` now gives each enabled exposure of the server its own MCP twin. Two 0.9.0 setups render differently:
+The MCP exposure keys were renamed, as they apply to the Ingress and the HTTPRoute alike: `mcp.ingress.mode` → `mcp.exposure`, `mcp.ingress.paths` → `mcp.paths`.
+The old keys are no longer read: move their values to the new keys before upgrading, or MCP renders with the defaults (`shared` and the MCP and OAuth paths).
+
+With `mcp.exposure: separate`, each enabled way the server is exposed (Ingress, HTTPRoute) now gets its own MCP twin. Two 0.9.0 setups render differently:
 
 - With `server.gateway.enabled`, separate mode renders an MCP HTTPRoute and requires `mcp.gateway.parentRefs`; set it before upgrading, or rendering fails.
 - With `server.ingress.enabled: false`, separate mode no longer renders an MCP Ingress. Expose MCP through the gateway (`server.gateway.enabled` and `mcp.gateway.parentRefs`), or keep the Ingress enabled.
@@ -81,7 +84,8 @@ A namespace set there must exist before install.
 | `server.ingress.tls` | TLS on the Ingress, with the `<fullname>-tls` Secret | `false` |
 | `server.gateway.enabled` | Create a Gateway API HTTPRoute attached to `server.gateway.parentRefs` | `false` |
 | `mcp.enabled` | Run the MCP server for AI clients, with a `<fullname>-mcp` Service | `false` |
-| `mcp.ingress.mode` | `shared`: MCP paths on the main Ingress and HTTPRoute; `separate`: each enabled exposure of the server gets an MCP-only twin, and the main Ingress and HTTPRoute carry no MCP paths: with `server.ingress.enabled` an Ingress on `mcp.ingress.hostname` (required), with `server.gateway.enabled` an HTTPRoute attached to `mcp.gateway.parentRefs` (required; `mcp.gateway.hostnames`, `mcp.gateway.timeouts`, `mcp.gateway.labels` and `mcp.gateway.annotations` optional); with neither, only the MCP Service | `shared` |
+| `mcp.exposure` | `shared`: `mcp.paths` on the main Ingress and HTTPRoute; `separate`: each enabled exposure of the server gets an MCP-only twin, and the main Ingress and HTTPRoute carry no MCP paths: with `server.ingress.enabled` an Ingress on `mcp.ingress.hostname` (required), with `server.gateway.enabled` an HTTPRoute attached to `mcp.gateway.parentRefs` (required; `mcp.gateway.hostnames`, `mcp.gateway.timeouts`, `mcp.gateway.labels` and `mcp.gateway.annotations` optional); with neither, only the MCP Service | `shared` |
+| `mcp.paths` | Paths routed to the MCP Service in both exposures | `/mcp`, `/.well-known/oauth-protected-resource`, `/.well-known/oauth-authorization-server`, `/oauth/register`, `/oauth/token` |
 | `server.publicUrl` | URL users reach Synclet at; required when both Ingress and HTTPRoute are enabled | derived |
 | `postgresql.enabled` | Run the bundled PostgreSQL, meant for development and testing | `true` |
 | `externalDatabase.*` | External database (host, port, user, password, database, sslmode) or `existingSecret` with a full DSN | empty |

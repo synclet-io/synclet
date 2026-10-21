@@ -1,0 +1,2352 @@
+### separate/ingress=false/gateway=false/hostname=false/parentRefs=false/customPaths=false
+### separate/ingress=false/gateway=false/hostname=false/parentRefs=false/customPaths=true
+### separate/ingress=false/gateway=false/hostname=false/parentRefs=true/customPaths=false
+### separate/ingress=false/gateway=false/hostname=false/parentRefs=true/customPaths=true
+### separate/ingress=false/gateway=false/hostname=true/parentRefs=false/customPaths=false
+### separate/ingress=false/gateway=false/hostname=true/parentRefs=false/customPaths=true
+### separate/ingress=false/gateway=false/hostname=true/parentRefs=true/customPaths=false
+### separate/ingress=false/gateway=false/hostname=true/parentRefs=true/customPaths=true
+### separate/ingress=false/gateway=true/hostname=false/parentRefs=false/customPaths=false
+error: Error: execution error at (synclet/templates/server/httproute-mcp.yaml:4:4): mcp.gateway.parentRefs is required when mcp.exposure is separate and server.gateway.enabled is true
+### separate/ingress=false/gateway=true/hostname=false/parentRefs=false/customPaths=true
+error: Error: execution error at (synclet/templates/server/httproute-mcp.yaml:4:4): mcp.gateway.parentRefs is required when mcp.exposure is separate and server.gateway.enabled is true
+### separate/ingress=false/gateway=true/hostname=false/parentRefs=true/customPaths=false
+---
+# Source: synclet/templates/server/httproute-mcp.yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: t-synclet-mcp
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  parentRefs:
+    - name: public-gw
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/mcp"
+        - path:
+            type: PathPrefix
+            value: "/.well-known/oauth-protected-resource"
+        - path:
+            type: PathPrefix
+            value: "/.well-known/oauth-authorization-server"
+        - path:
+            type: PathPrefix
+            value: "/oauth/register"
+        - path:
+            type: PathPrefix
+            value: "/oauth/token"
+      backendRefs:
+        - name: t-synclet-mcp
+          port: 80
+---
+# Source: synclet/templates/server/httproute.yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  parentRefs:
+    - name: gw
+  hostnames:
+    - synclet.example.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/"
+      backendRefs:
+        - name: t-synclet
+          port: 80
+### separate/ingress=false/gateway=true/hostname=false/parentRefs=true/customPaths=true
+---
+# Source: synclet/templates/server/httproute-mcp.yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: t-synclet-mcp
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  parentRefs:
+    - name: public-gw
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/mcp"
+        - path:
+            type: PathPrefix
+            value: "/custom"
+      backendRefs:
+        - name: t-synclet-mcp
+          port: 80
+---
+# Source: synclet/templates/server/httproute.yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  parentRefs:
+    - name: gw
+  hostnames:
+    - synclet.example.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/"
+      backendRefs:
+        - name: t-synclet
+          port: 80
+### separate/ingress=false/gateway=true/hostname=true/parentRefs=false/customPaths=false
+error: Error: execution error at (synclet/templates/server/httproute-mcp.yaml:4:4): mcp.gateway.parentRefs is required when mcp.exposure is separate and server.gateway.enabled is true
+### separate/ingress=false/gateway=true/hostname=true/parentRefs=false/customPaths=true
+error: Error: execution error at (synclet/templates/server/httproute-mcp.yaml:4:4): mcp.gateway.parentRefs is required when mcp.exposure is separate and server.gateway.enabled is true
+### separate/ingress=false/gateway=true/hostname=true/parentRefs=true/customPaths=false
+---
+# Source: synclet/templates/server/httproute-mcp.yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: t-synclet-mcp
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  parentRefs:
+    - name: public-gw
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/mcp"
+        - path:
+            type: PathPrefix
+            value: "/.well-known/oauth-protected-resource"
+        - path:
+            type: PathPrefix
+            value: "/.well-known/oauth-authorization-server"
+        - path:
+            type: PathPrefix
+            value: "/oauth/register"
+        - path:
+            type: PathPrefix
+            value: "/oauth/token"
+      backendRefs:
+        - name: t-synclet-mcp
+          port: 80
+---
+# Source: synclet/templates/server/httproute.yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  parentRefs:
+    - name: gw
+  hostnames:
+    - synclet.example.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/"
+      backendRefs:
+        - name: t-synclet
+          port: 80
+### separate/ingress=false/gateway=true/hostname=true/parentRefs=true/customPaths=true
+---
+# Source: synclet/templates/server/httproute-mcp.yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: t-synclet-mcp
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  parentRefs:
+    - name: public-gw
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/mcp"
+        - path:
+            type: PathPrefix
+            value: "/custom"
+      backendRefs:
+        - name: t-synclet-mcp
+          port: 80
+---
+# Source: synclet/templates/server/httproute.yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  parentRefs:
+    - name: gw
+  hostnames:
+    - synclet.example.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/"
+      backendRefs:
+        - name: t-synclet
+          port: 80
+### separate/ingress=true/gateway=false/hostname=false/parentRefs=false/customPaths=false
+error: Error: execution error at (synclet/templates/server/ingress-mcp.yaml:3:17): mcp.ingress.hostname is required when mcp.exposure is separate and server.ingress.enabled is true
+### separate/ingress=true/gateway=false/hostname=false/parentRefs=false/customPaths=true
+error: Error: execution error at (synclet/templates/server/ingress-mcp.yaml:3:17): mcp.ingress.hostname is required when mcp.exposure is separate and server.ingress.enabled is true
+### separate/ingress=true/gateway=false/hostname=false/parentRefs=true/customPaths=false
+error: Error: execution error at (synclet/templates/server/ingress-mcp.yaml:3:17): mcp.ingress.hostname is required when mcp.exposure is separate and server.ingress.enabled is true
+### separate/ingress=true/gateway=false/hostname=false/parentRefs=true/customPaths=true
+error: Error: execution error at (synclet/templates/server/ingress-mcp.yaml:3:17): mcp.ingress.hostname is required when mcp.exposure is separate and server.ingress.enabled is true
+### separate/ingress=true/gateway=false/hostname=true/parentRefs=false/customPaths=false
+---
+# Source: synclet/templates/server/ingress-mcp.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: t-synclet-mcp
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: mcp.example.com
+      http:
+        paths:
+          - path: /mcp
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /.well-known/oauth-protected-resource
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /.well-known/oauth-authorization-server
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /oauth/register
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /oauth/token
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+---
+# Source: synclet/templates/server/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: synclet.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet
+                port:
+                  number: 80
+### separate/ingress=true/gateway=false/hostname=true/parentRefs=false/customPaths=true
+---
+# Source: synclet/templates/server/ingress-mcp.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: t-synclet-mcp
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: mcp.example.com
+      http:
+        paths:
+          - path: /mcp
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /custom
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+---
+# Source: synclet/templates/server/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: synclet.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet
+                port:
+                  number: 80
+### separate/ingress=true/gateway=false/hostname=true/parentRefs=true/customPaths=false
+---
+# Source: synclet/templates/server/ingress-mcp.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: t-synclet-mcp
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: mcp.example.com
+      http:
+        paths:
+          - path: /mcp
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /.well-known/oauth-protected-resource
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /.well-known/oauth-authorization-server
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /oauth/register
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /oauth/token
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+---
+# Source: synclet/templates/server/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: synclet.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet
+                port:
+                  number: 80
+### separate/ingress=true/gateway=false/hostname=true/parentRefs=true/customPaths=true
+---
+# Source: synclet/templates/server/ingress-mcp.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: t-synclet-mcp
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: mcp.example.com
+      http:
+        paths:
+          - path: /mcp
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /custom
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+---
+# Source: synclet/templates/server/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: synclet.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet
+                port:
+                  number: 80
+### separate/ingress=true/gateway=true/hostname=false/parentRefs=false/customPaths=false
+error: Error: execution error at (synclet/templates/server/ingress-mcp.yaml:3:17): mcp.ingress.hostname is required when mcp.exposure is separate and server.ingress.enabled is true
+### separate/ingress=true/gateway=true/hostname=false/parentRefs=false/customPaths=true
+error: Error: execution error at (synclet/templates/server/ingress-mcp.yaml:3:17): mcp.ingress.hostname is required when mcp.exposure is separate and server.ingress.enabled is true
+### separate/ingress=true/gateway=true/hostname=false/parentRefs=true/customPaths=false
+error: Error: execution error at (synclet/templates/server/ingress-mcp.yaml:3:17): mcp.ingress.hostname is required when mcp.exposure is separate and server.ingress.enabled is true
+### separate/ingress=true/gateway=true/hostname=false/parentRefs=true/customPaths=true
+error: Error: execution error at (synclet/templates/server/ingress-mcp.yaml:3:17): mcp.ingress.hostname is required when mcp.exposure is separate and server.ingress.enabled is true
+### separate/ingress=true/gateway=true/hostname=true/parentRefs=false/customPaths=false
+error: Error: execution error at (synclet/templates/server/httproute-mcp.yaml:4:4): mcp.gateway.parentRefs is required when mcp.exposure is separate and server.gateway.enabled is true
+### separate/ingress=true/gateway=true/hostname=true/parentRefs=false/customPaths=true
+error: Error: execution error at (synclet/templates/server/httproute-mcp.yaml:4:4): mcp.gateway.parentRefs is required when mcp.exposure is separate and server.gateway.enabled is true
+### separate/ingress=true/gateway=true/hostname=true/parentRefs=true/customPaths=false
+---
+# Source: synclet/templates/server/ingress-mcp.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: t-synclet-mcp
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: mcp.example.com
+      http:
+        paths:
+          - path: /mcp
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /.well-known/oauth-protected-resource
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /.well-known/oauth-authorization-server
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /oauth/register
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /oauth/token
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+---
+# Source: synclet/templates/server/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: synclet.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet
+                port:
+                  number: 80
+---
+# Source: synclet/templates/server/httproute-mcp.yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: t-synclet-mcp
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  parentRefs:
+    - name: public-gw
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/mcp"
+        - path:
+            type: PathPrefix
+            value: "/.well-known/oauth-protected-resource"
+        - path:
+            type: PathPrefix
+            value: "/.well-known/oauth-authorization-server"
+        - path:
+            type: PathPrefix
+            value: "/oauth/register"
+        - path:
+            type: PathPrefix
+            value: "/oauth/token"
+      backendRefs:
+        - name: t-synclet-mcp
+          port: 80
+---
+# Source: synclet/templates/server/httproute.yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  parentRefs:
+    - name: gw
+  hostnames:
+    - synclet.example.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/"
+      backendRefs:
+        - name: t-synclet
+          port: 80
+### separate/ingress=true/gateway=true/hostname=true/parentRefs=true/customPaths=true
+---
+# Source: synclet/templates/server/ingress-mcp.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: t-synclet-mcp
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: mcp.example.com
+      http:
+        paths:
+          - path: /mcp
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /custom
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+---
+# Source: synclet/templates/server/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: synclet.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet
+                port:
+                  number: 80
+---
+# Source: synclet/templates/server/httproute-mcp.yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: t-synclet-mcp
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  parentRefs:
+    - name: public-gw
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/mcp"
+        - path:
+            type: PathPrefix
+            value: "/custom"
+      backendRefs:
+        - name: t-synclet-mcp
+          port: 80
+---
+# Source: synclet/templates/server/httproute.yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  parentRefs:
+    - name: gw
+  hostnames:
+    - synclet.example.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/"
+      backendRefs:
+        - name: t-synclet
+          port: 80
+### shared/ingress=false/gateway=false/hostname=false/parentRefs=false/customPaths=false
+### shared/ingress=false/gateway=false/hostname=false/parentRefs=false/customPaths=true
+### shared/ingress=false/gateway=false/hostname=false/parentRefs=true/customPaths=false
+### shared/ingress=false/gateway=false/hostname=false/parentRefs=true/customPaths=true
+### shared/ingress=false/gateway=false/hostname=true/parentRefs=false/customPaths=false
+### shared/ingress=false/gateway=false/hostname=true/parentRefs=false/customPaths=true
+### shared/ingress=false/gateway=false/hostname=true/parentRefs=true/customPaths=false
+### shared/ingress=false/gateway=false/hostname=true/parentRefs=true/customPaths=true
+### shared/ingress=false/gateway=true/hostname=false/parentRefs=false/customPaths=false
+---
+# Source: synclet/templates/server/httproute.yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  parentRefs:
+    - name: gw
+  hostnames:
+    - synclet.example.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/mcp"
+        - path:
+            type: PathPrefix
+            value: "/.well-known/oauth-protected-resource"
+        - path:
+            type: PathPrefix
+            value: "/.well-known/oauth-authorization-server"
+        - path:
+            type: PathPrefix
+            value: "/oauth/register"
+        - path:
+            type: PathPrefix
+            value: "/oauth/token"
+      backendRefs:
+        - name: t-synclet-mcp
+          port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/"
+      backendRefs:
+        - name: t-synclet
+          port: 80
+### shared/ingress=false/gateway=true/hostname=false/parentRefs=false/customPaths=true
+---
+# Source: synclet/templates/server/httproute.yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  parentRefs:
+    - name: gw
+  hostnames:
+    - synclet.example.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/mcp"
+        - path:
+            type: PathPrefix
+            value: "/custom"
+      backendRefs:
+        - name: t-synclet-mcp
+          port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/"
+      backendRefs:
+        - name: t-synclet
+          port: 80
+### shared/ingress=false/gateway=true/hostname=false/parentRefs=true/customPaths=false
+---
+# Source: synclet/templates/server/httproute.yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  parentRefs:
+    - name: gw
+  hostnames:
+    - synclet.example.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/mcp"
+        - path:
+            type: PathPrefix
+            value: "/.well-known/oauth-protected-resource"
+        - path:
+            type: PathPrefix
+            value: "/.well-known/oauth-authorization-server"
+        - path:
+            type: PathPrefix
+            value: "/oauth/register"
+        - path:
+            type: PathPrefix
+            value: "/oauth/token"
+      backendRefs:
+        - name: t-synclet-mcp
+          port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/"
+      backendRefs:
+        - name: t-synclet
+          port: 80
+### shared/ingress=false/gateway=true/hostname=false/parentRefs=true/customPaths=true
+---
+# Source: synclet/templates/server/httproute.yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  parentRefs:
+    - name: gw
+  hostnames:
+    - synclet.example.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/mcp"
+        - path:
+            type: PathPrefix
+            value: "/custom"
+      backendRefs:
+        - name: t-synclet-mcp
+          port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/"
+      backendRefs:
+        - name: t-synclet
+          port: 80
+### shared/ingress=false/gateway=true/hostname=true/parentRefs=false/customPaths=false
+---
+# Source: synclet/templates/server/httproute.yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  parentRefs:
+    - name: gw
+  hostnames:
+    - synclet.example.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/mcp"
+        - path:
+            type: PathPrefix
+            value: "/.well-known/oauth-protected-resource"
+        - path:
+            type: PathPrefix
+            value: "/.well-known/oauth-authorization-server"
+        - path:
+            type: PathPrefix
+            value: "/oauth/register"
+        - path:
+            type: PathPrefix
+            value: "/oauth/token"
+      backendRefs:
+        - name: t-synclet-mcp
+          port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/"
+      backendRefs:
+        - name: t-synclet
+          port: 80
+### shared/ingress=false/gateway=true/hostname=true/parentRefs=false/customPaths=true
+---
+# Source: synclet/templates/server/httproute.yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  parentRefs:
+    - name: gw
+  hostnames:
+    - synclet.example.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/mcp"
+        - path:
+            type: PathPrefix
+            value: "/custom"
+      backendRefs:
+        - name: t-synclet-mcp
+          port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/"
+      backendRefs:
+        - name: t-synclet
+          port: 80
+### shared/ingress=false/gateway=true/hostname=true/parentRefs=true/customPaths=false
+---
+# Source: synclet/templates/server/httproute.yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  parentRefs:
+    - name: gw
+  hostnames:
+    - synclet.example.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/mcp"
+        - path:
+            type: PathPrefix
+            value: "/.well-known/oauth-protected-resource"
+        - path:
+            type: PathPrefix
+            value: "/.well-known/oauth-authorization-server"
+        - path:
+            type: PathPrefix
+            value: "/oauth/register"
+        - path:
+            type: PathPrefix
+            value: "/oauth/token"
+      backendRefs:
+        - name: t-synclet-mcp
+          port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/"
+      backendRefs:
+        - name: t-synclet
+          port: 80
+### shared/ingress=false/gateway=true/hostname=true/parentRefs=true/customPaths=true
+---
+# Source: synclet/templates/server/httproute.yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  parentRefs:
+    - name: gw
+  hostnames:
+    - synclet.example.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/mcp"
+        - path:
+            type: PathPrefix
+            value: "/custom"
+      backendRefs:
+        - name: t-synclet-mcp
+          port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/"
+      backendRefs:
+        - name: t-synclet
+          port: 80
+### shared/ingress=true/gateway=false/hostname=false/parentRefs=false/customPaths=false
+---
+# Source: synclet/templates/server/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: synclet.local
+      http:
+        paths:
+          - path: /mcp
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /.well-known/oauth-protected-resource
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /.well-known/oauth-authorization-server
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /oauth/register
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /oauth/token
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet
+                port:
+                  number: 80
+### shared/ingress=true/gateway=false/hostname=false/parentRefs=false/customPaths=true
+---
+# Source: synclet/templates/server/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: synclet.local
+      http:
+        paths:
+          - path: /mcp
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /custom
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet
+                port:
+                  number: 80
+### shared/ingress=true/gateway=false/hostname=false/parentRefs=true/customPaths=false
+---
+# Source: synclet/templates/server/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: synclet.local
+      http:
+        paths:
+          - path: /mcp
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /.well-known/oauth-protected-resource
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /.well-known/oauth-authorization-server
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /oauth/register
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /oauth/token
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet
+                port:
+                  number: 80
+### shared/ingress=true/gateway=false/hostname=false/parentRefs=true/customPaths=true
+---
+# Source: synclet/templates/server/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: synclet.local
+      http:
+        paths:
+          - path: /mcp
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /custom
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet
+                port:
+                  number: 80
+### shared/ingress=true/gateway=false/hostname=true/parentRefs=false/customPaths=false
+---
+# Source: synclet/templates/server/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: synclet.local
+      http:
+        paths:
+          - path: /mcp
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /.well-known/oauth-protected-resource
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /.well-known/oauth-authorization-server
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /oauth/register
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /oauth/token
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet
+                port:
+                  number: 80
+### shared/ingress=true/gateway=false/hostname=true/parentRefs=false/customPaths=true
+---
+# Source: synclet/templates/server/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: synclet.local
+      http:
+        paths:
+          - path: /mcp
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /custom
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet
+                port:
+                  number: 80
+### shared/ingress=true/gateway=false/hostname=true/parentRefs=true/customPaths=false
+---
+# Source: synclet/templates/server/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: synclet.local
+      http:
+        paths:
+          - path: /mcp
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /.well-known/oauth-protected-resource
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /.well-known/oauth-authorization-server
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /oauth/register
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /oauth/token
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet
+                port:
+                  number: 80
+### shared/ingress=true/gateway=false/hostname=true/parentRefs=true/customPaths=true
+---
+# Source: synclet/templates/server/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: synclet.local
+      http:
+        paths:
+          - path: /mcp
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /custom
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet
+                port:
+                  number: 80
+### shared/ingress=true/gateway=true/hostname=false/parentRefs=false/customPaths=false
+---
+# Source: synclet/templates/server/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: synclet.local
+      http:
+        paths:
+          - path: /mcp
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /.well-known/oauth-protected-resource
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /.well-known/oauth-authorization-server
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /oauth/register
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /oauth/token
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet
+                port:
+                  number: 80
+---
+# Source: synclet/templates/server/httproute.yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  parentRefs:
+    - name: gw
+  hostnames:
+    - synclet.example.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/mcp"
+        - path:
+            type: PathPrefix
+            value: "/.well-known/oauth-protected-resource"
+        - path:
+            type: PathPrefix
+            value: "/.well-known/oauth-authorization-server"
+        - path:
+            type: PathPrefix
+            value: "/oauth/register"
+        - path:
+            type: PathPrefix
+            value: "/oauth/token"
+      backendRefs:
+        - name: t-synclet-mcp
+          port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/"
+      backendRefs:
+        - name: t-synclet
+          port: 80
+### shared/ingress=true/gateway=true/hostname=false/parentRefs=false/customPaths=true
+---
+# Source: synclet/templates/server/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: synclet.local
+      http:
+        paths:
+          - path: /mcp
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /custom
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet
+                port:
+                  number: 80
+---
+# Source: synclet/templates/server/httproute.yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  parentRefs:
+    - name: gw
+  hostnames:
+    - synclet.example.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/mcp"
+        - path:
+            type: PathPrefix
+            value: "/custom"
+      backendRefs:
+        - name: t-synclet-mcp
+          port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/"
+      backendRefs:
+        - name: t-synclet
+          port: 80
+### shared/ingress=true/gateway=true/hostname=false/parentRefs=true/customPaths=false
+---
+# Source: synclet/templates/server/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: synclet.local
+      http:
+        paths:
+          - path: /mcp
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /.well-known/oauth-protected-resource
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /.well-known/oauth-authorization-server
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /oauth/register
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /oauth/token
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet
+                port:
+                  number: 80
+---
+# Source: synclet/templates/server/httproute.yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  parentRefs:
+    - name: gw
+  hostnames:
+    - synclet.example.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/mcp"
+        - path:
+            type: PathPrefix
+            value: "/.well-known/oauth-protected-resource"
+        - path:
+            type: PathPrefix
+            value: "/.well-known/oauth-authorization-server"
+        - path:
+            type: PathPrefix
+            value: "/oauth/register"
+        - path:
+            type: PathPrefix
+            value: "/oauth/token"
+      backendRefs:
+        - name: t-synclet-mcp
+          port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/"
+      backendRefs:
+        - name: t-synclet
+          port: 80
+### shared/ingress=true/gateway=true/hostname=false/parentRefs=true/customPaths=true
+---
+# Source: synclet/templates/server/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: synclet.local
+      http:
+        paths:
+          - path: /mcp
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /custom
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet
+                port:
+                  number: 80
+---
+# Source: synclet/templates/server/httproute.yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  parentRefs:
+    - name: gw
+  hostnames:
+    - synclet.example.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/mcp"
+        - path:
+            type: PathPrefix
+            value: "/custom"
+      backendRefs:
+        - name: t-synclet-mcp
+          port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/"
+      backendRefs:
+        - name: t-synclet
+          port: 80
+### shared/ingress=true/gateway=true/hostname=true/parentRefs=false/customPaths=false
+---
+# Source: synclet/templates/server/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: synclet.local
+      http:
+        paths:
+          - path: /mcp
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /.well-known/oauth-protected-resource
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /.well-known/oauth-authorization-server
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /oauth/register
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /oauth/token
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet
+                port:
+                  number: 80
+---
+# Source: synclet/templates/server/httproute.yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  parentRefs:
+    - name: gw
+  hostnames:
+    - synclet.example.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/mcp"
+        - path:
+            type: PathPrefix
+            value: "/.well-known/oauth-protected-resource"
+        - path:
+            type: PathPrefix
+            value: "/.well-known/oauth-authorization-server"
+        - path:
+            type: PathPrefix
+            value: "/oauth/register"
+        - path:
+            type: PathPrefix
+            value: "/oauth/token"
+      backendRefs:
+        - name: t-synclet-mcp
+          port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/"
+      backendRefs:
+        - name: t-synclet
+          port: 80
+### shared/ingress=true/gateway=true/hostname=true/parentRefs=false/customPaths=true
+---
+# Source: synclet/templates/server/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: synclet.local
+      http:
+        paths:
+          - path: /mcp
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /custom
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet
+                port:
+                  number: 80
+---
+# Source: synclet/templates/server/httproute.yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  parentRefs:
+    - name: gw
+  hostnames:
+    - synclet.example.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/mcp"
+        - path:
+            type: PathPrefix
+            value: "/custom"
+      backendRefs:
+        - name: t-synclet-mcp
+          port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/"
+      backendRefs:
+        - name: t-synclet
+          port: 80
+### shared/ingress=true/gateway=true/hostname=true/parentRefs=true/customPaths=false
+---
+# Source: synclet/templates/server/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: synclet.local
+      http:
+        paths:
+          - path: /mcp
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /.well-known/oauth-protected-resource
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /.well-known/oauth-authorization-server
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /oauth/register
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /oauth/token
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet
+                port:
+                  number: 80
+---
+# Source: synclet/templates/server/httproute.yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  parentRefs:
+    - name: gw
+  hostnames:
+    - synclet.example.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/mcp"
+        - path:
+            type: PathPrefix
+            value: "/.well-known/oauth-protected-resource"
+        - path:
+            type: PathPrefix
+            value: "/.well-known/oauth-authorization-server"
+        - path:
+            type: PathPrefix
+            value: "/oauth/register"
+        - path:
+            type: PathPrefix
+            value: "/oauth/token"
+      backendRefs:
+        - name: t-synclet-mcp
+          port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/"
+      backendRefs:
+        - name: t-synclet
+          port: 80
+### shared/ingress=true/gateway=true/hostname=true/parentRefs=true/customPaths=true
+---
+# Source: synclet/templates/server/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: synclet.local
+      http:
+        paths:
+          - path: /mcp
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /custom
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet-mcp
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: t-synclet
+                port:
+                  number: 80
+---
+# Source: synclet/templates/server/httproute.yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: VERSION
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: server
+spec:
+  parentRefs:
+    - name: gw
+  hostnames:
+    - synclet.example.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/mcp"
+        - path:
+            type: PathPrefix
+            value: "/custom"
+      backendRefs:
+        - name: t-synclet-mcp
+          port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/"
+      backendRefs:
+        - name: t-synclet
+          port: 80
