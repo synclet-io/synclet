@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.15.0](https://github.com/synclet-io/synclet/compare/synclet-v0.14.0...synclet-v0.15.0) (2026-10-21)
+
+
+### Features
+
+* **helm:** MCP HTTPRoute twin for the Gateway API in separate mode ([d7c8094](https://github.com/synclet-io/synclet/commit/d7c8094150cfc3c3837a140534b6a9ba5422bf24))
+* **helm:** mcp.exposure and mcp.paths replace mcp.ingress.mode and paths ([be1b08a](https://github.com/synclet-io/synclet/commit/be1b08a8d86b932c9554d67ad2716a4d7b9e27bf))
+* **mcp:** read stream configuration and configure a single stream ([1d5a976](https://github.com/synclet-io/synclet/commit/1d5a9769e3a24eb49fc947955581e61073637964))
+* **pipeline:** a connection without configured streams cannot run ([ee18f5b](https://github.com/synclet-io/synclet/commit/ee18f5b5f6f9d62c57e9d38d535d7f48a57604e2))
+
 ## [0.14.0](https://github.com/synclet-io/synclet/compare/synclet-v0.13.0...synclet-v0.14.0) (2026-10-21)
 
 
