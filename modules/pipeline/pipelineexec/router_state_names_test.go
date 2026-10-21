@@ -32,7 +32,7 @@ func (h *confirmedStates) OnStateConfirmed(_ context.Context, msg *protocol.Airb
 
 // echoDestination echoes every STATE it reads and records the descriptors it saw.
 func echoDestination(stdin io.Reader, stdout *io.PipeWriter, seen *[]protocol.StreamDescriptor) {
-	reader := protocol.NewMessageReader(stdin)
+	reader := protocol.NewMessageReader(stdin, protocol.SyncMessageMaxSize)
 	writer := protocol.NewMessageWriter(stdout)
 
 	defer func() { _ = stdout.Close() }()

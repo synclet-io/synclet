@@ -317,7 +317,7 @@ func (c *ConnectorClient) runAndCollect(ctx context.Context, redactor *pipelinee
 	}()
 
 	// Read all messages from STDOUT.
-	reader := protocol.NewMessageReader(result.Stdout)
+	reader := protocol.NewMessageReader(result.Stdout, protocol.TaskMessageMaxSize)
 	var messages []*protocol.AirbyteMessage
 
 	for {

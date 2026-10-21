@@ -12,11 +12,20 @@ import (
 	"github.com/go-pnp/go-pnp/logging"
 )
 
-// MaxMessageSize is the longest message line a MessageReader accepts. Catalogs
-// of wide sources and single records can reach tens of MiB.
-const MaxMessageSize = 100 << 20
+// TaskMessageMaxSize is the longest message line accepted from a connector
+// running spec, check or discover. Catalogs of wide sources reach tens of MiB.
+const TaskMessageMaxSize = 50 << 20
 
-const initialBufferSize = 64 << 10
+// SyncMessageMaxSize is the longest message line accepted from a source or
+// destination during a sync.
+const SyncMessageMaxSize = 16 << 20
+
+const (
+	initialBufferSize = 64 << 10
+	// retainedLineSize bounds the line buffer a reader keeps between reads, so
+	// one huge message does not pin its memory for the rest of the stream.
+	retainedLineSize = 1 << 20
+)
 
 // ErrMessageTooLarge is returned by Read for a message line longer than the
 // reader's limit. The reader cannot continue past such a line.
@@ -24,22 +33,17 @@ var ErrMessageTooLarge = errors.New("connector message too large")
 
 // MessageReader reads JSON lines from an io.Reader and emits AirbyteMessage structs.
 type MessageReader struct {
-	scanner *bufio.Scanner
+	reader  *bufio.Reader
+	line    []byte
 	maxSize int
+	err     error
 	logger  *logging.Logger
 }
 
 // NewMessageReader creates a MessageReader that reads JSON lines from r,
-// accepting lines up to MaxMessageSize. The line buffer grows on demand.
-func NewMessageReader(r io.Reader) *MessageReader {
-	return newMessageReader(r, MaxMessageSize)
-}
-
-func newMessageReader(r io.Reader, maxSize int) *MessageReader {
-	scanner := bufio.NewScanner(r)
-	scanner.Buffer(make([]byte, 0, min(initialBufferSize, maxSize)), maxSize)
-
-	return &MessageReader{scanner: scanner, maxSize: maxSize, logger: nil}
+// accepting lines of up to maxSize bytes, line terminator excluded.
+func NewMessageReader(r io.Reader, maxSize int) *MessageReader {
+	return &MessageReader{reader: bufio.NewReaderSize(r, initialBufferSize), maxSize: maxSize, logger: nil}
 }
 
 // Read reads the next AirbyteMessage from the underlying reader.
@@ -47,35 +51,92 @@ func newMessageReader(r io.Reader, maxSize int) *MessageReader {
 // Returns io.EOF when there are no more messages, and ErrMessageTooLarge,
 // on this and every later call, once a line exceeds the limit.
 func (mr *MessageReader) Read() (*AirbyteMessage, error) {
-	for mr.scanner.Scan() {
-		line := bytes.TrimSpace(mr.scanner.Bytes())
-		if len(line) == 0 {
-			continue
+	for mr.err == nil {
+		line, err := mr.readLine()
+		if err != nil {
+			mr.err = err
+			break
 		}
 
-		var msg AirbyteMessage
-		if err := json.Unmarshal(line, &msg); err != nil {
-			mr.logger.WithError(err).Warn(context.Background(), "skipping unparseable line", "line", truncateLine(string(line[:min(len(line), 256)]), 200))
-			continue
+		msg, ok := mr.decode(bytes.TrimSpace(line))
+		if cap(mr.line) > retainedLineSize {
+			mr.line = nil
 		}
 
-		// Drop messages with unknown or empty type (per Airbyte spec).
-		if !isKnownMessageType(msg.Type) {
-			continue
+		if ok {
+			return msg, nil
 		}
-
-		return &msg, nil
 	}
 
-	if err := mr.scanner.Err(); err != nil {
-		if errors.Is(err, bufio.ErrTooLong) {
-			return nil, fmt.Errorf("%w: a line exceeds the %s limit", ErrMessageTooLarge, formatSize(mr.maxSize))
-		}
+	return nil, mr.err
+}
 
-		return nil, err
+func (mr *MessageReader) decode(line []byte) (*AirbyteMessage, bool) {
+	if len(line) == 0 {
+		return nil, false
 	}
 
-	return nil, io.EOF
+	var msg AirbyteMessage
+	if err := json.Unmarshal(line, &msg); err != nil {
+		mr.logger.WithError(err).Warn(context.Background(), "skipping unparseable line", "line", truncateLine(string(line[:min(len(line), 256)]), 200))
+		return nil, false
+	}
+
+	// Drop messages with unknown or empty type (per Airbyte spec).
+	if !isKnownMessageType(msg.Type) {
+		return nil, false
+	}
+
+	return &msg, true
+}
+
+// readLine returns the next line without its terminator. A line that fits the
+// bufio buffer is returned from it without copying; a longer one is assembled
+// in mr.line.
+func (mr *MessageReader) readLine() ([]byte, error) {
+	mr.line = mr.line[:0]
+
+	for {
+		chunk, err := mr.reader.ReadSlice('\n')
+		if err == nil && len(mr.line) == 0 {
+			return mr.checkSize(trimEOL(chunk))
+		}
+
+		if len(mr.line)+len(chunk) > mr.maxSize+len("\r\n") {
+			return nil, mr.tooLarge()
+		}
+
+		mr.line = append(mr.line, chunk...)
+
+		switch {
+		case err == nil:
+			return mr.checkSize(trimEOL(mr.line))
+		case errors.Is(err, bufio.ErrBufferFull):
+			continue
+		case errors.Is(err, io.EOF) && len(mr.line) > 0:
+			return mr.checkSize(mr.line)
+		default:
+			return nil, err //nolint:wrapcheck // io.EOF and reader errors pass through unchanged
+		}
+	}
+}
+
+func (mr *MessageReader) checkSize(line []byte) ([]byte, error) {
+	if len(line) > mr.maxSize {
+		return nil, mr.tooLarge()
+	}
+
+	return line, nil
+}
+
+func (mr *MessageReader) tooLarge() error {
+	return fmt.Errorf("%w: a line exceeds the %s limit", ErrMessageTooLarge, formatSize(mr.maxSize))
+}
+
+func trimEOL(line []byte) []byte {
+	line = bytes.TrimSuffix(line, []byte("\n"))
+
+	return bytes.TrimSuffix(line, []byte("\r"))
 }
 
 // ReadAll reads all messages into a channel. Unparseable lines are logged and skipped.

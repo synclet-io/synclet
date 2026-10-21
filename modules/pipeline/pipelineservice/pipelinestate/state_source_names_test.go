@@ -45,7 +45,7 @@ func (h *savingHandler) OnStateConfirmed(ctx context.Context, msg *protocol.Airb
 }
 
 func echoStates(stdin io.Reader, stdout *io.PipeWriter) {
-	reader := protocol.NewMessageReader(stdin)
+	reader := protocol.NewMessageReader(stdin, protocol.SyncMessageMaxSize)
 	writer := protocol.NewMessageWriter(stdout)
 
 	defer func() { _ = stdout.Close() }()

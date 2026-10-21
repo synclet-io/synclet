@@ -17,7 +17,7 @@ import (
 // statsDestination echoes every STATE it reads and records its sourceStats,
 // with -1 standing for a STATE that carries none.
 func statsDestination(stdin io.Reader, stdout *io.PipeWriter, counts *[]float64) {
-	reader := protocol.NewMessageReader(stdin)
+	reader := protocol.NewMessageReader(stdin, protocol.SyncMessageMaxSize)
 	writer := protocol.NewMessageWriter(stdout)
 
 	defer func() { _ = stdout.Close() }()

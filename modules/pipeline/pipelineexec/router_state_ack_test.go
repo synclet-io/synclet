@@ -68,7 +68,7 @@ var errDestinationKilled = errors.New("destination killed")
 // handling the last of them, by breaking both of its pipes. It returns the
 // highest record id it acknowledged.
 func fakeDestination(stdin *io.PipeReader, stdout *io.PipeWriter, killAfter int) int {
-	reader := protocol.NewMessageReader(stdin)
+	reader := protocol.NewMessageReader(stdin, protocol.SyncMessageMaxSize)
 	writer := protocol.NewMessageWriter(stdout)
 
 	pending, acked := 0, 0

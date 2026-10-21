@@ -149,9 +149,9 @@ func RunTask(ctx context.Context, cfg TaskConfig) error {
 }
 
 // readTaskMessages reads every message of a connector's output. A read error,
-// including a message over protocol.MaxMessageSize, ends the read.
+// including a message over protocol.TaskMessageMaxSize, ends the read.
 func readTaskMessages(r io.Reader) ([]*protocol.AirbyteMessage, error) {
-	reader := protocol.NewMessageReader(r)
+	reader := protocol.NewMessageReader(r, protocol.TaskMessageMaxSize)
 
 	var messages []*protocol.AirbyteMessage
 

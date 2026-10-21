@@ -3,11 +3,14 @@ package pipelineexec
 import (
 	"context"
 	"io"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/synclet-io/synclet/pkg/protocol"
 )
 
 type nopHandler struct {
@@ -84,4 +87,24 @@ func TestRun_ContextCancelStopsSilentSource(t *testing.T) {
 	err := runSilentSource(ctx, t, recordLine, 0)
 
 	require.ErrorIs(t, err, context.DeadlineExceeded)
+}
+
+func TestRun_RejectsSourceLineOverSyncLimit(t *testing.T) {
+	line := `{"type":"RECORD","record":{"stream":"users","data":{"blob":"` +
+		strings.Repeat("x", protocol.SyncMessageMaxSize) + `"},"emitted_at":0}}` + "\n"
+
+	_, err := Run(context.Background(), strings.NewReader(line), discardWriteCloser{}, io.NopCloser(strings.NewReader("")), nopHandler{}, RunConfig{}, nil)
+
+	require.ErrorIs(t, err, protocol.ErrMessageTooLarge)
+	assert.ErrorContains(t, err, "16 MiB")
+}
+
+func TestRun_RejectsDestinationLineOverSyncLimit(t *testing.T) {
+	line := `{"type":"LOG","log":{"level":"INFO","message":"` +
+		strings.Repeat("x", protocol.SyncMessageMaxSize) + `"}}` + "\n"
+
+	_, err := Run(context.Background(), strings.NewReader(""), discardWriteCloser{}, io.NopCloser(strings.NewReader(line)), nopHandler{}, RunConfig{}, nil)
+
+	require.ErrorIs(t, err, protocol.ErrMessageTooLarge)
+	assert.ErrorContains(t, err, "16 MiB")
 }

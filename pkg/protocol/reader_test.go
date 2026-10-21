@@ -14,7 +14,7 @@ import (
 func TestMessageReader_Read(t *testing.T) {
 	t.Run("reads record message", func(t *testing.T) {
 		line := `{"type":"RECORD","record":{"stream":"users","data":{"id":1,"name":"Alice"},"emitted_at":1700000000000}}`
-		reader := NewMessageReader(strings.NewReader(line + "\n"))
+		reader := NewMessageReader(strings.NewReader(line+"\n"), SyncMessageMaxSize)
 
 		msg, err := reader.Read()
 		require.NoError(t, err)
@@ -25,7 +25,7 @@ func TestMessageReader_Read(t *testing.T) {
 
 	t.Run("reads state message", func(t *testing.T) {
 		line := `{"type":"STATE","state":{"type":"STREAM","stream":{"stream_descriptor":{"name":"users"},"stream_state":{"cursor":100}}}}`
-		reader := NewMessageReader(strings.NewReader(line + "\n"))
+		reader := NewMessageReader(strings.NewReader(line+"\n"), SyncMessageMaxSize)
 
 		msg, err := reader.Read()
 		require.NoError(t, err)
@@ -35,7 +35,7 @@ func TestMessageReader_Read(t *testing.T) {
 
 	t.Run("reads log message", func(t *testing.T) {
 		line := `{"type":"LOG","log":{"level":"INFO","message":"Starting sync"}}`
-		reader := NewMessageReader(strings.NewReader(line + "\n"))
+		reader := NewMessageReader(strings.NewReader(line+"\n"), SyncMessageMaxSize)
 
 		msg, err := reader.Read()
 		require.NoError(t, err)
@@ -46,7 +46,7 @@ func TestMessageReader_Read(t *testing.T) {
 
 	t.Run("skips blank lines", func(t *testing.T) {
 		input := "\n\n" + `{"type":"LOG","log":{"level":"INFO","message":"hello"}}` + "\n\n"
-		reader := NewMessageReader(strings.NewReader(input))
+		reader := NewMessageReader(strings.NewReader(input), SyncMessageMaxSize)
 
 		msg, err := reader.Read()
 		require.NoError(t, err)
@@ -58,7 +58,7 @@ func TestMessageReader_Read(t *testing.T) {
 
 	t.Run("skips unparseable lines", func(t *testing.T) {
 		input := "not json at all\n" + `{"type":"LOG","log":{"level":"WARN","message":"ok"}}` + "\n"
-		reader := NewMessageReader(strings.NewReader(input))
+		reader := NewMessageReader(strings.NewReader(input), SyncMessageMaxSize)
 
 		msg, err := reader.Read()
 		require.NoError(t, err)
@@ -68,7 +68,7 @@ func TestMessageReader_Read(t *testing.T) {
 
 	t.Run("drops unknown message types", func(t *testing.T) {
 		input := `{"type":"UNKNOWN_NEW_TYPE","data":{}}` + "\n" + `{"type":"LOG","log":{"level":"INFO","message":"known"}}` + "\n"
-		reader := NewMessageReader(strings.NewReader(input))
+		reader := NewMessageReader(strings.NewReader(input), SyncMessageMaxSize)
 
 		msg, err := reader.Read()
 		require.NoError(t, err)
@@ -76,7 +76,7 @@ func TestMessageReader_Read(t *testing.T) {
 	})
 
 	t.Run("returns EOF on empty input", func(t *testing.T) {
-		reader := NewMessageReader(strings.NewReader(""))
+		reader := NewMessageReader(strings.NewReader(""), SyncMessageMaxSize)
 
 		_, err := reader.Read()
 		assert.ErrorIs(t, err, io.EOF)
@@ -85,7 +85,7 @@ func TestMessageReader_Read(t *testing.T) {
 	t.Run("reads multiple messages", func(t *testing.T) {
 		input := `{"type":"LOG","log":{"level":"INFO","message":"first"}}` + "\n" +
 			`{"type":"LOG","log":{"level":"INFO","message":"second"}}` + "\n"
-		reader := NewMessageReader(strings.NewReader(input))
+		reader := NewMessageReader(strings.NewReader(input), SyncMessageMaxSize)
 
 		msg1, err := reader.Read()
 		require.NoError(t, err)
@@ -105,7 +105,7 @@ func TestMessageReader_ReadAll(t *testing.T) {
 		input := `{"type":"LOG","log":{"level":"INFO","message":"one"}}` + "\n" +
 			`{"type":"LOG","log":{"level":"INFO","message":"two"}}` + "\n" +
 			`{"type":"LOG","log":{"level":"INFO","message":"three"}}` + "\n"
-		reader := NewMessageReader(strings.NewReader(input))
+		reader := NewMessageReader(strings.NewReader(input), SyncMessageMaxSize)
 
 		ctx := context.Background()
 		var messages []*AirbyteMessage
@@ -126,7 +126,7 @@ func TestMessageReader_ReadAll(t *testing.T) {
 			lines = append(lines, `{"type":"LOG","log":{"level":"INFO","message":"msg"}}`)
 		}
 		input := strings.Join(lines, "\n") + "\n"
-		reader := NewMessageReader(strings.NewReader(input))
+		reader := NewMessageReader(strings.NewReader(input), SyncMessageMaxSize)
 
 		ctx, cancel := context.WithCancel(context.Background())
 
@@ -145,7 +145,7 @@ func TestMessageReader_ReadAll(t *testing.T) {
 
 	t.Run("skips bad lines in channel mode", func(t *testing.T) {
 		input := "garbage\n" + `{"type":"LOG","log":{"level":"INFO","message":"good"}}` + "\n"
-		reader := NewMessageReader(strings.NewReader(input))
+		reader := NewMessageReader(strings.NewReader(input), SyncMessageMaxSize)
 
 		var messages []*AirbyteMessage
 		for msg := range reader.ReadAll(context.Background()) {
@@ -171,7 +171,7 @@ func TestMessageReader_RealConnectorOutput(t *testing.T) {
 		`{"type":"LOG","log":{"level":"INFO","message":"Sync complete"}}`,
 	}
 	input := strings.Join(lines, "\n") + "\n"
-	reader := NewMessageReader(strings.NewReader(input))
+	reader := NewMessageReader(strings.NewReader(input), SyncMessageMaxSize)
 
 	var messages []*AirbyteMessage
 	for msg := range reader.ReadAll(context.Background()) {
@@ -306,7 +306,7 @@ func TestRoundTrip(t *testing.T) {
 		require.NoError(t, writer.Write(msg))
 	}
 
-	reader := NewMessageReader(strings.NewReader(buf.String()))
+	reader := NewMessageReader(strings.NewReader(buf.String()), SyncMessageMaxSize)
 	var roundTripped []*AirbyteMessage
 	for msg := range reader.ReadAll(context.Background()) {
 		roundTripped = append(roundTripped, msg)
@@ -318,11 +318,13 @@ func TestRoundTrip(t *testing.T) {
 	}
 }
 
+const recordLine = `{"type":"RECORD","record":{"stream":"users","data":{"id":1},"emitted_at":0}}`
+
 func TestMessageReader_LargeMessages(t *testing.T) {
 	t.Run("reads a catalog line larger than a few MiB", func(t *testing.T) {
 		description := strings.Repeat("x", 5<<20)
 		line := `{"type":"CATALOG","catalog":{"streams":[{"name":"big","json_schema":{"description":"` + description + `"}}]}}`
-		reader := NewMessageReader(strings.NewReader(line + "\n"))
+		reader := NewMessageReader(strings.NewReader(line+"\n"), SyncMessageMaxSize)
 
 		msg, err := reader.Read()
 		require.NoError(t, err)
@@ -333,7 +335,7 @@ func TestMessageReader_LargeMessages(t *testing.T) {
 
 	t.Run("a line over the limit is an error naming the limit", func(t *testing.T) {
 		input := `{"type":"LOG","log":{"level":"INFO","message":"` + strings.Repeat("y", 2048) + `"}}` + "\n"
-		reader := newMessageReader(strings.NewReader(input), 1024)
+		reader := NewMessageReader(strings.NewReader(input), 1024)
 
 		_, err := reader.Read()
 		require.ErrorIs(t, err, ErrMessageTooLarge)
@@ -343,8 +345,53 @@ func TestMessageReader_LargeMessages(t *testing.T) {
 		require.ErrorIs(t, err, ErrMessageTooLarge)
 	})
 
-	t.Run("the limit is 100 MiB", func(t *testing.T) {
-		assert.Equal(t, 100<<20, MaxMessageSize)
-		assert.Equal(t, "100 MiB", formatSize(MaxMessageSize))
+	t.Run("a line of exactly the limit is accepted", func(t *testing.T) {
+		prefix := `{"type":"LOG","log":{"level":"INFO","message":"`
+		suffix := `"}}`
+		line := prefix + strings.Repeat("z", 1024-len(prefix)-len(suffix)) + suffix
+		require.Len(t, line, 1024)
+
+		reader := NewMessageReader(strings.NewReader(line+"\n"+line+"x\n"), 1024)
+
+		msg, err := reader.Read()
+		require.NoError(t, err)
+		assert.Equal(t, MessageTypeLog, msg.Type)
+
+		_, err = reader.Read()
+		require.ErrorIs(t, err, ErrMessageTooLarge)
 	})
+
+	t.Run("a long line in CRLF output without a final newline is read", func(t *testing.T) {
+		long := `{"type":"LOG","log":{"level":"INFO","message":"` + strings.Repeat("w", 3*initialBufferSize) + `"}}`
+		reader := NewMessageReader(strings.NewReader(recordLine+"\r\n"+long), SyncMessageMaxSize)
+
+		msg, err := reader.Read()
+		require.NoError(t, err)
+		assert.Equal(t, MessageTypeRecord, msg.Type)
+
+		msg, err = reader.Read()
+		require.NoError(t, err)
+		assert.Len(t, msg.Log.Message, 3*initialBufferSize)
+
+		_, err = reader.Read()
+		require.ErrorIs(t, err, io.EOF)
+	})
+
+	t.Run("the buffer of a line past the retained size is released", func(t *testing.T) {
+		big := `{"type":"LOG","log":{"level":"INFO","message":"` + strings.Repeat("v", 2*retainedLineSize) + `"}}`
+		reader := NewMessageReader(strings.NewReader(big+"\n"+recordLine+"\n"), SyncMessageMaxSize)
+
+		_, err := reader.Read()
+		require.NoError(t, err)
+		assert.LessOrEqual(t, cap(reader.line), retainedLineSize)
+
+		msg, err := reader.Read()
+		require.NoError(t, err)
+		assert.Equal(t, MessageTypeRecord, msg.Type)
+	})
+}
+
+func TestMessageSizeLimits(t *testing.T) {
+	assert.Equal(t, "50 MiB", formatSize(TaskMessageMaxSize))
+	assert.Equal(t, "16 MiB", formatSize(SyncMessageMaxSize))
 }

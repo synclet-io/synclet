@@ -12,7 +12,7 @@ import (
 
 func TestRecordMessageWithMeta(t *testing.T) {
 	line := `{"type":"RECORD","record":{"stream":"users","data":{"id":1},"emitted_at":1700000000000,"meta":{"changes":[{"field":"email","change":"INSERT","reason":"schema_change"}]}}}`
-	reader := NewMessageReader(strings.NewReader(line + "\n"))
+	reader := NewMessageReader(strings.NewReader(line+"\n"), SyncMessageMaxSize)
 
 	msg, err := reader.Read()
 	require.NoError(t, err)
@@ -26,7 +26,7 @@ func TestRecordMessageWithMeta(t *testing.T) {
 
 func TestRecordMessageWithFileReference(t *testing.T) {
 	line := `{"type":"RECORD","record":{"stream":"files","data":{},"emitted_at":1700000000000,"file_reference":{"staging_file_path":"/tmp/staging/file.csv","source_file_url":"s3://bucket/file.csv","file_size":1024}}}`
-	reader := NewMessageReader(strings.NewReader(line + "\n"))
+	reader := NewMessageReader(strings.NewReader(line+"\n"), SyncMessageMaxSize)
 
 	msg, err := reader.Read()
 	require.NoError(t, err)
@@ -38,7 +38,7 @@ func TestRecordMessageWithFileReference(t *testing.T) {
 
 func TestStateMessageWithStats(t *testing.T) {
 	line := `{"type":"STATE","state":{"type":"STREAM","stream":{"stream_descriptor":{"name":"users"},"stream_state":{"cursor":100}},"sourceStats":{"recordCount":42},"destinationStats":{"recordCount":40}}}`
-	reader := NewMessageReader(strings.NewReader(line + "\n"))
+	reader := NewMessageReader(strings.NewReader(line+"\n"), SyncMessageMaxSize)
 
 	msg, err := reader.Read()
 	require.NoError(t, err)
@@ -51,7 +51,7 @@ func TestStateMessageWithStats(t *testing.T) {
 
 func TestLogMessageWithStackTrace(t *testing.T) {
 	line := `{"type":"LOG","log":{"level":"ERROR","message":"failed","stack_trace":"at main.go:42\nat handler.go:10"}}`
-	reader := NewMessageReader(strings.NewReader(line + "\n"))
+	reader := NewMessageReader(strings.NewReader(line+"\n"), SyncMessageMaxSize)
 
 	msg, err := reader.Read()
 	require.NoError(t, err)
@@ -60,7 +60,7 @@ func TestLogMessageWithStackTrace(t *testing.T) {
 
 func TestErrorTraceWithTransientError(t *testing.T) {
 	line := `{"type":"TRACE","trace":{"type":"ERROR","emitted_at":1700000000000,"error":{"message":"timeout","failure_type":"transient_error","stream_descriptor":{"name":"users","namespace":"public"}}}}`
-	reader := NewMessageReader(strings.NewReader(line + "\n"))
+	reader := NewMessageReader(strings.NewReader(line+"\n"), SyncMessageMaxSize)
 
 	msg, err := reader.Read()
 	require.NoError(t, err)
@@ -73,7 +73,7 @@ func TestErrorTraceWithTransientError(t *testing.T) {
 
 func TestAnalyticsTraceMessage(t *testing.T) {
 	line := `{"type":"TRACE","trace":{"type":"ANALYTICS","emitted_at":1700000000000,"analytics":{"type":"connector_startup_time","value":"1500"}}}`
-	reader := NewMessageReader(strings.NewReader(line + "\n"))
+	reader := NewMessageReader(strings.NewReader(line+"\n"), SyncMessageMaxSize)
 
 	msg, err := reader.Read()
 	require.NoError(t, err)
@@ -85,7 +85,7 @@ func TestAnalyticsTraceMessage(t *testing.T) {
 
 func TestStreamStatusWithReasons(t *testing.T) {
 	line := `{"type":"TRACE","trace":{"type":"STREAM_STATUS","emitted_at":1700000000000,"stream_status":{"stream_descriptor":{"name":"users"},"status":"RUNNING","reasons":[{"type":"RATE_LIMITED"}]}}}`
-	reader := NewMessageReader(strings.NewReader(line + "\n"))
+	reader := NewMessageReader(strings.NewReader(line+"\n"), SyncMessageMaxSize)
 
 	msg, err := reader.Read()
 	require.NoError(t, err)
@@ -96,7 +96,7 @@ func TestStreamStatusWithReasons(t *testing.T) {
 
 func TestControlMessageConnectorConfig(t *testing.T) {
 	line := `{"type":"CONTROL","control":{"type":"CONNECTOR_CONFIG","emitted_at":1700000000000,"connectorConfig":{"config":{"api_key":"new_key","host":"example.com"}}}}`
-	reader := NewMessageReader(strings.NewReader(line + "\n"))
+	reader := NewMessageReader(strings.NewReader(line+"\n"), SyncMessageMaxSize)
 
 	msg, err := reader.Read()
 	require.NoError(t, err)
@@ -113,7 +113,7 @@ func TestControlMessageConnectorConfig(t *testing.T) {
 
 func TestDestinationCatalogMessage(t *testing.T) {
 	line := `{"type":"DESTINATION_CATALOG","destinationCatalog":{"catalog":{"streams":[{"name":"files","json_schema":{"type":"object"}}]}}}`
-	reader := NewMessageReader(strings.NewReader(line + "\n"))
+	reader := NewMessageReader(strings.NewReader(line+"\n"), SyncMessageMaxSize)
 
 	msg, err := reader.Read()
 	require.NoError(t, err)
@@ -126,7 +126,7 @@ func TestDestinationCatalogMessage(t *testing.T) {
 
 func TestSpecWithAdvancedAuth(t *testing.T) {
 	line := `{"type":"SPEC","spec":{"documentationUrl":"https://example.com","connectionSpecification":{},"protocol_version":"0.3.2","changelogUrl":"https://example.com/changelog","advancedAuth":{"auth_flow_type":"oauth2.0","predicate_key":["credentials","auth_type"],"predicate_value":"oauth"}}}`
-	reader := NewMessageReader(strings.NewReader(line + "\n"))
+	reader := NewMessageReader(strings.NewReader(line+"\n"), SyncMessageMaxSize)
 
 	msg, err := reader.Read()
 	require.NoError(t, err)
@@ -181,7 +181,7 @@ func TestRealConnectorOutputWithNewTypes(t *testing.T) {
 		`{"type":"TRACE","trace":{"type":"STREAM_STATUS","emitted_at":1700000000003,"stream_status":{"stream_descriptor":{"name":"users"},"status":"COMPLETE"}}}`,
 	}
 	input := strings.Join(lines, "\n") + "\n"
-	reader := NewMessageReader(strings.NewReader(input))
+	reader := NewMessageReader(strings.NewReader(input), SyncMessageMaxSize)
 
 	var messages []*AirbyteMessage
 	for msg := range reader.ReadAll(context.Background()) {

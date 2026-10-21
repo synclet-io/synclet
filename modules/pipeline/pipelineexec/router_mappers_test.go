@@ -40,7 +40,7 @@ type mapperRun struct {
 // mapperDestination records every RECORD's data by "<namespace>.<stream>" and
 // the sourceStats of every STATE, which it echoes back.
 func mapperDestination(stdin io.Reader, stdout *io.PipeWriter, run *mapperRun) {
-	reader := protocol.NewMessageReader(stdin)
+	reader := protocol.NewMessageReader(stdin, protocol.SyncMessageMaxSize)
 	writer := protocol.NewMessageWriter(stdout)
 
 	defer func() { _ = stdout.Close() }()

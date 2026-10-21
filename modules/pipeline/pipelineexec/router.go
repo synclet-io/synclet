@@ -62,9 +62,9 @@ func (s *internalStats) export() *Stats {
 func Run(ctx context.Context, sourceStdout io.Reader, destStdin io.WriteCloser, destStdout io.ReadCloser, handler Handler, cfg RunConfig, logger *logging.Logger) (*Stats, error) {
 	stats := &internalStats{startTime: time.Now()}
 
-	srcReader := protocol.NewMessageReader(sourceStdout)
+	srcReader := protocol.NewMessageReader(sourceStdout, protocol.SyncMessageMaxSize)
 	destWriter := protocol.NewMessageWriter(destStdin)
-	destReader := protocol.NewMessageReader(destStdout)
+	destReader := protocol.NewMessageReader(destStdout, protocol.SyncMessageMaxSize)
 
 	// Read dest output in background.
 	var destErr error

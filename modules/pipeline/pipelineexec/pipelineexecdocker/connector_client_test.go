@@ -301,3 +301,28 @@ func TestConnectorClientDrainTimeoutCarriesExit(t *testing.T) {
 	assert.Equal(t, "source", exitErr.Role)
 	assert.Equal(t, "killed by oom", exitErr.Stderr)
 }
+
+func discoverWithCatalogLine(t *testing.T, descriptionSize int) (*protocol.AirbyteCatalog, error) {
+	t.Helper()
+
+	stdout := `{"type":"CATALOG","catalog":{"streams":[{"name":"wide","json_schema":{"description":"` +
+		strings.Repeat("d", descriptionSize) + `"}}]}}` + "\n"
+	runner := &mockContainerRunner{runResults: []*pkgcontainer.RunResult{finishedRunResult(stdout, "", 0)}}
+
+	return NewConnectorClient(runner).Discover(context.Background(), "img", json.RawMessage(`{}`))
+}
+
+func TestConnectorClientDiscoverReadsCatalogUpToTaskLimit(t *testing.T) {
+	catalog, err := discoverWithCatalogLine(t, 2*protocol.SyncMessageMaxSize)
+
+	require.NoError(t, err)
+	require.Len(t, catalog.Streams, 1)
+	assert.Equal(t, "wide", catalog.Streams[0].Name)
+}
+
+func TestConnectorClientDiscoverRejectsCatalogOverTaskLimit(t *testing.T) {
+	_, err := discoverWithCatalogLine(t, protocol.TaskMessageMaxSize)
+
+	require.ErrorIs(t, err, protocol.ErrMessageTooLarge)
+	assert.ErrorContains(t, err, "50 MiB")
+}

@@ -183,6 +183,26 @@ func TestReadTaskMessages_StopsAtTheFirstReadError(t *testing.T) {
 	require.ErrorContains(t, err, "disk gone")
 }
 
+func catalogLine(descriptionSize int) string {
+	return `{"type":"CATALOG","catalog":{"streams":[{"name":"wide","json_schema":{"description":"` +
+		strings.Repeat("d", descriptionSize) + `"}}]}}` + "\n"
+}
+
+func TestReadTaskMessages_AcceptsCatalogUnderTaskLimit(t *testing.T) {
+	messages, err := readTaskMessages(strings.NewReader(catalogLine(protocol.TaskMessageMaxSize - 1<<20)))
+
+	require.NoError(t, err)
+	require.Len(t, messages, 1)
+	assert.Equal(t, protocol.MessageTypeCatalog, messages[0].Type)
+}
+
+func TestReadTaskMessages_RejectsCatalogOverTaskLimit(t *testing.T) {
+	_, err := readTaskMessages(strings.NewReader(catalogLine(protocol.TaskMessageMaxSize)))
+
+	require.ErrorIs(t, err, protocol.ErrMessageTooLarge)
+	assert.ErrorContains(t, err, "50 MiB")
+}
+
 func TestRunTask_TimeoutReportsTheTailOfConnectorOutput(t *testing.T) {
 	fastTaskReportRetry(t)
 
