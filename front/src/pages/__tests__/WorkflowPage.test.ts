@@ -19,7 +19,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('vue-router', () => ({
   useRoute: () => ({ params: mocks.params }),
   useRouter: () => ({ push: mocks.push }),
-  RouterLink: { props: ['to'], template: '<a><slot /></a>' },
+  RouterLink: { props: ['to'], template: '<a :data-to="JSON.stringify(to)"><slot /></a>' },
 }))
 vi.mock('@entities/auth', () => ({
   useAuth: () => ({
@@ -60,24 +60,39 @@ const workflow: Workflow = {
   updatedAt: undefined,
 }
 
-function run(id: string, status: WorkflowRun['status'], a: string, b: string): WorkflowRun {
-  const stepRun = (connectionId: string, s: string) => ({
+type StepRun = WorkflowRun['stepRuns'][number]
+
+function run(id: string, status: WorkflowRun['status'], a: string, b: string, extra: Record<string, Partial<StepRun>> = {}): WorkflowRun {
+  const stepRun = (connectionId: string, s: string): StepRun => ({
     id: `${id}-${connectionId}`,
     stepId: `s-${connectionId}`,
     connectionId,
-    status: s as WorkflowRun['stepRuns'][number]['status'],
+    status: s as StepRun['status'],
     jobId: '',
     error: '',
     startedAt: undefined,
     completedAt: undefined,
+    ...extra[connectionId],
   })
   return { id, workflowId: 'w1', status, trigger: 'manual', startedAt: new Date('2026-10-21T10:00:00Z'), completedAt: undefined, stepRuns: [stepRun('a', a), stepRun('b', b)] }
+}
+
+const failedRun = run('r2', 'failed', 'failed', 'skipped', {
+  a: { jobId: 'j-a', error: 'source check failed: bad password', startedAt: new Date('2026-10-21T10:00:00Z'), completedAt: new Date('2026-10-21T10:01:30Z') },
+})
+const succeededRun = run('r1', 'succeeded', 'succeeded', 'succeeded', {
+  a: { jobId: 'j-a1', startedAt: new Date('2026-10-20T10:00:00Z'), completedAt: new Date('2026-10-20T10:00:05Z') },
+  b: { jobId: 'j-b1', startedAt: new Date('2026-10-20T10:00:05Z'), completedAt: new Date('2026-10-20T10:00:07Z') },
+})
+
+function stepRows(w: ReturnType<typeof mountPage>) {
+  return w.findAll('[data-testid="step-runs"] tbody tr')
 }
 
 function mountPage() {
   return mount(WorkflowPage, {
     global: {
-      stubs: { SCronEditor: true, RouterLink: { props: ['to'], template: '<a><slot /></a>' } },
+      stubs: { SCronEditor: true },
     },
     attachTo: document.body,
   })
@@ -161,7 +176,7 @@ describe('workflow page', () => {
     const w = mountPage()
     await flushPromises()
 
-    const rows = w.findAll('tbody tr')
+    const rows = w.findAll('[data-testid="run-history"] tbody tr')
     expect(rows).toHaveLength(2)
     expect(rows[0]!.text()).toContain('failed')
     expect(rows[0]!.text()).toContain('0/2 succeeded')
@@ -206,5 +221,54 @@ describe('workflow page', () => {
     expect(w.get('[data-testid="schedule-readonly"]').text()).toContain('Schedule')
     expect(w.get('input').attributes('disabled')).toBeDefined()
     expect(graphStatus(w, 'a')).toBe('failed')
+  })
+
+  it('lists the steps of the latest run with their status, timing, error and job link', async () => {
+    mocks.runs = [failedRun, succeededRun]
+    const w = mountPage()
+    await flushPromises()
+
+    const rows = stepRows(w)
+    expect(rows).toHaveLength(2)
+    expect(rows[0]!.text()).toContain('Orders')
+    expect(rows[0]!.text()).toContain('failed')
+    expect(rows[0]!.text()).toContain(new Date('2026-10-21T10:00:00Z').toLocaleString())
+    expect(rows[0]!.text()).toContain('1m 30s')
+    expect(rows[0]!.text()).toContain('source check failed: bad password')
+    expect(JSON.parse(rows[0]!.get('a[data-to]').attributes('data-to')!)).toEqual({ name: 'job-detail', params: { id: 'j-a' } })
+    expect(rows[1]!.text()).toContain('Customers')
+    expect(rows[1]!.text()).toContain('skipped')
+    expect(rows[1]!.find('a[data-to]').exists()).toBe(false)
+  })
+
+  it('opens the job of a step clicked in the graph and shows a failed step\'s error on hover', async () => {
+    mocks.runs = [failedRun]
+    const w = mountPage()
+    await flushPromises()
+
+    expect(w.get('svg [data-step="a"] title').text()).toContain('source check failed: bad password')
+    await w.get('svg [data-step="a"]').trigger('click')
+    expect(mocks.push).toHaveBeenCalledWith({ name: 'job-detail', params: { id: 'j-a' } })
+
+    mocks.push.mockReset()
+    await w.get('svg [data-step="b"]').trigger('click')
+    expect(mocks.push).not.toHaveBeenCalled()
+  })
+
+  it('shows the run chosen in the run history in the graph and the step list', async () => {
+    mocks.runs = [failedRun, succeededRun]
+    const w = mountPage()
+    await flushPromises()
+
+    const history = w.findAll('[data-testid="run-history"] tbody tr')
+    await history[1]!.findAll('button').find(b => b.text() === 'Show in graph')!.trigger('click')
+
+    expect(graphStatus(w, 'a')).toBe('succeeded')
+    expect(graphStatus(w, 'b')).toBe('succeeded')
+    const rows = stepRows(w)
+    expect(rows[0]!.text()).toContain('succeeded')
+    expect(rows[0]!.text()).toContain('5.0s')
+    expect(rows[0]!.text()).not.toContain('bad password')
+    expect(JSON.parse(rows[1]!.get('a[data-to]').attributes('data-to')!)).toEqual({ name: 'job-detail', params: { id: 'j-b1' } })
   })
 })

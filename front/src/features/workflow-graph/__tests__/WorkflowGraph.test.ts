@@ -1,4 +1,4 @@
-import type { WorkflowStepInput } from '@entities/workflow'
+import type { WorkflowRun, WorkflowStepInput } from '@entities/workflow'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import WorkflowGraph from '../WorkflowGraph.vue'
@@ -144,5 +144,39 @@ describe('workflowGraph layout', () => {
 
     const b = box(w, 'b')
     expect(edgePolyline(w, 'a', 'c').some(p => inside(p, b))).toBe(false)
+  })
+})
+
+describe('workflowGraph run', () => {
+  const steps: WorkflowStepInput[] = [
+    { connectionId: 'a', afterConnectionIds: [] },
+    { connectionId: 'b', afterConnectionIds: ['a'] },
+  ]
+  const run: WorkflowRun = {
+    id: 'r1',
+    workflowId: 'w1',
+    status: 'failed',
+    trigger: 'manual',
+    startedAt: undefined,
+    completedAt: undefined,
+    stepRuns: [
+      { id: 'sr-a', stepId: 's-a', connectionId: 'a', status: 'failed', jobId: 'j-a', error: 'destination refused the write', startedAt: undefined, completedAt: undefined },
+      { id: 'sr-b', stepId: 's-b', connectionId: 'b', status: 'skipped', jobId: '', error: '', startedAt: undefined, completedAt: undefined },
+    ],
+  }
+
+  it('asks to open the job of a clicked step that has one', async () => {
+    const w = mount(WorkflowGraph, { props: { steps, run, connectionName: (id: string) => id } })
+
+    await w.get('g[data-step="a"]').trigger('click')
+    await w.get('g[data-step="b"]').trigger('click')
+
+    expect(w.emitted('openJob')).toEqual([['j-a']])
+  })
+
+  it('shows the error of a failed step on hover', () => {
+    const w = mount(WorkflowGraph, { props: { steps, run, connectionName: (id: string) => id } })
+
+    expect(w.get('g[data-step="a"] title').text()).toContain('destination refused the write')
   })
 })

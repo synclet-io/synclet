@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { WorkflowRun, WorkflowStepInput } from '@entities/workflow'
+import type { WorkflowRun, WorkflowStepInput, WorkflowStepRun } from '@entities/workflow'
 import type { Column } from '@shared/ui'
 import { useAuth } from '@entities/auth'
 import { useConnections } from '@entities/connection'
@@ -13,12 +13,13 @@ import {
   useWorkflowRuns,
 } from '@entities/workflow'
 import { WorkflowStepsEditor } from '@features/workflow-editor'
-import { runStatusVariant, WorkflowGraph } from '@features/workflow-graph'
+import { runStatusVariant, stepDisplayStatus, stepStatusVariant, WorkflowGraph } from '@features/workflow-graph'
 import { describeCron } from '@shared/lib/cron'
 import { getErrorMessage } from '@shared/lib/errorUtils'
+import { formatDuration } from '@shared/lib/format'
 import { PageHeader, SAlert, SBadge, SButton, SCard, SConfirmDialog, SCronEditor, SInput, SSelect, STable, useToast } from '@shared/ui'
 import { computed, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 const route = useRoute()
 const router = useRouter()
@@ -147,6 +148,30 @@ function stepSummary(run: WorkflowRun): string {
   return `${done}/${run.stepRuns.length} succeeded`
 }
 
+const stepRunColumns: Column[] = [
+  { key: 'connection', label: 'Step' },
+  { key: 'status', label: 'Status' },
+  { key: 'started', label: 'Started' },
+  { key: 'duration', label: 'Duration' },
+  { key: 'error', label: 'Error' },
+  { key: 'job', label: '', align: 'right' },
+]
+
+function stepRunStatus(stepRun: WorkflowStepRun) {
+  const step = workflow.value?.steps.find(s => s.connectionId === stepRun.connectionId)
+  return step ? stepDisplayStatus(shownRun.value, step) : stepRun.status
+}
+
+function stepRunDuration(stepRun: WorkflowStepRun): string {
+  if (!stepRun.startedAt || !stepRun.completedAt)
+    return '-'
+  return formatDuration(stepRun.completedAt.getTime() - stepRun.startedAt.getTime())
+}
+
+function openJob(jobId: string) {
+  router.push({ name: 'job-detail', params: { id: jobId } })
+}
+
 const scheduleDescription = computed(() => (form.value.schedule ? describeCron(form.value.schedule) ?? form.value.schedule : 'Manual: runs only when started'))
 const saving = computed(() => createMutation.isPending.value || updateMutation.isPending.value)
 const title = computed(() => (isNew.value ? 'New workflow' : workflow.value?.name ?? 'Workflow'))
@@ -209,12 +234,47 @@ const title = computed(() => (isNew.value ? 'New workflow' : workflow.value?.nam
         <p v-else class="text-sm text-text-secondary">
           No runs yet.
         </p>
-        <WorkflowGraph :steps="workflow.steps" :run="shownRun" :connection-name="connectionName" />
+        <WorkflowGraph :steps="workflow.steps" :run="shownRun" :connection-name="connectionName" @open-job="openJob" />
+        <STable
+          v-if="shownRun"
+          data-testid="step-runs"
+          :columns="stepRunColumns"
+          :data="shownRun.stepRuns"
+          empty-text="No steps in this run"
+        >
+          <template #cell-connection="{ row }">
+            <span class="text-sm text-heading">{{ connectionName(row.connectionId) }}</span>
+          </template>
+          <template #cell-status="{ row }">
+            <SBadge :variant="stepStatusVariant(stepRunStatus(row))" dot>
+              {{ stepRunStatus(row) }}
+            </SBadge>
+          </template>
+          <template #cell-started="{ row }">
+            <span class="text-sm text-text-secondary">{{ row.startedAt?.toLocaleString() ?? '-' }}</span>
+          </template>
+          <template #cell-duration="{ row }">
+            <span class="text-sm text-text-secondary">{{ stepRunDuration(row) }}</span>
+          </template>
+          <template #cell-error="{ row }">
+            <span v-if="row.status === 'failed' && row.error" class="text-sm text-danger whitespace-pre-wrap break-words">{{ row.error }}</span>
+          </template>
+          <template #cell-job="{ row }">
+            <RouterLink
+              v-if="row.jobId"
+              :to="{ name: 'job-detail', params: { id: row.jobId } }"
+              class="text-sm text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 rounded"
+            >
+              Open job
+            </RouterLink>
+          </template>
+        </STable>
       </div>
     </SCard>
 
     <SCard v-if="!isNew" title="Run history">
       <STable
+        data-testid="run-history"
         :columns="runColumns"
         :data="runs"
         empty-text="No runs yet"
