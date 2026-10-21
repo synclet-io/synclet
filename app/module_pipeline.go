@@ -325,20 +325,30 @@ type newExecutorMuxRegistrarParams struct {
 	Handler executorv1connect.ExecutorServiceHandler
 }
 
+// executorRequestMaxBytes bounds an executor API request. The largest one is a
+// discover result: a catalog of up to protocol.TaskMessageMaxSize re-encoded as
+// a JSON string inside JSON, where escaping can double its size.
+const executorRequestMaxBytes = 128 << 20
+
 func newExecutorHandlerConstructorProvider() any {
 	return fxutil.GroupProvider[pnpconnectrpchandling.ConnectHandlerConstructor](
 		"pnpconnectrpchandling.handler_constructors",
 		func(params newExecutorMuxRegistrarParams) pnpconnectrpchandling.ConnectHandlerConstructor {
 			return func(opts ...connect.HandlerOption) (string, http.Handler) {
-				allOpts := make([]connect.HandlerOption, 0, len(opts))
-				allOpts = append(allOpts, opts...)
-				allOpts = append(allOpts, connect.WithInterceptors(
-					connectutil.NewInternalSecretInterceptor(params.Config.ExecutorAPIToken),
-				))
-
-				return executorv1connect.NewExecutorServiceHandler(params.Handler, allOpts...)
+				return newExecutorServiceHandler(params.Handler, params.Config.ExecutorAPIToken, opts...)
 			}
 		})
+}
+
+func newExecutorServiceHandler(handler executorv1connect.ExecutorServiceHandler, token string, opts ...connect.HandlerOption) (string, http.Handler) {
+	allOpts := make([]connect.HandlerOption, 0, len(opts)+2)
+	allOpts = append(allOpts, opts...)
+	allOpts = append(allOpts,
+		connect.WithInterceptors(connectutil.NewInternalSecretInterceptor(token)),
+		connect.WithReadMaxBytes(executorRequestMaxBytes),
+	)
+
+	return executorv1connect.NewExecutorServiceHandler(handler, allOpts...)
 }
 
 func pipelineInternalHTTPServerModule() fx.Option {
