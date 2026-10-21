@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.0](https://github.com/synclet-io/synclet/compare/synclet-v0.12.1...synclet-v0.13.0) (2026-10-21)
+
+
+### Features
+
+* **auth:** set default workspace role from OIDC claim ([cb19728](https://github.com/synclet-io/synclet/commit/cb19728c299a6a5afd3d87475536b83d7b934b5b))
+
 ## [0.12.1](https://github.com/synclet-io/synclet/compare/synclet-v0.12.0...synclet-v0.12.1) (2026-10-20)
 
 
