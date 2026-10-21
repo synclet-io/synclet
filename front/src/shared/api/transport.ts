@@ -20,7 +20,7 @@ const refreshClient = createClient(AuthService, refreshTransport)
 
 const workspaceInterceptor: Interceptor = next => async (req) => {
   const workspaceId = getWorkspaceId()
-  if (workspaceId) {
+  if (workspaceId && !req.header.has('Workspace-Id')) {
     req.header.set('Workspace-Id', workspaceId)
   }
 

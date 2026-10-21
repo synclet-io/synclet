@@ -77,3 +77,26 @@ describe('transport auth refresh', () => {
     expect(onAuthFailure).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('transport workspace header', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    localStorage.clear()
+  })
+
+  it('sends the stored workspace unless the call names one', async () => {
+    localStorage.setItem('synclet_workspace_id', 'ws-stored')
+    const sent: Array<string | null> = []
+    vi.stubGlobal('fetch', vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      sent.push(new Headers(init?.headers).get('Workspace-Id'))
+      return json(200, {})
+    }))
+    const { transport } = await loadTransport()
+    const client = createClient(AuthService, transport)
+
+    await client.getCurrentUser({})
+    await client.getCurrentUser({}, { headers: { 'Workspace-Id': 'ws-chosen' } })
+
+    expect(sent).toEqual(['ws-stored', 'ws-chosen'])
+  })
+})

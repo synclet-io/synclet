@@ -2,8 +2,9 @@
 import type { Column } from '@shared/ui'
 import { useAuth } from '@entities/auth'
 import { useAPIKeys, useCreateAPIKey, useRevokeAPIKey } from '@entities/auth/apiKeys'
+import { oauthLevelLabel } from '@entities/auth/oauth'
 import { getErrorMessage } from '@shared/lib/errorUtils'
-import { PageHeader, SAlert, SButton, SConfirmDialog, SInput, SSelect, STable, useToast } from '@shared/ui'
+import { PageHeader, SAlert, SBadge, SButton, SConfirmDialog, SInput, SSelect, STable, useToast } from '@shared/ui'
 import { Check, Copy, Trash2 } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
 
@@ -53,7 +54,11 @@ function expiresAtFromSelection(): Date | undefined {
 }
 const createdRawKey = ref<string | null>(null)
 const copied = ref(false)
-const confirmRevoke = ref<{ open: boolean, id: string, name: string }>({ open: false, id: '', name: '' })
+const confirmRevoke = ref<{ open: boolean, id: string, name: string, oauthClient: string }>({ open: false, id: '', name: '', oauthClient: '' })
+
+const revokeMessage = computed(() => confirmRevoke.value.oauthClient
+  ? `Revoke "${confirmRevoke.value.name}"? ${confirmRevoke.value.oauthClient} loses access and its refresh token stops working; connecting it again needs a new consent.`
+  : `Revoke "${confirmRevoke.value.name}"? This cannot be undone.`)
 
 watch(auth.currentWorkspaceId, () => {
   createdRawKey.value = null
@@ -107,6 +112,8 @@ async function copyKey() {
 
 const columns: Column[] = [
   { key: 'name', label: 'Name' },
+  { key: 'oauthClient', label: 'OAuth client' },
+  { key: 'oauthLevel', label: 'Access' },
   { key: 'createdAt', label: 'Created' },
   { key: 'lastUsedAt', label: 'Last used' },
   { key: 'expiresAt', label: 'Expires' },
@@ -158,6 +165,16 @@ const columns: Column[] = [
       <template #cell-name="{ row }">
         <span class="font-medium text-text-primary">{{ row.name }}</span>
       </template>
+      <template #cell-oauthClient="{ row }">
+        <span v-if="row.oauth" class="text-text-primary">{{ row.oauth.clientName }}</span>
+        <span v-else class="text-text-secondary">-</span>
+      </template>
+      <template #cell-oauthLevel="{ row }">
+        <SBadge v-if="row.oauth?.level" variant="info">
+          {{ oauthLevelLabel(row.oauth.level) }}
+        </SBadge>
+        <span v-else class="text-text-secondary">-</span>
+      </template>
       <template #cell-createdAt="{ row }">
         <span class="text-text-secondary">{{ row.createdAt?.toLocaleDateString() ?? '-' }}</span>
       </template>
@@ -173,7 +190,7 @@ const columns: Column[] = [
           size="icon"
           title="Revoke key"
           :aria-label="`Revoke ${row.name}`"
-          @click="confirmRevoke = { open: true, id: row.id, name: row.name }"
+          @click="confirmRevoke = { open: true, id: row.id, name: row.name, oauthClient: row.oauth?.clientName ?? '' }"
         >
           <Trash2 class="w-4 h-4" />
         </SButton>
@@ -183,7 +200,7 @@ const columns: Column[] = [
     <SConfirmDialog
       :open="confirmRevoke.open"
       title="Revoke API key"
-      :message="`Revoke &quot;${confirmRevoke.name}&quot;? This cannot be undone.`"
+      :message="revokeMessage"
       confirm-text="Revoke"
       @confirm="handleRevoke"
       @cancel="confirmRevoke.open = false"

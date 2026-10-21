@@ -50,6 +50,12 @@ export const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/oauth/authorize',
+      name: 'oauth-authorize',
+      component: () => import('@pages/OAuthConsentPage.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/',
       component: () => import('@app/layouts/AppLayout.vue'),
       children: [

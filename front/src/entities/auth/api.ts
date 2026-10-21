@@ -1,10 +1,12 @@
 import type { MemberRole } from '@entities/workspace'
+import type { OAuthLevel } from './oauth'
 import type { OIDCProvider, User, WorkspaceMembership } from './types'
 import type { APIKeyInfo as ProtoAPIKeyInfo, UserInfo as ProtoUserInfo, WorkspaceMembership as ProtoWorkspaceMembership } from '@/gen/synclet/publicapi/auth/v1/auth_pb'
 import { timestampFromDate } from '@bufbuild/protobuf/wkt'
 import { authClient } from '@shared/api/services'
 import { tsToDate } from '@shared/lib/formatting'
 import { MemberRole as ProtoMemberRole } from '@/gen/synclet/publicapi/workspace/v1/workspace_pb'
+import { mapOAuthLevel } from './oauth'
 
 function mapMemberRole(proto: ProtoMemberRole): MemberRole {
   switch (proto) {
@@ -89,6 +91,8 @@ export interface APIKey {
   createdAt: Date | undefined
   expiresAt: Date | undefined
   lastUsedAt: Date | undefined
+  /** Set on a key issued to an OAuth client. */
+  oauth: { clientName: string, level: OAuthLevel | null } | null
 }
 
 function mapAPIKey(proto: ProtoAPIKeyInfo): APIKey {
@@ -99,6 +103,7 @@ function mapAPIKey(proto: ProtoAPIKeyInfo): APIKey {
     createdAt: tsToDate(proto.createdAt),
     expiresAt: tsToDate(proto.expiresAt),
     lastUsedAt: tsToDate(proto.lastUsedAt),
+    oauth: proto.oauthClientName ? { clientName: proto.oauthClientName, level: mapOAuthLevel(proto.oauthLevel) } : null,
   }
 }
 
