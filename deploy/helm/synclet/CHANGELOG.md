@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/synclet-io/synclet/compare/synclet-helm-v0.9.0...synclet-helm-v0.10.0) (2026-10-21)
+
+
+### Features
+
+* **helm:** MCP HTTPRoute twin for the Gateway API in separate mode ([d7c8094](https://github.com/synclet-io/synclet/commit/d7c8094150cfc3c3837a140534b6a9ba5422bf24))
+
 ## [0.9.0](https://github.com/synclet-io/synclet/compare/synclet-helm-v0.8.0...synclet-helm-v0.9.0) (2026-10-21)
 
 
