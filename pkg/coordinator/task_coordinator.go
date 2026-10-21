@@ -2,7 +2,6 @@ package coordinator
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -229,7 +228,7 @@ func extractTaskResult(taskType string, messages []*protocol.AirbyteMessage, red
 					Message: redactor.Redact(msg.ConnectionStatus.Message),
 				}
 
-				return json.Marshal(result)
+				return protocol.Marshal(result)
 			}
 		}
 
@@ -238,7 +237,7 @@ func extractTaskResult(taskType string, messages []*protocol.AirbyteMessage, red
 	case "Spec":
 		for _, msg := range messages {
 			if msg.Type == protocol.MessageTypeSpec && msg.Spec != nil {
-				specJSON, err := json.Marshal(msg.Spec)
+				specJSON, err := protocol.Marshal(msg.Spec)
 				if err != nil {
 					return nil, fmt.Errorf("marshaling spec: %w", err)
 				}
@@ -249,7 +248,7 @@ func extractTaskResult(taskType string, messages []*protocol.AirbyteMessage, red
 					Spec: string(specJSON),
 				}
 
-				return json.Marshal(result)
+				return protocol.Marshal(result)
 			}
 		}
 
@@ -258,7 +257,7 @@ func extractTaskResult(taskType string, messages []*protocol.AirbyteMessage, red
 	case "Discover":
 		for _, msg := range messages {
 			if msg.Type == protocol.MessageTypeCatalog && msg.Catalog != nil {
-				catalogJSON, err := json.Marshal(msg.Catalog)
+				catalogJSON, err := protocol.Marshal(msg.Catalog)
 				if err != nil {
 					return nil, fmt.Errorf("marshaling catalog: %w", err)
 				}
@@ -269,7 +268,7 @@ func extractTaskResult(taskType string, messages []*protocol.AirbyteMessage, red
 					Catalog: string(catalogJSON),
 				}
 
-				return json.Marshal(result)
+				return protocol.Marshal(result)
 			}
 		}
 

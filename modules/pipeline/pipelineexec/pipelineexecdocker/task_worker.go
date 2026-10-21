@@ -2,7 +2,6 @@ package pipelineexecdocker
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -138,7 +137,7 @@ func (w *DockerTaskWorker) executeCheck(ctx context.Context, task *pipelineexec.
 		Message: status.Message,
 	}
 
-	data, err := json.Marshal(result)
+	data, err := protocol.Marshal(result)
 	if err != nil {
 		return fmt.Errorf("marshaling check result: %w", err)
 	}
@@ -167,7 +166,7 @@ func (w *DockerTaskWorker) executeSpec(ctx context.Context, task *pipelineexec.C
 
 	// SupportedDestinationSyncModes: marshal []DestinationSyncMode to JSON string for jsonb field
 	if len(spec.SupportedDestinationSyncModes) > 0 {
-		modesJSON, err := json.Marshal(spec.SupportedDestinationSyncModes)
+		modesJSON, err := protocol.Marshal(spec.SupportedDestinationSyncModes)
 		if err != nil {
 			return fmt.Errorf("marshaling supported_destination_sync_modes: %w", err)
 		}
@@ -177,7 +176,7 @@ func (w *DockerTaskWorker) executeSpec(ctx context.Context, task *pipelineexec.C
 
 	// AdvancedAuth: marshal *AdvancedAuth to JSON string for jsonb field
 	if spec.AdvancedAuth != nil {
-		authJSON, err := json.Marshal(spec.AdvancedAuth)
+		authJSON, err := protocol.Marshal(spec.AdvancedAuth)
 		if err != nil {
 			return fmt.Errorf("marshaling advanced_auth: %w", err)
 		}
@@ -185,7 +184,7 @@ func (w *DockerTaskWorker) executeSpec(ctx context.Context, task *pipelineexec.C
 		result.AdvancedAuth = string(authJSON)
 	}
 
-	data, err := json.Marshal(result)
+	data, err := protocol.Marshal(result)
 	if err != nil {
 		return fmt.Errorf("marshaling spec result: %w", err)
 	}
@@ -202,7 +201,7 @@ func (w *DockerTaskWorker) executeDiscover(ctx context.Context, task *pipelineex
 		return fmt.Errorf("discover: %w", err)
 	}
 
-	catalogJSON, err := json.Marshal(catalog)
+	catalogJSON, err := protocol.Marshal(catalog)
 	if err != nil {
 		return fmt.Errorf("marshaling catalog: %w", err)
 	}
@@ -211,7 +210,7 @@ func (w *DockerTaskWorker) executeDiscover(ctx context.Context, task *pipelineex
 		Catalog: string(catalogJSON),
 	}
 
-	data, err := json.Marshal(result)
+	data, err := protocol.Marshal(result)
 	if err != nil {
 		return fmt.Errorf("marshaling discover result: %w", err)
 	}

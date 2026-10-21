@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineexec"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
 	pkgcontainer "github.com/synclet-io/synclet/pkg/container"
 	"github.com/synclet-io/synclet/pkg/protocol"
@@ -325,4 +326,20 @@ func TestConnectorClientDiscoverRejectsCatalogOverTaskLimit(t *testing.T) {
 
 	require.ErrorIs(t, err, protocol.ErrMessageTooLarge)
 	assert.ErrorContains(t, err, "50 MiB")
+}
+
+func TestDockerTaskWorkerDiscoverResultAtMostDoublesWithHTMLCharacters(t *testing.T) {
+	stdout := `{"type":"CATALOG","catalog":{"streams":[{"name":"wide","json_schema":{"description":"` +
+		strings.Repeat("<a&b>", 1<<16) + `"}}]}}` + "\n"
+	runner := &mockContainerRunner{runResults: []*pkgcontainer.RunResult{finishedRunResult(stdout, "", 0)}}
+	worker := &DockerTaskWorker{client: NewConnectorClient(runner)}
+
+	var result []byte
+	err := worker.executeDiscover(context.Background(), &pipelineexec.ClaimConnectorTaskResult{Image: "img", Config: json.RawMessage(`{}`)}, &result)
+	require.NoError(t, err)
+
+	var decoded pipelineservice.DiscoverResult
+	require.NoError(t, json.Unmarshal(result, &decoded))
+	assert.Contains(t, decoded.Catalog, "<a&b>")
+	assert.LessOrEqual(t, len(result), 2*len(stdout))
 }

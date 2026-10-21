@@ -255,3 +255,18 @@ func TestConnectorOutputTail_MasksASecretCutByTheTail(t *testing.T) {
 		})
 	}
 }
+
+func TestExtractTaskResult_NestedCatalogAtMostDoublesWithHTMLCharacters(t *testing.T) {
+	line := `{"type":"CATALOG","catalog":{"streams":[{"name":"wide","json_schema":{"description":"` +
+		strings.Repeat("<a&b>", 1<<16) + `"}}]}}`
+	messages, err := readTaskMessages(strings.NewReader(line))
+	require.NoError(t, err)
+
+	result, err := extractTaskResult("Discover", messages, pipelineexec.NewRedactor())
+	require.NoError(t, err)
+
+	var decoded struct{ Catalog string }
+	require.NoError(t, json.Unmarshal(result, &decoded))
+	assert.Contains(t, decoded.Catalog, "<a&b>")
+	assert.LessOrEqual(t, len(result), 2*len(line))
+}
