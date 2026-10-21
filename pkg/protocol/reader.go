@@ -2,44 +2,60 @@ package protocol
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
-	"strings"
 
 	"github.com/go-pnp/go-pnp/logging"
 )
 
-const defaultScannerBufferSize = 1024 * 1024 // 1MB — connector records can be large.
+// MaxMessageSize is the longest message line a MessageReader accepts. Catalogs
+// of wide sources and single records can reach tens of MiB.
+const MaxMessageSize = 100 << 20
+
+const initialBufferSize = 64 << 10
+
+// ErrMessageTooLarge is returned by Read for a message line longer than the
+// reader's limit. The reader cannot continue past such a line.
+var ErrMessageTooLarge = errors.New("connector message too large")
 
 // MessageReader reads JSON lines from an io.Reader and emits AirbyteMessage structs.
 type MessageReader struct {
 	scanner *bufio.Scanner
+	maxSize int
 	logger  *logging.Logger
 }
 
-// NewMessageReader creates a MessageReader that reads JSON lines from r.
-// The internal scanner buffer is set to 1MB to handle large connector records.
+// NewMessageReader creates a MessageReader that reads JSON lines from r,
+// accepting lines up to MaxMessageSize. The line buffer grows on demand.
 func NewMessageReader(r io.Reader) *MessageReader {
-	scanner := bufio.NewScanner(r)
-	scanner.Buffer(make([]byte, 0, defaultScannerBufferSize), defaultScannerBufferSize)
+	return newMessageReader(r, MaxMessageSize)
+}
 
-	return &MessageReader{scanner: scanner, logger: nil}
+func newMessageReader(r io.Reader, maxSize int) *MessageReader {
+	scanner := bufio.NewScanner(r)
+	scanner.Buffer(make([]byte, 0, min(initialBufferSize, maxSize)), maxSize)
+
+	return &MessageReader{scanner: scanner, maxSize: maxSize, logger: nil}
 }
 
 // Read reads the next AirbyteMessage from the underlying reader.
 // Blank lines are skipped. Unparseable lines are logged and skipped.
-// Returns io.EOF when there are no more messages.
+// Returns io.EOF when there are no more messages, and ErrMessageTooLarge,
+// on this and every later call, once a line exceeds the limit.
 func (mr *MessageReader) Read() (*AirbyteMessage, error) {
 	for mr.scanner.Scan() {
-		line := strings.TrimSpace(mr.scanner.Text())
-		if line == "" {
+		line := bytes.TrimSpace(mr.scanner.Bytes())
+		if len(line) == 0 {
 			continue
 		}
 
 		var msg AirbyteMessage
-		if err := json.Unmarshal([]byte(line), &msg); err != nil {
-			mr.logger.WithError(err).Warn(context.Background(), "skipping unparseable line", "line", truncateLine(line, 200))
+		if err := json.Unmarshal(line, &msg); err != nil {
+			mr.logger.WithError(err).Warn(context.Background(), "skipping unparseable line", "line", truncateLine(string(line[:min(len(line), 256)]), 200))
 			continue
 		}
 
@@ -52,6 +68,10 @@ func (mr *MessageReader) Read() (*AirbyteMessage, error) {
 	}
 
 	if err := mr.scanner.Err(); err != nil {
+		if errors.Is(err, bufio.ErrTooLong) {
+			return nil, fmt.Errorf("%w: a line exceeds the %s limit", ErrMessageTooLarge, formatSize(mr.maxSize))
+		}
+
 		return nil, err
 	}
 
@@ -108,4 +128,12 @@ func truncateLine(line string, maxLen int) string {
 		return line
 	}
 	return line[:maxLen] + "..."
+}
+
+func formatSize(n int) string {
+	if n >= 1<<20 && n%(1<<20) == 0 {
+		return fmt.Sprintf("%d MiB", n>>20)
+	}
+
+	return fmt.Sprintf("%d bytes", n)
 }

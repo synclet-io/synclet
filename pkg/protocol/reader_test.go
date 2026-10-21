@@ -317,3 +317,34 @@ func TestRoundTrip(t *testing.T) {
 		assert.Equal(t, original[i].Type, msg.Type)
 	}
 }
+
+func TestMessageReader_LargeMessages(t *testing.T) {
+	t.Run("reads a catalog line larger than a few MiB", func(t *testing.T) {
+		description := strings.Repeat("x", 5<<20)
+		line := `{"type":"CATALOG","catalog":{"streams":[{"name":"big","json_schema":{"description":"` + description + `"}}]}}`
+		reader := NewMessageReader(strings.NewReader(line + "\n"))
+
+		msg, err := reader.Read()
+		require.NoError(t, err)
+		assert.Equal(t, MessageTypeCatalog, msg.Type)
+		require.Len(t, msg.Catalog.Streams, 1)
+		assert.Equal(t, "big", msg.Catalog.Streams[0].Name)
+	})
+
+	t.Run("a line over the limit is an error naming the limit", func(t *testing.T) {
+		input := `{"type":"LOG","log":{"level":"INFO","message":"` + strings.Repeat("y", 2048) + `"}}` + "\n"
+		reader := newMessageReader(strings.NewReader(input), 1024)
+
+		_, err := reader.Read()
+		require.ErrorIs(t, err, ErrMessageTooLarge)
+		assert.Contains(t, err.Error(), "1024 bytes")
+
+		_, err = reader.Read()
+		require.ErrorIs(t, err, ErrMessageTooLarge)
+	})
+
+	t.Run("the limit is 100 MiB", func(t *testing.T) {
+		assert.Equal(t, 100<<20, MaxMessageSize)
+		assert.Equal(t, "100 MiB", formatSize(MaxMessageSize))
+	})
+}
