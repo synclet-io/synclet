@@ -17,7 +17,7 @@ export function useCreateAPIKey() {
   const qc = useQueryClient()
   const { currentWorkspaceId } = useAuth()
   return useMutation({
-    mutationFn: (name: string) => authApi.createAPIKey(currentWorkspaceId.value ?? '', name),
+    mutationFn: ({ name, expiresAt }: { name: string, expiresAt?: Date }) => authApi.createAPIKey(currentWorkspaceId.value ?? '', name, expiresAt),
     onSuccess: () => { qc.invalidateQueries({ queryKey: apiKeyKeys.all(currentWorkspaceId.value ?? '') }) },
   })
 }

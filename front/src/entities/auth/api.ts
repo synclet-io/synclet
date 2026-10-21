@@ -1,6 +1,7 @@
 import type { MemberRole } from '@entities/workspace'
 import type { OIDCProvider, User, WorkspaceMembership } from './types'
 import type { APIKeyInfo as ProtoAPIKeyInfo, UserInfo as ProtoUserInfo, WorkspaceMembership as ProtoWorkspaceMembership } from '@/gen/synclet/publicapi/auth/v1/auth_pb'
+import { timestampFromDate } from '@bufbuild/protobuf/wkt'
 import { authClient } from '@shared/api/services'
 import { tsToDate } from '@shared/lib/formatting'
 import { MemberRole as ProtoMemberRole } from '@/gen/synclet/publicapi/workspace/v1/workspace_pb'
@@ -106,8 +107,8 @@ export async function listAPIKeys(workspaceId: string): Promise<APIKey[]> {
   return (res.apiKeys || []).map(mapAPIKey)
 }
 
-export async function createAPIKey(workspaceId: string, name: string): Promise<{ key: APIKey | undefined, rawKey: string }> {
-  const res = await authClient.createAPIKey({ workspaceId, name })
+export async function createAPIKey(workspaceId: string, name: string, expiresAt?: Date): Promise<{ key: APIKey | undefined, rawKey: string }> {
+  const res = await authClient.createAPIKey({ workspaceId, name, expiresAt: expiresAt ? timestampFromDate(expiresAt) : undefined })
   return {
     key: res.apiKey ? mapAPIKey(res.apiKey) : undefined,
     rawKey: res.rawKey,

@@ -37,3 +37,14 @@ func TestCreateAPIKey_RecordsAuditEventWithoutSecrets(t *testing.T) {
 	assert.NotContains(t, string(payload), rawKey)
 	assert.NotContains(t, string(payload), created.KeyHash)
 }
+
+func TestCreateAPIKey_RejectsExpiryInThePast(t *testing.T) {
+	store := newFakeStorage()
+	expiresAt := time.Now().Add(-time.Minute)
+
+	_, _, err := NewCreateAPIKey(store, &capturingAuditRecorder{}).Execute(context.Background(), uuid.New(), uuid.New(), "ci", &expiresAt)
+
+	var validationErr *ValidationError
+	require.ErrorAs(t, err, &validationErr)
+	assert.Empty(t, store.apiKeys)
+}

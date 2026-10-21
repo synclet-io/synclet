@@ -3,9 +3,9 @@ import type { Column } from '@shared/ui'
 import { useAuth } from '@entities/auth'
 import { useAPIKeys, useCreateAPIKey, useRevokeAPIKey } from '@entities/auth/apiKeys'
 import { getErrorMessage } from '@shared/lib/errorUtils'
-import { PageHeader, SAlert, SButton, SConfirmDialog, SInput, STable, useToast } from '@shared/ui'
+import { PageHeader, SAlert, SButton, SConfirmDialog, SInput, SSelect, STable, useToast } from '@shared/ui'
 import { Check, Copy, Trash2 } from 'lucide-vue-next'
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 const auth = useAuth()
 const toast = useToast()
@@ -16,6 +16,41 @@ const revokeMutation = useRevokeAPIKey()
 
 const error = ref('')
 const newKeyName = ref('')
+const expiry = ref<string | number>('never')
+const customExpiry = ref('')
+
+const expiryOptions = [
+  { label: 'Never expires', value: 'never' },
+  { label: '30 days', value: 30 },
+  { label: '90 days', value: 90 },
+  { label: '1 year', value: 365 },
+  { label: 'Custom date', value: 'custom' },
+]
+
+const minCustomExpiry = computed(() => {
+  const tomorrow = new Date()
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  return toDateInputValue(tomorrow)
+})
+
+function toDateInputValue(date: Date): string {
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${date.getFullYear()}-${month}-${day}`
+}
+
+function expiresAtFromSelection(): Date | undefined {
+  if (typeof expiry.value === 'number') {
+    const date = new Date()
+    date.setDate(date.getDate() + expiry.value)
+    return date
+  }
+  if (expiry.value === 'custom' && customExpiry.value) {
+    const [year, month, day] = customExpiry.value.split('-').map(Number)
+    return new Date(year, month - 1, day, 23, 59, 59)
+  }
+  return undefined
+}
 const createdRawKey = ref<string | null>(null)
 const copied = ref(false)
 const confirmRevoke = ref<{ open: boolean, id: string, name: string }>({ open: false, id: '', name: '' })
@@ -36,9 +71,11 @@ async function handleCreate() {
   error.value = ''
   createdRawKey.value = null
   try {
-    const result = await createMutation.mutateAsync(newKeyName.value)
+    const result = await createMutation.mutateAsync({ name: newKeyName.value, expiresAt: expiresAtFromSelection() })
     createdRawKey.value = result.rawKey
     newKeyName.value = ''
+    expiry.value = 'never'
+    customExpiry.value = ''
     toast.success('API key created')
   }
   catch (e: unknown) {
@@ -98,10 +135,20 @@ const columns: Column[] = [
       </div>
     </SAlert>
 
-    <form class="flex gap-3" @submit.prevent="handleCreate">
-      <div class="flex-1">
+    <form class="flex flex-wrap gap-3" @submit.prevent="handleCreate">
+      <div class="flex-1 min-w-48">
         <SInput v-model="newKeyName" placeholder="Key name (e.g. CI/CD)" required />
       </div>
+      <SSelect v-model="expiry" :options="expiryOptions" aria-label="Expiration" class="w-44" />
+      <SInput
+        v-if="expiry === 'custom'"
+        v-model="customExpiry"
+        type="date"
+        :min="minCustomExpiry"
+        aria-label="Expiration date"
+        required
+        class="w-44"
+      />
       <SButton type="submit" :loading="createMutation.isPending.value">
         Create key
       </SButton>

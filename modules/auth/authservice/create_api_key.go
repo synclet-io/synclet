@@ -23,6 +23,10 @@ func NewCreateAPIKey(storage Storage, audit AuditRecorder) *CreateAPIKey {
 
 // Execute generates a new API key, stores its hash, and returns the raw key and record.
 func (uc *CreateAPIKey) Execute(ctx context.Context, workspaceID, userID uuid.UUID, name string, expiresAt *time.Time) (string, *APIKey, error) {
+	if expiresAt != nil && !expiresAt.After(time.Now()) {
+		return "", nil, &ValidationError{Message: "expiry must be in the future"}
+	}
+
 	rawKey, err := generateAPIKey()
 	if err != nil {
 		return "", nil, fmt.Errorf("generating key: %w", err)
