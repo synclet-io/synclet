@@ -1,5 +1,43 @@
 # Changelog
 
+## [0.14.0](https://github.com/synclet-io/synclet/compare/synclet-v0.13.0...synclet-v0.14.0) (2026-10-21)
+
+
+### Features
+
+* **auth:** choose API key expiry when creating a key ([241c14a](https://github.com/synclet-io/synclet/commit/241c14af68601039e164cb521d4f3849aad047a7))
+* **auth:** OAuth for MCP clients ([e8c994a](https://github.com/synclet-io/synclet/commit/e8c994a30e7606976bf5c0af52010f39f26f0522))
+* **mcp:** MCP server for AI clients ([244f3f6](https://github.com/synclet-io/synclet/commit/244f3f62f556888ee99d5e8a0a32248c4fa83180))
+* **notify:** workflow.failed webhook and workflow failure notifications ([ab2f330](https://github.com/synclet-io/synclet/commit/ab2f330ee6a20a13781141b816077cf1770d4b26))
+* **pipeline:** list a workflow run's steps in graph order ([b49fb92](https://github.com/synclet-io/synclet/commit/b49fb922fdad81a6330059718df09ad5b06aa22c))
+* **pipeline:** open a workflow step's job from the workflow page ([07ec533](https://github.com/synclet-io/synclet/commit/07ec5330e66fa24b9df1d748734acb9a825a0168))
+* **pipeline:** workflows run connections as a graph of steps ([4f93ac4](https://github.com/synclet-io/synclet/commit/4f93ac4ec11a34d0e126b11fdea355ee302d3e52))
+* **pipeline:** workflows UI and schedule handover ([1a203f0](https://github.com/synclet-io/synclet/commit/1a203f02230f77feb9350e764cfc5ef1f39ee73a))
+* **ui:** create wizard uses the shared stream editor with turn-on defaults ([a75f0f7](https://github.com/synclet-io/synclet/commit/a75f0f76ba29ef2baefb937ce85081c0655cbc33))
+* **ui:** group streams by namespace with bulk selection and sync mode ([4a010bb](https://github.com/synclet-io/synclet/commit/4a010bb8a35e76446f3076d9a02803e9832d4cea))
+* **ui:** OAuth consent page and OAuth keys in API Keys ([7dc1244](https://github.com/synclet-io/synclet/commit/7dc124472648e9ae47b94cf30492f18a4bc62512))
+* **ui:** separate the table name prefix from the destination namespace settings ([9edce07](https://github.com/synclet-io/synclet/commit/9edce07fb7a19e2dd1eff82a17ddbabaec13d57c))
+* **ui:** stream transforms in the create wizard ([564b35b](https://github.com/synclet-io/synclet/commit/564b35bff5740b3c92a0f4c273ddc218b765167f))
+
+
+### Bug Fixes
+
+* **cmd:** keep usage text out of _orchestrate runtime errors ([4991093](https://github.com/synclet-io/synclet/commit/4991093fb339bcff575e7680d30fd8e83ace469f))
+* **coordinator:** fail a task on unreadable connector output and quote its tail on timeout ([4bb8bd0](https://github.com/synclet-io/synclet/commit/4bb8bd0de65a1244cee50a7d497a4ebfd2a53ecb))
+* **coordinator:** mask secrets cut by the connector output tail ([5465261](https://github.com/synclet-io/synclet/commit/5465261fdca9fa4c6686a7e52c0d907715ace3d8))
+* **pipeline:** cap executor API requests at 128 MiB ([76c2166](https://github.com/synclet-io/synclet/commit/76c21666dc12a1779d0fba33ec4cb31f17439093))
+* **pipeline:** cut connector log lines to 64 KiB once redacted ([345679b](https://github.com/synclet-io/synclet/commit/345679b237889439ddce6c56fb85ee8fc317d8bc))
+* **pipeline:** lock the connection while checking workflow steps on delete ([e555bd2](https://github.com/synclet-io/synclet/commit/e555bd25c66254e33d03f40d83d5513811189e1e))
+* **pipeline:** mask a secret cut at the start of discarded docker stderr ([bda1f90](https://github.com/synclet-io/synclet/commit/bda1f90d15615b3d0f3f4bf0fadd8fbfaadf7d61))
+* **pipeline:** mask secrets of a config replaced through CONTROL ([9e72358](https://github.com/synclet-io/synclet/commit/9e723584e1831b459c1e2bbeb9468c8afd6c72d8))
+* **pipeline:** mask secrets rotated through CONTROL in connector stderr ([227f0ee](https://github.com/synclet-io/synclet/commit/227f0ee06c98d4050312291de3700c024e36923c))
+* **pipeline:** redact connector log level in router process logs ([4840ad1](https://github.com/synclet-io/synclet/commit/4840ad111187bf2b1e86bc4fedbdcc02315094c1))
+* **pipeline:** redact connector logs and analytics traces in router process logs ([d92d67e](https://github.com/synclet-io/synclet/commit/d92d67ea7d4d7ac7d8c21ae429c1f7c78e6deb45))
+* **protocol:** accept message lines up to 100 MiB and name the limit when exceeded ([8783852](https://github.com/synclet-io/synclet/commit/8783852c76d77e899dcbdd33781971b8d1d26dea))
+* **protocol:** cap task output at 50 MiB and sync messages at 16 MiB ([247fe69](https://github.com/synclet-io/synclet/commit/247fe69481c5f4660e2bc1a6d8568b66fbc59289))
+* **protocol:** keep HTML characters unescaped in task results ([7490a1c](https://github.com/synclet-io/synclet/commit/7490a1c488a9d0ef121d3bb85a9cf35ab325f7d5))
+* **protocol:** keep unparseable line content out of the reader warning ([a70d1cc](https://github.com/synclet-io/synclet/commit/a70d1ccc14365d13636165f3fadefc403e128f64))
+
 ## [0.13.0](https://github.com/synclet-io/synclet/compare/synclet-v0.12.1...synclet-v0.13.0) (2026-10-21)
 
 
