@@ -96,6 +96,15 @@ export function useConnectionTags() {
   })
 }
 
+export function useConfiguredCatalog(connectionId: MaybeRef<string>) {
+  const { currentWorkspaceId } = useAuth()
+  return useQuery({
+    queryKey: computed(() => connectionKeys.configuredCatalog(currentWorkspaceId.value ?? '', toValue(connectionId))),
+    queryFn: () => connectionApi.getConfiguredCatalog(toValue(connectionId)),
+    enabled: computed(() => !!currentWorkspaceId.value && !!toValue(connectionId)),
+  })
+}
+
 export function useConnection(id: MaybeRef<string>) {
   const { currentWorkspaceId } = useAuth()
   return useQuery({

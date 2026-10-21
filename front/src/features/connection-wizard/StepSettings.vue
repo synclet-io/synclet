@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { NamespaceDefinition, SchemaChangePolicy } from '@entities/connection'
+import DestinationNamingSettings from '@features/destination-naming/DestinationNamingSettings.vue'
 import { SInput, SSelect } from '@shared/ui'
 import SCronEditor from '@shared/ui/SCronEditor.vue'
 
@@ -29,12 +30,6 @@ const policyOptions = [
   { label: 'Pause on changes', value: 'pause' },
 ]
 
-const namespaceOptions = [
-  { label: 'Source namespace', value: 'source' },
-  { label: 'Destination default', value: 'destination' },
-  { label: 'Custom format', value: 'custom' },
-]
-
 function onName(v: string | number) {
   emit('update:name', String(v))
 }
@@ -46,15 +41,6 @@ function onPolicy(v: string | number) {
 }
 function onMaxAttempts(v: string | number) {
   emit('update:maxAttempts', Number(v))
-}
-function onNamespace(v: string | number) {
-  emit('update:namespaceDefinition', v as NamespaceDefinition)
-}
-function onCustomFormat(v: string | number) {
-  emit('update:customNamespaceFormat', String(v))
-}
-function onStreamPrefix(v: string | number) {
-  emit('update:streamPrefix', String(v))
 }
 </script>
 
@@ -92,33 +78,16 @@ function onStreamPrefix(v: string | number) {
 
     <div class="border-t border-border pt-5 mt-5 space-y-5">
       <h3 class="text-sm font-semibold text-heading">
-        Namespace & Prefix
+        Destination names
       </h3>
 
-      <SSelect
-        :model-value="namespaceDefinition"
-        label="Namespace Mode"
-        :options="namespaceOptions"
-        tooltip="Where streams land at the destination: 'source' mirrors the source namespace, 'destination' uses the destination's default, 'custom' lets you template a namespace per stream."
-        @update:model-value="onNamespace"
-      />
-
-      <SInput
-        v-if="namespaceDefinition === 'custom'"
-        :model-value="customNamespaceFormat"
-        label="Custom Format"
-        placeholder="e.g. staging_${SOURCE_NAMESPACE}"
-        hint="Use ${SOURCE_NAMESPACE} to include the source namespace"
-        @update:model-value="onCustomFormat"
-      />
-
-      <SInput
-        :model-value="streamPrefix"
-        label="Stream Prefix"
-        placeholder="e.g. production_"
-        hint="Prepended to all stream names at the destination"
-        tooltip="A static prefix applied to every destination table or stream name. Useful for keeping multiple environments separate in the same warehouse."
-        @update:model-value="onStreamPrefix"
+      <DestinationNamingSettings
+        :namespace-definition="namespaceDefinition"
+        :custom-namespace-format="customNamespaceFormat"
+        :stream-prefix="streamPrefix"
+        @update:namespace-definition="emit('update:namespaceDefinition', $event)"
+        @update:custom-namespace-format="emit('update:customNamespaceFormat', $event)"
+        @update:stream-prefix="emit('update:streamPrefix', $event)"
       />
     </div>
   </div>

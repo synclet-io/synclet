@@ -1,3 +1,4 @@
+/* eslint-disable no-template-curly-in-string -- ${SOURCE_NAMESPACE} is the literal placeholder under test */
 import { Code, ConnectError } from '@connectrpc/connect'
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -37,6 +38,8 @@ vi.mock('@entities/connection', () => ({
   }),
   useUpdateConnection: () => ({ mutateAsync: mocks.mutateAsync, isPending: ref(false) }),
   useConnectionTags: () => ({ data: ref([{ tag: 'eu', connectionCount: 1 }, { tag: 'prod', connectionCount: 2 }]) }),
+  useConfiguredCatalog: () => ({ data: ref({ streams: [{ stream: { name: 'orders', namespace: 'sales' } }, { stream: { name: 'users', namespace: 'public' } }] }) }),
+  configuredCatalogToStreams: (c: { streams: { stream: { name: string, namespace: string } }[] }) => c.streams.map(s => ({ streamName: s.stream.name, namespace: s.stream.namespace })),
 }))
 vi.mock('@shared/ui', async importOriginal => ({
   ...(await importOriginal<typeof import('@shared/ui')>()),
@@ -169,5 +172,38 @@ describe('connection settings schedule', () => {
     await flushPromises()
     expect(mocks.mutateAsync).toHaveBeenCalledTimes(1)
     expect(mocks.mutateAsync.mock.calls[0]![0]).not.toHaveProperty('schedule')
+  })
+})
+
+describe('connection settings destination naming', () => {
+  beforeEach(() => {
+    document.body.innerHTML = ''
+    mocks.role = 'editor'
+    mocks.workflows = []
+    mocks.mutateAsync.mockReset()
+  })
+
+  it('separates the destination namespace from the table name prefix and shows the first stream as the example', async () => {
+    const w = mountPage()
+    await flushPromises()
+
+    expect(w.get('fieldset legend').text()).toBe('Destination namespace')
+    expect(w.findAll('label').some(l => l.text() === 'Table name prefix')).toBe(true)
+    expect(w.findAll('label').some(l => l.text() === 'Stream Prefix')).toBe(false)
+    expect(w.get('[data-testid="destination-name-example"]').text()).toContain('sales.orders → sales.orders')
+  })
+
+  it('saves "Source namespace with a prefix" as a custom format', async () => {
+    mocks.mutateAsync.mockResolvedValue({})
+    const w = mountPage()
+    await flushPromises()
+
+    await w.get('fieldset select').setValue('source_prefix')
+    const label = w.findAll('label').find(l => l.text() === 'Namespace prefix')!
+    await w.get(`#${label.attributes('for')}`).setValue('prod_')
+    await saveButton(w).trigger('click')
+    await flushPromises()
+
+    expect(mocks.mutateAsync).toHaveBeenCalledWith(expect.objectContaining({ namespaceDefinition: 'custom', customNamespaceFormat: 'prod_${SOURCE_NAMESPACE}' }))
   })
 })

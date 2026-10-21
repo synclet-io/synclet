@@ -32,6 +32,8 @@ export const connectionKeys = {
   tags: (workspaceId: string) => [...connectionKeys.all(workspaceId), 'tags'] as const,
   streamStates: (workspaceId: string, connectionId: string) =>
     [...connectionKeys.all(workspaceId), 'streamStates', connectionId] as const,
+  configuredCatalog: (workspaceId: string, connectionId: string) =>
+    [...connectionKeys.all(workspaceId), 'configuredCatalog', connectionId] as const,
   schemaChanges: (workspaceId: string, connectionId: string) =>
     [...connectionKeys.all(workspaceId), 'schemaChanges', connectionId] as const,
 } as const

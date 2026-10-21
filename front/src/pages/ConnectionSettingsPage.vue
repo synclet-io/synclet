@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import type { NamespaceDefinition, SchemaChangePolicy } from '@entities/connection'
 import { useAuth } from '@entities/auth'
-import { useConnection, useConnectionTags, useUpdateConnection } from '@entities/connection'
+import { configuredCatalogToStreams, useConfiguredCatalog, useConnection, useConnectionTags, useUpdateConnection } from '@entities/connection'
 import { tagFieldError } from '@features/connection-tags/tagError'
+import DestinationNamingSettings from '@features/destination-naming/DestinationNamingSettings.vue'
 import { getErrorMessage } from '@shared/lib/errorUtils'
 import { SButton, SCard, SCronEditor, SInput, SSelect, STagInput, useToast } from '@shared/ui'
 import { computed, ref, watch } from 'vue'
@@ -14,6 +15,11 @@ const toast = useToast()
 
 const { data: connection } = useConnection(id)
 const updateMutation = useUpdateConnection()
+const { data: configuredCatalog } = useConfiguredCatalog(id)
+const sampleStream = computed(() => {
+  const first = configuredCatalogToStreams(configuredCatalog.value)[0]
+  return first ? { namespace: first.namespace, name: first.streamName } : undefined
+})
 const { data: workspaceTags } = useConnectionTags()
 const tagSuggestions = computed(() => (workspaceTags.value ?? []).map(t => t.tag))
 const tagsError = ref('')
@@ -31,12 +37,6 @@ const schemaChangePolicyOptions = [
   { label: 'Propagate changes', value: 'propagate' },
   { label: 'Ignore changes', value: 'ignore' },
   { label: 'Pause on change', value: 'pause' },
-]
-
-const namespaceOptions = [
-  { label: 'Source namespace', value: 'source' },
-  { label: 'Destination default', value: 'destination' },
-  { label: 'Custom format', value: 'custom' },
 ]
 
 const editForm = ref({
@@ -157,29 +157,13 @@ async function saveSettings() {
       </div>
     </SCard>
 
-    <!-- Namespace -->
-    <SCard title="Namespace">
-      <div class="space-y-4">
-        <div class="grid grid-cols-2 gap-4">
-          <SSelect
-            v-model="editForm.namespaceDefinition"
-            :options="namespaceOptions"
-            label="Namespace Mode"
-          />
-          <SInput
-            v-model="editForm.streamPrefix"
-            label="Stream Prefix"
-            placeholder="e.g. production_"
-          />
-        </div>
-
-        <SInput
-          v-if="editForm.namespaceDefinition === 'custom'"
-          v-model="editForm.customNamespaceFormat"
-          label="Custom Namespace Format"
-          placeholder="e.g. staging_${SOURCE_NAMESPACE}"
-        />
-      </div>
+    <SCard title="Destination names">
+      <DestinationNamingSettings
+        v-model:namespace-definition="editForm.namespaceDefinition"
+        v-model:custom-namespace-format="editForm.customNamespaceFormat"
+        v-model:stream-prefix="editForm.streamPrefix"
+        :sample-stream="sampleStream"
+      />
     </SCard>
 
     <div class="flex justify-end">
