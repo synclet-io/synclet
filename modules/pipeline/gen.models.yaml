@@ -404,7 +404,6 @@ types:
         - { name: DestinationID, type: "*uuid" }
         - { name: ManagedConnectorID, type: uuid }
         - { name: Config, type: "*string" }
-        - { name: ServiceAccountName, type: string }
 
     - name: SpecPayload
       id: 2

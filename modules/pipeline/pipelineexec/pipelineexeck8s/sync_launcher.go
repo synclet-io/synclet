@@ -104,25 +104,11 @@ func (a *K8sSyncLauncherAdapter) LaunchSyncJob(ctx context.Context, opts K8sSync
 		Tolerations:        tolerations,
 		NodeSelector:       nodeSelector,
 		Affinity:           affinity,
-		ServiceAccountName: syncServiceAccountName(srcOverride, destOverride, a.runtimeDefaults),
+		ServiceAccountName: a.runtimeDefaults.ServiceAccountName,
 	})
 	if err != nil {
 		return "", fmt.Errorf("launching k8s sync: %w", err)
 	}
 
 	return k8sJobName, nil
-}
-
-// syncServiceAccountName picks the account a sync pod runs as: the source's
-// override, else the destination's, else the global default.
-func syncServiceAccountName(src, dest *pipelineservice.RuntimeConfig, defaults pipelineservice.RuntimeDefaults) string {
-	if src != nil && src.ServiceAccountName != "" {
-		return src.ServiceAccountName
-	}
-
-	if dest != nil && dest.ServiceAccountName != "" {
-		return dest.ServiceAccountName
-	}
-
-	return defaults.ServiceAccountName
 }

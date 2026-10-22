@@ -156,12 +156,11 @@ func (s *connectorTaskServer) ClaimConnectorTask(_ context.Context, _ *connect.R
 
 func TestBackend_ClaimConnectorTaskCarriesRuntimeSettings(t *testing.T) {
 	_, handler := executorv1connect.NewExecutorServiceHandler(&connectorTaskServer{resp: &executorv1.ClaimConnectorTaskResponse{
-		HasTask:            true,
-		TaskId:             uuid.NewString(),
-		WorkspaceId:        uuid.NewString(),
-		Image:              "source:1",
-		ServiceAccountName: "wi-sa",
-		RuntimeConfig:      `{"memory_request":"256Mi"}`,
+		HasTask:       true,
+		TaskId:        uuid.NewString(),
+		WorkspaceId:   uuid.NewString(),
+		Image:         "source:1",
+		RuntimeConfig: `{"memory_request":"256Mi"}`,
 	}})
 
 	server := httptest.NewServer(handler)
@@ -170,6 +169,5 @@ func TestBackend_ClaimConnectorTaskCarriesRuntimeSettings(t *testing.T) {
 	got, err := NewBackend(server.URL, "token").ClaimConnectorTask(t.Context(), "worker")
 	require.NoError(t, err)
 	require.NotNil(t, got)
-	assert.Equal(t, "wi-sa", got.ServiceAccountName)
 	assert.JSONEq(t, `{"memory_request":"256Mi"}`, got.RuntimeConfig)
 }

@@ -21,9 +21,6 @@ type TaskOptions struct {
 	TaskType pipelineservice.ConnectorTaskType
 	Image    string // Connector image
 	Config   []byte // Decrypted config JSON (nil for spec)
-
-	// ServiceAccountName overrides the default account when set.
-	ServiceAccountName string
 }
 
 // K8sTaskWorker is a fire-and-forget jobber that claims pending connector tasks
@@ -74,8 +71,6 @@ func (w *K8sTaskWorker) Execute(ctx context.Context) error {
 		TaskType: claimedTask.TaskType,
 		Image:    claimedTask.Image,
 		Config:   claimedTask.Config,
-
-		ServiceAccountName: claimedTask.ServiceAccountName,
 	}
 
 	w.logger.WithField("task_id", claimedTask.TaskID.String()).Info(ctx, "launching k8s job")

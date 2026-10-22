@@ -61,7 +61,7 @@ func (s claimTaskSources) First(_ context.Context, _ *pipelineservice.SourceFilt
 }
 
 func TestUseCaseExecutorBackend_ClaimConnectorTaskCarriesRuntimeSettings(t *testing.T) {
-	runtimeConfig := `{"service_account_name":"wi-sa"}`
+	runtimeConfig := `{"memory_request":"256Mi"}`
 	source := &pipelineservice.Source{ID: uuid.New(), Config: `{}`, RuntimeConfig: &runtimeConfig}
 	storage := &claimTaskStorage{
 		task: &pipelineservice.ConnectorTask{
@@ -77,6 +77,5 @@ func TestUseCaseExecutorBackend_ClaimConnectorTaskCarriesRuntimeSettings(t *test
 	result, err := backend.ClaimConnectorTask(t.Context(), "w")
 	require.NoError(t, err)
 	require.NotNil(t, result)
-	assert.Equal(t, "wi-sa", result.ServiceAccountName)
 	assert.Equal(t, runtimeConfig, result.RuntimeConfig)
 }

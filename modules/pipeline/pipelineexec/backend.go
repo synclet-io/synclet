@@ -70,9 +70,6 @@ type ClaimConnectorTaskResult struct {
 	Image       string
 	Config      []byte // Decrypted JSON config (nil for spec)
 	WorkspaceID uuid.UUID
-	// ServiceAccountName is the entity's account for the connector pod; empty
-	// means the executor's default.
-	ServiceAccountName string
 	// RuntimeConfig is the entity's raw runtime_config JSON; empty for spec
 	// and inline-config checks.
 	RuntimeConfig string

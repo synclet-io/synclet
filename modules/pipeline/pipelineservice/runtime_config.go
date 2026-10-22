@@ -9,7 +9,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/apimachinery/pkg/util/validation"
 )
 
 // RuntimeConfig holds container runtime configuration for a source or destination.
@@ -26,10 +25,9 @@ type RuntimeConfig struct {
 	DockerVolumes []DockerVolume `json:"docker_volumes,omitempty"`
 
 	// Kubernetes-specific.
-	Tolerations        json.RawMessage `json:"tolerations,omitempty"`
-	NodeSelector       json.RawMessage `json:"node_selector,omitempty"`
-	Affinity           json.RawMessage `json:"affinity,omitempty"`
-	ServiceAccountName string          `json:"service_account_name,omitempty"`
+	Tolerations  json.RawMessage `json:"tolerations,omitempty"`
+	NodeSelector json.RawMessage `json:"node_selector,omitempty"`
+	Affinity     json.RawMessage `json:"affinity,omitempty"`
 }
 
 // DockerVolume describes a host-path bind mount for a Docker container.
@@ -67,11 +65,10 @@ func ParseRuntimeConfig(jsonb *string) *RuntimeConfig {
 // K8s scheduling fields (tolerations, nodeSelector, affinity) replace entirely when present.
 func ResolveRuntimeConfig(defaults RuntimeDefaults, override *RuntimeConfig) RuntimeConfig {
 	result := RuntimeConfig{
-		CPURequest:         defaults.CPURequest,
-		CPULimit:           defaults.CPULimit,
-		MemoryRequest:      defaults.MemoryRequest,
-		MemoryLimit:        defaults.MemoryLimit,
-		ServiceAccountName: defaults.ServiceAccountName,
+		CPURequest:    defaults.CPURequest,
+		CPULimit:      defaults.CPULimit,
+		MemoryRequest: defaults.MemoryRequest,
+		MemoryLimit:   defaults.MemoryLimit,
 	}
 
 	if override == nil {
@@ -104,10 +101,6 @@ func ResolveRuntimeConfig(defaults RuntimeDefaults, override *RuntimeConfig) Run
 
 	if len(override.Affinity) > 0 {
 		result.Affinity = override.Affinity
-	}
-
-	if override.ServiceAccountName != "" {
-		result.ServiceAccountName = override.ServiceAccountName
 	}
 
 	if override.DockerNetwork != "" {
@@ -172,12 +165,6 @@ func ValidateRuntimeConfig(cfg *RuntimeConfig) error {
 		var affinity corev1.Affinity
 		if err := json.Unmarshal(cfg.Affinity, &affinity); err != nil {
 			errs = append(errs, fmt.Sprintf("affinity: %v", err))
-		}
-	}
-
-	if cfg.ServiceAccountName != "" {
-		if msgs := validation.IsDNS1123Subdomain(cfg.ServiceAccountName); len(msgs) > 0 {
-			errs = append(errs, "service_account_name: must be a Kubernetes DNS-1123 subdomain name: "+strings.Join(msgs, "; "))
 		}
 	}
 

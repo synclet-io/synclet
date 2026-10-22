@@ -33,7 +33,6 @@ const dockerNetwork = ref('')
 const dockerVolumes = ref<DockerVolume[]>([])
 
 // K8s
-const serviceAccountName = ref('')
 const tolerationsJson = ref('')
 const nodeSelectorJson = ref('')
 const affinityJson = ref('')
@@ -52,7 +51,6 @@ const placeholders = computed(() => ({
   cpuLimit: defaultPlaceholder(defaults.value?.cpuLimit, 'e.g. 1000m'),
   memoryRequest: defaultPlaceholder(defaults.value?.memoryRequest, 'e.g. 256Mi'),
   memoryLimit: defaultPlaceholder(defaults.value?.memoryLimit, 'e.g. 512Mi'),
-  serviceAccountName: defaultPlaceholder(defaults.value?.serviceAccountName, 'e.g. my-sync-service-account'),
 }))
 
 const validationErrors = reactive<Record<string, string>>({})
@@ -74,7 +72,6 @@ function parseConfig(json: string | null) {
   memoryLimit.value = ''
   dockerNetwork.value = ''
   dockerVolumes.value = []
-  serviceAccountName.value = ''
   tolerationsJson.value = ''
   nodeSelectorJson.value = ''
   affinityJson.value = ''
@@ -95,7 +92,6 @@ function parseConfig(json: string | null) {
           readOnly: Boolean(v.read_only ?? v.readOnly),
         }))
       : []
-    serviceAccountName.value = config.service_account_name ?? config.serviceAccountName ?? ''
     tolerationsJson.value = config.tolerations ? JSON.stringify(config.tolerations, null, 2) : ''
     nodeSelectorJson.value = config.node_selector
       ? JSON.stringify(config.node_selector, null, 2)
@@ -186,8 +182,6 @@ function buildConfigJson(): string | null {
   if (filteredVolumes.length > 0)
     config.docker_volumes = filteredVolumes
 
-  if (serviceAccountName.value)
-    config.service_account_name = serviceAccountName.value
   if (tolerationsJson.value)
     config.tolerations = JSON.parse(tolerationsJson.value)
   if (nodeSelectorJson.value)
@@ -318,13 +312,6 @@ function removeVolume(index: number) {
             <SInput v-model="cpuRequest" label="CPU Request" :placeholder="placeholders.cpuRequest" :error="validationErrors.cpuRequest" />
             <SInput v-model="memoryRequest" label="Memory Request" :placeholder="placeholders.memoryRequest" :error="validationErrors.memoryRequest" />
           </div>
-        </div>
-
-        <div>
-          <SInput v-model="serviceAccountName" label="Service Account Name" :placeholder="placeholders.serviceAccountName" />
-          <p class="text-xs text-text-muted mt-1">
-            Kubernetes service account for the replication pod. Leave blank to use the global default shown above.
-          </p>
         </div>
 
         <STextarea

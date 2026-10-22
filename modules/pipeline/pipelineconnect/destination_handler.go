@@ -82,7 +82,7 @@ func (h *DestinationHandler) CreateDestination(ctx context.Context, req *connect
 
 	// Blocking connection check before persist.
 	if err := runConnectionCheck(ctx, h.createCheckTask, h.waitForTaskResult,
-		h.connectionCheckTimeout, workspaceID, managedConnectorID, config, ""); err != nil {
+		h.connectionCheckTimeout, workspaceID, managedConnectorID, config); err != nil {
 		return nil, err
 	}
 
@@ -161,8 +161,7 @@ func (h *DestinationHandler) UpdateDestination(ctx context.Context, req *connect
 
 		// Blocking connection check before persist.
 		if err := runConnectionCheck(ctx, h.createCheckTask, h.waitForTaskResult,
-			h.connectionCheckTimeout, workspaceID, existingDest.ManagedConnectorID, raw,
-			checkServiceAccount(params.RuntimeConfig, existingDest.RuntimeConfig)); err != nil {
+			h.connectionCheckTimeout, workspaceID, existingDest.ManagedConnectorID, raw); err != nil {
 			return nil, err
 		}
 	}

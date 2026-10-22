@@ -559,15 +559,14 @@ pipeline:
     ## Existing K8s service account for connector pods; pipeline.serviceAccount takes precedence.
     serviceAccountName: ""
 
-  ## Shared ServiceAccount of connector pods (sync, check, spec, discover), created in
-  ## k8s.namespace (the release namespace when empty). Its name becomes the global default
-  ## PIPELINE_RUNTIME_SERVICE_ACCOUNT_NAME; a source or destination overrides it with
-  ## service_account_name in its runtime config (a sync pod takes the source's, else the
-  ## destination's). Annotate it so connectors reach the cloud through Workload Identity:
+  ## ServiceAccount every connector pod (sync, check, spec, discover) runs under, created in
+  ## k8s.namespace (the release namespace when empty). Its name becomes
+  ## PIPELINE_RUNTIME_SERVICE_ACCOUNT_NAME; a source or destination cannot choose another.
+  ## Annotate it so connectors reach the cloud through Workload Identity:
   ##   GKE: iam.gke.io/gcp-service-account: <gsa>@<project>.iam.gserviceaccount.com
   ##   EKS: eks.amazonaws.com/role-arn: arn:aws:iam::<account>:role/<role>
   ## With create=false and name="" (and pipeline.resources.serviceAccountName empty) connector pods
-  ## that set no service_account_name get no Kubernetes API token
+  ## get no Kubernetes API token
   ## (automountServiceAccountToken: false). An account named or created here is for cloud
   ## identity annotations, not for cluster rights: the chart binds it to no Role, and its
   ## pods keep the cluster's default token mount.

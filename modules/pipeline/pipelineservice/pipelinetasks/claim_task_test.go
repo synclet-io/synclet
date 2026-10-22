@@ -2,7 +2,6 @@ package pipelinetasks_test
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sync"
 	"testing"
@@ -218,9 +217,8 @@ func TestClaimTask(t *testing.T) {
 		require.Error(t, err)
 	})
 
-	t.Run("carries the entity's service account and runtime config", func(t *testing.T) {
-		withAccount := `{"service_account_name":"wi-sa"}`
-		withoutAccount := `{"cpu_limit":"1"}`
+	t.Run("carries the entity's runtime config", func(t *testing.T) {
+		stored := `{"cpu_limit":"1"}`
 		inline := `{"host":"db"}`
 
 		tests := []struct {
@@ -228,29 +226,25 @@ func TestClaimTask(t *testing.T) {
 			taskType pipelineservice.ConnectorTaskType
 			payload  func(mc *pipelineservice.ManagedConnector, src *pipelineservice.Source, dst *pipelineservice.Destination) pipelineservice.ConnectorTaskPayload
 			runtime  *string
-			want     string
 			// wantRuntime: the claim carries the entity's raw runtime_config.
 			wantRuntime bool
 		}{
-			{name: "check of a source", wantRuntime: true, taskType: pipelineservice.ConnectorTaskTypeCheck, runtime: &withAccount, want: "wi-sa", payload: func(mc *pipelineservice.ManagedConnector, src *pipelineservice.Source, _ *pipelineservice.Destination) pipelineservice.ConnectorTaskPayload {
+			{name: "check of a source", wantRuntime: true, taskType: pipelineservice.ConnectorTaskTypeCheck, runtime: &stored, payload: func(mc *pipelineservice.ManagedConnector, src *pipelineservice.Source, _ *pipelineservice.Destination) pipelineservice.ConnectorTaskPayload {
 				return &pipelineservice.CheckPayload{ManagedConnectorID: mc.ID, SourceID: &src.ID}
 			}},
-			{name: "check of a destination", wantRuntime: true, taskType: pipelineservice.ConnectorTaskTypeCheck, runtime: &withAccount, want: "wi-sa", payload: func(mc *pipelineservice.ManagedConnector, _ *pipelineservice.Source, dst *pipelineservice.Destination) pipelineservice.ConnectorTaskPayload {
+			{name: "check of a destination", wantRuntime: true, taskType: pipelineservice.ConnectorTaskTypeCheck, runtime: &stored, payload: func(mc *pipelineservice.ManagedConnector, _ *pipelineservice.Source, dst *pipelineservice.Destination) pipelineservice.ConnectorTaskPayload {
 				return &pipelineservice.CheckPayload{ManagedConnectorID: mc.ID, DestinationID: &dst.ID}
 			}},
-			{name: "discover of a source", wantRuntime: true, taskType: pipelineservice.ConnectorTaskTypeDiscover, runtime: &withAccount, want: "wi-sa", payload: func(mc *pipelineservice.ManagedConnector, src *pipelineservice.Source, _ *pipelineservice.Destination) pipelineservice.ConnectorTaskPayload {
-				return &pipelineservice.DiscoverPayload{ManagedConnectorID: mc.ID, SourceID: src.ID}
-			}},
-			{name: "source without an account", wantRuntime: true, taskType: pipelineservice.ConnectorTaskTypeDiscover, runtime: &withoutAccount, payload: func(mc *pipelineservice.ManagedConnector, src *pipelineservice.Source, _ *pipelineservice.Destination) pipelineservice.ConnectorTaskPayload {
+			{name: "discover of a source", wantRuntime: true, taskType: pipelineservice.ConnectorTaskTypeDiscover, runtime: &stored, payload: func(mc *pipelineservice.ManagedConnector, src *pipelineservice.Source, _ *pipelineservice.Destination) pipelineservice.ConnectorTaskPayload {
 				return &pipelineservice.DiscoverPayload{ManagedConnectorID: mc.ID, SourceID: src.ID}
 			}},
 			{name: "source without runtime config", taskType: pipelineservice.ConnectorTaskTypeDiscover, payload: func(mc *pipelineservice.ManagedConnector, src *pipelineservice.Source, _ *pipelineservice.Destination) pipelineservice.ConnectorTaskPayload {
 				return &pipelineservice.DiscoverPayload{ManagedConnectorID: mc.ID, SourceID: src.ID}
 			}},
-			{name: "inline check", taskType: pipelineservice.ConnectorTaskTypeCheck, runtime: &withAccount, payload: func(mc *pipelineservice.ManagedConnector, _ *pipelineservice.Source, _ *pipelineservice.Destination) pipelineservice.ConnectorTaskPayload {
+			{name: "inline check", taskType: pipelineservice.ConnectorTaskTypeCheck, runtime: &stored, payload: func(mc *pipelineservice.ManagedConnector, _ *pipelineservice.Source, _ *pipelineservice.Destination) pipelineservice.ConnectorTaskPayload {
 				return &pipelineservice.CheckPayload{ManagedConnectorID: mc.ID, Config: &inline}
 			}},
-			{name: "spec", taskType: pipelineservice.ConnectorTaskTypeSpec, runtime: &withAccount, payload: func(mc *pipelineservice.ManagedConnector, _ *pipelineservice.Source, _ *pipelineservice.Destination) pipelineservice.ConnectorTaskPayload {
+			{name: "spec", taskType: pipelineservice.ConnectorTaskTypeSpec, runtime: &stored, payload: func(mc *pipelineservice.ManagedConnector, _ *pipelineservice.Source, _ *pipelineservice.Destination) pipelineservice.ConnectorTaskPayload {
 				return &pipelineservice.SpecPayload{ManagedConnectorID: mc.ID}
 			}},
 		}
@@ -268,7 +262,6 @@ func TestClaimTask(t *testing.T) {
 
 				got, err := pipelinetasks.NewClaimTask(store, newFakeSecrets()).Execute(ctx, "worker-1")
 				require.NoError(t, err)
-				assert.Equal(t, tt.want, got.ServiceAccountName)
 
 				wantRuntime := ""
 				if tt.wantRuntime {
@@ -337,25 +330,4 @@ func TestClaimTask_ConcurrentClaimersGetExactlyOneWinner(t *testing.T) {
 	assert.Equal(t, pipelineservice.ConnectorTaskStatusRunning, stored.Status)
 	require.NotNil(t, stored.WorkerID)
 	assert.Equal(t, winners[0], *stored.WorkerID)
-}
-
-func TestClaimTask_DirectConfigCheckClaimsItsServiceAccount(t *testing.T) {
-	ctx := context.Background()
-	ws := uuid.New()
-	store := newTaskStore()
-	secrets := newFakeSecrets()
-	mc := seedConnector(store, ws)
-
-	_, err := pipelinetasks.NewCreateCheckTask(store, secrets, &recordingAudit{}).Execute(ctx, pipelinetasks.CreateCheckTaskParams{
-		WorkspaceID:        ws,
-		ManagedConnectorID: &mc.ID,
-		Config:             json.RawMessage(`{"host":"db"}`),
-		ServiceAccountName: "wi-sa",
-	})
-	require.NoError(t, err)
-
-	got, err := pipelinetasks.NewClaimTask(store, secrets).Execute(ctx, "worker-1")
-	require.NoError(t, err)
-	require.NotNil(t, got)
-	assert.Equal(t, "wi-sa", got.ServiceAccountName)
 }

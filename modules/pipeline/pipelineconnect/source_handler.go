@@ -96,7 +96,7 @@ func (h *SourceHandler) CreateSource(ctx context.Context, req *connect.Request[p
 
 	// Blocking connection check before persist.
 	if err := runConnectionCheck(ctx, h.createCheckTask, h.waitForTaskResult,
-		h.connectionCheckTimeout, workspaceID, managedConnectorID, config, ""); err != nil {
+		h.connectionCheckTimeout, workspaceID, managedConnectorID, config); err != nil {
 		return nil, err
 	}
 
@@ -188,8 +188,7 @@ func (h *SourceHandler) UpdateSource(ctx context.Context, req *connect.Request[p
 
 		// Blocking connection check before persist.
 		if err := runConnectionCheck(ctx, h.createCheckTask, h.waitForTaskResult,
-			h.connectionCheckTimeout, workspaceID, existingSource.ManagedConnectorID, raw,
-			checkServiceAccount(params.RuntimeConfig, existingSource.RuntimeConfig)); err != nil {
+			h.connectionCheckTimeout, workspaceID, existingSource.ManagedConnectorID, raw); err != nil {
 			return nil, err
 		}
 	}

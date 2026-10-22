@@ -7,18 +7,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestValidateRuntimeConfig_ServiceAccountName(t *testing.T) {
-	for _, name := range []string{"", "wi-sa", "team.sync-reader", "a"} {
-		require.NoError(t, ValidateRuntimeConfig(&RuntimeConfig{ServiceAccountName: name}), name)
-	}
-
-	for _, name := range []string{"WI-SA", "wi_sa", "-wi", "wi-", "wi sa", "ns/wi"} {
-		err := ValidateRuntimeConfig(&RuntimeConfig{ServiceAccountName: name})
-		require.Error(t, err, name)
-		assert.Contains(t, err.Error(), "service_account_name", name)
-	}
-}
-
 func TestDecodeRuntimeConfig(t *testing.T) {
 	t.Run("accepts a valid object", func(t *testing.T) {
 		cfg, err := DecodeRuntimeConfig(`{"cpu_limit":"500m","memory_limit":"256Mi"}`)
@@ -32,6 +20,16 @@ func TestDecodeRuntimeConfig(t *testing.T) {
 		cfg, err := DecodeRuntimeConfig(`{}`)
 		require.NoError(t, err)
 		assert.NotNil(t, cfg)
+	})
+
+	t.Run("refuses service_account_name as an unknown key", func(t *testing.T) {
+		cfg, err := DecodeRuntimeConfig(`{"service_account_name":"wi-sa"}`)
+		assert.Nil(t, cfg)
+
+		var vErr *ValidationError
+		require.ErrorAs(t, err, &vErr)
+		assert.Equal(t, "runtime_config", vErr.Field)
+		assert.Contains(t, vErr.Message, `unknown field "service_account_name"`)
 	})
 
 	refusals := []struct {

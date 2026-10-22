@@ -18,9 +18,6 @@ type ClaimTaskResult struct {
 	Image       string
 	Config      []byte // Decrypted JSON config (nil for spec tasks)
 	WorkspaceID uuid.UUID
-	// ServiceAccountName is the service_account_name of the source's or
-	// destination's runtime config; empty for spec and inline-config checks.
-	ServiceAccountName string
 	// RuntimeConfig is the raw runtime_config of the source or destination;
 	// empty for spec and inline-config checks.
 	RuntimeConfig string
@@ -78,18 +75,16 @@ func (uc *ClaimTask) Execute(ctx context.Context, workerID string) (*ClaimTaskRe
 		Config:      target.config,
 		WorkspaceID: task.WorkspaceID,
 
-		ServiceAccountName: target.serviceAccount,
-		RuntimeConfig:      target.runtimeConfig,
+		RuntimeConfig: target.runtimeConfig,
 	}, nil
 }
 
 // claimTarget is what a claimed task runs: the connector image, its decrypted
 // config and the runtime settings of the task's source or destination.
 type claimTarget struct {
-	image          string
-	config         []byte
-	serviceAccount string
-	runtimeConfig  string
+	image         string
+	config        []byte
+	runtimeConfig string
 }
 
 // entityRuntimeConfig returns an entity's raw runtime config, empty when unset.
@@ -99,16 +94,6 @@ func entityRuntimeConfig(runtimeConfig *string) string {
 	}
 
 	return *runtimeConfig
-}
-
-// entityServiceAccount returns the service_account_name of an entity's runtime config.
-func entityServiceAccount(runtimeConfig *string) string {
-	cfg := pipelineservice.ParseRuntimeConfig(runtimeConfig)
-	if cfg == nil {
-		return ""
-	}
-
-	return cfg.ServiceAccountName
 }
 
 // resolveCheckPayload resolves the target of a check task.
@@ -131,7 +116,6 @@ func (uc *ClaimTask) resolveCheckPayload(ctx context.Context, workspaceID uuid.U
 	var configJSON string
 	if payload.Config != nil {
 		configJSON = *payload.Config
-		target.serviceAccount = payload.ServiceAccountName
 	} else if payload.SourceID != nil {
 		src, err := uc.storage.Sources().First(ctx, &pipelineservice.SourceFilter{
 			ID:          filter.Equals(*payload.SourceID),
@@ -142,7 +126,6 @@ func (uc *ClaimTask) resolveCheckPayload(ctx context.Context, workspaceID uuid.U
 		}
 
 		configJSON = src.Config
-		target.serviceAccount = entityServiceAccount(src.RuntimeConfig)
 		target.runtimeConfig = entityRuntimeConfig(src.RuntimeConfig)
 	} else if payload.DestinationID != nil {
 		dest, err := uc.storage.Destinations().First(ctx, &pipelineservice.DestinationFilter{
@@ -154,7 +137,6 @@ func (uc *ClaimTask) resolveCheckPayload(ctx context.Context, workspaceID uuid.U
 		}
 
 		configJSON = dest.Config
-		target.serviceAccount = entityServiceAccount(dest.RuntimeConfig)
 		target.runtimeConfig = entityRuntimeConfig(dest.RuntimeConfig)
 	}
 
@@ -213,7 +195,6 @@ func (uc *ClaimTask) resolveDiscoverPayload(ctx context.Context, workspaceID uui
 	}
 
 	target.config = []byte(decrypted)
-	target.serviceAccount = entityServiceAccount(src.RuntimeConfig)
 	target.runtimeConfig = entityRuntimeConfig(src.RuntimeConfig)
 
 	return target, nil

@@ -18,20 +18,15 @@ func NewK8sTaskLauncherAdapter(runner *SyncRunner, runtimeDefaults pipelineservi
 	return &K8sTaskLauncherAdapter{runner: runner, runtimeDefaults: runtimeDefaults}
 }
 
-// LaunchTask delegates to the SyncRunner. The pod runs as the task's entity
-// account when it names one, else as the global default.
+// LaunchTask delegates to the SyncRunner. The pod runs as the global default
+// service account.
 func (a *K8sTaskLauncherAdapter) LaunchTask(ctx context.Context, opts TaskOptions) (string, error) {
-	serviceAccount := opts.ServiceAccountName
-	if serviceAccount == "" {
-		serviceAccount = a.runtimeDefaults.ServiceAccountName
-	}
-
 	return a.runner.LaunchConnectorTask(ctx, ConnectorTaskOptions{
 		TaskID:   opts.TaskID,
 		TaskType: opts.TaskType.String(),
 		Image:    opts.Image,
 		Config:   opts.Config,
 
-		ServiceAccountName: serviceAccount,
+		ServiceAccountName: a.runtimeDefaults.ServiceAccountName,
 	})
 }

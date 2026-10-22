@@ -232,8 +232,7 @@ func TestReferenceRuntimeConfigExamples(t *testing.T) {
 		require.NoError(t, pipelineservice.ValidateRuntimeConfig(&cfg), "example %d", i)
 
 		docker = docker || cfg.DockerNetwork != "" || len(cfg.DockerVolumes) > 0
-		kubernetes = kubernetes || len(cfg.Tolerations) > 0 || len(cfg.NodeSelector) > 0 ||
-			len(cfg.Affinity) > 0 || cfg.ServiceAccountName != ""
+		kubernetes = kubernetes || len(cfg.Tolerations) > 0 || len(cfg.NodeSelector) > 0 || len(cfg.Affinity) > 0
 	}
 
 	assert.True(t, docker, "no example sets a Docker key")

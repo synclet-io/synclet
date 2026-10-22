@@ -1317,7 +1317,6 @@ type jsonCheckPayload struct {
 	DestinationID      *uuid.UUID `json:"destination_id"`
 	ManagedConnectorID uuid.UUID  `json:"managed_connector_id"`
 	Config             *string    `json:"config"`
-	ServiceAccountName string     `json:"service_account_name"`
 }
 
 func (c *jsonCheckPayload) Scan(value any) error {
@@ -1346,7 +1345,6 @@ func convertCheckPayloadToJsonModel(src *pipelineservice.CheckPayload) (*jsonChe
 	} else {
 		result.Config = toPtr(fromPtr(src.Config))
 	}
-	result.ServiceAccountName = src.ServiceAccountName
 	return result, nil
 }
 
@@ -1368,7 +1366,6 @@ func convertCheckPayloadFromJsonModel(src *jsonCheckPayload) (*pipelineservice.C
 	} else {
 		result.Config = toPtr(fromPtr(src.Config))
 	}
-	result.ServiceAccountName = src.ServiceAccountName
 	return result, nil
 }
 

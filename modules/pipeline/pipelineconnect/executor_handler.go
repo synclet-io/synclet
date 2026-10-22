@@ -345,8 +345,7 @@ func (h *ExecutorHandler) ClaimConnectorTask(ctx context.Context, req *connect.R
 		Config:      result.Config,
 		WorkspaceId: result.WorkspaceID.String(),
 
-		ServiceAccountName: result.ServiceAccountName,
-		RuntimeConfig:      result.RuntimeConfig,
+		RuntimeConfig: result.RuntimeConfig,
 	}), nil
 }
 

@@ -44,9 +44,8 @@ The Kubernetes executor ignores these keys.
 | `tolerations` | Array of Kubernetes `Toleration` objects (`key`, `operator`, `value`, `effect`). |
 | `node_selector` | Object of label → value, all strings. |
 | `affinity` | A Kubernetes `Affinity` object (`nodeAffinity`, `podAffinity`, `podAntiAffinity`), in the Kubernetes JSON field names. |
-| `service_account_name` | Service account the connector pods run as; a DNS-1123 name. |
 
-`tolerations`, `node_selector` and `affinity` replace the instance default when set; they are not merged with it. The Docker executor ignores these keys.
+`tolerations`, `node_selector` and `affinity` replace the instance default when set; they are not merged with it. The Docker executor ignores these keys. Connector pods run under the instance-wide service account `PIPELINE_RUNTIME_SERVICE_ACCOUNT_NAME`, which a runtime config cannot change.
 
 ```json runtime_config
 {
@@ -66,11 +65,10 @@ The Kubernetes executor ignores these keys.
         ]
       }
     }
-  },
-  "service_account_name": "synclet-connectors"
+  }
 }
 ```
 
 ## Checks
 
-`update_source` and `update_destination` refuse a runtime config that is not a single JSON object, one with a key not listed on this page, one with an invalid quantity, a malformed `tolerations`, `node_selector` or `affinity`, a `service_account_name` that is not a DNS-1123 name, or a Docker volume without both paths or mounted under `/tmp`. A refused value is not saved, and the error names the invalid JSON or the unknown key.
+`update_source` and `update_destination` refuse a runtime config that is not a single JSON object, one with a key not listed on this page, one with an invalid quantity, a malformed `tolerations`, `node_selector` or `affinity`, or a Docker volume without both paths or mounted under `/tmp`. A refused value is not saved, and the error names the invalid JSON or the unknown key.

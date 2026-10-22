@@ -24,7 +24,6 @@ func runConnectionCheck(
 	workspaceID uuid.UUID,
 	managedConnectorID uuid.UUID,
 	config json.RawMessage,
-	serviceAccount string,
 ) error {
 	checkCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
@@ -35,7 +34,6 @@ func runConnectionCheck(
 		WorkspaceID:        workspaceID,
 		ManagedConnectorID: &mcID,
 		Config:             config,
-		ServiceAccountName: serviceAccount,
 	})
 	if err != nil {
 		return connect.NewError(connect.CodeInternal,
@@ -76,20 +74,4 @@ func runConnectionCheck(
 	}
 
 	return nil
-}
-
-// checkServiceAccount returns the service account for an update's connection
-// check: the one in the runtime config being saved, else the stored one.
-func checkServiceAccount(savedRuntimeConfig, storedRuntimeConfig *string) string {
-	runtimeConfig := storedRuntimeConfig
-	if savedRuntimeConfig != nil {
-		runtimeConfig = savedRuntimeConfig
-	}
-
-	cfg := pipelineservice.ParseRuntimeConfig(runtimeConfig)
-	if cfg == nil {
-		return ""
-	}
-
-	return cfg.ServiceAccountName
 }
