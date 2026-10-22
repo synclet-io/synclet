@@ -33,7 +33,8 @@ func configureStreamTool(connections pc.ConnectionServiceHandler) toolDef {
 		description: "Configure one stream of a connection, matched by namespace and stream_name, and keep every other stream as configured. " +
 			"The stream's settings are replaced by the ones given and every field left out is cleared (sync modes reset to their defaults, cursor, primary key, selected fields and mappers emptied), " +
 			"so send the full stream as get_configured_catalog returns it, with your change. " +
-			"A stream that is not configured yet is added; enabled: false removes it.",
+			"A stream that is not configured yet is added; enabled: false removes it. " +
+			`Read get_reference(topic: "mappers") (resource synclet://reference/mappers) before writing mappers, and check them with validate_mappers.`,
 		kind:       kindWrite,
 		procedures: []string{pc.ConnectionServiceGetConfiguredCatalogProcedure, pc.ConnectionServiceConfigureStreamsProcedure},
 		schema:     schema,

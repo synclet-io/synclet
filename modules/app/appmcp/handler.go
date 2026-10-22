@@ -48,12 +48,15 @@ type Handler struct {
 // the caller's role does not allow its procedures. A token's access level
 // limits the tools it lists and calls: read lists the read tools, actions adds
 // the action tools. Write tools are listed only when cfg.WriteTools is set.
+// Every level serves the reference resources and sends serverInstructions on
+// initialize.
 func NewHandler(cfg Config, services Services, authorizer Authorizer, authenticators ...BearerAuthenticator) *Handler {
 	defs := toolDefs(services)
 	servers := map[string]*mcp.Server{}
 
 	for _, level := range []string{LevelRead, LevelActions, LevelWrite} {
-		server := mcp.NewServer(&mcp.Implementation{Name: "synclet", Version: buildinfo.Version()}, nil)
+		server := mcp.NewServer(&mcp.Implementation{Name: "synclet", Version: buildinfo.Version()}, &mcp.ServerOptions{Instructions: serverInstructions})
+		addReferenceResources(server)
 
 		for _, def := range defs {
 			if def.kind == kindWrite && !cfg.WriteTools || !allows(level, def.kind) {

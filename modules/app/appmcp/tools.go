@@ -138,6 +138,13 @@ func toolDefs(services Services) []toolDef {
 		rpcTool("get_connector_spec", "Get the configuration spec (JSON Schema) of a connector.", kindRead,
 			registryv1connect.ConnectorRegistryServiceGetConnectorSpecProcedure, services.Registry.GetConnectorSpec),
 		systemInfoTool(services.Sources, services.Connections),
+		referenceTool(),
+		rpcTool("validate_mappers", "Check a mappers list against a connection's stream as last discovered, with the stream's selected_fields, primary_key and destination_sync_mode, and save nothing. "+
+			"It returns the errors configure_stream and configure_streams would refuse with, the warnings, the output schema and primary key, "+
+			"and, when sample_record is given, the record the steps produce from it (or why it was filtered out or failed). "+
+			"For a connection not created yet, pass source_id and connection_name instead of connection_id. "+
+			`Read get_reference(topic: "mappers") for the mapper format.`, kindRead,
+			pc.ConnectionServiceValidateMappersProcedure, services.Connections.ValidateMappers),
 
 		rpcTool("trigger_sync", "Start a sync of a connection now.", kindAction,
 			pc.JobServiceTriggerSyncProcedure, services.Jobs.TriggerSync),
@@ -152,13 +159,15 @@ func toolDefs(services Services) []toolDef {
 		rpcTool("rerun_workflow_run", "Rerun a failed workflow run from its failed steps.", kindAction,
 			pc.WorkflowServiceRerunWorkflowRunProcedure, services.Workflows.RerunWorkflowRun),
 
-		rpcTool("create_source", "Create a source from a connector and its config.", kindWrite,
+		rpcTool("create_source", "Create a source from a connector and its config. runtime_config is not set here: set it afterwards with update_source, after reading get_reference(topic: \"runtime_config\") (resource synclet://reference/runtime_config).", kindWrite,
 			pc.SourceServiceCreateSourceProcedure, services.Sources.CreateSource),
-		destructive(rpcTool("update_source", "Update a source. Masked secret values passed back unchanged keep the stored secrets.", kindWrite,
+		destructive(rpcTool("update_source", "Update a source. Masked secret values passed back unchanged keep the stored secrets. Read get_source first."+
+			" Read get_reference(topic: \"runtime_config\") (resource synclet://reference/runtime_config) before setting runtime_config, a JSON object passed as a string.", kindWrite,
 			pc.SourceServiceUpdateSourceProcedure, services.Sources.UpdateSource)),
-		rpcTool("create_destination", "Create a destination from a connector and its config.", kindWrite,
+		rpcTool("create_destination", "Create a destination from a connector and its config. runtime_config is not set here: set it afterwards with update_destination, after reading get_reference(topic: \"runtime_config\") (resource synclet://reference/runtime_config).", kindWrite,
 			pc.DestinationServiceCreateDestinationProcedure, services.Destinations.CreateDestination),
-		destructive(rpcTool("update_destination", "Update a destination. Masked secret values passed back unchanged keep the stored secrets.", kindWrite,
+		destructive(rpcTool("update_destination", "Update a destination. Masked secret values passed back unchanged keep the stored secrets. Read get_destination first."+
+			" Read get_reference(topic: \"runtime_config\") (resource synclet://reference/runtime_config) before setting runtime_config, a JSON object passed as a string.", kindWrite,
 			pc.DestinationServiceUpdateDestinationProcedure, services.Destinations.UpdateDestination)),
 		rpcTool("create_connection", "Create a connection between a source and a destination. "+
 			"Pass streams to configure the streams it syncs in the same call, in the shape configure_streams takes; "+
@@ -170,7 +179,8 @@ func toolDefs(services Services) []toolDef {
 			pc.ConnectionServiceUpdateConnectionProcedure, services.Connections.UpdateConnection)),
 		destructive(rpcTool("configure_streams", "Set which streams a connection syncs and how. It replaces the whole stream configuration: "+
 			"streams left out stop syncing. Read get_configured_catalog first and send every stream back, changing only the ones you mean to change. "+
-			"To change, add or remove a single stream, use configure_stream instead.", kindWrite,
+			"To change, add or remove a single stream, use configure_stream instead."+
+			" Read get_reference(topic: \"mappers\") (resource synclet://reference/mappers) before writing mappers, and check them with validate_mappers.", kindWrite,
 			pc.ConnectionServiceConfigureStreamsProcedure, services.Connections.ConfigureStreams)),
 		configureStreamTool(services.Connections),
 		rpcTool("create_workflow", "Create a workflow.", kindWrite,

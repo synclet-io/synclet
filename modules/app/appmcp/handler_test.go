@@ -564,7 +564,7 @@ var (
 		"list_connections", "get_connection", "list_sources", "get_source", "list_destinations",
 		"get_destination", "list_jobs", "get_job", "list_workflows", "get_workflow", "list_workflow_runs",
 		"get_workflow_run", "get_connection_stats", "get_schema_changes", "get_configured_catalog", "get_discovered_catalog", "get_source_catalog", "list_connectors",
-		"get_connector_spec", "get_system_info",
+		"get_connector_spec", "get_system_info", "get_reference", "validate_mappers",
 	}
 	actionTools = []string{
 		"trigger_sync", "cancel_job", "pause_connection", "resume_connection", "run_workflow", "rerun_workflow_run",
@@ -675,6 +675,7 @@ var toolMethods = map[string]string{
 	"list_connectors":        "ListManagedConnectors",
 	"get_connector_spec":     "GetConnectorSpec",
 	"get_system_info":        "GetSystemInfo",
+	"validate_mappers":       "ValidateMappers",
 	"trigger_sync":           "TriggerSync",
 	"cancel_job":             "CancelJob",
 	"pause_connection":       "DisableConnection",
@@ -699,6 +700,7 @@ var toolMethods = map[string]string{
 
 var toolArgs = map[string]map[string]any{
 	"configure_stream": {"stream_name": "events"},
+	"get_reference":    {"topic": "mappers"},
 }
 
 func assertToolsCallHandlers(t *testing.T, names []string) {
@@ -710,6 +712,10 @@ func assertToolsCallHandlers(t *testing.T, names []string) {
 	for _, name := range names {
 		res := callTool(t, session, name, toolArgs[name])
 		require.False(t, res.IsError, "%s: %s", name, resultText(t, res))
+
+		if name == "get_reference" {
+			continue
+		}
 
 		assert.Contains(t, fake.methods(), toolMethods[name], name)
 		assert.Equal(t, editorUserID, fake.last().userID, name)
@@ -1130,7 +1136,7 @@ func TestMCP_ToolSet(t *testing.T) {
 
 	want := slices.Concat(readTools, actionTools, writeTools)
 	assert.ElementsMatch(t, want, names)
-	assert.Len(t, names, 40)
+	assert.Len(t, names, 42)
 
 	for _, def := range toolDefs((&fakeServices{}).services()) {
 		for _, procedure := range def.procedures {
