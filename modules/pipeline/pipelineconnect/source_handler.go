@@ -155,6 +155,12 @@ func (h *SourceHandler) UpdateSource(ctx context.Context, req *connect.Request[p
 	}
 
 	if req.Msg.RuntimeConfig != nil {
+		if req.Msg.GetRuntimeConfig() != "" {
+			if _, err := pipelineservice.DecodeRuntimeConfig(req.Msg.GetRuntimeConfig()); err != nil {
+				return nil, mapError(err)
+			}
+		}
+
 		params.RuntimeConfig = req.Msg.RuntimeConfig
 	}
 

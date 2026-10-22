@@ -4574,7 +4574,7 @@ type ConfiguredStream struct {
 	PrimaryKey          []*CompositeKey        `protobuf:"bytes,6,rep,name=primary_key,json=primaryKey,proto3" json:"primary_key,omitempty"`
 	SelectedFields      []*SelectedField       `protobuf:"bytes,7,rep,name=selected_fields,json=selectedFields,proto3" json:"selected_fields,omitempty"`
 	// Mapper steps applied to the stream's records, in order, each in the
-	// mapper step JSON shape (one of rename, cast, set, hash, mask, filter).
+	// mapper step JSON shape (one of rename, cast, set, hash, mask, filter, drop).
 	Mappers       []*structpb.Struct `protobuf:"bytes,8,rep,name=mappers,proto3" json:"mappers,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

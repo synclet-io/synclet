@@ -38,6 +38,12 @@ type UpdateDestinationParams struct {
 
 // Execute updates a destination.
 func (uc *UpdateDestination) Execute(ctx context.Context, params UpdateDestinationParams) (*pipelineservice.Destination, error) {
+	if params.RuntimeConfig != nil && *params.RuntimeConfig != "" {
+		if _, err := pipelineservice.DecodeRuntimeConfig(*params.RuntimeConfig); err != nil {
+			return nil, err
+		}
+	}
+
 	dest, err := uc.storage.Destinations().First(ctx, &pipelineservice.DestinationFilter{
 		ID:          filter.Equals(params.ID),
 		WorkspaceID: filter.Equals(params.WorkspaceID),
@@ -77,15 +83,6 @@ func (uc *UpdateDestination) Execute(ctx context.Context, params UpdateDestinati
 	}
 
 	if params.RuntimeConfig != nil {
-		if *params.RuntimeConfig != "" {
-			parsed := pipelineservice.ParseRuntimeConfig(params.RuntimeConfig)
-			if parsed != nil {
-				if err := pipelineservice.ValidateRuntimeConfig(parsed); err != nil {
-					return nil, fmt.Errorf("invalid runtime config: %w", err)
-				}
-			}
-		}
-
 		dest.RuntimeConfig = params.RuntimeConfig
 	}
 

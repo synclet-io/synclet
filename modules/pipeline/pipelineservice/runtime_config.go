@@ -2,7 +2,9 @@ package pipelineservice
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -230,4 +232,41 @@ func ToContainerResources(cfg RuntimeConfig) (memoryLimit int64, cpuLimit float6
 	}
 
 	return
+}
+
+// DecodeRuntimeConfig decodes a runtime config written by a user. It accepts
+// only a single JSON object whose keys RuntimeConfig and DockerVolume declare
+// and whose values ValidateRuntimeConfig accepts; any other input yields a
+// *ValidationError on the runtime_config field.
+func DecodeRuntimeConfig(raw string) (*RuntimeConfig, error) {
+	cfg, err := decodeRuntimeConfig(raw)
+	if err != nil {
+		return nil, &ValidationError{Field: "runtime_config", Message: err.Error()}
+	}
+
+	return cfg, nil
+}
+
+func decodeRuntimeConfig(raw string) (*RuntimeConfig, error) {
+	if !strings.HasPrefix(strings.TrimLeft(raw, " \t\r\n"), "{") {
+		return nil, errors.New("runtime_config is not a JSON object")
+	}
+
+	dec := json.NewDecoder(strings.NewReader(raw))
+	dec.DisallowUnknownFields()
+
+	var cfg RuntimeConfig
+	if err := dec.Decode(&cfg); err != nil {
+		return nil, fmt.Errorf("runtime_config is not a JSON object with known keys: %w", err)
+	}
+
+	if err := dec.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+		return nil, errors.New("runtime_config is not a JSON object: unexpected data after the object")
+	}
+
+	if err := ValidateRuntimeConfig(&cfg); err != nil {
+		return nil, err
+	}
+
+	return &cfg, nil
 }

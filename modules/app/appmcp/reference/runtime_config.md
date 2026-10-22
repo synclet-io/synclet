@@ -2,7 +2,7 @@
 
 A source's or destination's `runtime_config` sets the resources and placement of its connector containers. It is a JSON object passed as a *string*: `update_source` and `update_destination` take it as `"runtime_config": "{\"memory_limit\":\"1Gi\"}"`. `create_source` and `create_destination` do not take it; create first, then set it with `update_source` or `update_destination`. `get_source` and `get_destination` return the current value; read it first and send back every key you keep.
 
-Every key is optional. A key left out uses the instance default (`get_system_info` returns the runtime defaults). An empty string `""` removes the runtime config. Unknown keys are ignored, so check the spelling.
+Every key is optional. A key left out uses the instance default (`get_system_info` returns the runtime defaults). An empty string `""` removes the runtime config. A key not listed on this page is refused, at the top level and inside a `docker_volumes` entry.
 
 ## Resources (both executors)
 
@@ -71,4 +71,4 @@ The Kubernetes executor ignores these keys.
 
 ## Checks
 
-`update_source` and `update_destination` refuse a runtime config with an invalid quantity, a malformed `tolerations`, `node_selector` or `affinity`, a `service_account_name` that is not a DNS-1123 name, or a Docker volume without both paths or mounted under `/tmp`. A string that is not a JSON object is saved but ignored, as if no runtime config were set, so send valid JSON.
+`update_source` and `update_destination` refuse a runtime config that is not a single JSON object, one with a key not listed on this page, one with an invalid quantity, a malformed `tolerations`, `node_selector` or `affinity`, a `service_account_name` that is not a DNS-1123 name, or a Docker volume without both paths or mounted under `/tmp`. A refused value is not saved, and the error names the invalid JSON or the unknown key.

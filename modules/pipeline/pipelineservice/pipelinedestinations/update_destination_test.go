@@ -179,9 +179,52 @@ func TestUpdateDestination(t *testing.T) {
 			WorkspaceID:   ws,
 			RuntimeConfig: ptr(`{"cpu_limit":"lots"}`),
 		})
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "invalid runtime config")
+		assertRuntimeConfigRefused(t, err, "invalid runtime config")
 		assert.Nil(t, fx.stored().RuntimeConfig)
+		assert.Empty(t, fx.audit.events)
+	})
+
+	t.Run("rejects a runtime config that is not a JSON object", func(t *testing.T) {
+		fx := newUpdateFixture(ws, specWithoutSecrets, `{"host":"a"}`)
+
+		_, err := fx.uc.Execute(context.Background(), pipelinedestinations.UpdateDestinationParams{
+			ID:            fx.dest.ID,
+			WorkspaceID:   ws,
+			RuntimeConfig: ptr(`not json`),
+		})
+		assertRuntimeConfigRefused(t, err, "not a JSON object")
+		assert.Nil(t, fx.stored().RuntimeConfig)
+		assert.Empty(t, fx.audit.events)
+	})
+
+	t.Run("rejects a runtime config with an unknown key", func(t *testing.T) {
+		fx := newUpdateFixture(ws, specWithoutSecrets, `{"host":"a"}`)
+
+		_, err := fx.uc.Execute(context.Background(), pipelinedestinations.UpdateDestinationParams{
+			ID:            fx.dest.ID,
+			WorkspaceID:   ws,
+			RuntimeConfig: ptr(`{"cpu_limt":"1"}`),
+		})
+		assertRuntimeConfigRefused(t, err, "cpu_limt")
+		assert.Nil(t, fx.stored().RuntimeConfig)
+		assert.Empty(t, fx.audit.events)
+	})
+
+	t.Run("leaves secrets untouched when the runtime config is refused", func(t *testing.T) {
+		fx := newUpdateFixture(ws, specWithPassword, "")
+		oldRef := fx.secrets.seed(fx.dest.ID, "old-pw")
+		fx.dest.Config = `{"host":"a","password":"` + oldRef + `"}`
+
+		_, err := fx.uc.Execute(context.Background(), pipelinedestinations.UpdateDestinationParams{
+			ID:            fx.dest.ID,
+			WorkspaceID:   ws,
+			Config:        rawJSON(`{"host":"b","password":"n3w-pw"}`),
+			RuntimeConfig: ptr(`not json`),
+		})
+		assertRuntimeConfigRefused(t, err, "not a JSON object")
+		assert.Empty(t, fx.secrets.deletedRefs)
+		assert.Equal(t, "old-pw", fx.secrets.values[oldRef])
+		assert.Equal(t, 1, fx.secrets.countForOwner(fx.dest.ID))
 		assert.Empty(t, fx.audit.events)
 	})
 
@@ -384,4 +427,13 @@ func TestUpdateDestinationInternal(t *testing.T) {
 		})
 		require.ErrorIs(t, err, fx.store.destinations.updateErr)
 	})
+}
+
+func assertRuntimeConfigRefused(t *testing.T, err error, want string) {
+	t.Helper()
+
+	var validationErr *pipelineservice.ValidationError
+	require.ErrorAs(t, err, &validationErr)
+	assert.Equal(t, "runtime_config", validationErr.Field)
+	assert.Contains(t, validationErr.Message, want)
 }

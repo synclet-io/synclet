@@ -38,6 +38,12 @@ type UpdateSourceParams struct {
 
 // Execute updates a source.
 func (uc *UpdateSource) Execute(ctx context.Context, params UpdateSourceParams) (*pipelineservice.Source, error) {
+	if params.RuntimeConfig != nil && *params.RuntimeConfig != "" {
+		if _, err := pipelineservice.DecodeRuntimeConfig(*params.RuntimeConfig); err != nil {
+			return nil, err
+		}
+	}
+
 	src, err := uc.storage.Sources().First(ctx, &pipelineservice.SourceFilter{
 		ID:          filter.Equals(params.ID),
 		WorkspaceID: filter.Equals(params.WorkspaceID),
@@ -77,15 +83,6 @@ func (uc *UpdateSource) Execute(ctx context.Context, params UpdateSourceParams) 
 	}
 
 	if params.RuntimeConfig != nil {
-		if *params.RuntimeConfig != "" {
-			parsed := pipelineservice.ParseRuntimeConfig(params.RuntimeConfig)
-			if parsed != nil {
-				if err := pipelineservice.ValidateRuntimeConfig(parsed); err != nil {
-					return nil, fmt.Errorf("invalid runtime config: %w", err)
-				}
-			}
-		}
-
 		src.RuntimeConfig = params.RuntimeConfig
 	}
 

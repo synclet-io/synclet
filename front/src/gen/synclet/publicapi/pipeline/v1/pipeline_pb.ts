@@ -1809,7 +1809,7 @@ export type ConfiguredStream = Message<"synclet.publicapi.pipeline.v1.Configured
 
   /**
    * Mapper steps applied to the stream's records, in order, each in the
-   * mapper step JSON shape (one of rename, cast, set, hash, mask, filter).
+   * mapper step JSON shape (one of rename, cast, set, hash, mask, filter, drop).
    *
    * @generated from field: repeated google.protobuf.Struct mappers = 8;
    */
