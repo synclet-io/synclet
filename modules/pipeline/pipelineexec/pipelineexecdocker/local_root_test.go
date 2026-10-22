@@ -8,6 +8,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/go-pnp/go-pnp/logging"
@@ -204,4 +205,72 @@ func TestDockerSyncExecutor_MountsLocalRootAndKeepsIt(t *testing.T) {
 	assert.Equal(t, []string{root, root}, runner.dirs)
 	assertNoJobLocalDirs(t, tempDirRoot)
 	assertLocalRootKept(t, root, file)
+}
+
+func TestContainerRunner_Run_MountsOnlyScratchAndLocalRoot(t *testing.T) {
+	const runtimeConfig = `{"docker_volumes":[{"host_path":"/var/run/docker.sock","container_path":"/var/run/docker.sock"}]}`
+
+	catalog := &protocol.ConfiguredAirbyteCatalog{}
+	config := json.RawMessage(`{}`)
+	redactor := pipelineexec.NewRedactor(config)
+
+	operations := map[string]func(c *ConnectorClient, limits ResourceLimits){
+		"check": func(c *ConnectorClient, limits ResourceLimits) {
+			_, _ = c.Check(context.Background(), "connector:1", config, limits)
+		},
+		"read": func(c *ConnectorClient, limits ResourceLimits) {
+			out, cleanup, err := c.Read(context.Background(), "connector:1", config, redactor, catalog, nil, nil, limits)
+			require.NoError(t, err)
+
+			_, _ = io.Copy(io.Discard, out)
+
+			_ = out.Close()
+
+			cleanup()
+		},
+		"write": func(c *ConnectorClient, limits ResourceLimits) {
+			out, cleanup, err := c.Write(context.Background(), "connector:1", config, redactor, catalog, strings.NewReader(""), nil, limits)
+			require.NoError(t, err)
+
+			_, _ = io.Copy(io.Discard, out)
+
+			_ = out.Close()
+
+			cleanup()
+		},
+	}
+
+	for opName, run := range operations {
+		for _, rootSet := range []bool{true, false} {
+			t.Run(fmt.Sprintf("%s local root set %v", opName, rootSet), func(t *testing.T) {
+				localRoot := ""
+				if rootSet {
+					localRoot = t.TempDir()
+				}
+
+				tempDirRoot := t.TempDir()
+				daemon, cli := newHostConfigDaemon(t, false)
+
+				runner := &ContainerRunner{client: cli, tempDirRoot: tempDirRoot, localRoot: localRoot, ownerID: "self"}
+				run(NewConnectorClient(runner), resolveResources(pipelineservice.RuntimeDefaults{}, runtimeConfig))
+
+				hostCfg := daemon.created()
+				require.NotNil(t, hostCfg, "no container was created")
+
+				for _, m := range hostCfg.Mounts {
+					assert.Contains(t, []string{"/tmp", "/local"}, m.Target, "unexpected mount %+v", m)
+					assert.NotEqual(t, "/var/run/docker.sock", m.Source, "a host path from runtime_config was mounted")
+				}
+
+				local := localMount(t, hostCfg)
+				assert.False(t, local.ReadOnly)
+
+				if rootSet {
+					assert.Equal(t, localRoot, local.Source)
+				} else {
+					assert.True(t, strings.HasPrefix(local.Source, tempDirRoot+string(filepath.Separator)), "per-job /local %q is not under %q", local.Source, tempDirRoot)
+				}
+			})
+		}
+	}
 }

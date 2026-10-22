@@ -21,20 +21,12 @@ type RuntimeConfig struct {
 	MemoryLimit   string `json:"memory_limit,omitempty"`
 
 	// Docker-specific.
-	DockerNetwork string         `json:"docker_network,omitempty"`
-	DockerVolumes []DockerVolume `json:"docker_volumes,omitempty"`
+	DockerNetwork string `json:"docker_network,omitempty"`
 
 	// Kubernetes-specific.
 	Tolerations  json.RawMessage `json:"tolerations,omitempty"`
 	NodeSelector json.RawMessage `json:"node_selector,omitempty"`
 	Affinity     json.RawMessage `json:"affinity,omitempty"`
-}
-
-// DockerVolume describes a host-path bind mount for a Docker container.
-type DockerVolume struct {
-	HostPath      string `json:"host_path"`
-	ContainerPath string `json:"container_path"`
-	ReadOnly      bool   `json:"read_only,omitempty"`
 }
 
 // RuntimeDefaults holds the global default resource values applied when a connection has none.
@@ -107,10 +99,6 @@ func ResolveRuntimeConfig(defaults RuntimeDefaults, override *RuntimeConfig) Run
 		result.DockerNetwork = override.DockerNetwork
 	}
 
-	if len(override.DockerVolumes) > 0 {
-		result.DockerVolumes = override.DockerVolumes
-	}
-
 	return result
 }
 
@@ -168,22 +156,6 @@ func ValidateRuntimeConfig(cfg *RuntimeConfig) error {
 		}
 	}
 
-	for i, vol := range cfg.DockerVolumes {
-		if vol.HostPath == "" {
-			errs = append(errs, fmt.Sprintf("docker_volumes[%d]: host_path is required", i))
-		}
-
-		if vol.ContainerPath == "" {
-			errs = append(errs, fmt.Sprintf("docker_volumes[%d]: container_path is required", i))
-		}
-
-		// Containers run with /tmp as the connector working dir for synclet-managed files.
-		// Reject mounts that would collide with this.
-		if vol.ContainerPath == "/tmp" || strings.HasPrefix(vol.ContainerPath, "/tmp/") {
-			errs = append(errs, fmt.Sprintf("docker_volumes[%d]: container_path cannot start with /tmp (reserved)", i))
-		}
-	}
-
 	if len(errs) > 0 {
 		return fmt.Errorf("invalid runtime config: %s", strings.Join(errs, "; "))
 	}
@@ -222,9 +194,9 @@ func ToContainerResources(cfg RuntimeConfig) (memoryLimit int64, cpuLimit float6
 }
 
 // DecodeRuntimeConfig decodes a runtime config written by a user. It accepts
-// only a single JSON object whose keys RuntimeConfig and DockerVolume declare
-// and whose values ValidateRuntimeConfig accepts; any other input yields a
-// *ValidationError on the runtime_config field.
+// only a single JSON object whose keys RuntimeConfig declares and whose values
+// ValidateRuntimeConfig accepts; any other input yields a *ValidationError on
+// the runtime_config field.
 func DecodeRuntimeConfig(raw string) (*RuntimeConfig, error) {
 	cfg, err := decodeRuntimeConfig(raw)
 	if err != nil {

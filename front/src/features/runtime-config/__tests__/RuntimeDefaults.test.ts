@@ -95,4 +95,20 @@ describe('runtimeConfigForm', () => {
     expect(placeholders).toContain('Default: 2')
     expect(placeholders).toContain('Default: 2Gi')
   })
+  it('has no volume mounts and drops docker_volumes on save', async () => {
+    const wrapper = mount(RuntimeConfigForm, {
+      props: {
+        runtimeConfig: '{"docker_network":"warehouse","docker_volumes":[{"host_path":"/var/run/docker.sock","container_path":"/s"}]}',
+        entityType: 'destination',
+        saving: false,
+      },
+    })
+    await wrapper.findAll('button').find(b => b.text() === 'Docker')!.trigger('click')
+    expect(wrapper.text()).not.toContain('Volume mounts')
+    expect(wrapper.text()).toContain('/local')
+    expect(wrapper.text()).toContain('DOCKER_EXECUTOR_LOCAL_ROOT')
+
+    await wrapper.findAll('button').find(b => b.text() === 'Save Runtime Config')!.trigger('click')
+    expect(wrapper.emitted('save')).toEqual([[JSON.stringify({ docker_network: 'warehouse' })]])
+  })
 })

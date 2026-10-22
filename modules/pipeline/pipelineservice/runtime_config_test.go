@@ -44,9 +44,9 @@ func TestDecodeRuntimeConfig(t *testing.T) {
 		{name: "trailing data", raw: `{"cpu_limit":"1"} {}`, wants: []string{"not a JSON object"}},
 		{name: "unknown top-level key", raw: `{"cpu_limt":"1"}`, wants: []string{"cpu_limt"}},
 		{
-			name:  "unknown docker volume key",
-			raw:   `{"docker_volumes":[{"host_path":"/a","container_path":"/b","mode":"ro"}]}`,
-			wants: []string{"mode"},
+			name:  "docker_volumes",
+			raw:   `{"docker_volumes":[{"host_path":"/var/run/docker.sock","container_path":"/s"}]}`,
+			wants: []string{"docker_volumes"},
 		},
 		{name: "invalid quantity", raw: `{"cpu_limit":"lots"}`, wants: []string{"invalid runtime config", "cpu_limit"}},
 	}

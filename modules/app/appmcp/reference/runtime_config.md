@@ -2,7 +2,7 @@
 
 A source's or destination's `runtime_config` sets the resources and placement of its connector containers. It is a JSON object passed as a *string*: `update_source` and `update_destination` take it as `"runtime_config": "{\"memory_limit\":\"1Gi\"}"`. `create_source` and `create_destination` do not take it; create first, then set it with `update_source` or `update_destination`. `get_source` and `get_destination` return the current value; read it first and send back every key you keep.
 
-Every key is optional. A key left out uses the instance default (`get_system_info` returns the runtime defaults). An empty string `""` removes the runtime config. A key not listed on this page is refused, at the top level and inside a `docker_volumes` entry.
+Every key is optional. A key left out uses the instance default (`get_system_info` returns the runtime defaults). An empty string `""` removes the runtime config. A key not listed on this page is refused.
 
 ## Resources (both executors)
 
@@ -22,18 +22,16 @@ Quantities use the Kubernetes format, given as strings. CPU: `"500m"` is half a 
 | Key | Value |
 |---|---|
 | `docker_network` | Name of the Docker network the connector containers join. |
-| `docker_volumes` | Array of bind mounts: `{"host_path": "...", "container_path": "...", "read_only": true}`. `host_path` and `container_path` are required; `container_path` cannot be `/tmp` or under it. |
 
-The Kubernetes executor ignores these keys.
+The Kubernetes executor ignores this key.
+
+Connectors read and write host files only under `/local`, which the Docker executor mounts read-write from the operator's `DOCKER_EXECUTOR_LOCAL_ROOT` (or from a per-job directory, removed with the job, when it is unset). A runtime config cannot mount other host paths.
 
 ```json runtime_config
 {
   "cpu_limit": "2",
   "memory_limit": "4Gi",
-  "docker_network": "warehouse",
-  "docker_volumes": [
-    {"host_path": "/srv/exports", "container_path": "/data/exports", "read_only": true}
-  ]
+  "docker_network": "warehouse"
 }
 ```
 
@@ -71,4 +69,4 @@ The Kubernetes executor ignores these keys.
 
 ## Checks
 
-`update_source` and `update_destination` refuse a runtime config that is not a single JSON object, one with a key not listed on this page, one with an invalid quantity, a malformed `tolerations`, `node_selector` or `affinity`, or a Docker volume without both paths or mounted under `/tmp`. A refused value is not saved, and the error names the invalid JSON or the unknown key.
+`update_source` and `update_destination` refuse a runtime config that is not a single JSON object, one with a key not listed on this page, one with an invalid quantity, or a malformed `tolerations`, `node_selector` or `affinity`. A refused value is not saved, and the error names the invalid JSON or the unknown key.

@@ -316,15 +316,6 @@ func (r *ContainerRunner) Run(ctx context.Context, opts RunOptions) (*RunResult,
 		ReadOnly: false,
 	})
 
-	for _, m := range opts.ExtraMounts {
-		hostCfg.Mounts = append(hostCfg.Mounts, mount.Mount{
-			Type:     mount.TypeBind,
-			Source:   m.HostPath,
-			Target:   m.ContainerPath,
-			ReadOnly: m.ReadOnly,
-		})
-	}
-
 	if opts.MemoryLimit > 0 {
 		hostCfg.Memory = opts.MemoryLimit
 	} else {

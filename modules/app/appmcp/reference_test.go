@@ -231,7 +231,7 @@ func TestReferenceRuntimeConfigExamples(t *testing.T) {
 		require.NoError(t, decoder.Decode(&cfg), "example %d", i)
 		require.NoError(t, pipelineservice.ValidateRuntimeConfig(&cfg), "example %d", i)
 
-		docker = docker || cfg.DockerNetwork != "" || len(cfg.DockerVolumes) > 0
+		docker = docker || cfg.DockerNetwork != ""
 		kubernetes = kubernetes || len(cfg.Tolerations) > 0 || len(cfg.NodeSelector) > 0 || len(cfg.Affinity) > 0
 	}
 

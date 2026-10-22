@@ -10,27 +10,8 @@ import (
 
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineexec"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
-	pkgcontainer "github.com/synclet-io/synclet/pkg/container"
 	"github.com/synclet-io/synclet/pkg/mapper"
 )
-
-// dockerVolumesToMounts converts user-defined docker volumes into bind mounts.
-func dockerVolumesToMounts(volumes []pipelineservice.DockerVolume) []pkgcontainer.BindMount {
-	if len(volumes) == 0 {
-		return nil
-	}
-
-	mounts := make([]pkgcontainer.BindMount, 0, len(volumes))
-	for _, v := range volumes {
-		mounts = append(mounts, pkgcontainer.BindMount{
-			HostPath:      v.HostPath,
-			ContainerPath: v.ContainerPath,
-			ReadOnly:      v.ReadOnly,
-		})
-	}
-
-	return mounts
-}
 
 // DockerSyncExecutor runs a sync job from the pre-loaded data of a SyncBundle
 // and reports state, config updates and logs through the SyncReporter.

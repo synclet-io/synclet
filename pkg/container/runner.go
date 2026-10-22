@@ -32,19 +32,10 @@ type RunOptions struct {
 	NetworkMode   string
 	Name          string
 	Labels        map[string]string
-	// ExtraMounts is a list of additional host-path bind mounts (Docker only, K8s ignores).
-	ExtraMounts []BindMount
 	// LocalDir is the host directory mounted read-write at /local (Docker
 	// only, K8s ignores). Empty gives the container a directory of its own,
 	// removed when the container exits.
 	LocalDir string
-}
-
-// BindMount describes an extra host-path bind mount.
-type BindMount struct {
-	HostPath      string
-	ContainerPath string
-	ReadOnly      bool
 }
 
 // RunResult holds handles to a running container's I/O and lifecycle.

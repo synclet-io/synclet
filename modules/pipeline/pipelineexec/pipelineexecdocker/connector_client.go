@@ -30,14 +30,14 @@ func NewConnectorClient(runner pkgcontainer.Runner) *ConnectorClient {
 }
 
 // ResourceLimits holds memory and CPU limits and requests for a container,
-// plus Docker-specific runtime options such as network and volumes.
+// plus Docker-specific runtime options: the network and the host directory
+// mounted at /local.
 type ResourceLimits struct {
 	MemoryLimit   int64
 	CPULimit      float64
 	MemoryRequest int64
 	CPURequest    float64
 	NetworkMode   string
-	ExtraMounts   []pkgcontainer.BindMount
 	LocalDir      string
 }
 
@@ -158,7 +158,6 @@ func (c *ConnectorClient) Read(ctx context.Context, image string, config json.Ra
 		CPURequest:    limits.CPURequest,
 		NetworkMode:   networkMode,
 		Labels:        labels,
-		ExtraMounts:   limits.ExtraMounts,
 		LocalDir:      limits.LocalDir,
 	})
 	if err != nil {
@@ -205,7 +204,6 @@ func (c *ConnectorClient) Write(ctx context.Context, image string, config json.R
 		CPURequest:    limits.CPURequest,
 		NetworkMode:   networkMode,
 		Labels:        labels,
-		ExtraMounts:   limits.ExtraMounts,
 		LocalDir:      limits.LocalDir,
 	})
 	if err != nil {

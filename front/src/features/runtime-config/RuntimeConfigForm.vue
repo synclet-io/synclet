@@ -1,15 +1,8 @@
 <script setup lang="ts">
 import type { Tab } from '@shared/ui'
 import { useRuntimeDefaults } from '@entities/system'
-import { SAlert, SButton, SCard, SCheckbox, SConfirmDialog, SInput, STabs, STextarea } from '@shared/ui'
-import { Trash2 } from 'lucide-vue-next'
+import { SAlert, SButton, SCard, SConfirmDialog, SInput, STabs, STextarea } from '@shared/ui'
 import { computed, reactive, ref, watch } from 'vue'
-
-interface DockerVolume {
-  hostPath: string
-  containerPath: string
-  readOnly: boolean
-}
 
 const props = defineProps<{
   runtimeConfig: string | null
@@ -30,7 +23,6 @@ const memoryLimit = ref('')
 
 // Docker
 const dockerNetwork = ref('')
-const dockerVolumes = ref<DockerVolume[]>([])
 
 // K8s
 const tolerationsJson = ref('')
@@ -71,7 +63,6 @@ function parseConfig(json: string | null) {
   memoryRequest.value = ''
   memoryLimit.value = ''
   dockerNetwork.value = ''
-  dockerVolumes.value = []
   tolerationsJson.value = ''
   nodeSelectorJson.value = ''
   affinityJson.value = ''
@@ -84,14 +75,6 @@ function parseConfig(json: string | null) {
     memoryRequest.value = config.memory_request ?? config.memoryRequest ?? ''
     memoryLimit.value = config.memory_limit ?? config.memoryLimit ?? ''
     dockerNetwork.value = config.docker_network ?? config.dockerNetwork ?? ''
-    const volumes = config.docker_volumes ?? config.dockerVolumes ?? []
-    dockerVolumes.value = Array.isArray(volumes)
-      ? volumes.map((v: Record<string, unknown>) => ({
-          hostPath: (v.host_path as string) ?? (v.hostPath as string) ?? '',
-          containerPath: (v.container_path as string) ?? (v.containerPath as string) ?? '',
-          readOnly: Boolean(v.read_only ?? v.readOnly),
-        }))
-      : []
     tolerationsJson.value = config.tolerations ? JSON.stringify(config.tolerations, null, 2) : ''
     nodeSelectorJson.value = config.node_selector
       ? JSON.stringify(config.node_selector, null, 2)
@@ -111,8 +94,6 @@ const memoryRegex = /^(?:\d+(?:\.\d*)?|\.\d+)(?:[KMGTPE]i|[kMGTPE]|[eE][+-]?\d+)
 function errorTab(key: string): TabValue {
   if (key === 'cpuLimit' || key === 'memoryLimit')
     return 'common'
-  if (key.startsWith('vol'))
-    return 'docker'
   return 'k8s'
 }
 
@@ -137,17 +118,6 @@ function validate(): boolean {
     validationErrors.memoryRequest = 'Invalid memory value. Use Kubernetes format: 128Mi, 1Gi, 512M'
   if (memoryLimit.value && !memoryRegex.test(memoryLimit.value))
     validationErrors.memoryLimit = 'Invalid memory value. Use Kubernetes format: 128Mi, 1Gi, 512M'
-
-  dockerVolumes.value.forEach((vol, i) => {
-    if (vol.hostPath || vol.containerPath) {
-      if (!vol.hostPath)
-        validationErrors[`vol${i}Host`] = 'Host path is required'
-      if (!vol.containerPath)
-        validationErrors[`vol${i}Container`] = 'Container path is required'
-      if (vol.containerPath === '/tmp' || vol.containerPath.startsWith('/tmp/'))
-        validationErrors[`vol${i}Container`] = 'Cannot mount to /tmp (reserved by synclet)'
-    }
-  })
 
   for (const [key, value] of [['tolerations', tolerationsJson.value], ['nodeSelector', nodeSelectorJson.value], ['affinity', affinityJson.value]] as const) {
     if (value) {
@@ -176,12 +146,6 @@ function buildConfigJson(): string | null {
   if (dockerNetwork.value)
     config.docker_network = dockerNetwork.value
 
-  const filteredVolumes = dockerVolumes.value
-    .filter(v => v.hostPath && v.containerPath)
-    .map(v => ({ host_path: v.hostPath, container_path: v.containerPath, read_only: v.readOnly }))
-  if (filteredVolumes.length > 0)
-    config.docker_volumes = filteredVolumes
-
   if (tolerationsJson.value)
     config.tolerations = JSON.parse(tolerationsJson.value)
   if (nodeSelectorJson.value)
@@ -209,14 +173,6 @@ function handleReset() {
 function confirmReset() {
   confirmResetOpen.value = false
   emit('reset')
-}
-
-function addVolume() {
-  dockerVolumes.value.push({ hostPath: '', containerPath: '', readOnly: false })
-}
-
-function removeVolume(index: number) {
-  dockerVolumes.value.splice(index, 1)
 }
 </script>
 
@@ -260,38 +216,9 @@ function removeVolume(index: number) {
           <p class="text-xs text-text-muted mt-1">
             Defaults to <code class="text-text-primary">bridge</code> for sync containers. Use <code class="text-text-primary">host</code> to share the host network or specify a Docker network name to attach to.
           </p>
-        </div>
-
-        <div>
-          <div class="flex items-center justify-between mb-2">
-            <label class="text-sm font-medium text-text-primary">Volume mounts</label>
-            <SButton variant="secondary" size="sm" @click="addVolume">
-              Add volume
-            </SButton>
-          </div>
-          <p class="text-xs text-text-muted mb-3">
-            Bind host directories into the container — useful for syncing CSV files or SQLite databases. The container path cannot start with <code class="text-text-primary">/tmp</code>.
+          <p class="text-xs text-text-muted mt-1">
+            Files a connector writes under <code class="text-text-primary">/local</code> land in the host directory the operator sets with <code class="text-text-primary">DOCKER_EXECUTOR_LOCAL_ROOT</code>. No other host path is mounted.
           </p>
-          <div v-if="dockerVolumes.length === 0" class="text-xs text-text-muted italic py-3 text-center border border-dashed border-border rounded-lg">
-            No volume mounts configured.
-          </div>
-          <div v-for="(vol, idx) in dockerVolumes" :key="idx" class="grid grid-cols-1 md:grid-cols-12 gap-2 mb-2 items-start">
-            <div class="md:col-span-5">
-              <SInput v-model="vol.hostPath" placeholder="Host path (e.g. /data/csv)" :error="validationErrors[`vol${idx}Host`]" />
-            </div>
-            <div class="md:col-span-5">
-              <SInput v-model="vol.containerPath" placeholder="Container path (e.g. /data)" :error="validationErrors[`vol${idx}Container`]" />
-            </div>
-            <SCheckbox v-model="vol.readOnly" label="RO" title="Mount read-only" class="md:col-span-1 mt-2.5" />
-            <button
-              type="button"
-              class="md:col-span-1 mt-2 p-1.5 text-text-muted hover:text-danger transition-colors"
-              title="Remove"
-              @click="removeVolume(idx)"
-            >
-              <Trash2 class="w-4 h-4" />
-            </button>
-          </div>
         </div>
       </div>
 
