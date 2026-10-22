@@ -17,6 +17,7 @@ import (
 	"github.com/synclet-io/synclet/gen/proto/synclet/publicapi/pipeline/v1/pipelinev1connect"
 	"github.com/synclet-io/synclet/gen/proto/synclet/publicapi/registry/v1/registryv1connect"
 	"github.com/synclet-io/synclet/gen/proto/synclet/publicapi/stats/v1/statsv1connect"
+	"github.com/synclet-io/synclet/pkg/buildinfo"
 )
 
 // Services are the public API handlers the tools call.
@@ -52,7 +53,7 @@ func NewHandler(cfg Config, services Services, authorizer Authorizer, authentica
 	servers := map[string]*mcp.Server{}
 
 	for _, level := range []string{LevelRead, LevelActions, LevelWrite} {
-		server := mcp.NewServer(&mcp.Implementation{Name: "synclet", Version: "v1"}, nil)
+		server := mcp.NewServer(&mcp.Implementation{Name: "synclet", Version: buildinfo.Version()}, nil)
 
 		for _, def := range defs {
 			if def.kind == kindWrite && !cfg.WriteTools || !allows(level, def.kind) {

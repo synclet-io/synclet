@@ -33,6 +33,7 @@ import (
 	"github.com/synclet-io/synclet/gen/proto/synclet/publicapi/registry/v1/registryv1connect"
 	statsv1 "github.com/synclet-io/synclet/gen/proto/synclet/publicapi/stats/v1"
 	"github.com/synclet-io/synclet/gen/proto/synclet/publicapi/stats/v1/statsv1connect"
+	"github.com/synclet-io/synclet/pkg/buildinfo"
 	"github.com/synclet-io/synclet/pkg/connectutil"
 )
 
@@ -40,13 +41,16 @@ var (
 	testWorkspaceID = uuid.MustParse("00000000-0000-0000-0000-0000000000aa")
 	viewerUserID    = uuid.MustParse("00000000-0000-0000-0000-000000000001")
 	editorUserID    = uuid.MustParse("00000000-0000-0000-0000-000000000002")
+	outsiderUserID  = uuid.MustParse("00000000-0000-0000-0000-000000000003")
+	otherWorkspace  = uuid.MustParse("00000000-0000-0000-0000-0000000000bb")
 )
 
 const (
-	viewerKey  = "synclet_sk_viewer"
-	editorKey  = "synclet_sk_editor"
-	expiredKey = "synclet_sk_expired"
-	unknownKey = "synclet_sk_unknown"
+	viewerKey   = "synclet_sk_viewer"
+	editorKey   = "synclet_sk_editor"
+	outsiderKey = "synclet_sk_outsider"
+	expiredKey  = "synclet_sk_expired"
+	unknownKey  = "synclet_sk_unknown"
 
 	oauthReadKey    = "synclet_sk_oauth_read"
 	oauthActionsKey = "synclet_sk_oauth_actions"
@@ -68,6 +72,8 @@ func (fakeKeys) ValidateMCPKey(_ context.Context, rawKey string) (MCPKey, error)
 		return MCPKey{UserID: viewerUserID.String(), WorkspaceID: testWorkspaceID.String()}, nil
 	case editorKey:
 		return MCPKey{UserID: editorUserID.String(), WorkspaceID: testWorkspaceID.String()}, nil
+	case outsiderKey:
+		return MCPKey{UserID: outsiderUserID.String(), WorkspaceID: otherWorkspace.String()}, nil
 	case oauthReadKey:
 		return oauthKey(LevelRead), nil
 	case oauthActionsKey:
@@ -334,6 +340,42 @@ func (f *fakeServices) GetConnectorSpec(ctx context.Context, r *connect.Request[
 	return respond[registryv1.GetConnectorSpecResponse](ctx, f, "GetConnectorSpec", r.Msg)
 }
 
+func (f *fakeServices) GetSystemInfo(ctx context.Context, r *connect.Request[pipelinev1.GetSystemInfoRequest]) (*connect.Response[pipelinev1.GetSystemInfoResponse], error) {
+	f.record(ctx, "GetSystemInfo", r.Msg)
+
+	return connect.NewResponse(&pipelinev1.GetSystemInfoResponse{
+		RegistrationEnabled: true,
+		WorkspacesMode:      pipelinev1.WorkspacesMode_WORKSPACES_MODE_SINGLE,
+		EmailEnabled:        true,
+	}), nil
+}
+
+func (f *fakeServices) GetRuntimeDefaults(ctx context.Context, r *connect.Request[pipelinev1.GetRuntimeDefaultsRequest]) (*connect.Response[pipelinev1.GetRuntimeDefaultsResponse], error) {
+	f.record(ctx, "GetRuntimeDefaults", r.Msg)
+
+	return connect.NewResponse(&pipelinev1.GetRuntimeDefaultsResponse{
+		RuntimeDefaults: &pipelinev1.RuntimeDefaults{MaxConcurrentJobs: 4},
+	}), nil
+}
+
+func (f *fakeServices) ListExecutors(ctx context.Context, r *connect.Request[pipelinev1.ListExecutorsRequest]) (*connect.Response[pipelinev1.ListExecutorsResponse], error) {
+	f.record(ctx, "ListExecutors", r.Msg)
+
+	return connect.NewResponse(&pipelinev1.ListExecutorsResponse{
+		Executors: []*pipelinev1.ExecutorInstance{
+			{Id: "exec-1", Type: pipelinev1.ExecutorType_EXECUTOR_TYPE_DOCKER, Version: "v0.15.0"},
+		},
+	}), nil
+}
+
+func (f *fakeServices) GetPipelineSettings(ctx context.Context, r *connect.Request[pipelinev1.GetPipelineSettingsRequest]) (*connect.Response[pipelinev1.GetPipelineSettingsResponse], error) {
+	f.record(ctx, "GetPipelineSettings", r.Msg)
+
+	return connect.NewResponse(&pipelinev1.GetPipelineSettingsResponse{
+		Settings: &pipelinev1.PipelineSettings{MaxJobsPerWorkspace: 7},
+	}), nil
+}
+
 func (f *fakeServices) TriggerSync(ctx context.Context, r *connect.Request[pipelinev1.TriggerSyncRequest]) (*connect.Response[pipelinev1.TriggerSyncResponse], error) {
 	return respond[pipelinev1.TriggerSyncResponse](ctx, f, "TriggerSync", r.Msg)
 }
@@ -522,7 +564,7 @@ var (
 		"list_connections", "get_connection", "list_sources", "get_source", "list_destinations",
 		"get_destination", "list_jobs", "get_job", "list_workflows", "get_workflow", "list_workflow_runs",
 		"get_workflow_run", "get_connection_stats", "get_schema_changes", "get_configured_catalog", "get_discovered_catalog", "get_source_catalog", "list_connectors",
-		"get_connector_spec",
+		"get_connector_spec", "get_system_info",
 	}
 	actionTools = []string{
 		"trigger_sync", "cancel_job", "pause_connection", "resume_connection", "run_workflow", "rerun_workflow_run",
@@ -632,6 +674,7 @@ var toolMethods = map[string]string{
 	"get_source_catalog":     "GetSourceCatalog",
 	"list_connectors":        "ListManagedConnectors",
 	"get_connector_spec":     "GetConnectorSpec",
+	"get_system_info":        "GetSystemInfo",
 	"trigger_sync":           "TriggerSync",
 	"cancel_job":             "CancelJob",
 	"pause_connection":       "DisableConnection",
@@ -1087,7 +1130,7 @@ func TestMCP_ToolSet(t *testing.T) {
 
 	want := slices.Concat(readTools, actionTools, writeTools)
 	assert.ElementsMatch(t, want, names)
-	assert.Len(t, names, 39)
+	assert.Len(t, names, 40)
 
 	for _, def := range toolDefs((&fakeServices{}).services()) {
 		for _, procedure := range def.procedures {
@@ -1138,4 +1181,95 @@ func TestMCP_OAuthLevels(t *testing.T) {
 	require.False(t, res.IsError, resultText(t, res))
 	assert.Equal(t, "TriggerSync", fake.last().method)
 	assert.Equal(t, editorUserID, fake.last().userID)
+}
+
+func TestMCP_GetSystemInfo(t *testing.T) {
+	t.Run("viewer gets every part", func(t *testing.T) {
+		endpoint, fake := newTestServer(t, true)
+		session, _ := connectClient(t, endpoint, viewerKey)
+
+		res := callTool(t, session, "get_system_info", nil)
+		require.False(t, res.IsError, resultText(t, res))
+
+		var out struct {
+			Version    string `json:"version"`
+			SystemInfo struct {
+				RegistrationEnabled bool   `json:"registrationEnabled"`
+				WorkspacesMode      string `json:"workspacesMode"`
+				EmailEnabled        bool   `json:"emailEnabled"`
+			} `json:"system_info"`
+			RuntimeDefaults struct {
+				MaxConcurrentJobs int `json:"maxConcurrentJobs"`
+			} `json:"runtime_defaults"`
+			PipelineSettings struct {
+				MaxJobsPerWorkspace int `json:"maxJobsPerWorkspace"`
+			} `json:"pipeline_settings"`
+			Executors []struct {
+				ID      string `json:"id"`
+				Version string `json:"version"`
+			} `json:"executors"`
+		}
+		require.NoError(t, json.Unmarshal([]byte(resultText(t, res)), &out))
+
+		assert.Equal(t, buildinfo.Version(), out.Version)
+		assert.True(t, out.SystemInfo.RegistrationEnabled)
+		assert.Equal(t, "WORKSPACES_MODE_SINGLE", out.SystemInfo.WorkspacesMode)
+		assert.True(t, out.SystemInfo.EmailEnabled)
+		assert.Equal(t, 4, out.RuntimeDefaults.MaxConcurrentJobs)
+		assert.Equal(t, 7, out.PipelineSettings.MaxJobsPerWorkspace)
+		require.Len(t, out.Executors, 1)
+		assert.Equal(t, "exec-1", out.Executors[0].ID)
+		assert.Equal(t, "v0.15.0", out.Executors[0].Version)
+
+		assert.ElementsMatch(t,
+			[]string{"GetSystemInfo", "GetRuntimeDefaults", "GetPipelineSettings", "ListExecutors"},
+			fake.methods())
+		assert.Equal(t, viewerUserID, fake.last().userID)
+	})
+
+	t.Run("a non-member is refused", func(t *testing.T) {
+		endpoint, fake := newTestServer(t, true)
+		session, _ := connectClient(t, endpoint, outsiderKey)
+
+		res := callTool(t, session, "get_system_info", nil)
+		assert.True(t, res.IsError)
+		assert.Contains(t, resultText(t, res), "permission_denied")
+		assert.Empty(t, fake.methods())
+	})
+
+	t.Run("each part is authorized by its procedure", func(t *testing.T) {
+		var procedures []string
+
+		for _, def := range toolDefs((&fakeServices{}).services()) {
+			if def.name == "get_system_info" {
+				procedures = def.procedures
+			}
+		}
+
+		assert.ElementsMatch(t, []string{
+			pipelinev1connect.SourceServiceGetSystemInfoProcedure,
+			pipelinev1connect.SourceServiceGetRuntimeDefaultsProcedure,
+			pipelinev1connect.SourceServiceListExecutorsProcedure,
+			pipelinev1connect.ConnectionServiceGetPipelineSettingsProcedure,
+		}, procedures)
+	})
+
+	t.Run("unknown arguments are refused", func(t *testing.T) {
+		endpoint, fake := newTestServer(t, true)
+		session, _ := connectClient(t, endpoint, viewerKey)
+
+		res := callTool(t, session, "get_system_info", map[string]any{"x": 1})
+		assert.True(t, res.IsError)
+		assert.Contains(t, resultText(t, res), "invalid arguments")
+		assert.Empty(t, fake.methods())
+	})
+}
+
+func TestMCP_ServerVersion(t *testing.T) {
+	endpoint, _ := newTestServer(t, true)
+	session, _ := connectClient(t, endpoint, viewerKey)
+
+	info := session.InitializeResult().ServerInfo
+	assert.Equal(t, "synclet", info.Name)
+	assert.Equal(t, buildinfo.Version(), info.Version)
 }

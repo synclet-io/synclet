@@ -137,6 +137,7 @@ func toolDefs(services Services) []toolDef {
 			registryv1connect.ConnectorRegistryServiceListManagedConnectorsProcedure, services.Registry.ListManagedConnectors),
 		rpcTool("get_connector_spec", "Get the configuration spec (JSON Schema) of a connector.", kindRead,
 			registryv1connect.ConnectorRegistryServiceGetConnectorSpecProcedure, services.Registry.GetConnectorSpec),
+		systemInfoTool(services.Sources, services.Connections),
 
 		rpcTool("trigger_sync", "Start a sync of a connection now.", kindAction,
 			pc.JobServiceTriggerSyncProcedure, services.Jobs.TriggerSync),
