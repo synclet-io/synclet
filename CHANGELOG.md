@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.16.0](https://github.com/synclet-io/synclet/compare/synclet-v0.15.0...synclet-v0.16.0) (2026-10-22)
+
+
+### Features
+
+* **executor:** Docker applies cpu_request and memory_request ([a282948](https://github.com/synclet-io/synclet/commit/a2829480b35a464977c4362aa924344ed854b4e7))
+* **mcp:** get_system_info tool and the real server version ([46a277b](https://github.com/synclet-io/synclet/commit/46a277ba8594fe605052dae44c5a4572c0f59dc2))
+* **mcp:** reference for mappers and runtime_config, validate_mappers, server instructions ([ad45942](https://github.com/synclet-io/synclet/commit/ad45942a1493e6f434816a60b7948b9801e9c28b))
+* **pipeline:** refuse a runtime_config that is not a JSON object or has unknown keys ([b3ab767](https://github.com/synclet-io/synclet/commit/b3ab7675dc8160dbef2a02550b1a0d4dfdad10c3))
+
+
+### Bug Fixes
+
+* **ui:** read airbyte_type and WellKnownTypes refs for transform column types ([1659531](https://github.com/synclet-io/synclet/commit/1659531acb976d06656d00caf822b309b4ceb459))
+
 ## [0.15.0](https://github.com/synclet-io/synclet/compare/synclet-v0.14.0...synclet-v0.15.0) (2026-10-21)
 
 
