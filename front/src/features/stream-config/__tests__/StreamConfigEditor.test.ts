@@ -200,3 +200,50 @@ describe('bulk sync mode', () => {
     expect(wrapper.find('[role="status"]').text()).toContain('1 stream skipped')
   })
 })
+
+describe('expanding and collapsing namespaces', () => {
+  function mountEditor() {
+    return mount(StreamConfigEditor, {
+      props: {
+        'streams': [
+          row({ name: 'orders', namespace: 'sales' }),
+          row({ name: 'users', namespace: 'crm' }),
+        ],
+        'connectionId': '',
+        'onUpdate:streams': () => {},
+      },
+      global: { stubs: { StreamExpandedRow: true } },
+    })
+  }
+
+  const streamInput = (wrapper: ReturnType<typeof mountEditor>, name: string) =>
+    wrapper.find(`input[aria-label="Enable stream ${name}"]`)
+  const button = (wrapper: ReturnType<typeof mountEditor>, label: string) =>
+    wrapper.find(`button[aria-label="${label}"]`)
+
+  it('collapse all hides the streams of every namespace and closes the open stream', async () => {
+    const wrapper = mountEditor()
+    await button(wrapper, 'Expand stream orders').trigger('click')
+    expect(wrapper.find('stream-expanded-row-stub').exists()).toBe(true)
+
+    await button(wrapper, 'Collapse all').trigger('click')
+
+    expect(streamInput(wrapper, 'orders').exists()).toBe(false)
+    expect(streamInput(wrapper, 'users').exists()).toBe(false)
+    expect(wrapper.find('stream-expanded-row-stub').exists()).toBe(false)
+    expect(button(wrapper, 'Collapse all').attributes('disabled')).toBeDefined()
+    expect(button(wrapper, 'Expand all').attributes('disabled')).toBeUndefined()
+  })
+
+  it('expand all shows the streams of every namespace', async () => {
+    const wrapper = mountEditor()
+    await button(wrapper, 'Collapse all').trigger('click')
+
+    await button(wrapper, 'Expand all').trigger('click')
+
+    expect(streamInput(wrapper, 'orders').exists()).toBe(true)
+    expect(streamInput(wrapper, 'users').exists()).toBe(true)
+    expect(button(wrapper, 'Expand all').attributes('disabled')).toBeDefined()
+    expect(button(wrapper, 'Collapse all').attributes('disabled')).toBeUndefined()
+  })
+})

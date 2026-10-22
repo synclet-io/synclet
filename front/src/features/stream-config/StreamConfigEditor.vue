@@ -3,7 +3,7 @@ import type { DestinationSyncMode, MapperTarget, StreamState, SyncMode } from '@
 import type { StreamRow } from './catalogStreams'
 import type { StreamValidationError } from './useStreamValidation'
 import { SBadge, SButton, SInput, SSelect } from '@shared/ui'
-import { AlertCircle, ChevronDown, ChevronRight, ChevronUp } from 'lucide-vue-next'
+import { AlertCircle, ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, ChevronUp } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
 import { streamKey } from './catalogStreams'
 import { getLeafFields, parseJsonSchema } from './schemaParser'
@@ -153,6 +153,19 @@ function toggleNamespace(ns: string) {
   expandedNamespaces.value = updated
 }
 
+const allNamespaces = computed(() => new Set(streams.value.map(s => s.namespace)))
+
+const allNamespacesExpanded = computed(() => [...allNamespaces.value].every(ns => expandedNamespaces.value.has(ns)))
+
+function expandAll() {
+  expandedNamespaces.value = new Set(allNamespaces.value)
+}
+
+function collapseAll() {
+  expandedNamespaces.value = new Set()
+  expandedStream.value = null
+}
+
 function isNamespaceExpanded(ns: string): boolean {
   return expandedNamespaces.value.has(ns)
 }
@@ -229,6 +242,20 @@ function streamState(s: StreamRow): StreamState | undefined {
         class="w-64"
         @update:model-value="applyBulkSyncMode($event as string)"
       />
+      <SButton variant="ghost" size="sm" :disabled="allNamespacesExpanded" aria-label="Expand all" @click="expandAll">
+        <ChevronsUpDown class="w-4 h-4" aria-hidden="true" />
+        Expand all
+      </SButton>
+      <SButton
+        variant="ghost"
+        size="sm"
+        :disabled="expandedNamespaces.size === 0 && expandedStream === null"
+        aria-label="Collapse all"
+        @click="collapseAll"
+      >
+        <ChevronsDownUp class="w-4 h-4" aria-hidden="true" />
+        Collapse all
+      </SButton>
       <span v-if="bulkResult" role="status" class="text-xs text-text-secondary">{{ bulkResult }}</span>
     </div>
 
