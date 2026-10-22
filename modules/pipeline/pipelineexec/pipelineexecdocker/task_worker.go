@@ -17,21 +17,23 @@ import (
 // using ConnectorClient (Docker). Follows the same semaphore pattern as DockerSyncWorker
 // but without heartbeat (tasks are short-lived). Per D-16, uses a separate goroutine pool.
 type DockerTaskWorker struct {
-	backend   pipelineexec.ExecutorBackend
-	client    *ConnectorClient
-	manager   *jobutil.WorkerManager
-	semaphore chan struct{}
-	workerID  string
-	logger    *logging.Logger
+	backend         pipelineexec.ExecutorBackend
+	client          *ConnectorClient
+	runtimeDefaults pipelineservice.RuntimeDefaults
+	manager         *jobutil.WorkerManager
+	semaphore       chan struct{}
+	workerID        string
+	logger          *logging.Logger
 }
 
 // DockerTaskWorkerParams holds all constructor dependencies.
 type DockerTaskWorkerParams struct {
-	Backend       pipelineexec.ExecutorBackend
-	Client        *ConnectorClient
-	Manager       *jobutil.WorkerManager
-	MaxConcurrent int
-	Logger        *logging.Logger
+	Backend         pipelineexec.ExecutorBackend
+	Client          *ConnectorClient
+	RuntimeDefaults pipelineservice.RuntimeDefaults
+	Manager         *jobutil.WorkerManager
+	MaxConcurrent   int
+	Logger          *logging.Logger
 }
 
 // NewDockerTaskWorker creates a new DockerTaskWorker with all dependencies.
@@ -44,12 +46,13 @@ func NewDockerTaskWorker(params DockerTaskWorkerParams) *DockerTaskWorker {
 	}
 
 	return &DockerTaskWorker{
-		backend:   params.Backend,
-		client:    params.Client,
-		manager:   params.Manager,
-		semaphore: make(chan struct{}, concurrency),
-		workerID:  workerID,
-		logger:    params.Logger.Named("docker-task-worker"),
+		backend:         params.Backend,
+		client:          params.Client,
+		runtimeDefaults: params.RuntimeDefaults,
+		manager:         params.Manager,
+		semaphore:       make(chan struct{}, concurrency),
+		workerID:        workerID,
+		logger:          params.Logger.Named("docker-task-worker"),
 	}
 }
 
@@ -127,7 +130,7 @@ func (w *DockerTaskWorker) executeTask(ctx context.Context, task *pipelineexec.C
 
 // executeCheck runs a connection check and marshals the result.
 func (w *DockerTaskWorker) executeCheck(ctx context.Context, task *pipelineexec.ClaimConnectorTaskResult, resultBytes *[]byte) error {
-	status, err := w.client.Check(ctx, task.Image, task.Config)
+	status, err := w.client.Check(ctx, task.Image, task.Config, resolveResources(w.runtimeDefaults, task.RuntimeConfig))
 	if err != nil {
 		return fmt.Errorf("check: %w", err)
 	}
@@ -149,7 +152,7 @@ func (w *DockerTaskWorker) executeCheck(ctx context.Context, task *pipelineexec.
 
 // executeSpec runs a connector spec and marshals the result.
 func (w *DockerTaskWorker) executeSpec(ctx context.Context, task *pipelineexec.ClaimConnectorTaskResult, resultBytes *[]byte) error {
-	spec, err := w.client.Spec(ctx, task.Image)
+	spec, err := w.client.Spec(ctx, task.Image, resolveResources(w.runtimeDefaults, task.RuntimeConfig))
 	if err != nil {
 		return fmt.Errorf("spec: %w", err)
 	}
@@ -196,7 +199,7 @@ func (w *DockerTaskWorker) executeSpec(ctx context.Context, task *pipelineexec.C
 
 // executeDiscover runs catalog discovery and marshals the result.
 func (w *DockerTaskWorker) executeDiscover(ctx context.Context, task *pipelineexec.ClaimConnectorTaskResult, resultBytes *[]byte) error {
-	catalog, err := w.client.Discover(ctx, task.Image, task.Config)
+	catalog, err := w.client.Discover(ctx, task.Image, task.Config, resolveResources(w.runtimeDefaults, task.RuntimeConfig))
 	if err != nil {
 		return fmt.Errorf("discover: %w", err)
 	}

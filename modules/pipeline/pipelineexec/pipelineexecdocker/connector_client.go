@@ -29,23 +29,29 @@ func NewConnectorClient(runner pkgcontainer.Runner) *ConnectorClient {
 	return &ConnectorClient{runner: runner}
 }
 
-// ResourceLimits holds memory and CPU limits for a container,
+// ResourceLimits holds memory and CPU limits and requests for a container,
 // plus Docker-specific runtime options such as network and volumes.
 type ResourceLimits struct {
-	MemoryLimit int64
-	CPULimit    float64
-	NetworkMode string
-	ExtraMounts []pkgcontainer.BindMount
-	LocalDir    string
+	MemoryLimit   int64
+	CPULimit      float64
+	MemoryRequest int64
+	CPURequest    float64
+	NetworkMode   string
+	ExtraMounts   []pkgcontainer.BindMount
+	LocalDir      string
 }
 
 // Spec runs the connector's spec command and returns its specification.
 // The container runs with network mode "none" since no external access is needed.
-func (c *ConnectorClient) Spec(ctx context.Context, image string) (*protocol.ConnectorSpecification, error) {
+func (c *ConnectorClient) Spec(ctx context.Context, image string, limits ResourceLimits) (*protocol.ConnectorSpecification, error) {
 	messages, err := c.runAndCollect(ctx, nil, pkgcontainer.RunOptions{
-		Image:       image,
-		Command:     []string{"spec"},
-		NetworkMode: "none",
+		Image:         image,
+		Command:       []string{"spec"},
+		NetworkMode:   "none",
+		MemoryLimit:   limits.MemoryLimit,
+		CPULimit:      limits.CPULimit,
+		MemoryRequest: limits.MemoryRequest,
+		CPURequest:    limits.CPURequest,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("spec: %w", err)
@@ -61,14 +67,18 @@ func (c *ConnectorClient) Spec(ctx context.Context, image string) (*protocol.Con
 }
 
 // Check validates a connector configuration by running the check command.
-func (c *ConnectorClient) Check(ctx context.Context, image string, config json.RawMessage) (*protocol.AirbyteConnectionStatus, error) {
+func (c *ConnectorClient) Check(ctx context.Context, image string, config json.RawMessage, limits ResourceLimits) (*protocol.AirbyteConnectionStatus, error) {
 	redactor := pipelineexec.NewRedactor(config)
 
 	messages, err := c.runAndCollect(ctx, redactor, pkgcontainer.RunOptions{
-		Image:       image,
-		Command:     []string{"check", "--config", "/tmp/config.json"},
-		ConfigFile:  config,
-		NetworkMode: "bridge",
+		Image:         image,
+		Command:       []string{"check", "--config", "/tmp/config.json"},
+		ConfigFile:    config,
+		NetworkMode:   "bridge",
+		MemoryLimit:   limits.MemoryLimit,
+		CPULimit:      limits.CPULimit,
+		MemoryRequest: limits.MemoryRequest,
+		CPURequest:    limits.CPURequest,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("check: %w", err)
@@ -87,12 +97,16 @@ func (c *ConnectorClient) Check(ctx context.Context, image string, config json.R
 }
 
 // Discover discovers the catalog (available streams) for a connector.
-func (c *ConnectorClient) Discover(ctx context.Context, image string, config json.RawMessage) (*protocol.AirbyteCatalog, error) {
+func (c *ConnectorClient) Discover(ctx context.Context, image string, config json.RawMessage, limits ResourceLimits) (*protocol.AirbyteCatalog, error) {
 	messages, err := c.runAndCollect(ctx, pipelineexec.NewRedactor(config), pkgcontainer.RunOptions{
-		Image:       image,
-		Command:     []string{"discover", "--config", "/tmp/config.json"},
-		ConfigFile:  config,
-		NetworkMode: "bridge",
+		Image:         image,
+		Command:       []string{"discover", "--config", "/tmp/config.json"},
+		ConfigFile:    config,
+		NetworkMode:   "bridge",
+		MemoryLimit:   limits.MemoryLimit,
+		CPULimit:      limits.CPULimit,
+		MemoryRequest: limits.MemoryRequest,
+		CPURequest:    limits.CPURequest,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("discover: %w", err)
@@ -133,17 +147,19 @@ func (c *ConnectorClient) Read(ctx context.Context, image string, config json.Ra
 	}
 
 	result, err := c.runWithAutoPull(ctx, pkgcontainer.RunOptions{
-		Image:       image,
-		Command:     cmd,
-		ConfigFile:  config,
-		CatalogFile: catalogBytes,
-		StateFile:   stateBytes,
-		MemoryLimit: limits.MemoryLimit,
-		CPULimit:    limits.CPULimit,
-		NetworkMode: networkMode,
-		Labels:      labels,
-		ExtraMounts: limits.ExtraMounts,
-		LocalDir:    limits.LocalDir,
+		Image:         image,
+		Command:       cmd,
+		ConfigFile:    config,
+		CatalogFile:   catalogBytes,
+		StateFile:     stateBytes,
+		MemoryLimit:   limits.MemoryLimit,
+		CPULimit:      limits.CPULimit,
+		MemoryRequest: limits.MemoryRequest,
+		CPURequest:    limits.CPURequest,
+		NetworkMode:   networkMode,
+		Labels:        labels,
+		ExtraMounts:   limits.ExtraMounts,
+		LocalDir:      limits.LocalDir,
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("read: %w", err)
@@ -178,17 +194,19 @@ func (c *ConnectorClient) Write(ctx context.Context, image string, config json.R
 	}
 
 	result, err := c.runWithAutoPull(ctx, pkgcontainer.RunOptions{
-		Image:       image,
-		Command:     []string{"write", "--config", "/tmp/config.json", "--catalog", "/tmp/catalog.json"},
-		ConfigFile:  config,
-		CatalogFile: catalogBytes,
-		Stdin:       stdin,
-		MemoryLimit: limits.MemoryLimit,
-		CPULimit:    limits.CPULimit,
-		NetworkMode: networkMode,
-		Labels:      labels,
-		ExtraMounts: limits.ExtraMounts,
-		LocalDir:    limits.LocalDir,
+		Image:         image,
+		Command:       []string{"write", "--config", "/tmp/config.json", "--catalog", "/tmp/catalog.json"},
+		ConfigFile:    config,
+		CatalogFile:   catalogBytes,
+		Stdin:         stdin,
+		MemoryLimit:   limits.MemoryLimit,
+		CPULimit:      limits.CPULimit,
+		MemoryRequest: limits.MemoryRequest,
+		CPURequest:    limits.CPURequest,
+		NetworkMode:   networkMode,
+		Labels:        labels,
+		ExtraMounts:   limits.ExtraMounts,
+		LocalDir:      limits.LocalDir,
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("write: %w", err)

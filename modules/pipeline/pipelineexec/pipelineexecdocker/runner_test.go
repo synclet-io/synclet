@@ -21,8 +21,6 @@ import (
 	"github.com/moby/moby/client"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	pkgcontainer "github.com/synclet-io/synclet/pkg/container"
 )
 
 func TestBoundedBuffer_UnderLimit(t *testing.T) {
@@ -96,54 +94,111 @@ func TestBoundedBuffer_EmptyRead(t *testing.T) {
 	assert.ErrorIs(t, err, io.EOF)
 }
 
-func TestDefaultDockerResourceLimits(t *testing.T) {
-	// Test default constant values.
-	assert.Equal(t, defaultDockerMemoryLimit, int64(2*1024*1024*1024))
-	assert.InDelta(t, 1.0, defaultDockerCPULimit, 0.001)
+func TestContainerRunner_Run_HostConfigResources(t *testing.T) {
+	const (
+		gi  = int64(1024 * 1024 * 1024)
+		mi  = int64(1024 * 1024)
+		cpu = int64(1e9)
+	)
 
-	// Test defaulting logic: when opts are 0, defaults apply.
-	t.Run("zero opts get defaults", func(t *testing.T) {
-		var memory int64
-		var nanoCPUs int64
+	tests := []struct {
+		name              string
+		opts              RunOptions
+		memory            int64
+		nanoCPUs          int64
+		memoryReservation int64
+		cpuShares         int64
+	}{
+		{name: "no resources", memory: 2 * gi, nanoCPUs: cpu},
+		{
+			name:   "requests under the default limits",
+			opts:   RunOptions{MemoryRequest: 512 * mi, CPURequest: 0.5},
+			memory: 2 * gi, nanoCPUs: cpu, memoryReservation: 512 * mi, cpuShares: 512,
+		},
+		{
+			name:   "memory request above the limit is clamped",
+			opts:   RunOptions{MemoryLimit: gi, MemoryRequest: 4 * gi},
+			memory: gi, nanoCPUs: cpu, memoryReservation: gi,
+		},
+		{
+			name:   "cpu request with its limit",
+			opts:   RunOptions{CPURequest: 2, CPULimit: 2},
+			memory: 2 * gi, nanoCPUs: 2 * cpu, cpuShares: 2048,
+		},
+		{
+			name:   "tiny cpu request gets the docker minimum",
+			opts:   RunOptions{CPURequest: 0.001},
+			memory: 2 * gi, nanoCPUs: cpu, cpuShares: 2,
+		},
+	}
 
-		opts := pkgcontainer.RunOptions{MemoryLimit: 0, CPULimit: 0}
-		if opts.MemoryLimit > 0 {
-			memory = opts.MemoryLimit
-		} else {
-			memory = defaultDockerMemoryLimit
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			hostCfg := createdHostConfig(t, tt.opts)
+
+			assert.Equal(t, tt.memory, hostCfg.Memory, "Memory")
+			assert.Equal(t, tt.nanoCPUs, hostCfg.NanoCPUs, "NanoCPUs")
+			assert.Equal(t, tt.memoryReservation, hostCfg.MemoryReservation, "MemoryReservation")
+			assert.Equal(t, tt.cpuShares, hostCfg.CPUShares, "CPUShares")
+		})
+	}
+}
+
+// createdHostConfig runs opts against a fake daemon and returns the
+// HostConfig of the container create request.
+func createdHostConfig(t *testing.T, opts RunOptions) dockercontainer.HostConfig {
+	t.Helper()
+
+	var (
+		mu      sync.Mutex
+		created *dockercontainer.HostConfig
+	)
+
+	daemon := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/containers/create"):
+			var body struct {
+				HostConfig *dockercontainer.HostConfig
+			}
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+
+				return
+			}
+
+			mu.Lock()
+			created = body.HostConfig
+			mu.Unlock()
+
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"Id":"ctr-1","Warnings":[]}`))
+		case r.Method == http.MethodDelete:
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			http.Error(w, "unsupported in test", http.StatusInternalServerError)
 		}
+	}))
+	t.Cleanup(daemon.Close)
 
-		if opts.CPULimit > 0 {
-			nanoCPUs = int64(opts.CPULimit * 1e9)
-		} else {
-			nanoCPUs = int64(defaultDockerCPULimit * 1e9)
-		}
+	cli, err := client.New(
+		client.WithHost("tcp://"+strings.TrimPrefix(daemon.URL, "http://")),
+		client.WithHTTPClient(daemon.Client()),
+		client.WithAPIVersion("1.47"),
+	)
+	require.NoError(t, err)
 
-		assert.Equal(t, int64(2*1024*1024*1024), memory)
-		assert.Equal(t, int64(1e9), nanoCPUs)
-	})
+	r := &ContainerRunner{client: cli, ownerID: "self"}
 
-	// Test explicit values override defaults.
-	t.Run("explicit opts override defaults", func(t *testing.T) {
-		var memory int64
-		var nanoCPUs int64
+	opts.Image = "connector:1"
+	_, err = r.Run(context.Background(), opts)
+	require.Error(t, err)
 
-		opts := pkgcontainer.RunOptions{MemoryLimit: 4 * 1024 * 1024 * 1024, CPULimit: 2.0}
-		if opts.MemoryLimit > 0 {
-			memory = opts.MemoryLimit
-		} else {
-			memory = defaultDockerMemoryLimit
-		}
+	mu.Lock()
+	defer mu.Unlock()
 
-		if opts.CPULimit > 0 {
-			nanoCPUs = int64(opts.CPULimit * 1e9)
-		} else {
-			nanoCPUs = int64(defaultDockerCPULimit * 1e9)
-		}
+	require.NotNil(t, created, "Run did not create a container")
 
-		assert.Equal(t, int64(4*1024*1024*1024), memory)
-		assert.Equal(t, int64(2e9), nanoCPUs)
-	})
+	return *created
 }
 
 func TestContainerRunner_ContainerLabels(t *testing.T) {

@@ -73,6 +73,9 @@ type ClaimConnectorTaskResult struct {
 	// ServiceAccountName is the entity's account for the connector pod; empty
 	// means the executor's default.
 	ServiceAccountName string
+	// RuntimeConfig is the entity's raw runtime_config JSON; empty for spec
+	// and inline-config checks.
+	RuntimeConfig string
 }
 
 // ReportConnectorTaskResultParams holds parameters for reporting connector task completion.

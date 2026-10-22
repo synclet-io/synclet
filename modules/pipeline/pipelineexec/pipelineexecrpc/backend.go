@@ -305,6 +305,7 @@ func (a *Backend) ClaimConnectorTask(ctx context.Context, workerID string) (*pip
 			WorkspaceID: parsedWorkspaceID,
 
 			ServiceAccountName: resp.Msg.GetServiceAccountName(),
+			RuntimeConfig:      resp.Msg.GetRuntimeConfig(),
 		}
 
 		return nil

@@ -21,6 +21,9 @@ type ClaimTaskResult struct {
 	// ServiceAccountName is the service_account_name of the source's or
 	// destination's runtime config; empty for spec and inline-config checks.
 	ServiceAccountName string
+	// RuntimeConfig is the raw runtime_config of the source or destination;
+	// empty for spec and inline-config checks.
+	RuntimeConfig string
 }
 
 // ClaimTask atomically claims a pending connector task and resolves image + decrypted config.
@@ -50,20 +53,16 @@ func (uc *ClaimTask) Execute(ctx context.Context, workerID string) (*ClaimTaskRe
 		return nil, nil
 	}
 
-	// 2. Resolve image, config and service account based on payload type.
-	var (
-		image          string
-		config         []byte
-		serviceAccount string
-	)
+	// 2. Resolve image, config and runtime settings based on payload type.
+	var target claimTarget
 
 	switch payload := task.Payload.(type) {
 	case *pipelineservice.CheckPayload:
-		image, config, serviceAccount, err = uc.resolveCheckPayload(ctx, task.WorkspaceID, payload)
+		target, err = uc.resolveCheckPayload(ctx, task.WorkspaceID, payload)
 	case *pipelineservice.SpecPayload:
-		image, err = uc.resolveSpecPayload(ctx, task.WorkspaceID, payload)
+		target.image, err = uc.resolveSpecPayload(ctx, task.WorkspaceID, payload)
 	case *pipelineservice.DiscoverPayload:
-		image, config, serviceAccount, err = uc.resolveDiscoverPayload(ctx, task.WorkspaceID, payload)
+		target, err = uc.resolveDiscoverPayload(ctx, task.WorkspaceID, payload)
 	default:
 		return nil, fmt.Errorf("unknown payload type: %T", task.Payload)
 	}
@@ -75,12 +74,31 @@ func (uc *ClaimTask) Execute(ctx context.Context, workerID string) (*ClaimTaskRe
 	return &ClaimTaskResult{
 		TaskID:      task.ID,
 		TaskType:    task.TaskType,
-		Image:       image,
-		Config:      config,
+		Image:       target.image,
+		Config:      target.config,
 		WorkspaceID: task.WorkspaceID,
 
-		ServiceAccountName: serviceAccount,
+		ServiceAccountName: target.serviceAccount,
+		RuntimeConfig:      target.runtimeConfig,
 	}, nil
+}
+
+// claimTarget is what a claimed task runs: the connector image, its decrypted
+// config and the runtime settings of the task's source or destination.
+type claimTarget struct {
+	image          string
+	config         []byte
+	serviceAccount string
+	runtimeConfig  string
+}
+
+// entityRuntimeConfig returns an entity's raw runtime config, empty when unset.
+func entityRuntimeConfig(runtimeConfig *string) string {
+	if runtimeConfig == nil {
+		return ""
+	}
+
+	return *runtimeConfig
 }
 
 // entityServiceAccount returns the service_account_name of an entity's runtime config.
@@ -93,56 +111,62 @@ func entityServiceAccount(runtimeConfig *string) string {
 	return cfg.ServiceAccountName
 }
 
-// resolveCheckPayload resolves image, config and service account for a check task.
+// resolveCheckPayload resolves the target of a check task.
 // CheckPayload may contain inline config or reference a source/destination.
-func (uc *ClaimTask) resolveCheckPayload(ctx context.Context, workspaceID uuid.UUID, payload *pipelineservice.CheckPayload) (image string, config []byte, serviceAccount string, err error) {
+func (uc *ClaimTask) resolveCheckPayload(ctx context.Context, workspaceID uuid.UUID, payload *pipelineservice.CheckPayload) (claimTarget, error) {
+	var target claimTarget
+
 	// Resolve managed connector for image, scoped to workspace.
 	connector, err := uc.storage.ManagedConnectors().First(ctx, &pipelineservice.ManagedConnectorFilter{
 		ID:          filter.Equals(payload.ManagedConnectorID),
 		WorkspaceID: filter.Equals(workspaceID),
 	})
 	if err != nil {
-		return "", nil, "", fmt.Errorf("loading managed connector: %w", err)
+		return claimTarget{}, fmt.Errorf("loading managed connector: %w", err)
 	}
 
-	image = connector.DockerImage + ":" + connector.DockerTag
+	target.image = connector.DockerImage + ":" + connector.DockerTag
 
 	// Resolve config: use inline config if present, otherwise load from source/destination.
 	var configJSON string
 	if payload.Config != nil {
 		configJSON = *payload.Config
-		serviceAccount = payload.ServiceAccountName
+		target.serviceAccount = payload.ServiceAccountName
 	} else if payload.SourceID != nil {
 		src, err := uc.storage.Sources().First(ctx, &pipelineservice.SourceFilter{
 			ID:          filter.Equals(*payload.SourceID),
 			WorkspaceID: filter.Equals(workspaceID),
 		})
 		if err != nil {
-			return "", nil, "", fmt.Errorf("loading source: %w", err)
+			return claimTarget{}, fmt.Errorf("loading source: %w", err)
 		}
 
 		configJSON = src.Config
-		serviceAccount = entityServiceAccount(src.RuntimeConfig)
+		target.serviceAccount = entityServiceAccount(src.RuntimeConfig)
+		target.runtimeConfig = entityRuntimeConfig(src.RuntimeConfig)
 	} else if payload.DestinationID != nil {
 		dest, err := uc.storage.Destinations().First(ctx, &pipelineservice.DestinationFilter{
 			ID:          filter.Equals(*payload.DestinationID),
 			WorkspaceID: filter.Equals(workspaceID),
 		})
 		if err != nil {
-			return "", nil, "", fmt.Errorf("loading destination: %w", err)
+			return claimTarget{}, fmt.Errorf("loading destination: %w", err)
 		}
 
 		configJSON = dest.Config
-		serviceAccount = entityServiceAccount(dest.RuntimeConfig)
+		target.serviceAccount = entityServiceAccount(dest.RuntimeConfig)
+		target.runtimeConfig = entityRuntimeConfig(dest.RuntimeConfig)
 	}
 
 	// Decrypt config secrets.
 	decrypted, err := pipelinesecrets.DecryptConfigSecrets(ctx, uc.secrets, configJSON)
 	if err != nil {
-		return "", nil, "", fmt.Errorf("decrypting config secrets: %w", err)
+		return claimTarget{}, fmt.Errorf("decrypting config secrets: %w", err)
 	}
 
-	return image, []byte(decrypted), serviceAccount, nil
+	target.config = []byte(decrypted)
+
+	return target, nil
 }
 
 // resolveSpecPayload resolves image for a spec task (no config needed).
@@ -158,18 +182,20 @@ func (uc *ClaimTask) resolveSpecPayload(ctx context.Context, workspaceID uuid.UU
 	return connector.DockerImage + ":" + connector.DockerTag, nil
 }
 
-// resolveDiscoverPayload resolves image, config and service account for a discover task.
-func (uc *ClaimTask) resolveDiscoverPayload(ctx context.Context, workspaceID uuid.UUID, payload *pipelineservice.DiscoverPayload) (image string, config []byte, serviceAccount string, err error) {
+// resolveDiscoverPayload resolves the target of a discover task.
+func (uc *ClaimTask) resolveDiscoverPayload(ctx context.Context, workspaceID uuid.UUID, payload *pipelineservice.DiscoverPayload) (claimTarget, error) {
+	var target claimTarget
+
 	// Resolve managed connector for image, scoped to workspace.
 	connector, err := uc.storage.ManagedConnectors().First(ctx, &pipelineservice.ManagedConnectorFilter{
 		ID:          filter.Equals(payload.ManagedConnectorID),
 		WorkspaceID: filter.Equals(workspaceID),
 	})
 	if err != nil {
-		return "", nil, "", fmt.Errorf("loading managed connector: %w", err)
+		return claimTarget{}, fmt.Errorf("loading managed connector: %w", err)
 	}
 
-	image = connector.DockerImage + ":" + connector.DockerTag
+	target.image = connector.DockerImage + ":" + connector.DockerTag
 
 	// Resolve source config, scoped to workspace.
 	src, err := uc.storage.Sources().First(ctx, &pipelineservice.SourceFilter{
@@ -177,14 +203,18 @@ func (uc *ClaimTask) resolveDiscoverPayload(ctx context.Context, workspaceID uui
 		WorkspaceID: filter.Equals(workspaceID),
 	})
 	if err != nil {
-		return "", nil, "", fmt.Errorf("loading source: %w", err)
+		return claimTarget{}, fmt.Errorf("loading source: %w", err)
 	}
 
 	// Decrypt config secrets.
 	decrypted, err := pipelinesecrets.DecryptConfigSecrets(ctx, uc.secrets, src.Config)
 	if err != nil {
-		return "", nil, "", fmt.Errorf("decrypting config secrets: %w", err)
+		return claimTarget{}, fmt.Errorf("decrypting config secrets: %w", err)
 	}
 
-	return image, []byte(decrypted), entityServiceAccount(src.RuntimeConfig), nil
+	target.config = []byte(decrypted)
+	target.serviceAccount = entityServiceAccount(src.RuntimeConfig)
+	target.runtimeConfig = entityRuntimeConfig(src.RuntimeConfig)
+
+	return target, nil
 }

@@ -8,10 +8,12 @@ Every key is optional. A key left out uses the instance default (`get_system_inf
 
 | Key | Value | Docker executor | Kubernetes executor |
 |---|---|---|---|
-| `cpu_request` | CPU quantity | ignored | container CPU request |
+| `cpu_request` | CPU quantity | CPU shares, 1024 per core (relative weight under contention) | container CPU request |
 | `cpu_limit` | CPU quantity | container CPU limit (default 1 core) | container CPU limit |
-| `memory_request` | memory quantity | ignored | container memory request |
+| `memory_request` | memory quantity | memory reservation (soft limit, capped at the memory limit) | container memory request |
 | `memory_limit` | memory quantity | container memory limit (default 2Gi) | container memory limit |
+
+On Docker the resources apply to every connector container, both sync and check/spec/discover, and an unset request leaves the reservation and shares unset.
 
 Quantities use the Kubernetes format, given as strings. CPU: `"500m"` is half a core, `"2"` is two cores. Memory: `"512Mi"`, `"1Gi"`, `"1.5Gi"` (binary units `Ki Mi Gi Ti`) or `"500M"`, `"1G"` (decimal units).
 

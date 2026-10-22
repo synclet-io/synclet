@@ -233,7 +233,7 @@ func TestConnectorClientRedactsSecrets(t *testing.T) {
 			finishedRunResult("", "crash: config={\"password\":\"hunter2-pass\"}", 1),
 		}}
 
-		_, err := NewConnectorClient(runner).Check(ctx, "img", config)
+		_, err := NewConnectorClient(runner).Check(ctx, "img", config, ResourceLimits{})
 		require.Error(t, err)
 		assert.NotContains(t, err.Error(), "hunter2-pass")
 		assert.Contains(t, err.Error(), `"password":"***"`)
@@ -243,14 +243,14 @@ func TestConnectorClientRedactsSecrets(t *testing.T) {
 		stdout := `{"type":"TRACE","trace":{"type":"ERROR","error":{"message":"bad hunter2-pass","internal_message":"pw hunter2-pass"}}}` + "\n"
 		runner := &mockContainerRunner{runResults: []*pkgcontainer.RunResult{finishedRunResult(stdout, "", 0)}}
 
-		_, err := NewConnectorClient(runner).Check(ctx, "img", config)
+		_, err := NewConnectorClient(runner).Check(ctx, "img", config, ResourceLimits{})
 		require.Error(t, err)
 		assert.Equal(t, "check: connector error: bad *** (internal: pw ***)", err.Error())
 
 		stdout = `{"type":"CONNECTION_STATUS","connectionStatus":{"status":"FAILED","message":"login hunter2-pass rejected"}}` + "\n"
 		runner = &mockContainerRunner{runResults: []*pkgcontainer.RunResult{finishedRunResult(stdout, "", 0)}}
 
-		status, err := NewConnectorClient(runner).Check(ctx, "img", config)
+		status, err := NewConnectorClient(runner).Check(ctx, "img", config, ResourceLimits{})
 		require.NoError(t, err)
 		assert.Equal(t, "login *** rejected", status.Message)
 	})
@@ -297,7 +297,7 @@ func TestConnectorClientRedactsSecrets(t *testing.T) {
 		require.ErrorAs(t, err, &exitErr)
 		assert.Equal(t, "***\nTraceback", exitErr.Stderr)
 
-		_, err = client.Check(ctx, "img", config)
+		_, err = client.Check(ctx, "img", config, ResourceLimits{})
 		require.Error(t, err)
 		assert.NotContains(t, err.Error(), "ter2-pass")
 		assert.Contains(t, err.Error(), "***\nTraceback")
@@ -341,7 +341,7 @@ func discoverWithCatalogLine(t *testing.T, descriptionSize int) (*protocol.Airby
 		strings.Repeat("d", descriptionSize) + `"}}]}}` + "\n"
 	runner := &mockContainerRunner{runResults: []*pkgcontainer.RunResult{finishedRunResult(stdout, "", 0)}}
 
-	return NewConnectorClient(runner).Discover(context.Background(), "img", json.RawMessage(`{}`))
+	return NewConnectorClient(runner).Discover(context.Background(), "img", json.RawMessage(`{}`), ResourceLimits{})
 }
 
 func TestConnectorClientDiscoverReadsCatalogUpToTaskLimit(t *testing.T) {
@@ -373,4 +373,33 @@ func TestDockerTaskWorkerDiscoverResultAtMostDoublesWithHTMLCharacters(t *testin
 	require.NoError(t, json.Unmarshal(result, &decoded))
 	assert.Contains(t, decoded.Catalog, "<a&b>")
 	assert.LessOrEqual(t, len(result), 2*len(stdout))
+}
+
+func TestConnectorClientReadWritePassRequests(t *testing.T) {
+	limits := ResourceLimits{MemoryRequest: 268435456, CPURequest: 0.5}
+	catalog := &protocol.ConfiguredAirbyteCatalog{}
+
+	t.Run("read", func(t *testing.T) {
+		runner := &mockContainerRunner{runResults: []*pkgcontainer.RunResult{finishedRunResult("", "", 0)}}
+
+		stdout, cleanup, err := NewConnectorClient(runner).Read(context.Background(), "img", json.RawMessage(`{}`), nil, catalog, nil, nil, limits)
+		require.NoError(t, err)
+		t.Cleanup(cleanup)
+		t.Cleanup(func() { _ = stdout.Close() })
+
+		assert.Equal(t, int64(268435456), runner.lastRunOpts.MemoryRequest)
+		assert.InDelta(t, 0.5, runner.lastRunOpts.CPURequest, 1e-9)
+	})
+
+	t.Run("write", func(t *testing.T) {
+		runner := &mockContainerRunner{runResults: []*pkgcontainer.RunResult{finishedRunResult("", "", 0)}}
+
+		stdout, cleanup, err := NewConnectorClient(runner).Write(context.Background(), "img", json.RawMessage(`{}`), nil, catalog, strings.NewReader(""), nil, limits)
+		require.NoError(t, err)
+		t.Cleanup(cleanup)
+		t.Cleanup(func() { _ = stdout.Close() })
+
+		assert.Equal(t, int64(268435456), runner.lastRunOpts.MemoryRequest)
+		assert.InDelta(t, 0.5, runner.lastRunOpts.CPURequest, 1e-9)
+	})
 }

@@ -27,8 +27,8 @@ type RunOptions struct {
 	Stdin         io.Reader
 	MemoryLimit   int64
 	CPULimit      float64
-	MemoryRequest int64   // bytes (K8s only, Docker ignores)
-	CPURequest    float64 // cores (K8s only, Docker ignores)
+	MemoryRequest int64   // bytes
+	CPURequest    float64 // cores
 	NetworkMode   string
 	Name          string
 	Labels        map[string]string

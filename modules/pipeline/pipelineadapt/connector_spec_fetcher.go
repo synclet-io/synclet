@@ -21,7 +21,7 @@ func NewConnectorSpecFetcherAdapter(client *pipelineexecdocker.ConnectorClient) 
 }
 
 func (a *ConnectorSpecFetcherAdapter) Spec(ctx context.Context, image string) (string, error) {
-	spec, err := a.client.Spec(ctx, image)
+	spec, err := a.client.Spec(ctx, image, pipelineexecdocker.ResourceLimits{})
 	if err != nil {
 		return "", err
 	}

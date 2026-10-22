@@ -172,7 +172,7 @@ func (s claimTaskSources) First(_ context.Context, _ *pipelineservice.SourceFilt
 	return s.source, nil
 }
 
-func TestExecutorHandler_ClaimConnectorTaskCarriesServiceAccount(t *testing.T) {
+func TestExecutorHandler_ClaimConnectorTaskCarriesRuntimeSettings(t *testing.T) {
 	runtimeConfig := `{"service_account_name":"wi-sa"}`
 	source := &pipelineservice.Source{ID: uuid.New(), Config: `{}`, RuntimeConfig: &runtimeConfig}
 	storage := &claimTaskStorage{
@@ -190,4 +190,5 @@ func TestExecutorHandler_ClaimConnectorTaskCarriesServiceAccount(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, resp.Msg.GetHasTask())
 	assert.Equal(t, "wi-sa", resp.Msg.GetServiceAccountName())
+	assert.Equal(t, runtimeConfig, resp.Msg.GetRuntimeConfig())
 }

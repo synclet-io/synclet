@@ -218,17 +218,19 @@ func newDockerSyncWorkerJob(cfg *dockerExecutorConfig, worker *pipelineexecdocke
 
 func newDockerTaskWorker(
 	cfg *dockerExecutorConfig,
+	runtimeCfg *executorRuntimeConfig,
 	backend pipelineexec.ExecutorBackend,
 	client *pipelineexecdocker.ConnectorClient,
 	manager *jobutil.WorkerManager,
 	logger *logging.Logger,
 ) *pipelineexecdocker.DockerTaskWorker {
 	return pipelineexecdocker.NewDockerTaskWorker(pipelineexecdocker.DockerTaskWorkerParams{
-		Backend:       backend,
-		Client:        client,
-		Manager:       manager,
-		MaxConcurrent: cfg.MaxConcurrentJobs,
-		Logger:        logger,
+		Backend:         backend,
+		Client:          client,
+		RuntimeDefaults: runtimeCfg.Runtime.defaults(),
+		Manager:         manager,
+		MaxConcurrent:   cfg.MaxConcurrentJobs,
+		Logger:          logger,
 	})
 }
 

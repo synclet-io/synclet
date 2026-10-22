@@ -101,23 +101,15 @@ func (e *DockerSyncExecutor) Execute(ctx context.Context, bundle *pipelineexec.S
 	}
 	defer releaseLocalDir()
 
-	// Resolve runtime config for source and set resource limits.
-	srcRuntimeCfg := pipelineservice.ResolveRuntimeConfig(e.runtimeDefaults, pipelineservice.ParseRuntimeConfig(&bundle.SourceRuntimeConfig))
-
-	srcMemLimit, srcCPULimit, _, _ := pipelineservice.ToContainerResources(srcRuntimeCfg)
+	srcLimits := resolveResources(e.runtimeDefaults, bundle.SourceRuntimeConfig)
+	srcLimits.LocalDir = localDir
 
 	// One redactor serves the whole run, so secrets of a config replaced
 	// through CONTROL are masked in connector stderr as well.
 	redactor := pipelineexec.NewRedactor(bundle.SourceConfig, bundle.DestConfig)
 
 	// Start source read.
-	sourceStdout, sourceCleanup, err := e.client.Read(ctx, bundle.SourceImage, bundle.SourceConfig, redactor, pipelineservice.BuildSourceCatalog(catalog), bundle.StateBlob, labels, ResourceLimits{
-		MemoryLimit: srcMemLimit,
-		CPULimit:    srcCPULimit,
-		NetworkMode: srcRuntimeCfg.DockerNetwork,
-		ExtraMounts: dockerVolumesToMounts(srcRuntimeCfg.DockerVolumes),
-		LocalDir:    localDir,
-	})
+	sourceStdout, sourceCleanup, err := e.client.Read(ctx, bundle.SourceImage, bundle.SourceConfig, redactor, pipelineservice.BuildSourceCatalog(catalog), bundle.StateBlob, labels, srcLimits)
 	if err != nil {
 		return nil, fmt.Errorf("starting source read: %w", err)
 	}
@@ -136,19 +128,11 @@ func (e *DockerSyncExecutor) Execute(ctx context.Context, bundle *pipelineexec.S
 	// Create pipe for source-to-dest message routing.
 	srcPipeReader, srcPipeWriter := io.Pipe()
 
-	// Resolve runtime config for destination and set resource limits.
-	destRuntimeCfg := pipelineservice.ResolveRuntimeConfig(e.runtimeDefaults, pipelineservice.ParseRuntimeConfig(&bundle.DestRuntimeConfig))
-
-	destMemLimit, destCPULimit, _, _ := pipelineservice.ToContainerResources(destRuntimeCfg)
+	destLimits := resolveResources(e.runtimeDefaults, bundle.DestRuntimeConfig)
+	destLimits.LocalDir = localDir
 
 	// Start destination write with pipe reader as stdin.
-	destStdout, destCleanup, err := e.client.Write(ctx, bundle.DestImage, bundle.DestConfig, redactor, destCatalog, srcPipeReader, labels, ResourceLimits{
-		MemoryLimit: destMemLimit,
-		CPULimit:    destCPULimit,
-		NetworkMode: destRuntimeCfg.DockerNetwork,
-		ExtraMounts: dockerVolumesToMounts(destRuntimeCfg.DockerVolumes),
-		LocalDir:    localDir,
-	})
+	destStdout, destCleanup, err := e.client.Write(ctx, bundle.DestImage, bundle.DestConfig, redactor, destCatalog, srcPipeReader, labels, destLimits)
 	if err != nil {
 		_ = srcPipeWriter.Close()
 		_ = srcPipeReader.Close()

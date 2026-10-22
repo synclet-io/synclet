@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"maps"
+	"math"
 	"net"
 	"os"
 	"strings"
@@ -37,6 +38,10 @@ const (
 	defaultDockerMemoryLimit int64 = 2 * 1024 * 1024 * 1024
 	// defaultDockerCPULimit is the default CPU limit in cores (1.0).
 	defaultDockerCPULimit float64 = 1.0
+	// dockerCPUSharesPerCore is the CPU shares a one-core request gets.
+	dockerCPUSharesPerCore = 1024
+	// minDockerCPUShares is the lowest CPU shares value Docker accepts.
+	minDockerCPUShares int64 = 2
 )
 
 // boundedBuffer is a thread-safe buffer with a maximum size that discards
@@ -331,6 +336,15 @@ func (r *ContainerRunner) Run(ctx context.Context, opts RunOptions) (*RunResult,
 		hostCfg.NanoCPUs = int64(opts.CPULimit * 1e9)
 	} else {
 		hostCfg.NanoCPUs = int64(defaultDockerCPULimit * 1e9)
+	}
+
+	if opts.MemoryRequest > 0 {
+		// Docker refuses a reservation above the memory limit.
+		hostCfg.MemoryReservation = min(opts.MemoryRequest, hostCfg.Memory)
+	}
+
+	if opts.CPURequest > 0 {
+		hostCfg.CPUShares = max(int64(math.Round(opts.CPURequest*dockerCPUSharesPerCore)), minDockerCPUShares)
 	}
 
 	// Create container.

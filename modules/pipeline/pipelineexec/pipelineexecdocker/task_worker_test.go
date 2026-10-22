@@ -93,3 +93,54 @@ func TestDockerTaskWorkerRedactsTaskErrors(t *testing.T) {
 		})
 	}
 }
+
+func TestDockerTaskWorkerAppliesResources(t *testing.T) {
+	taskTypes := map[string]pipelineservice.ConnectorTaskType{
+		"check":    pipelineservice.ConnectorTaskTypeCheck,
+		"spec":     pipelineservice.ConnectorTaskTypeSpec,
+		"discover": pipelineservice.ConnectorTaskTypeDiscover,
+	}
+
+	tests := []struct {
+		name          string
+		defaults      pipelineservice.RuntimeDefaults
+		runtimeConfig string
+		want          ResourceLimits
+	}{
+		{name: "nothing configured"},
+		{
+			name:          "runtime_config",
+			runtimeConfig: `{"memory_request":"256Mi","cpu_request":"1","memory_limit":"1Gi","cpu_limit":"2"}`,
+			want:          ResourceLimits{MemoryRequest: 268435456, CPURequest: 1, MemoryLimit: 1073741824, CPULimit: 2},
+		},
+		{
+			name:     "runtime defaults",
+			defaults: pipelineservice.RuntimeDefaults{MemoryRequest: "512Mi", CPURequest: "500m"},
+			want:     ResourceLimits{MemoryRequest: 536870912, CPURequest: 0.5},
+		},
+	}
+
+	for typeName, taskType := range taskTypes {
+		for _, tt := range tests {
+			t.Run(typeName+"/"+tt.name, func(t *testing.T) {
+				runner := &mockContainerRunner{runErrors: []error{errors.New("boom")}}
+				worker := &DockerTaskWorker{backend: &taskReportBackend{}, client: NewConnectorClient(runner), runtimeDefaults: tt.defaults}
+
+				worker.executeTask(context.Background(), &pipelineexec.ClaimConnectorTaskResult{
+					TaskID:        uuid.New(),
+					TaskType:      taskType,
+					Image:         "img",
+					Config:        []byte(`{}`),
+					RuntimeConfig: tt.runtimeConfig,
+				})
+
+				require.Equal(t, 1, runner.runCalls)
+				opts := runner.lastRunOpts
+				assert.Equal(t, tt.want.MemoryRequest, opts.MemoryRequest, "MemoryRequest")
+				assert.InDelta(t, tt.want.CPURequest, opts.CPURequest, 1e-9, "CPURequest")
+				assert.Equal(t, tt.want.MemoryLimit, opts.MemoryLimit, "MemoryLimit")
+				assert.InDelta(t, tt.want.CPULimit, opts.CPULimit, 1e-9, "CPULimit")
+			})
+		}
+	}
+}

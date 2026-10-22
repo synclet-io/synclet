@@ -20,5 +20,5 @@ func NewConnectorDiscoverAdapter(client *pipelineexecdocker.ConnectorClient) *Co
 }
 
 func (a *ConnectorDiscoverAdapter) Discover(ctx context.Context, image string, config json.RawMessage) (*protocol.AirbyteCatalog, error) {
-	return a.client.Discover(ctx, image, config)
+	return a.client.Discover(ctx, image, config, pipelineexecdocker.ResourceLimits{})
 }
