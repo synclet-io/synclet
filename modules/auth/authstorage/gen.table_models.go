@@ -448,3 +448,31 @@ func convertOIDCStateFromDB(src *dbOIDCState) (*authservice.OIDCState, error) {
 func (a dbOIDCState) TableName() string {
 	return "auth.oidc_states"
 }
+
+type dbRateLimit struct {
+	ID        uuid.UUID `gorm:"column:id"`
+	Key       string    `gorm:"column:key;type:text"`
+	Count     int       `gorm:"column:count"`
+	ExpiresAt time.Time `gorm:"column:expires_at"`
+}
+
+func convertRateLimitToDB(src *authservice.RateLimit) (*dbRateLimit, error) {
+	result := &dbRateLimit{}
+	result.ID = src.ID
+	result.Key = src.Key
+	result.Count = src.Count
+	result.ExpiresAt = (src.ExpiresAt).UTC()
+	return result, nil
+}
+
+func convertRateLimitFromDB(src *dbRateLimit) (*authservice.RateLimit, error) {
+	result := &authservice.RateLimit{}
+	result.ID = src.ID
+	result.Key = src.Key
+	result.Count = src.Count
+	result.ExpiresAt = src.ExpiresAt
+	return result, nil
+}
+func (a dbRateLimit) TableName() string {
+	return "auth.rate_limits"
+}

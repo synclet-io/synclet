@@ -112,3 +112,73 @@ func TestHandleOIDCCallback_ApplyDefaultWorkspaceRole(t *testing.T) {
 		})
 	}
 }
+
+func TestHandleOIDCCallback_LinksByEmailOnlyWhenVerified(t *testing.T) {
+	cfg := OIDCProviderConfig{Slug: "corp", AutoCreateUser: true}
+
+	tests := []struct {
+		name          string
+		existingUser  bool
+		emailVerified bool
+		wantErr       error
+		wantLinked    bool
+		wantCreated   bool
+	}{
+		{name: "existing user, email unverified", existingUser: true, emailVerified: false, wantErr: ErrEmailNotVerified},
+		{name: "existing user, email verified", existingUser: true, emailVerified: true, wantLinked: true},
+		{name: "no user, email unverified, auto-create on", existingUser: false, emailVerified: false, wantCreated: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			store := newFakeStorage()
+			existing := &User{ID: uuid.New(), Email: "jane@example.com", PasswordHash: "hash"}
+
+			if tt.existingUser {
+				store.seedUser(existing)
+			}
+
+			uc := &HandleOIDCCallback{storage: store, audit: &capturingAuditRecorder{}}
+
+			user, err := uc.findOrCreateUser(context.Background(), cfg, "subject-1", "jane@example.com", "Jane", tt.emailVerified)
+			if tt.wantErr != nil {
+				require.ErrorIs(t, err, tt.wantErr)
+				assert.Empty(t, store.oidcIdentities, "no identity is created")
+
+				return
+			}
+
+			require.NoError(t, err)
+			require.Len(t, store.oidcIdentities, 1)
+			assert.Equal(t, user.ID, store.oidcIdentities[0].UserID)
+
+			if tt.wantLinked {
+				assert.Equal(t, existing.ID, user.ID)
+			}
+
+			if tt.wantCreated {
+				assert.Len(t, store.users, 1)
+				assert.Equal(t, "jane@example.com", user.Email)
+			}
+		})
+	}
+}
+
+func TestHandleOIDCCallback_RejectsForeignBrowser(t *testing.T) {
+	uc := &HandleOIDCCallback{stateStore: NewStateStore(newFakeStorage())}
+	state := "state-123"
+
+	for name, binding := range map[string]string{
+		"missing cookie": "",
+		"wrong binding":  OIDCStateBinding("other-state"),
+	} {
+		t.Run(name, func(t *testing.T) {
+			var err error
+
+			require.NotPanics(t, func() {
+				_, err = uc.Execute(context.Background(), "corp", "code", state, binding)
+			}, "the state store is not touched")
+			require.ErrorIs(t, err, ErrOIDCStateMismatch)
+		})
+	}
+}

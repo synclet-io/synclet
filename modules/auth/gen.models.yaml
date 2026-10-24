@@ -114,3 +114,11 @@ types:
         - { name: ProviderSlug, type: string }
         - { name: ExpiresAt, type: timestamp }
         - { name: CreatedAt, type: timestamp }
+
+    - name: RateLimit
+      table_name: auth.rate_limits
+      fields:
+        - { name: ID, type: uuid, filterable: true }
+        - { name: Key, type: string, filterable: true }
+        - { name: Count, type: int }
+        - { name: ExpiresAt, type: timestamp, filterable: true }

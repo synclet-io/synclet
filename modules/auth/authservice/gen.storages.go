@@ -20,6 +20,7 @@ type Storage interface {
 	OAuthRefreshTokens() OAuthRefreshTokensStorage
 	OIDCIdentities() OIDCIdentitiesStorage
 	OIDCStates() OIDCStatesStorage
+	RateLimits() RateLimitsStorage
 	IdempotencyKeys() idempotency.Storage
 	ExecuteInTransaction(ctx context.Context, cb func(ctx context.Context, tx Storage) error) error
 	WithAdvisoryLock(ctx context.Context, scope string, lockID int64) error
@@ -34,3 +35,4 @@ type OAuthGrantsStorage dbutil.EntityStorage[OAuthGrant, OAuthGrantFilter]
 type OAuthRefreshTokensStorage dbutil.EntityStorage[OAuthRefreshToken, OAuthRefreshTokenFilter]
 type OIDCIdentitiesStorage dbutil.EntityStorage[OIDCIdentity, OIDCIdentityFilter]
 type OIDCStatesStorage dbutil.EntityStorage[OIDCState, OIDCStateFilter]
+type RateLimitsStorage dbutil.EntityStorage[RateLimit, RateLimitFilter]

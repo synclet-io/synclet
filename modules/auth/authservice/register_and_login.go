@@ -28,6 +28,7 @@ type RegisterAndLoginResult struct {
 
 // RegisterAndLogin combines user registration with automatic login.
 type RegisterAndLogin struct {
+	registrationOpen      *RegistrationOpen
 	register              *Register
 	login                 *Login
 	workspaceAutoAssigner WorkspaceAutoAssigner
@@ -37,8 +38,9 @@ type RegisterAndLogin struct {
 }
 
 // NewRegisterAndLogin creates a new RegisterAndLogin use case.
-func NewRegisterAndLogin(register *Register, login *Login, workspaceAutoAssigner WorkspaceAutoAssigner, listUserWorkspaces *ListUserWorkspaces, audit AuditRecorder, config Config) *RegisterAndLogin {
+func NewRegisterAndLogin(registrationOpen *RegistrationOpen, register *Register, login *Login, workspaceAutoAssigner WorkspaceAutoAssigner, listUserWorkspaces *ListUserWorkspaces, audit AuditRecorder, config Config) *RegisterAndLogin {
 	return &RegisterAndLogin{
+		registrationOpen:      registrationOpen,
 		register:              register,
 		login:                 login,
 		workspaceAutoAssigner: workspaceAutoAssigner,
@@ -50,7 +52,12 @@ func NewRegisterAndLogin(register *Register, login *Login, workspaceAutoAssigner
 
 // Execute registers a new user and immediately logs them in.
 func (uc *RegisterAndLogin) Execute(ctx context.Context, params RegisterAndLoginParams) (*RegisterAndLoginResult, error) {
-	if !uc.config.RegistrationEnabled {
+	open, err := uc.registrationOpen.Execute(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("checking registration: %w", err)
+	}
+
+	if !open {
 		return nil, ErrRegistrationDisabled
 	}
 

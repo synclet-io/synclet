@@ -8,22 +8,23 @@ import (
 	"net/http"
 	"net/netip"
 	"strings"
-	"sync"
 	"time"
 
 	"connectrpc.com/connect"
-	"golang.org/x/time/rate"
 )
 
-type ipLimiter struct {
-	limiter  *rate.Limiter
-	lastSeen time.Time
+// RateLimitConfig allows Limit requests per Window for a procedure.
+type RateLimitConfig struct {
+	Limit  int
+	Window time.Duration
 }
 
-// RateLimitConfig defines rate limit settings for a specific procedure.
-type RateLimitConfig struct {
-	Rate  rate.Limit // requests per second
-	Burst int
+// RateLimitStore counts requests per key in fixed windows shared by every
+// replica.
+type RateLimitStore interface {
+	// Hit counts one request against key and reports whether the count is
+	// still within limit for the current window.
+	Hit(ctx context.Context, key string, limit int, window time.Duration) (bool, error)
 }
 
 // RateLimitOption configures a RateLimitInterceptor.
@@ -73,84 +74,35 @@ func ParseTrustedProxies(values []string) ([]netip.Prefix, error) {
 }
 
 // RateLimitInterceptor rate-limits specific ConnectRPC procedures per client IP.
-// Each procedure has its own bucket per IP.
+// Each procedure has its own counter per IP, kept in the store.
 type RateLimitInterceptor struct {
-	mu             sync.Mutex
-	limiters       map[string]*ipLimiter
+	store          RateLimitStore
 	configs        map[string]RateLimitConfig // procedure -> config
 	trustedProxies []netip.Prefix
-	stopCh         chan struct{}
 }
 
 // NewRateLimitInterceptor creates a rate limiting interceptor.
 // configs maps procedure paths to their rate limit configuration.
-func NewRateLimitInterceptor(configs map[string]RateLimitConfig, opts ...RateLimitOption) *RateLimitInterceptor {
+func NewRateLimitInterceptor(store RateLimitStore, configs map[string]RateLimitConfig, opts ...RateLimitOption) *RateLimitInterceptor {
 	rateLimiter := &RateLimitInterceptor{
-		limiters: make(map[string]*ipLimiter),
-		configs:  configs,
-		stopCh:   make(chan struct{}),
+		store:   store,
+		configs: configs,
 	}
 	for _, opt := range opts {
 		opt(rateLimiter)
 	}
 
-	go rateLimiter.cleanupLoop()
-
 	return rateLimiter
 }
 
-// Stop stops the cleanup goroutine.
-func (r *RateLimitInterceptor) Stop() {
-	close(r.stopCh)
-}
-
-func (r *RateLimitInterceptor) getLimiter(key string, cfg RateLimitConfig) *rate.Limiter {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	if limiter, ok := r.limiters[key]; ok {
-		limiter.lastSeen = time.Now()
-
-		return limiter.limiter
-	}
-
-	limiter := &ipLimiter{
-		limiter:  rate.NewLimiter(cfg.Rate, cfg.Burst),
-		lastSeen: time.Now(),
-	}
-	r.limiters[key] = limiter
-
-	return limiter.limiter
-}
-
-func (r *RateLimitInterceptor) cleanupLoop() {
-	ticker := time.NewTicker(5 * time.Minute)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ticker.C:
-			r.cleanup()
-		case <-r.stopCh:
-			return
-		}
-	}
-}
-
-func (r *RateLimitInterceptor) cleanup() {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	for key, l := range r.limiters {
-		if time.Since(l.lastSeen) > 10*time.Minute {
-			delete(r.limiters, key)
-		}
-	}
-}
-
-// WrapUnary implements connect.Interceptor.
+// WrapUnary implements connect.Interceptor. It puts the client IP of every
+// request into the context and counts the configured procedures. A store
+// error refuses the request.
 func (r *RateLimitInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
 	return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+		clientIP := r.clientIP(req.Peer().Addr, req.Header())
+		ctx = ContextWithClientIP(ctx, clientIP)
+
 		procedure := req.Spec().Procedure
 
 		cfg, ok := r.configs[procedure]
@@ -158,10 +110,12 @@ func (r *RateLimitInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFu
 			return next(ctx, req)
 		}
 
-		ip := r.clientIP(req.Peer().Addr, req.Header())
+		allowed, err := r.store.Hit(ctx, procedure+"|"+clientIP, cfg.Limit, cfg.Window)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInternal, errors.New("rate limit unavailable"))
+		}
 
-		limiter := r.getLimiter(procedure+"|"+ip, cfg)
-		if !limiter.Allow() {
+		if !allowed {
 			return nil, connect.NewError(connect.CodeResourceExhausted, errors.New("rate limit exceeded, try again later"))
 		}
 
@@ -238,13 +192,15 @@ func extractIP(addr string) string {
 }
 
 // AllowRequest reports whether a plain HTTP request to the endpoint key may
-// proceed, counting it against the bucket of the request's client IP. A key
-// with no configuration is not limited.
+// proceed, counting it against the counter of the request's client IP. A key
+// with no configuration is not limited; a store error refuses the request.
 func (r *RateLimitInterceptor) AllowRequest(key string, req *http.Request) bool {
 	cfg, ok := r.configs[key]
 	if !ok {
 		return true
 	}
 
-	return r.getLimiter(key+"|"+r.clientIP(req.RemoteAddr, req.Header), cfg).Allow()
+	allowed, err := r.store.Hit(req.Context(), key+"|"+r.clientIP(req.RemoteAddr, req.Header), cfg.Limit, cfg.Window)
+
+	return err == nil && allowed
 }

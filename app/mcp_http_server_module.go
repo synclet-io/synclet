@@ -10,7 +10,6 @@ import (
 	"github.com/go-pnp/go-pnp/http/pnphttpserver"
 	"github.com/go-pnp/go-pnp/http/pnphttpserverrecovery"
 	"go.uber.org/fx"
-	"golang.org/x/time/rate"
 
 	"github.com/synclet-io/synclet/gen/proto/synclet/publicapi/pipeline/v1/pipelinev1connect"
 	"github.com/synclet-io/synclet/gen/proto/synclet/publicapi/registry/v1/registryv1connect"
@@ -128,27 +127,20 @@ func (v mcpKeyValidator) ValidateMCPKey(ctx context.Context, rawKey string) (app
 }
 
 // newOAuthRegisterLimiter limits dynamic client registration, which needs no
-// credentials, to about 10 a minute per client IP.
-func newOAuthRegisterLimiter(lc fx.Lifecycle, cfg *rateLimitConfig) (*connectutil.RateLimitInterceptor, error) {
+// credentials, to 10 a minute per client IP.
+func newOAuthRegisterLimiter(store connectutil.RateLimitStore, cfg *rateLimitConfig) (*connectutil.RateLimitInterceptor, error) {
 	trustedProxies, err := connectutil.ParseTrustedProxies(cfg.TrustedProxies)
 	if err != nil {
 		return nil, fmt.Errorf("RATE_LIMIT_TRUSTED_PROXIES: %w", err)
 	}
 
 	limiter := connectutil.NewRateLimitInterceptor(
+		store,
 		map[string]connectutil.RateLimitConfig{
-			authhttp.RegisterPath: {Rate: rate.Every(6 * time.Second), Burst: 10},
+			authhttp.RegisterPath: {Limit: 10, Window: time.Minute},
 		},
 		connectutil.WithTrustedProxies(trustedProxies),
 	)
-
-	lc.Append(fx.Hook{
-		OnStop: func(context.Context) error {
-			limiter.Stop()
-
-			return nil
-		},
-	})
 
 	return limiter, nil
 }

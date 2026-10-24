@@ -170,6 +170,7 @@ func pipelineDependenciesModule() fx.Option {
 		// Adapters
 		fx.Provide(
 			fx.Annotate(pipelineadapt.NewConnectorDiscoverAdapter, fx.As(new(pipelineservice.ConnectorDiscoverer))),
+			fx.Annotate(pipelineadapt.NewRegistrationStatus, fx.As(new(pipelineconnect.RegistrationStatus))),
 			fx.Annotate(pipelineadapt.NewDBImageValidator, fx.As(new(pipelineservice.ConnectorImageValidator))),
 			fx.Annotate(pipelineadapt.NewConnectorSpecFetcherAdapter, fx.As(new(pipelineservice.ConnectorSpecFetcher))),
 			fx.Annotate(pipelineadapt.NewImagePullerAdapter, fx.As(new(pipelineservice.ImagePuller))),
@@ -212,7 +213,6 @@ func pipelineMetricsCollectorAdapter(c *pipelinemetrics.MetricsCollector) promet
 type pipelineSourceHandlerConfigParams struct {
 	fx.In
 
-	AuthCfg   *authConfig
 	WsCfg     *workspaceConfig
 	NotifyCfg *notifyConfig
 	Cfg       *pipelineConfig
@@ -220,7 +220,6 @@ type pipelineSourceHandlerConfigParams struct {
 
 func newPipelineSourceHandlerConfig(params pipelineSourceHandlerConfigParams) pipelineconnect.SourceHandlerConfig {
 	return pipelineconnect.SourceHandlerConfig{
-		RegistrationEnabled: params.AuthCfg.RegistrationEnabled,
 		SingleWorkspaceMode: WorkspaceModeSingle == params.WsCfg.Mode,
 		EmailEnabled:        params.NotifyCfg.SMTP.Host != "",
 		RuntimeDefaults: pipelineconnect.RuntimeDefaultsInfo{

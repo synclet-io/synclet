@@ -3,6 +3,7 @@ package authservice
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"time"
@@ -102,4 +103,12 @@ func (s *StateStore) CleanupExpired(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// OIDCStateBinding returns the hex SHA-256 of state, the value the browser
+// that started the login keeps in a cookie.
+func OIDCStateBinding(state string) string {
+	sum := sha256.Sum256([]byte(state))
+
+	return hex.EncodeToString(sum[:])
 }

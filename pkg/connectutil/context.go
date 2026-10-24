@@ -13,6 +13,7 @@ const (
 	userIDKey contextKey = iota
 	emailKey
 	workspaceIDKey
+	clientIPKey
 )
 
 // ContextWithUserID returns a context with the user ID set.
@@ -58,6 +59,18 @@ func WorkspaceIDFromContext(ctx context.Context) (uuid.UUID, error) {
 	}
 
 	return v, nil
+}
+
+// ContextWithClientIP returns a context with the client IP of the request set.
+func ContextWithClientIP(ctx context.Context, ip string) context.Context {
+	return context.WithValue(ctx, clientIPKey, ip)
+}
+
+// ClientIPFromContext extracts the client IP of the request from the context.
+func ClientIPFromContext(ctx context.Context) (string, bool) {
+	v, ok := ctx.Value(clientIPKey).(string)
+
+	return v, ok && v != ""
 }
 
 func parseUUID(s string) (uuid.UUID, error) {

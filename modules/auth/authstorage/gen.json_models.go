@@ -500,3 +500,36 @@ func convertOIDCStateFromJsonModel(src *jsonOIDCState) (*authservice.OIDCState, 
 	result.CreatedAt = src.CreatedAt
 	return result, nil
 }
+
+type jsonRateLimit struct {
+	ID        uuid.UUID `json:"id"`
+	Key       string    `json:"key"`
+	Count     int       `json:"count"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
+func (r *jsonRateLimit) Scan(value any) error {
+	return json.Unmarshal(value.([]byte), r)
+}
+
+func (r jsonRateLimit) Value() (driver.Value, error) {
+	return json.Marshal(r)
+}
+
+func convertRateLimitToJsonModel(src *authservice.RateLimit) (*jsonRateLimit, error) {
+	result := &jsonRateLimit{}
+	result.ID = src.ID
+	result.Key = src.Key
+	result.Count = src.Count
+	result.ExpiresAt = (src.ExpiresAt).UTC()
+	return result, nil
+}
+
+func convertRateLimitFromJsonModel(src *jsonRateLimit) (*authservice.RateLimit, error) {
+	result := &authservice.RateLimit{}
+	result.ID = src.ID
+	result.Key = src.Key
+	result.Count = src.Count
+	result.ExpiresAt = src.ExpiresAt
+	return result, nil
+}

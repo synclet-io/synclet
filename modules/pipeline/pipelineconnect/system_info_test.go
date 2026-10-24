@@ -21,15 +21,22 @@ import (
 	"github.com/synclet-io/synclet/pkg/connectutil"
 )
 
+type staticRegistrationStatus bool
+
+func (s staticRegistrationStatus) RegistrationOpen(context.Context) (bool, error) {
+	return bool(s), nil
+}
+
 func TestSourceHandler_GetSystemInfo(t *testing.T) {
 	tests := []struct {
-		name   string
-		config SourceHandlerConfig
-		want   *pipelinev1.GetSystemInfoResponse
+		name             string
+		registrationOpen bool
+		config           SourceHandlerConfig
+		want             *pipelinev1.GetSystemInfoResponse
 	}{
 		{
-			name:   "multi workspace without email",
-			config: SourceHandlerConfig{RegistrationEnabled: true},
+			name:             "multi workspace without email",
+			registrationOpen: true,
 			want: &pipelinev1.GetSystemInfoResponse{
 				RegistrationEnabled: true,
 				WorkspacesMode:      pipelinev1.WorkspacesMode_WORKSPACES_MODE_MULTI,
@@ -56,7 +63,7 @@ func TestSourceHandler_GetSystemInfo(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := &SourceHandler{config: tt.config}
+			h := &SourceHandler{config: tt.config, registrationStatus: staticRegistrationStatus(tt.registrationOpen)}
 
 			resp, err := h.GetSystemInfo(context.Background(), connect.NewRequest(&pipelinev1.GetSystemInfoRequest{}))
 			require.NoError(t, err)

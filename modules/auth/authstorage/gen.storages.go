@@ -55,6 +55,9 @@ func (s Storages) OIDCIdentities() authsvc.OIDCIdentitiesStorage {
 func (s Storages) OIDCStates() authsvc.OIDCStatesStorage {
 	return NewOIDCStatesStorage(s.db, s.logger)
 }
+func (s Storages) RateLimits() authsvc.RateLimitsStorage {
+	return NewRateLimitsStorage(s.db, s.logger)
+}
 
 func (s Storages) IdempotencyKeys() idempotency.Storage {
 	return idempotency.GormStorage{
@@ -310,5 +313,25 @@ func NewOIDCStatesStorage(db *gorm.DB, logger *logging.Logger) authsvc.OIDCState
 			authsvc.OIDCStateFieldCreatedAt:    {Name: "created_at"},
 		},
 		LockScope: "auth.OIDCStates",
+	}
+}
+
+func NewRateLimitsStorage(db *gorm.DB, logger *logging.Logger) authsvc.RateLimitsStorage {
+	return dbutil.GormEntityStorage[authsvc.RateLimit, dbRateLimit, authsvc.RateLimitFilter]{
+		Logger:            logger,
+		DB:                db,
+		DBErrorsWrapper:   wrapRateLimitQueryError,
+		ConvertToInternal: convertRateLimitToDB,
+		ConvertToExternal: convertRateLimitFromDB,
+		BuildFilterExpression: func(filter *authsvc.RateLimitFilter) (clause.Expression, error) {
+			return buildRateLimitFilterExpr(filter)
+		},
+		FieldMapping: map[any]clause.Column{
+			authsvc.RateLimitFieldID:        {Name: "id"},
+			authsvc.RateLimitFieldKey:       {Name: "key"},
+			authsvc.RateLimitFieldCount:     {Name: "count"},
+			authsvc.RateLimitFieldExpiresAt: {Name: "expires_at"},
+		},
+		LockScope: "auth.RateLimits",
 	}
 }

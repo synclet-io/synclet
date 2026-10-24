@@ -37,7 +37,7 @@ type authConfig struct {
 	JWTSecret            JWTSecret     `env:"JWT_SECRET,notEmpty"`
 	AccessTokenTTL       time.Duration `env:"ACCESS_TOKEN_TTL" envDefault:"15m"`
 	RefreshTokenTTL      time.Duration `env:"REFRESH_TOKEN_TTL" envDefault:"168h"`
-	RegistrationEnabled  bool          `env:"REGISTRATION_ENABLED" envDefault:"true"`
+	RegistrationEnabled  bool          `env:"REGISTRATION_ENABLED" envDefault:"false"`
 	SecureCookies        bool          `env:"SECURE_COOKIES" envDefault:"false"`
 	OIDCProviders        []string      `env:"OIDC_PROVIDERS" envSeparator:","`
 	OIDCCallbackBaseURL  string        `env:"OIDC_CALLBACK_BASE_URL"`
@@ -84,6 +84,7 @@ func authDependenciesModule() fx.Option {
 		fx.Annotate(authstorage.NewStorages, fx.As(new(authservice.Storage))),
 		fx.Annotate(authstorage.NewUserIDStorage, fx.As(new(authservice.UserIDStorage))),
 		fx.Annotate(authstorage.NewOAuthStorage, fx.As(new(authservice.OAuthStorage))),
+		fx.Annotate(authstorage.NewRateLimitStorage, fx.As(new(authservice.RateLimitStorage))),
 		fx.Annotate(authadapt.NewWorkspaceAutoAssigner, fx.As(new(authservice.WorkspaceAutoAssigner))),
 		fx.Annotate(authadapt.NewDefaultWorkspaceRoleApplier, fx.As(new(authservice.DefaultWorkspaceRoleApplier))),
 		fx.Annotate(authadapt.NewAuditRecorder, fx.As(new(authservice.AuditRecorder))),
@@ -96,6 +97,8 @@ func authDependenciesModule() fx.Option {
 func authUseCasesModule() fx.Option {
 	return fx.Provide(
 		authservice.NewRegister,
+		authservice.NewRateLimits,
+		newRateLimitStore,
 		authservice.NewLogin,
 		authservice.NewRefreshTokenUC,
 		authservice.NewLogout,
@@ -114,6 +117,7 @@ func authUseCasesModule() fx.Option {
 		authservice.NewValidateAPIKey,
 		authservice.NewValidateAccessToken,
 		authservice.NewCleanupExpiredTokens,
+		authservice.NewRegistrationOpen,
 		authservice.NewRegisterAndLogin,
 		authservice.NewLoginWithUserInfo,
 		authservice.NewStateStore,
@@ -161,6 +165,10 @@ func newAuthServiceConfig(cfg *authConfig, wsCfg *workspaceConfig, notifyCfg *no
 		FrontendURL:           wsCfg.FrontendURL,
 		PasswordResetCooldown: cfg.PasswordResetCooldown,
 	}
+}
+
+func newRateLimitStore(rateLimits *authservice.RateLimits) connectutil.RateLimitStore {
+	return rateLimits
 }
 
 func newCookieConfig(cfg *authConfig) connectutil.CookieConfig {
@@ -212,5 +220,5 @@ type newOIDCHTPHandlerParams struct {
 }
 
 func newOIDCHTTPHandler(params newOIDCHTPHandlerParams) *authhttp.OIDCHTTPHandler {
-	return authhttp.NewOIDCHTTPHandler(params.StartOIDCLogin, params.HandleOIDCCallback, params.Config.OIDCCallbackBaseURL, params.Logger, params.CookieCfg)
+	return authhttp.NewOIDCHTTPHandler(params.StartOIDCLogin, params.HandleOIDCCallback, params.Config.OIDCCallbackBaseURL, params.Logger, params.CookieCfg, params.Config.OIDCStateTTL)
 }

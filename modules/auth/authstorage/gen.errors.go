@@ -202,3 +202,22 @@ func wrapOIDCStateQueryError(err error) error {
 
 	return err
 }
+func wrapRateLimitQueryError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return errors.WithStack(errors1.Join(authsvc.ErrRateLimitNotFound, err))
+	}
+
+	var pgErr *pgconn.PgError
+
+	if errors.As(err, &pgErr) {
+		if pgErr.Code == "23505" {
+			return errors.WithStack(errors1.Join(authsvc.ErrRateLimitAlreadyExists, err))
+		}
+	}
+
+	return err
+}

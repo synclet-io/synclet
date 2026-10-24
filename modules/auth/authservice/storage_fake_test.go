@@ -12,8 +12,9 @@ import (
 	"github.com/saturn4er/boilerplate-go/lib/filter"
 )
 
-// fakeStorage is an in-memory Storage and OAuthStorage for use-case tests.
-// The users, API keys and OAuth stores are backed; other accessors panic.
+// fakeStorage is an in-memory Storage, OAuthStorage and RateLimitStorage for
+// use-case tests. The users, refresh tokens, API keys, OAuth, OIDC identity and rate-limit
+// stores are backed; other accessors panic.
 type fakeStorage struct {
 	Storage
 
@@ -24,6 +25,9 @@ type fakeStorage struct {
 	oauthCodes         []*OAuthCode
 	oauthGrants        []*OAuthGrant
 	oauthRefreshTokens []*OAuthRefreshToken
+	oidcIdentities     []*OIDCIdentity
+	rateLimits         []*RateLimit
+	refreshTokens      []*RefreshToken
 }
 
 func newFakeStorage() *fakeStorage {
@@ -49,6 +53,42 @@ func (s *fakeStorage) OAuthGrants() OAuthGrantsStorage {
 
 func (s *fakeStorage) OAuthRefreshTokens() OAuthRefreshTokensStorage {
 	return &fakeTable[OAuthRefreshToken, OAuthRefreshTokenFilter]{mu: &s.mu, rows: &s.oauthRefreshTokens, id: func(t *OAuthRefreshToken) uuid.UUID { return t.ID }, match: matchOAuthRefreshToken, notFound: ErrOAuthRefreshTokenNotFound}
+}
+
+func (s *fakeStorage) OIDCIdentities() OIDCIdentitiesStorage {
+	return &fakeTable[OIDCIdentity, OIDCIdentityFilter]{mu: &s.mu, rows: &s.oidcIdentities, id: func(i *OIDCIdentity) uuid.UUID { return i.ID }, match: matchOIDCIdentity, notFound: ErrOIDCIdentityNotFound}
+}
+
+func (s *fakeStorage) RefreshTokens() RefreshTokensStorage {
+	return &fakeTable[RefreshToken, RefreshTokenFilter]{mu: &s.mu, rows: &s.refreshTokens, id: func(t *RefreshToken) uuid.UUID { return t.ID }, match: matchRefreshToken, notFound: ErrRefreshTokenNotFound}
+}
+
+func (s *fakeStorage) RateLimits() RateLimitsStorage {
+	return &fakeTable[RateLimit, RateLimitFilter]{mu: &s.mu, rows: &s.rateLimits, id: func(r *RateLimit) uuid.UUID { return r.ID }, match: matchRateLimit, notFound: ErrRateLimitNotFound}
+}
+
+func (s *fakeStorage) HitRateLimit(_ context.Context, key string, now time.Time, window time.Duration) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for _, r := range s.rateLimits {
+		if r.Key != key {
+			continue
+		}
+
+		if !r.ExpiresAt.After(now) {
+			r.Count = 0
+			r.ExpiresAt = now.Add(window)
+		}
+
+		r.Count++
+
+		return r.Count, nil
+	}
+
+	s.rateLimits = append(s.rateLimits, &RateLimit{ID: uuid.New(), Key: key, Count: 1, ExpiresAt: now.Add(window)})
+
+	return 1, nil
 }
 
 func (s *fakeStorage) ExecuteInTransaction(ctx context.Context, cb func(context.Context, Storage) error) error {
@@ -157,8 +197,8 @@ func (s *fakeStorage) seedUser(u *User) {
 	s.users = append(s.users, u)
 }
 
-// matchValue reports whether v passes flt: a nil filter, Equals, In or Less
-// of a time.
+// matchValue reports whether v passes flt: a nil filter, Equals, In, or Less
+// or Greater of a time.
 func matchValue[T comparable](flt filter.Filter[T], v T) bool {
 	switch f := flt.(type) {
 	case nil:
@@ -172,6 +212,11 @@ func matchValue[T comparable](flt filter.Filter[T], v T) bool {
 		limit, _ := any(f.Value).(time.Time)
 
 		return ok && lt.Before(limit)
+	case *filter.GreaterFilter[T]:
+		gt, ok := any(v).(time.Time)
+		limit, _ := any(f.Value).(time.Time)
+
+		return ok && gt.After(limit)
 	default:
 		panic("fake storage: unsupported filter")
 	}
@@ -196,6 +241,18 @@ func matchOAuthGrant(g *OAuthGrant, f *OAuthGrantFilter) bool {
 
 func matchOAuthRefreshToken(t *OAuthRefreshToken, f *OAuthRefreshTokenFilter) bool {
 	return f == nil || matchValue(f.ID, t.ID) && matchValue(f.GrantID, t.GrantID) && matchValue(f.TokenHash, t.TokenHash) && matchValue(f.ExpiresAt, t.ExpiresAt)
+}
+
+func matchRefreshToken(t *RefreshToken, f *RefreshTokenFilter) bool {
+	return f == nil || matchValue(f.ID, t.ID) && matchValue(f.UserID, t.UserID) && matchValue(f.TokenHash, t.TokenHash)
+}
+
+func matchRateLimit(r *RateLimit, f *RateLimitFilter) bool {
+	return f == nil || matchValue(f.ID, r.ID) && matchValue(f.Key, r.Key) && matchValue(f.ExpiresAt, r.ExpiresAt)
+}
+
+func matchOIDCIdentity(i *OIDCIdentity, f *OIDCIdentityFilter) bool {
+	return f == nil || matchValue(f.ID, i.ID) && matchValue(f.UserID, i.UserID) && matchValue(f.ProviderSlug, i.ProviderSlug) && matchValue(f.Subject, i.Subject)
 }
 
 func matchPtr[T comparable](flt filter.Filter[*T], v *T) bool {
@@ -336,6 +393,16 @@ func (s *fakeUsersStorage) First(_ context.Context, flt *UserFilter, _ ...option
 	}
 
 	return nil, ErrUserNotFound
+}
+
+func (s *fakeUsersStorage) Create(_ context.Context, u *User) (*User, error) {
+	s.parent.mu.Lock()
+	defer s.parent.mu.Unlock()
+
+	cp := *u
+	s.parent.users = append(s.parent.users, &cp)
+
+	return u, nil
 }
 
 func (s *fakeUsersStorage) Update(_ context.Context, u *User) (*User, error) {

@@ -2,6 +2,7 @@ package authservice
 
 import (
 	"context"
+	"crypto/subtle"
 	"fmt"
 	"time"
 
@@ -46,7 +47,13 @@ func NewHandleOIDCCallback(providers map[string]*OIDCProvider, stateStore *State
 }
 
 // Execute processes the OIDC callback for the given provider, code, and state.
-func (uc *HandleOIDCCallback) Execute(ctx context.Context, providerSlug, code, state string) (*TokenPair, error) {
+// stateBinding is the value the browser kept from StartOIDCLogin; a callback
+// whose binding does not match the state was not started by that browser.
+func (uc *HandleOIDCCallback) Execute(ctx context.Context, providerSlug, code, state, stateBinding string) (*TokenPair, error) {
+	if stateBinding == "" || subtle.ConstantTimeCompare([]byte(stateBinding), []byte(OIDCStateBinding(state))) != 1 {
+		return nil, ErrOIDCStateMismatch
+	}
+
 	verifier, storedProvider, ok := uc.stateStore.Get(ctx, state)
 	if !ok {
 		return nil, ErrInvalidOrExpiredState
@@ -101,7 +108,7 @@ func (uc *HandleOIDCCallback) Execute(ctx context.Context, providerSlug, code, s
 	}
 
 	// Find or create user and OIDC identity link.
-	user, err := uc.findOrCreateUser(ctx, provider.Config, sub, email, name)
+	user, err := uc.findOrCreateUser(ctx, provider.Config, sub, email, name, emailVerified)
 	if err != nil {
 		return nil, fmt.Errorf("find or create user: %w", err)
 	}
@@ -121,11 +128,12 @@ func (uc *HandleOIDCCallback) Execute(ctx context.Context, providerSlug, code, s
 }
 
 // findOrCreateUser links an OIDC identity to a Synclet user.
-// 1. Check oidc_identities for existing link (provider_slug + subject)
-// 2. If not found, look up user by email
-// 3. If no user, auto-create (if enabled)
-// 4. Create oidc_identity link
-func (uc *HandleOIDCCallback) findOrCreateUser(ctx context.Context, cfg OIDCProviderConfig, subject, email, name string) (*User, error) {
+//  1. Check oidc_identities for existing link (provider_slug + subject)
+//  2. If not found, look up user by email; link to it only when the provider
+//     verified the email, otherwise fail with ErrEmailNotVerified
+//  3. If no user, auto-create (if enabled)
+//  4. Create oidc_identity link
+func (uc *HandleOIDCCallback) findOrCreateUser(ctx context.Context, cfg OIDCProviderConfig, subject, email, name string, emailVerified bool) (*User, error) {
 	// Check for existing OIDC identity link.
 	existing, err := uc.storage.OIDCIdentities().First(ctx, &OIDCIdentityFilter{
 		ProviderSlug: filter.Equals(cfg.Slug),
@@ -153,6 +161,10 @@ func (uc *HandleOIDCCallback) findOrCreateUser(ctx context.Context, cfg OIDCProv
 		if err != nil {
 			user = nil // Not found, will auto-create.
 		}
+	}
+
+	if user != nil && !emailVerified {
+		return nil, ErrEmailNotVerified
 	}
 
 	// Auto-create user if needed.

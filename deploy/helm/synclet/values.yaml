@@ -390,8 +390,10 @@ auth:
   ## Use a pre-created K8s Secret instead of the chart-managed one.
   existingSecret: ""
   existingSecretKey: "jwt-secret"
-  ## Allow new users to register via email/password. Disable to restrict access to OIDC or invites only.
-  registrationEnabled: true
+  ## Allow new users to register via email/password. While disabled, sign-up stays open until
+  ## the first account exists, so a fresh install can create its admin; after that access is
+  ## through OIDC or invites only.
+  registrationEnabled: false
   ## Set secure (HTTPS-only) flag on auth cookies. Enable when using TLS.
   secureCookies: true
   ## JWT access token lifetime.
@@ -406,11 +408,16 @@ auth:
 ## @section Rate limit parameters
 rateLimit:
   ## IPs or CIDR ranges of reverse proxies whose X-Forwarded-For / X-Real-IP headers
-  ## identify the client for login and register rate limits. Set to the pod CIDR of the
-  ## ingress controller and/or the Gateway data plane (e.g. the Envoy proxy pods) in front of
-  ## Synclet (e.g. ["10.42.0.0/16"]); empty keys limits on the TCP peer, which behind a proxy
-  ## is the proxy itself.
-  trustedProxies: []
+  ## identify the client for the auth rate limits and the login lockout. The default trusts
+  ## the private ranges, where the ingress controller or Gateway data plane in front of
+  ## Synclet runs in most clusters; narrow it to their pod CIDR (e.g. ["10.42.0.0/16"]) when
+  ## clients can reach Synclet directly from a private network. Empty keys limits on the TCP
+  ## peer, which behind a proxy is the proxy itself, so every client shares one limit.
+  trustedProxies:
+    - 10.0.0.0/8
+    - 172.16.0.0/12
+    - 192.168.0.0/16
+    - fc00::/7
 
 ## @section OIDC parameters
 ## Configure OpenID Connect providers for SSO login.

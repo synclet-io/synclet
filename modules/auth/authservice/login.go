@@ -5,42 +5,50 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/saturn4er/boilerplate-go/lib/filter"
+
+	"github.com/synclet-io/synclet/pkg/connectutil"
 )
 
-// ErrTooManyLoginAttempts is returned while an email is locked out after
-// repeated failed logins.
+// ErrTooManyLoginAttempts is returned while an email is locked out for a
+// client after repeated failed logins.
 const ErrTooManyLoginAttempts baseErr = "too many failed login attempts, try again later"
 
 const (
-	loginFailureLimit     = 5
-	loginFailureWindow    = 15 * time.Minute
-	loginLockoutDuration  = 15 * time.Minute
-	loginMaxTrackedEmails = 10000
+	loginFailureLimit  = 5
+	loginFailureWindow = 15 * time.Minute
 )
 
 // Login authenticates a user and returns a token pair.
 type Login struct {
-	storage  Storage
-	config   Config
-	audit    AuditRecorder
-	attempts *loginAttempts
+	storage    Storage
+	config     Config
+	audit      AuditRecorder
+	rateLimits *RateLimits
 }
 
 // NewLogin creates a new Login use case.
-func NewLogin(storage Storage, config Config, audit AuditRecorder) *Login {
-	return &Login{storage: storage, config: config, audit: audit, attempts: newLoginAttempts(time.Now)}
+func NewLogin(storage Storage, config Config, audit AuditRecorder, rateLimits *RateLimits) *Login {
+	return &Login{storage: storage, config: config, audit: audit, rateLimits: rateLimits}
 }
 
-// Execute authenticates a user by email and password. After loginFailureLimit
-// failures for one email within loginFailureWindow, that email is locked for
-// loginLockoutDuration whether or not the account exists, so the lockout does
-// not reveal which emails are registered.
+// Execute authenticates a user by email and password. Failures are counted
+// per email and client IP: after loginFailureLimit failures within
+// loginFailureWindow, that email is locked for that client until the window
+// ends, whether or not the account exists, so the lockout does not reveal
+// which emails are registered and a client cannot lock the account out for
+// others.
 func (uc *Login) Execute(ctx context.Context, email, password string) (*TokenPair, error) {
-	if uc.attempts.locked(email) {
+	key := loginFailureKey(ctx, email)
+
+	failures, err := uc.rateLimits.Peek(ctx, key)
+	if err != nil {
+		return nil, fmt.Errorf("reading login failures: %w", err)
+	}
+
+	if failures >= loginFailureLimit {
 		return nil, ErrTooManyLoginAttempts
 	}
 
@@ -51,12 +59,16 @@ func (uc *Login) Execute(ctx context.Context, email, password string) (*TokenPai
 		if errors.Is(err, ErrUserNotFound) {
 			_, _ = comparePasswordWithHash(password, randomPasswordHash) // prevent timing attacks
 
-			uc.attempts.recordFailure(email)
-
-			return nil, ErrInvalidCredentials
+			return nil, uc.fail(ctx, key)
 		}
 
 		return nil, fmt.Errorf("get user: %w", err)
+	}
+
+	if user.PasswordHash == "" {
+		_, _ = comparePasswordWithHash(password, randomPasswordHash) // an OIDC-only account answers like a wrong password
+
+		return nil, uc.fail(ctx, key)
 	}
 
 	ok, err := comparePasswordWithHash(password, user.PasswordHash)
@@ -65,9 +77,7 @@ func (uc *Login) Execute(ctx context.Context, email, password string) (*TokenPai
 	}
 
 	if !ok {
-		uc.attempts.recordFailure(email)
-
-		return nil, ErrInvalidCredentials
+		return nil, uc.fail(ctx, key)
 	}
 
 	tokens, err := generateTokenPair(ctx, uc.storage, uc.config, user)
@@ -75,10 +85,22 @@ func (uc *Login) Execute(ctx context.Context, email, password string) (*TokenPai
 		return nil, err
 	}
 
-	uc.attempts.reset(email)
+	if err := uc.rateLimits.Reset(ctx, key); err != nil {
+		return nil, fmt.Errorf("resetting login failures: %w", err)
+	}
+
 	recordLogin(ctx, uc.audit, user)
 
 	return tokens, nil
+}
+
+// fail counts a failed login and returns ErrInvalidCredentials.
+func (uc *Login) fail(ctx context.Context, key string) error {
+	if _, err := uc.rateLimits.Hit(ctx, key, loginFailureLimit, loginFailureWindow); err != nil {
+		return fmt.Errorf("counting login failure: %w", err)
+	}
+
+	return ErrInvalidCredentials
 }
 
 func recordLogin(ctx context.Context, audit AuditRecorder, user *User) {
@@ -92,81 +114,8 @@ func recordLogin(ctx context.Context, audit AuditRecorder, user *User) {
 	})
 }
 
-// loginAttempts counts failed logins per email in process memory. Each server
-// replica keeps its own counters.
-type loginAttempts struct {
-	mu      sync.Mutex
-	now     func() time.Time
-	entries map[string]*loginAttempt
-}
+func loginFailureKey(ctx context.Context, email string) string {
+	ip, _ := connectutil.ClientIPFromContext(ctx)
 
-type loginAttempt struct {
-	failures     int
-	firstFailure time.Time
-	lockedUntil  time.Time
-}
-
-func newLoginAttempts(now func() time.Time) *loginAttempts {
-	return &loginAttempts{now: now, entries: make(map[string]*loginAttempt)}
-}
-
-func (a *loginAttempts) locked(email string) bool {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-
-	entry, ok := a.entries[loginAttemptKey(email)]
-
-	return ok && a.now().Before(entry.lockedUntil)
-}
-
-func (a *loginAttempts) recordFailure(email string) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-
-	now := a.now()
-	key := loginAttemptKey(email)
-
-	entry, ok := a.entries[key]
-	if !ok {
-		if len(a.entries) >= loginMaxTrackedEmails {
-			a.pruneLocked(now)
-		}
-
-		if len(a.entries) >= loginMaxTrackedEmails {
-			return
-		}
-
-		entry = &loginAttempt{}
-		a.entries[key] = entry
-	}
-
-	if entry.failures == 0 || now.Sub(entry.firstFailure) > loginFailureWindow {
-		entry.failures = 0
-		entry.firstFailure = now
-	}
-
-	entry.failures++
-	if entry.failures >= loginFailureLimit {
-		entry.failures = 0
-		entry.lockedUntil = now.Add(loginLockoutDuration)
-	}
-}
-
-func (a *loginAttempts) reset(email string) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-
-	delete(a.entries, loginAttemptKey(email))
-}
-
-func (a *loginAttempts) pruneLocked(now time.Time) {
-	for key, entry := range a.entries {
-		if !now.Before(entry.lockedUntil) && now.Sub(entry.firstFailure) > loginFailureWindow {
-			delete(a.entries, key)
-		}
-	}
-}
-
-func loginAttemptKey(email string) string {
-	return strings.ToLower(strings.TrimSpace(email))
+	return "login|" + strings.ToLower(strings.TrimSpace(email)) + "|" + ip
 }

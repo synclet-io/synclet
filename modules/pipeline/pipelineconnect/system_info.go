@@ -12,9 +12,13 @@ import (
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinejobs"
 )
 
+// RegistrationStatus reports whether new accounts may sign up.
+type RegistrationStatus interface {
+	RegistrationOpen(ctx context.Context) (bool, error)
+}
+
 // SourceHandlerConfig holds configuration values exposed via GetSystemInfo.
 type SourceHandlerConfig struct {
-	RegistrationEnabled bool
 	SingleWorkspaceMode bool
 	EmailEnabled        bool
 	RuntimeDefaults     RuntimeDefaultsInfo
@@ -34,14 +38,19 @@ type RuntimeDefaultsInfo struct {
 	LogArchiveBackend  string
 }
 
-func (h *SourceHandler) GetSystemInfo(_ context.Context, _ *connect.Request[pipelinev1.GetSystemInfoRequest]) (*connect.Response[pipelinev1.GetSystemInfoResponse], error) {
+func (h *SourceHandler) GetSystemInfo(ctx context.Context, _ *connect.Request[pipelinev1.GetSystemInfoRequest]) (*connect.Response[pipelinev1.GetSystemInfoResponse], error) {
+	registrationOpen, err := h.registrationStatus.RegistrationOpen(ctx)
+	if err != nil {
+		return nil, mapError(err)
+	}
+
 	workspacesMode := pipelinev1.WorkspacesMode_WORKSPACES_MODE_MULTI
 	if h.config.SingleWorkspaceMode {
 		workspacesMode = pipelinev1.WorkspacesMode_WORKSPACES_MODE_SINGLE
 	}
 
 	return connect.NewResponse(&pipelinev1.GetSystemInfoResponse{
-		RegistrationEnabled: h.config.RegistrationEnabled,
+		RegistrationEnabled: registrationOpen,
 		WorkspacesMode:      workspacesMode,
 		EmailEnabled:        h.config.EmailEnabled,
 	}), nil

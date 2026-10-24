@@ -834,3 +834,63 @@ func (o *OIDCState) Equals(to *OIDCState) bool {
 
 	return true
 }
+
+type RateLimitField byte
+
+const (
+	RateLimitFieldID RateLimitField = iota + 1
+	RateLimitFieldKey
+	RateLimitFieldCount
+	RateLimitFieldExpiresAt
+)
+
+type RateLimitFilter struct {
+	ID        filter.Filter[uuid.UUID]
+	Key       filter.Filter[string]
+	ExpiresAt filter.Filter[time.Time]
+	Or        []*RateLimitFilter
+	And       []*RateLimitFilter
+}
+type RateLimitOrder order.Order[RateLimitField]
+
+type RateLimit struct {
+	ID        uuid.UUID
+	Key       string
+	Count     int
+	ExpiresAt time.Time
+}
+
+// user code 'RateLimit methods'
+// end user code 'RateLimit methods'
+
+func (r *RateLimit) Copy() RateLimit {
+	var result RateLimit
+	result.ID = r.ID
+	result.Key = r.Key
+	result.Count = r.Count
+	result.ExpiresAt = r.ExpiresAt
+
+	return result
+}
+func (r *RateLimit) Equals(to *RateLimit) bool {
+	if (r == nil) != (to == nil) {
+		return false
+	}
+	if r == nil && to == nil {
+		return true
+	}
+	if r.ID != to.ID {
+		return false
+	}
+	if r.Key != to.Key {
+		return false
+	}
+	if r.Count != to.Count {
+		return false
+	}
+	if r.ExpiresAt != to.ExpiresAt {
+		return false
+	}
+
+	return true
+}

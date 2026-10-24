@@ -1,7 +1,6 @@
 package app
 
 import (
-	"context"
 	"fmt"
 	"log/slog"
 	"time"
@@ -16,7 +15,6 @@ import (
 	"github.com/go-pnp/go-pnp/http/pnphttpserverrecovery"
 	"github.com/go-pnp/go-pnp/pkg/ordering"
 	"go.uber.org/fx"
-	"golang.org/x/time/rate"
 
 	"github.com/synclet-io/synclet/modules/app/apphttp"
 	"github.com/synclet-io/synclet/modules/auth/authadapt"
@@ -97,30 +95,23 @@ type rateLimitConfig struct {
 	TrustedProxies []string `env:"TRUSTED_PROXIES" envSeparator:","`
 }
 
-func newConnectRPCRateLimitInterceptor(lc fx.Lifecycle, cfg *rateLimitConfig) (ordering.OrderedItem[connect.Interceptor], error) {
+func newConnectRPCRateLimitInterceptor(store connectutil.RateLimitStore, cfg *rateLimitConfig) (ordering.OrderedItem[connect.Interceptor], error) {
 	trustedProxies, err := connectutil.ParseTrustedProxies(cfg.TrustedProxies)
 	if err != nil {
 		return ordering.OrderedItem[connect.Interceptor]{}, fmt.Errorf("RATE_LIMIT_TRUSTED_PROXIES: %w", err)
 	}
 
 	rateLimiter := connectutil.NewRateLimitInterceptor(
+		store,
 		map[string]connectutil.RateLimitConfig{
-			"/synclet.publicapi.auth.v1.AuthService/Login":                {Rate: rate.Every(6 * time.Second), Burst: 10}, // ~10/min
-			"/synclet.publicapi.auth.v1.AuthService/Register":             {Rate: rate.Every(20 * time.Second), Burst: 3}, // ~3/min
-			"/synclet.publicapi.auth.v1.AuthService/RefreshToken":         {Rate: rate.Every(3 * time.Second), Burst: 20}, // ~20/min
-			"/synclet.publicapi.auth.v1.AuthService/RequestPasswordReset": {Rate: rate.Every(6 * time.Second), Burst: 10}, // ~10/min
-			"/synclet.publicapi.auth.v1.AuthService/ResetPassword":        {Rate: rate.Every(6 * time.Second), Burst: 10}, // ~10/min
+			"/synclet.publicapi.auth.v1.AuthService/Login":                {Limit: 10, Window: time.Minute},
+			"/synclet.publicapi.auth.v1.AuthService/Register":             {Limit: 3, Window: time.Minute},
+			"/synclet.publicapi.auth.v1.AuthService/RefreshToken":         {Limit: 20, Window: time.Minute},
+			"/synclet.publicapi.auth.v1.AuthService/RequestPasswordReset": {Limit: 10, Window: time.Minute},
+			"/synclet.publicapi.auth.v1.AuthService/ResetPassword":        {Limit: 10, Window: time.Minute},
 		},
 		connectutil.WithTrustedProxies(trustedProxies),
 	)
-
-	lc.Append(fx.Hook{
-		OnStop: func(ctx context.Context) error {
-			rateLimiter.Stop()
-
-			return nil
-		},
-	})
 
 	return ordering.Ordered[connect.Interceptor](-1, rateLimiter), nil
 }

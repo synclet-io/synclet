@@ -15,6 +15,7 @@ const (
 	ErrAPIKeyExpired           baseErr = "API key expired" //nolint:gosec // error message, not a credential
 	ErrInvalidOrExpiredState   baseErr = "invalid or expired state"
 	ErrStateProviderMismatch   baseErr = "state provider mismatch"
+	ErrOIDCStateMismatch       baseErr = "OIDC state was not started by this browser"
 	ErrMissingIDToken          baseErr = "missing id_token in token response"
 	ErrEmailNotVerified        baseErr = "email not verified by provider"
 	ErrInvalidEmailFormat      baseErr = "invalid email format"

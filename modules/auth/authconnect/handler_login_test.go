@@ -30,6 +30,22 @@ func (s *memStorage) RefreshTokens() authservice.RefreshTokensStorage {
 	return &memRefreshTokensStorage{}
 }
 
+func (s *memStorage) RateLimits() authservice.RateLimitsStorage { return memRateLimitsStorage{} }
+
+func (s *memStorage) HitRateLimit(context.Context, string, time.Time, time.Duration) (int, error) {
+	return 1, nil
+}
+
+type memRateLimitsStorage struct {
+	authservice.RateLimitsStorage
+}
+
+func (memRateLimitsStorage) First(context.Context, *authservice.RateLimitFilter, ...optionutil.Option[dbutil.SelectOptions]) (*authservice.RateLimit, error) {
+	return nil, authservice.ErrRateLimitNotFound
+}
+
+func (memRateLimitsStorage) Delete(context.Context, *authservice.RateLimitFilter) error { return nil }
+
 type memUsersStorage struct {
 	authservice.UsersStorage
 
@@ -92,12 +108,12 @@ func newPasswordAuthHandler(storage *memStorage, memberships func(userID uuid.UU
 		RegistrationEnabled: true,
 		MinPasswordLength:   8,
 	}
-	login := authservice.NewLogin(storage, cfg, nopAudit{})
+	login := authservice.NewLogin(storage, cfg, nopAudit{}, authservice.NewRateLimits(storage, storage))
 	getUserByID := authservice.NewGetUserByID(storage)
 	listUserWorkspaces := authservice.NewListUserWorkspaces(funcMembershipLister(memberships))
 
 	return &Handler{
-		registerAndLogin:  authservice.NewRegisterAndLogin(authservice.NewRegister(storage, cfg), login, nil, listUserWorkspaces, nopAudit{}, cfg),
+		registerAndLogin:  authservice.NewRegisterAndLogin(authservice.NewRegistrationOpen(storage, cfg), authservice.NewRegister(storage, cfg), login, nil, listUserWorkspaces, nopAudit{}, cfg),
 		loginWithUserInfo: authservice.NewLoginWithUserInfo(login, authservice.NewValidateAccessToken(cfg), getUserByID, listUserWorkspaces),
 	}
 }

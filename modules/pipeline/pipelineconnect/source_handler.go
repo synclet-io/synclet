@@ -37,6 +37,7 @@ type SourceHandler struct {
 	createDiscoverTask     *pipelinetasks.CreateDiscoverTask
 	getSourceCatalog       *pipelinecatalog.GetSourceCatalog
 	listExecutors          *pipelinejobs.ListExecutors
+	registrationStatus     RegistrationStatus
 	config                 SourceHandlerConfig
 	connectionCheckTimeout time.Duration
 }
@@ -53,6 +54,7 @@ func NewSourceHandler(
 	createDiscoverTask *pipelinetasks.CreateDiscoverTask,
 	getSourceCatalog *pipelinecatalog.GetSourceCatalog,
 	listExecutors *pipelinejobs.ListExecutors,
+	registrationStatus RegistrationStatus,
 	config SourceHandlerConfig,
 	svcCfg pipelineservice.Config,
 ) *SourceHandler {
@@ -67,6 +69,7 @@ func NewSourceHandler(
 		createDiscoverTask:     createDiscoverTask,
 		getSourceCatalog:       getSourceCatalog,
 		listExecutors:          listExecutors,
+		registrationStatus:     registrationStatus,
 		config:                 config,
 		connectionCheckTimeout: svcCfg.ConnectionCheckTimeout,
 	}

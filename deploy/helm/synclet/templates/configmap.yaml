@@ -28,7 +28,7 @@ data:
   AUTH_REFRESH_TOKEN_TTL: {{ dig "refreshTokenTTL" "168h" .Values.auth | quote }}
   AUTH_OIDC_STATE_TTL: {{ dig "oidcStateTTL" "10m" .Values.auth | quote }}
   AUTH_MIN_PASSWORD_LENGTH: {{ dig "minPasswordLength" 8 .Values.auth | quote }}
-  RATE_LIMIT_TRUSTED_PROXIES: {{ join "," (dig "trustedProxies" list (.Values.rateLimit | default dict)) | quote }}
+  RATE_LIMIT_TRUSTED_PROXIES: {{ join "," (dig "trustedProxies" (list "10.0.0.0/8" "172.16.0.0/12" "192.168.0.0/16" "fc00::/7") (.Values.rateLimit | default dict)) | quote }}
   ## Workspace
   WORKSPACE_MODE: {{ .Values.workspaces.mode | quote }}
   ## Frontend & invites

@@ -1280,5 +1280,89 @@ func NewTableGenerators() table.GeneratorList {
 
 			return table
 		},
+		"rate_limit": func(ctx *context.Context) table.Table {
+			tableConfig := table.DefaultConfigWithDriver("postgresql")
+			tableConfig.PrimaryKey.Type = db.UUID
+			tableConfig.PrimaryKey.Name = "id"
+			table := table.NewDefaultTable(ctx, tableConfig)
+			info := table.GetInfo()
+			formList := table.GetForm()
+			info.SetTable("auth\".\"rate_limits").SetTitle("RateLimit").SetDescription("RateLimit")
+			formList.SetTable("auth\".\"rate_limits").SetTitle("RateLimit").SetDescription("RateLimit")
+			info.AddField("ID", "id", db.UUID)
+			info.FieldSortable()
+			info.FieldFilterable(types.FilterType{
+				FormType: form.Text,
+			},
+			)
+			formList.AddField("ID", "id", db.UUID, form.Text)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+			info.AddField("Key", "key", db.Text)
+			info.FieldSortable()
+			info.FieldFilterable(types.FilterType{
+				FormType: form.Text,
+			},
+			)
+			formList.AddField("Key", "key", db.Text, form.Text)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+			info.AddField("Count", "count", db.Int)
+			info.FieldSortable()
+			formList.AddField("Count", "count", db.Int, form.Text)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+			info.AddField("ExpiresAt", "expires_at", db.Timestamp)
+			info.FieldSortable()
+			info.FieldFilterable(types.FilterType{
+				FormType: form.Datetime,
+			},
+			)
+			formList.AddField("ExpiresAt", "expires_at", db.Timestamp, form.Datetime)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+
+			return table
+		},
 	}
 }

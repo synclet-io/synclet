@@ -58,3 +58,7 @@ const (
 	ErrOIDCStateNotFound      = NotFoundError("OIDCState")
 	ErrOIDCStateAlreadyExists = AlreadyExistsError("OIDCState")
 )
+const (
+	ErrRateLimitNotFound      = NotFoundError("RateLimit")
+	ErrRateLimitAlreadyExists = AlreadyExistsError("RateLimit")
+)
