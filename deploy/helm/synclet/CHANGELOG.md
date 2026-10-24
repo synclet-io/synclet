@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.0.0](https://github.com/synclet-io/synclet/compare/synclet-helm-v0.11.0...synclet-helm-v1.0.0) (2026-10-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* **pipeline:** connector pods run only under the instance-wide service account
+
+### Features
+
+* **pipeline:** connector pods run only under the instance-wide service account ([cc3abf7](https://github.com/synclet-io/synclet/commit/cc3abf7f9ef8cc3e223e492b49562206009bd3af))
+
 ## [0.11.0](https://github.com/synclet-io/synclet/compare/synclet-helm-v0.10.0...synclet-helm-v0.11.0) (2026-10-21)
 
 
