@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.0.0](https://github.com/synclet-io/synclet/compare/synclet-v0.16.0...synclet-v1.0.0) (2026-10-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* **executor:** drop docker_volumes; connectors reach host files only under /local
+* **pipeline:** connector pods run only under the instance-wide service account
+
+### Features
+
+* **executor:** drop docker_volumes; connectors reach host files only under /local ([2c50c59](https://github.com/synclet-io/synclet/commit/2c50c59bf1fd16effb16a227ecf4e3ec0e50cf32))
+* **pipeline:** connector pods run only under the instance-wide service account ([cc3abf7](https://github.com/synclet-io/synclet/commit/cc3abf7f9ef8cc3e223e492b49562206009bd3af))
+* **ui:** expand and collapse all namespaces in stream config ([0b8b943](https://github.com/synclet-io/synclet/commit/0b8b9430f39a64c00ae03d868b0012cb63118eb4))
+
 ## [0.16.0](https://github.com/synclet-io/synclet/compare/synclet-v0.15.0...synclet-v0.16.0) (2026-10-22)
 
 
