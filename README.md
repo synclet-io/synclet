@@ -92,6 +92,8 @@ Building from source needs Go 1.26+, PostgreSQL 16+, Docker and Bun (for the fro
    go run . generate dotenv   # optional: append every other variable with its default
    ```
 
+   Set `DOCKER_EXECUTOR_OWNER_ID` in `.env` to an id unique to this checkout among those sharing your Docker daemon, for example `DOCKER_EXECUTOR_OWNER_ID=alice-laptop`. A process that runs the Docker executor, `server --standalone` or `docker-executor`, does not start without it; `task dev` runs `server` without an executor and needs none.
+
 3. Start PostgreSQL and run database migrations:
    ```bash
    task db:up
@@ -326,10 +328,11 @@ executor:
 | `DOCKER_EXECUTOR_MAX_SYNC_DURATION` | Maximum sync run time on the Docker executor | `24h` |
 | `DOCKER_EXECUTOR_TEMP_DIR_ROOT` | Scratch directory shared with the host Docker daemon | empty |
 | `DOCKER_EXECUTOR_LOCAL_ROOT` | Host directory mounted at `/local` in every connector container, where file-writing destinations leave their files; shared by all jobs and never cleaned (see [Files written by destinations](#files-written-by-destinations)). Empty gives each job its own `/local`, removed with the job. The compose file sets `/tmp/synclet_local` | empty |
-| `DOCKER_EXECUTOR_OWNER_ID` | Owner label that scopes orphan container cleanup to this executor. Executors sharing one Docker daemon need distinct values; two standalone servers on one machine must set it explicitly. A containerised executor needs a stable hostname (the compose file sets `hostname: synclet`) or an explicit value, since a container's default hostname changes on recreation. Containers without the label (from earlier versions) are left alone; remove them by hand once | hostname |
+| `DOCKER_EXECUTOR_OWNER_ID` | Owner label that scopes orphan container cleanup to this executor. Required by a process running the Docker executor, which does not start while it is empty. Set it unique per executor sharing one Docker daemon and stable across restarts; the compose file uses the value from `.env` and falls back to `synclet`. Containers without the label (from earlier versions) are left alone; remove them by hand once | none, required |
 | `K8S_EXECUTOR_NAMESPACE` | Namespace for connector pods | empty |
 | `K8S_EXECUTOR_LOCAL_VOLUME_CLAIM` | Existing PersistentVolumeClaim mounted at `/local` in the connector containers (Helm: `k8s.localVolume`). Empty mounts a per-pod `emptyDir` | empty |
-| `K8S_EXECUTOR_OWNER_ID` | Owner label on the Jobs and Secrets the Kubernetes executor creates; its reconciler handles only those carrying it, so executors sharing one namespace need distinct values. The default is the pod name: the Helm chart runs the executor as a StatefulSet (stable names `<fullname>-executor-0`, `-1`, ...), so a restarted replica reclaims its own leftovers, and in standalone mode, where the server runs it in a Deployment, the chart sets the release fullname (`k8s.ownerId` overrides both). Jobs without the label (from earlier versions) are left alone; remove them by hand once | hostname |
+| `K8S_EXECUTOR_OWNER_ID` | Owner label on the Jobs and Secrets the Kubernetes executor creates; its reconciler handles only those carrying it, so executors sharing one namespace need distinct values. The executor does not start without it or `K8S_EXECUTOR_OWNER_ID_PREFIX`. The Helm chart sets it to each executor replica's pod name (`<fullname>-executor-0`, `-1`, ...) in distributed mode and to the release fullname in standalone mode; a set `k8s.ownerId` is the standalone ID and the distributed prefix. Jobs without the label (from earlier versions) are left alone; remove them by hand once | none, required |
+| `K8S_EXECUTOR_OWNER_ID_PREFIX` | Gives the owner ID `<prefix>-<n>`, `n` being the digits after the last `-` of the hostname (a StatefulSet replica's ordinal); startup fails when the hostname does not end in `-<digits>` or `K8S_EXECUTOR_OWNER_ID` is set too | empty |
 | `EXECUTOR_API_URL` | Internal server URL used by distributed executors | empty |
 | `EXECUTOR_API_TOKEN` | Token distributed executors present to the internal server | empty |
 | `WATERMILL_TRANSPORT` | Event bus transport | `sql` |

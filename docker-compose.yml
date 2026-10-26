@@ -30,15 +30,15 @@ services:
   synclet:
     image: *synclet-image
     command: ["server", "--standalone"]
-    # Fixed hostname keeps the executor's owner id (DOCKER_EXECUTOR_OWNER_ID
-    # defaults to it) stable across container recreations, so orphan cleanup
-    # still reclaims connector containers left by the previous container.
-    hostname: synclet
     ports:
       - "127.0.0.1:8080:8080"
     env_file: *synclet-env-files
     environment:
       <<: *synclet-env
+      # Owner label on the connector containers this executor starts; its
+      # orphan cleanup removes only containers carrying it. A second stack on
+      # the same Docker daemon must set another DOCKER_EXECUTOR_OWNER_ID.
+      DOCKER_EXECUTOR_OWNER_ID: ${DOCKER_EXECUTOR_OWNER_ID:-synclet}
       WATERMILL_TRANSPORT: sql
       WATERMILL_SQL_DRIVER: "postgres"
       WATERMILL_SQL_CONSUMER_GROUP: "local"

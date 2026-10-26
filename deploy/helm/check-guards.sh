@@ -42,6 +42,14 @@ expect_fail() {
 
 expect_ok "default values"
 
+expect_fail "standalone with several server replicas" \
+  "server.replicaCount above 1 needs mode=distributed" \
+  --set server.replicaCount=2
+
+expect_fail "standalone with a server PDB" \
+  "server.pdb.enabled needs mode=distributed" \
+  --set server.pdb.enabled=true
+
 expect_fail "executor.strategy after the rename" \
   "executor.strategy was renamed to executor.updateStrategy" \
   --set mode=distributed --set executor.strategy.rollingUpdate.maxSurge=1

@@ -69,3 +69,37 @@ func TestK8sExecutorInfo(t *testing.T) {
 		},
 	}, info)
 }
+
+func TestExecutorInfo_RequiresOwnerID(t *testing.T) {
+	unsetEnv(t, "DOCKER_EXECUTOR_OWNER_ID", "K8S_EXECUTOR_OWNER_ID", "K8S_EXECUTOR_OWNER_ID_PREFIX", "KUBERNETES_SERVICE_HOST")
+
+	tests := map[string]struct {
+		configs fx.Option
+		newInfo any
+		setting string
+	}{
+		"docker": {fx.Provide(configutil.NewPrefixedConfigProvider[dockerExecutorConfig]("DOCKER_EXECUTOR_")), newDockerExecutorInfo, "DOCKER_EXECUTOR_OWNER_ID"},
+		"k8s":    {k8sExecutorConfigModule(), newK8sExecutorInfo, "K8S_EXECUTOR_OWNER_ID"},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			app := fx.New(
+				fx.NopLogger,
+				tt.configs,
+				fx.Provide(configutil.NewPrefixedConfigProvider[executorRuntimeConfig]("PIPELINE_")),
+				fx.Provide(tt.newInfo),
+				fx.Invoke(func(pipelineexec.ExecutorInfo) {}),
+			)
+			require.ErrorContains(t, app.Err(), tt.setting)
+		})
+	}
+}
+
+func TestK8sSyncRunner_RequiresOwnerID(t *testing.T) {
+	_, err := newK8sSyncRunner(&k8sExecutorConfig{}, "token")
+	require.ErrorContains(t, err, "K8S_EXECUTOR_OWNER_ID")
+
+	_, err = newK8sSyncRunner(&k8sExecutorConfig{OwnerID: "blue", OwnerIDPrefix: "blue"}, "token")
+	require.ErrorContains(t, err, "K8S_EXECUTOR_OWNER_ID_PREFIX")
+}

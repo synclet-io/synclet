@@ -86,6 +86,9 @@ type envVar struct {
 			Name string `yaml:"name"`
 			Key  string `yaml:"key"`
 		} `yaml:"secretKeyRef"`
+		FieldRef *struct {
+			FieldPath string `yaml:"fieldPath"`
+		} `yaml:"fieldRef"`
 	} `yaml:"valueFrom"`
 }
 
@@ -393,7 +396,15 @@ func TestChart_ExecutorGetsOnlyExecutorSecrets(t *testing.T) {
 
 	r := renderChart(t, "--set", "mode=distributed")
 
-	assert.Equal(t, []string{"EXECUTOR_API_TOKEN"}, envNames(r.get(t, "StatefulSet", "t-synclet-executor").container(t, "executor")))
+	var executorSecrets []string
+
+	for _, e := range r.get(t, "StatefulSet", "t-synclet-executor").container(t, "executor").Env {
+		if e.ValueFrom != nil && e.ValueFrom.SecretKeyRef != nil {
+			executorSecrets = append(executorSecrets, e.Name)
+		}
+	}
+
+	assert.Equal(t, []string{"EXECUTOR_API_TOKEN"}, executorSecrets)
 
 	server := envNames(r.get(t, "Deployment", "t-synclet-server").container(t, "synclet"))
 	assert.Contains(t, server, "DB_DSN")
@@ -628,11 +639,33 @@ func TestChart_ServiceMonitorUnknownPort(t *testing.T) {
 }
 
 func TestChart_K8sOwnerID(t *testing.T) {
-	_, set := renderChart(t, "--set", "mode=distributed").get(t, "ConfigMap", "t-synclet-executor").Data["K8S_EXECUTOR_OWNER_ID"]
-	assert.False(t, set, "the executor defaults to its pod name")
+	executorEnv := func(r rendered) map[string]envVar {
+		env := map[string]envVar{}
+		for _, e := range r.get(t, "StatefulSet", "t-synclet-executor").container(t, "executor").Env {
+			env[e.Name] = e
+		}
 
-	cm := renderChart(t, "--set", "mode=distributed", "--set", "k8s.ownerId=blue").get(t, "ConfigMap", "t-synclet-executor")
-	assert.Equal(t, "blue", cm.Data["K8S_EXECUTOR_OWNER_ID"])
+		return env
+	}
+
+	r := renderChart(t, "--set", "mode=distributed")
+	cm := r.get(t, "ConfigMap", "t-synclet-executor")
+	assert.NotContains(t, cm.Data, "K8S_EXECUTOR_OWNER_ID")
+	assert.NotContains(t, cm.Data, "K8S_EXECUTOR_OWNER_ID_PREFIX")
+
+	ownerID, set := executorEnv(r)["K8S_EXECUTOR_OWNER_ID"]
+	require.True(t, set, "each replica owns its resources under its pod name")
+	require.NotNil(t, ownerID.ValueFrom)
+	require.NotNil(t, ownerID.ValueFrom.FieldRef)
+	assert.Equal(t, "metadata.name", ownerID.ValueFrom.FieldRef.FieldPath)
+
+	for _, replicas := range []string{"1", "3"} {
+		r := renderChart(t, "--set", "mode=distributed", "--set", "k8s.ownerId=blue", "--set", "executor.replicaCount="+replicas)
+		cm := r.get(t, "ConfigMap", "t-synclet-executor")
+		assert.Equal(t, "blue", cm.Data["K8S_EXECUTOR_OWNER_ID_PREFIX"], replicas)
+		assert.NotContains(t, cm.Data, "K8S_EXECUTOR_OWNER_ID", replicas)
+		assert.NotContains(t, executorEnv(r), "K8S_EXECUTOR_OWNER_ID", replicas)
+	}
 
 	assert.Equal(t, "t-synclet", renderChart(t).get(t, "ConfigMap", "t-synclet").Data["K8S_EXECUTOR_OWNER_ID"])
 	assert.Equal(t, "blue", renderChart(t, "--set", "k8s.ownerId=blue").get(t, "ConfigMap", "t-synclet").Data["K8S_EXECUTOR_OWNER_ID"])
@@ -922,4 +955,64 @@ func TestChart_GatewayTimeouts(t *testing.T) {
 		)...)
 		assert.Equal(t, []map[string]string{{"request": "300s", "backendRequest": "290s"}}, got)
 	})
+}
+
+func TestChart_StandaloneRunsOneServerPod(t *testing.T) {
+	for _, set := range []string{"server.replicaCount=2", "server.pdb.enabled=true"} {
+		out, err := helmTemplate(t, "--set", set).CombinedOutput()
+		require.Error(t, err, "standalone render must fail with %s", set)
+		assert.Contains(t, string(out), "mode=distributed", set)
+	}
+
+	for _, set := range []string{"server.replicaCount=1", "server.pdb.enabled=false"} {
+		out, err := helmTemplate(t, "--set", set).CombinedOutput()
+		require.NoError(t, err, "%s: %s", set, out)
+	}
+}
+
+func TestChart_DistributedPDBs(t *testing.T) {
+	pdbs := func(args ...string) map[string]map[string]any {
+		got := map[string]map[string]any{}
+
+		for _, doc := range renderDocs(t, "synclet", append([]string{"--set", "mode=distributed"}, args...)...) {
+			if doc["kind"] != "PodDisruptionBudget" {
+				continue
+			}
+
+			name, _ := doc["metadata"].(map[string]any)["name"].(string)
+			got[name], _ = doc["spec"].(map[string]any)
+		}
+
+		return got
+	}
+
+	assert.Empty(t, pdbs(), "one replica of each component gets no PDB")
+
+	scaled := []string{"--set", "server.replicaCount=2", "--set", "jobs.replicaCount=2", "--set", "executor.replicaCount=3"}
+
+	got := pdbs(scaled...)
+	require.Len(t, got, 3)
+
+	for name, component := range map[string]string{"t-synclet-server": "server", "t-synclet-jobs": "jobs", "t-synclet-executor": "executor"} {
+		spec := got[name]
+		require.NotNil(t, spec, name)
+		assert.EqualValues(t, 1, spec["maxUnavailable"], name)
+		assert.NotContains(t, spec, "minAvailable", name)
+
+		labels := spec["selector"].(map[string]any)["matchLabels"].(map[string]any)
+		assert.Equal(t, component, labels["app.kubernetes.io/component"], name)
+	}
+
+	overrides := []string{"--set", "jobs.pdb.enabled=false", "--set", "server.pdb.maxUnavailable=2", "--set", "executor.pdb.minAvailable=2"}
+
+	got = pdbs(slices.Concat(scaled, overrides)...)
+	assert.NotContains(t, got, "t-synclet-jobs")
+	assert.EqualValues(t, 2, got["t-synclet-server"]["maxUnavailable"])
+	assert.EqualValues(t, 2, got["t-synclet-executor"]["minAvailable"])
+	assert.NotContains(t, got["t-synclet-executor"], "maxUnavailable")
+
+	assert.Contains(t, pdbs("--set", "server.pdb.enabled=true"), "t-synclet-server", "an enabled PDB renders at one replica")
+
+	zero := pdbs(slices.Concat(scaled, []string{"--set", "server.pdb.maxUnavailable=0"})...)
+	assert.EqualValues(t, 0, zero["t-synclet-server"]["maxUnavailable"], "an explicit maxUnavailable 0 is kept")
 }

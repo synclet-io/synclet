@@ -2,6 +2,7 @@ package pipelineexecdocker
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -242,4 +243,66 @@ func TestCleanupAll_SlowStopIsLeftForIntervalCleanup(t *testing.T) {
 
 	require.NoError(t, cleaner.Cleanup(context.Background()))
 	assert.Equal(t, []string{"fast-container", "slow-container"}, runner.removed)
+}
+
+// ownerFilteringRunner lists only the containers matching every label filter,
+// as the Docker daemon does.
+type ownerFilteringRunner struct {
+	mockRunner
+}
+
+func (m *ownerFilteringRunner) ListByLabel(_ context.Context, labels ...string) ([]container.Summary, error) {
+	var matched []container.Summary
+
+	for _, c := range m.containers {
+		if hasLabels(c.Labels, labels) {
+			matched = append(matched, c)
+		}
+	}
+
+	return matched, nil
+}
+
+func hasLabels(have map[string]string, filters []string) bool {
+	for _, filter := range filters {
+		key, value, _ := strings.Cut(filter, "=")
+		if have[key] != value {
+			return false
+		}
+	}
+
+	return true
+}
+
+func TestCleanup_ExecutorsOnOneDaemonKeepEachOthersContainers(t *testing.T) {
+	created := time.Now().Add(-30 * time.Minute).Unix()
+	containers := []container.Summary{
+		{ID: "a-orphan-0000", Created: created, Labels: map[string]string{"synclet.io/managed": "true", "synclet.io/job-id": "job-a", OwnerLabel: "a"}},
+		{ID: "b-orphan-0000", Created: created, Labels: map[string]string{"synclet.io/managed": "true", "synclet.io/job-id": "job-b", OwnerLabel: "b"}},
+	}
+
+	runs := map[string]func(*OrphanCleaner, context.Context) error{
+		"Cleanup":    (*OrphanCleaner).Cleanup,
+		"CleanupAll": (*OrphanCleaner).CleanupAll,
+	}
+
+	for name, run := range runs {
+		for owner, want := range map[string]string{"a": "a-orphan-0000", "b": "b-orphan-0000"} {
+			t.Run(name+"/"+owner, func(t *testing.T) {
+				runner := &ownerFilteringRunner{mockRunner: mockRunner{containers: containers}}
+				checker := &mockJobChecker{activeJobs: map[string]bool{}}
+				cleaner := &OrphanCleaner{
+					runner:      runner,
+					checker:     checker,
+					ownerID:     owner,
+					gracePeriod: 15 * time.Minute,
+					stopTimeout: time.Second,
+				}
+
+				require.NoError(t, run(cleaner, context.Background()))
+
+				assert.Equal(t, []string{want}, runner.removed)
+			})
+		}
+	}
 }

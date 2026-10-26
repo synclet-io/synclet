@@ -31,9 +31,13 @@ type k8sExecutorConfig struct {
 	ServerAddr      string `env:"SERVER_ADDR"`
 	// OwnerID is stamped as the synclet.io/owner label on every Job and
 	// Secret the executor creates, and the reconciler handles only those
-	// carrying it. Empty uses the hostname, which a StatefulSet keeps stable
-	// per replica; executors sharing one namespace need distinct values.
+	// carrying it. It must be unique among executors sharing one namespace.
+	// The executor does not start without OwnerID or OwnerIDPrefix.
 	OwnerID string `env:"OWNER_ID"`
+	// OwnerIDPrefix gives the owner id "<prefix>-<n>", n being the digits
+	// after the last "-" of the hostname: a StatefulSet replica's ordinal.
+	// It cannot be set together with OwnerID.
+	OwnerIDPrefix string `env:"OWNER_ID_PREFIX"`
 	// LocalVolumeClaim names an existing PersistentVolumeClaim mounted at
 	// /local in the connector containers, where file-writing destinations
 	// leave their files. Empty mounts a per-pod emptyDir.
@@ -104,7 +108,7 @@ func k8sExecutorModule() fx.Option {
 // process: the executor's EXECUTOR_API_TOKEN, or the server's own
 // PIPELINE_EXECUTOR_API_TOKEN inside `server --standalone`.
 func newK8sSyncRunner(cfg *k8sExecutorConfig, apiToken string) (*pipelineexeck8s.SyncRunner, error) {
-	ownerID, err := pipelineexec.ResolveOwnerID(cfg.OwnerID, "K8S_EXECUTOR_OWNER_ID", os.Hostname)
+	ownerID, err := resolveK8sOwnerID(cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -121,6 +125,10 @@ func newK8sSyncRunner(cfg *k8sExecutorConfig, apiToken string) (*pipelineexeck8s
 		OwnerID:          ownerID,
 		LocalVolumeClaim: cfg.LocalVolumeClaim,
 	})
+}
+
+func resolveK8sOwnerID(cfg *k8sExecutorConfig) (string, error) {
+	return pipelineexec.ResolveOwnerID(cfg.OwnerID, cfg.OwnerIDPrefix, "K8S_EXECUTOR_OWNER_ID", "K8S_EXECUTOR_OWNER_ID_PREFIX", "Kubernetes namespace", os.Hostname)
 }
 
 func newK8sReconciler(runner *pipelineexeck8s.SyncRunner, checker pipelineexeck8s.ResourceChecker, logger *logging.Logger) *pipelineexeck8s.ResourceCleaner {

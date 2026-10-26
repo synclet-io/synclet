@@ -56,7 +56,7 @@ func newExecutorRegistrationJob(
 // newDockerExecutorInfo describes the Docker executor: its capacity is its
 // concurrent sync limit and its resource defaults are the runtime defaults.
 func newDockerExecutorInfo(cfg *dockerExecutorConfig, runtime *executorRuntimeConfig) (pipelineexec.ExecutorInfo, error) {
-	ownerID, err := pipelineexec.ResolveOwnerID(cfg.OwnerID, "DOCKER_EXECUTOR_OWNER_ID", os.Hostname)
+	ownerID, err := pipelineexec.ResolveOwnerID(cfg.OwnerID, "", "DOCKER_EXECUTOR_OWNER_ID", "", "Docker daemon", os.Hostname)
 	if err != nil {
 		return pipelineexec.ExecutorInfo{}, err
 	}
@@ -79,7 +79,7 @@ func newDockerExecutorInfo(cfg *dockerExecutorConfig, runtime *executorRuntimeCo
 // limit of its own, and a resource with neither request nor limit set takes
 // the executor's default as both.
 func newK8sExecutorInfo(cfg *k8sExecutorConfig, runtime *executorRuntimeConfig) (pipelineexec.ExecutorInfo, error) {
-	ownerID, err := pipelineexec.ResolveOwnerID(cfg.OwnerID, "K8S_EXECUTOR_OWNER_ID", os.Hostname)
+	ownerID, err := resolveK8sOwnerID(cfg)
 	if err != nil {
 		return pipelineexec.ExecutorInfo{}, err
 	}

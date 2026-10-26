@@ -65,6 +65,12 @@ spec:
             {{- end }}
           env:
             {{- include "synclet.env" (dict "ctx" $ "base" (include "synclet.executorSecretEnvVars" .) "extraEnv" .Values.executor.extraEnv) | nindent 12 }}
+            {{- if not .Values.k8s.ownerId }}
+            - name: K8S_EXECUTOR_OWNER_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            {{- end }}
           {{- if .Values.executor.livenessProbe.enabled }}
           livenessProbe:
             httpGet:

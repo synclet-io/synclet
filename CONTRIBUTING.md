@@ -17,7 +17,7 @@ Requirements: Go (version from `go.mod`), PostgreSQL 16 (started through Docker 
 ```bash
 git clone https://github.com/synclet-io/synclet.git
 cd synclet
-cp .env.dist .env                  # then fill DB_DSN, AUTH_JWT_SECRET, SECRET_ENCRYPTION_KEY
+cp .env.dist .env                  # then fill DB_DSN, AUTH_JWT_SECRET, SECRET_ENCRYPTION_KEY; DOCKER_EXECUTOR_OWNER_ID for server --standalone or docker-executor
 go run . generate dotenv           # appends every other variable with its default
 
 task dev                           # starts Postgres and runs the server with hot reload

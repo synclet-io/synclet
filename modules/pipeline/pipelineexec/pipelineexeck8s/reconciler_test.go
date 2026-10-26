@@ -531,3 +531,40 @@ func TestReconciler_CleansEveryAttemptSecretOfFinishedJob(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, secrets.Items, "every secret of a finished job should have been removed")
 }
+
+func TestReconciler_ExecutorsInOneNamespaceKeepEachOthersResources(t *testing.T) {
+	ctx := context.Background()
+	client := fake.NewSimpleClientset()
+	oldTime := metav1.NewTime(time.Now().Add(-30 * time.Minute))
+
+	for _, owner := range []string{"a", "b"} {
+		for _, meta := range []metav1.ObjectMeta{
+			{Name: "sync-" + owner, Namespace: "default", CreationTimestamp: oldTime, Labels: map[string]string{pipelineexec.OwnerLabel: owner, "synclet.io/sync-job": "job-" + owner}},
+			{Name: "task-" + owner, Namespace: "default", CreationTimestamp: oldTime, Labels: map[string]string{pipelineexec.OwnerLabel: owner, "synclet.io/task": "task-" + owner}},
+		} {
+			_, err := client.BatchV1().Jobs("default").Create(ctx, &batchv1.Job{ObjectMeta: meta}, metav1.CreateOptions{})
+			require.NoError(t, err)
+
+			_, err = client.CoreV1().Secrets("default").Create(ctx, &corev1.Secret{ObjectMeta: meta}, metav1.CreateOptions{})
+			require.NoError(t, err)
+		}
+	}
+
+	checker := &mockResourceChecker{activeJobs: map[string]bool{}, activeTasks: map[string]bool{}}
+	NewReconciler(client, "default", "b", checker, &logging.Logger{Delegate: noopDelegate{}}).Reconcile(ctx, false)
+
+	for _, owner := range []string{"a", "b"} {
+		for _, resource := range []string{"sync-" + owner, "task-" + owner} {
+			_, jobErr := client.BatchV1().Jobs("default").Get(ctx, resource, metav1.GetOptions{})
+			_, secretErr := client.CoreV1().Secrets("default").Get(ctx, resource, metav1.GetOptions{})
+
+			if owner == "b" {
+				require.Error(t, jobErr, "Job %s of the reconciling executor should have been deleted", resource)
+				require.Error(t, secretErr, "Secret %s of the reconciling executor should have been deleted", resource)
+			} else {
+				require.NoError(t, jobErr, "Job %s of the other executor should survive", resource)
+				require.NoError(t, secretErr, "Secret %s of the other executor should survive", resource)
+			}
+		}
+	}
+}

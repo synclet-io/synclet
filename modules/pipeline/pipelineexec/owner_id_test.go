@@ -9,20 +9,49 @@ import (
 )
 
 func TestResolveOwnerID(t *testing.T) {
-	hostname := func() (string, error) { return "executor-1", nil }
-	noHostname := func() (string, error) { return "", errors.New("no hostname") }
+	const (
+		setting       = "K8S_EXECUTOR_OWNER_ID"
+		prefixSetting = "K8S_EXECUTOR_OWNER_ID_PREFIX"
+	)
 
-	ownerID, err := ResolveOwnerID("", "K8S_EXECUTOR_OWNER_ID", hostname)
-	require.NoError(t, err)
-	assert.Equal(t, "executor-1", ownerID)
+	podHostname := func() (string, error) { return "t-synclet-executor-2", nil }
 
-	ownerID, err = ResolveOwnerID("blue", "K8S_EXECUTOR_OWNER_ID", noHostname)
-	require.NoError(t, err)
-	assert.Equal(t, "blue", ownerID)
+	tests := []struct {
+		name         string
+		id           string
+		prefix       string
+		hostname     func() (string, error)
+		want         string
+		wantErrNames []string
+	}{
+		{name: "nothing set", hostname: podHostname, wantErrNames: []string{setting, "Kubernetes namespace"}},
+		{name: "id set", id: "blue", hostname: podHostname, want: "blue"},
+		{name: "id set without hostname", id: "blue", hostname: func() (string, error) { return "", errors.New("no hostname") }, want: "blue"},
+		{name: "prefix with ordinal hostname", prefix: "blue", hostname: podHostname, want: "blue-2"},
+		{name: "prefix with hostname without ordinal", prefix: "blue", hostname: func() (string, error) { return "myhost", nil }, wantErrNames: []string{prefixSetting}},
+		{name: "prefix with hostname ending in dash", prefix: "blue", hostname: func() (string, error) { return "myhost-", nil }, wantErrNames: []string{prefixSetting}},
+		{name: "prefix without hostname", prefix: "blue", hostname: func() (string, error) { return "", errors.New("no hostname") }, wantErrNames: []string{prefixSetting}},
+		{name: "id and prefix set", id: "blue", prefix: "blue", hostname: podHostname, wantErrNames: []string{setting, prefixSetting}},
+	}
 
-	_, err = ResolveOwnerID("", "DOCKER_EXECUTOR_OWNER_ID", noHostname)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ResolveOwnerID(tt.id, tt.prefix, setting, prefixSetting, "Kubernetes namespace", tt.hostname)
+			if tt.wantErrNames != nil {
+				for _, name := range tt.wantErrNames {
+					require.ErrorContains(t, err, name)
+				}
+
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+
+	_, err := ResolveOwnerID("", "", "DOCKER_EXECUTOR_OWNER_ID", "", "Docker daemon", podHostname)
 	require.ErrorContains(t, err, "DOCKER_EXECUTOR_OWNER_ID")
-
-	_, err = ResolveOwnerID("", "K8S_EXECUTOR_OWNER_ID", func() (string, error) { return "", nil })
-	require.ErrorContains(t, err, "K8S_EXECUTOR_OWNER_ID")
+	require.ErrorContains(t, err, "Docker daemon")
+	assert.NotContains(t, err.Error(), "Kubernetes")
 }

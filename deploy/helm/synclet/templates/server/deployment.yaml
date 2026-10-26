@@ -1,3 +1,11 @@
+{{- if eq .Values.mode "standalone" }}
+{{- if gt (int .Values.server.replicaCount) 1 }}
+{{- fail "server.replicaCount above 1 needs mode=distributed: standalone mode runs one server pod, whose embedded executor has one owner ID per installation; run several replicas in distributed mode" }}
+{{- end }}
+{{- if eq (toString (dig "pdb" "enabled" "" .Values.server)) "true" }}
+{{- fail "server.pdb.enabled needs mode=distributed: standalone mode runs one server pod, which a PodDisruptionBudget would keep from being drained; run several replicas in distributed mode" }}
+{{- end }}
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:

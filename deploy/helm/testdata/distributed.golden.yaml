@@ -742,6 +742,10 @@ spec:
                 secretKeyRef:
                   key: internal-api-secret
                   name: t-synclet-secrets
+            - name: K8S_EXECUTOR_OWNER_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
           livenessProbe:
             httpGet:
               path: /live

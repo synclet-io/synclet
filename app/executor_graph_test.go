@@ -110,22 +110,9 @@ users:
 // job pnpjobber wires up. The database connection is replaced by one that
 // never dials and the Kubernetes client points at an unreachable server.
 func TestExecutorRegistrationJob(t *testing.T) {
-	unsetEnv(t, "KUBERNETES_SERVICE_HOST")
-	t.Setenv("AUTH_JWT_SECRET", strings.Repeat("x", 32))
-	t.Setenv("SECRET_ENCRYPTION_KEY", validEncryptionKey)
-
-	for key, value := range envDefaults {
-		if os.Getenv(key) == "" {
-			t.Setenv(key, value)
-		}
-	}
-
-	kubeconfig := filepath.Join(t.TempDir(), "kubeconfig")
-	require.NoError(t, os.WriteFile(kubeconfig, []byte(unreachableKubeconfig), 0o600))
-	t.Setenv("K8S_EXECUTOR_KUBECONFIG", kubeconfig)
-
-	db, err := gorm.Open(postgres.Open("postgres://synclet@127.0.0.1:1/synclet"), &gorm.Config{DisableAutomaticPing: true})
-	require.NoError(t, err)
+	db := setupGraphBuild(t)
+	t.Setenv("DOCKER_EXECUTOR_OWNER_ID", "docker-0")
+	t.Setenv("K8S_EXECUTOR_OWNER_ID", "k8s-0")
 
 	graphs := executorGraphs()
 	graphs["standalone server"] = fx.Options(
@@ -151,6 +138,72 @@ func TestExecutorRegistrationJob(t *testing.T) {
 			assert.Contains(t, jobs, "executor_registration")
 		})
 	}
+}
+
+// setupGraphBuild sets the environment a graph needs to be built, not
+// started, and returns a database connection that never dials.
+func setupGraphBuild(t *testing.T) *gorm.DB {
+	t.Helper()
+
+	unsetEnv(t, "KUBERNETES_SERVICE_HOST", "DOCKER_EXECUTOR_OWNER_ID", "K8S_EXECUTOR_OWNER_ID", "K8S_EXECUTOR_OWNER_ID_PREFIX")
+	t.Setenv("AUTH_JWT_SECRET", strings.Repeat("x", 32))
+	t.Setenv("SECRET_ENCRYPTION_KEY", validEncryptionKey)
+
+	for key, value := range envDefaults {
+		if os.Getenv(key) == "" {
+			t.Setenv(key, value)
+		}
+	}
+
+	kubeconfig := filepath.Join(t.TempDir(), "kubeconfig")
+	require.NoError(t, os.WriteFile(kubeconfig, []byte(unreachableKubeconfig), 0o600))
+	t.Setenv("K8S_EXECUTOR_KUBECONFIG", kubeconfig)
+
+	db, err := gorm.Open(postgres.Open("postgres://synclet@127.0.0.1:1/synclet"), &gorm.Config{DisableAutomaticPing: true})
+	require.NoError(t, err)
+
+	return db
+}
+
+// TestExecutorGraph_RequiresOwnerID asserts that a graph running an executor
+// fails to build without its owner id, unset or empty, naming the variable,
+// while a server that runs no executor builds without one.
+func TestExecutorGraph_RequiresOwnerID(t *testing.T) {
+	db := setupGraphBuild(t)
+
+	server := func(standalone bool) fx.Option {
+		return fx.Options(
+			NewFxAppOptions(optionutil.ApplyOptions(serverDefaultOptions(), ServerCommandOptions(standalone)...)),
+			fx.Replace(db),
+		)
+	}
+
+	failing := map[string]struct {
+		graph   fx.Option
+		setting string
+	}{
+		"docker-executor":   {dockerExecutorGraph().options(), "DOCKER_EXECUTOR_OWNER_ID"},
+		"k8s-executor":      {k8sExecutorGraph().options(), "K8S_EXECUTOR_OWNER_ID"},
+		"server standalone": {server(true), "DOCKER_EXECUTOR_OWNER_ID"},
+	}
+
+	for name, tt := range failing {
+		t.Run(name, func(t *testing.T) {
+			require.ErrorContains(t, fx.New(fx.NopLogger, tt.graph).Err(), tt.setting)
+		})
+
+		t.Run(name+" with empty values", func(t *testing.T) {
+			t.Setenv("DOCKER_EXECUTOR_OWNER_ID", "")
+			t.Setenv("K8S_EXECUTOR_OWNER_ID", "")
+			t.Setenv("K8S_EXECUTOR_OWNER_ID_PREFIX", "")
+
+			require.ErrorContains(t, fx.New(fx.NopLogger, tt.graph).Err(), tt.setting)
+		})
+	}
+
+	t.Run("server", func(t *testing.T) {
+		require.NoError(t, fx.New(fx.NopLogger, server(false)).Err())
+	})
 }
 
 // TestExecutorInfoResolves asserts that every graph running an executor,

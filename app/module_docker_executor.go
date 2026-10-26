@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"os"
 	"time"
 
 	"github.com/go-pnp/go-pnp/config/configutil"
@@ -43,9 +42,9 @@ type dockerExecutorConfig struct {
 	// host.
 	LocalRoot string `env:"LOCAL_ROOT"`
 	// OwnerID is stamped as the synclet.io/owner label on every connector
-	// container, and orphan cleanup removes only containers carrying it.
-	// Empty uses the hostname; executors sharing one Docker daemon need
-	// distinct values.
+	// container, and orphan cleanup removes only containers carrying it. A
+	// process running the Docker executor does not start without it; it must
+	// be unique among executors sharing one Docker daemon.
 	OwnerID string `env:"OWNER_ID"`
 }
 
@@ -66,18 +65,13 @@ func dockerExecutorConfigModule() fx.Option {
 }
 
 func newContainerRunner(cfg *dockerExecutorConfig, logger *logging.Logger) (*pipelineexecdocker.ContainerRunner, error) {
-	ownerID, err := pipelineexec.ResolveOwnerID(cfg.OwnerID, "DOCKER_EXECUTOR_OWNER_ID", os.Hostname)
-	if err != nil {
-		return nil, err
-	}
-
 	if cfg.LocalRoot != "" {
 		if err := pipelineexecdocker.PrepareLocalRoot(context.Background(), cfg.LocalRoot, logger); err != nil {
 			return nil, err
 		}
 	}
 
-	return pipelineexecdocker.NewContainerRunner(cfg.TempDirRoot, cfg.LocalRoot, ownerID)
+	return pipelineexecdocker.NewContainerRunner(cfg.TempDirRoot, cfg.LocalRoot, cfg.OwnerID)
 }
 
 func dockerContainerRunnerAdapter(r *pipelineexecdocker.ContainerRunner) container.Runner {

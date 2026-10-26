@@ -852,3 +852,30 @@ release older than the mcp block have none.
 {{- define "synclet.mcpEnabled" -}}
 {{- if dig "enabled" false (.Values.mcp | default dict) -}}true{{- end -}}
 {{- end -}}
+
+{{/*
+synclet.pdb renders a component's PodDisruptionBudget. pdb.enabled true renders
+it, false never does, and unset renders it when the component runs more than one
+replica. A set pdb.minAvailable is used as is; otherwise maxUnavailable, 1 by
+default. Takes a dict: pdb, replicas, name, labels, selectorLabels.
+*/}}
+{{- define "synclet.pdb" -}}
+{{- $pdb := .pdb | default dict -}}
+{{- if or (eq (toString $pdb.enabled) "true") (and (kindIs "invalid" $pdb.enabled) (gt (int .replicas) 1)) }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ .name }}
+  labels:
+    {{- .labels | nindent 4 }}
+spec:
+  {{- if not (kindIs "invalid" $pdb.minAvailable) }}
+  minAvailable: {{ $pdb.minAvailable }}
+  {{- else }}
+  maxUnavailable: {{ if kindIs "invalid" $pdb.maxUnavailable }}1{{ else }}{{ $pdb.maxUnavailable }}{{ end }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- .selectorLabels | nindent 6 }}
+{{- end }}
+{{- end }}

@@ -61,6 +61,7 @@ func startSyncletServer(t *testing.T, env map[string]string) *syncletServer {
 		"AUTH_JWT_SECRET=e2e-test-jwt-secret-key-that-is-long-enough",
 		"AUTH_REGISTRATION_ENABLED=true",
 		"PIPELINE_EXECUTOR_API_TOKEN=e2e-test-internal-secret",
+		"DOCKER_EXECUTOR_OWNER_ID=e2e",
 	)
 	for k, v := range env {
 		cmd.Env = append(cmd.Env, k+"="+v)

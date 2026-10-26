@@ -1,0 +1,8 @@
+{{- if and (eq .Values.mode "distributed") .Values.executor.enabled }}
+{{- include "synclet.pdb" (dict
+  "pdb" .Values.executor.pdb
+  "replicas" .Values.executor.replicaCount
+  "name" (printf "%s-executor" (include "synclet.fullname" .))
+  "labels" (include "synclet.executor.labels" .)
+  "selectorLabels" (include "synclet.executor.selectorLabels" .)) }}
+{{- end }}

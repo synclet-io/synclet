@@ -1,0 +1,8 @@
+{{- if eq .Values.mode "distributed" }}
+{{- include "synclet.pdb" (dict
+  "pdb" .Values.jobs.pdb
+  "replicas" .Values.jobs.replicaCount
+  "name" (printf "%s-jobs" (include "synclet.fullname" .))
+  "labels" (include "synclet.jobs.labels" .)
+  "selectorLabels" (include "synclet.jobs.selectorLabels" .)) }}
+{{- end }}

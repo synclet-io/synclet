@@ -127,6 +127,36 @@ func TestEnvDistHasNoEmptyDefaultedValues(t *testing.T) {
 	}
 }
 
+// TestEnvDistLeavesDockerOwnerIDEmpty fails when .env.dist gives
+// DOCKER_EXECUTOR_OWNER_ID a value: every checkout copying it would share that
+// owner id on one Docker daemon, and their executors would remove each other's
+// containers.
+func TestEnvDistLeavesDockerOwnerIDEmpty(t *testing.T) {
+	content, err := os.ReadFile("../.env.dist")
+	if err != nil {
+		t.Fatalf("read .env.dist: %v", err)
+	}
+
+	found := false
+
+	for line := range strings.Lines(string(content)) {
+		key, value, ok := strings.Cut(strings.TrimSpace(line), "=")
+		if !ok || key != "DOCKER_EXECUTOR_OWNER_ID" {
+			continue
+		}
+
+		found = true
+
+		if value != "" {
+			t.Errorf(".env.dist sets DOCKER_EXECUTOR_OWNER_ID to %q; leave it empty so each checkout sets its own", value)
+		}
+	}
+
+	if !found {
+		t.Error(".env.dist does not list DOCKER_EXECUTOR_OWNER_ID")
+	}
+}
+
 func TestEmptyEnvDistKeysWithDefaults(t *testing.T) {
 	defaults := map[string]string{"A": "x", "B": "y", "C": "z"}
 	text := "A=\nB=set\n# C=\nD=\nE= \n"
@@ -180,22 +210,23 @@ func TestConfigInventoryRoles(t *testing.T) {
 	}
 
 	for key, want := range map[string]string{
-		"DB_DSN":                      roleServer,
-		"AUTH_JWT_SECRET":             roleServer,
-		"WATERMILL_TRANSPORT":         roleServer,
-		"PIPELINE_EXECUTOR_API_TOKEN": roleServer,
-		"EXECUTOR_API_URL":            roleExecutor,
-		"EXECUTOR_API_TOKEN":          roleExecutor,
-		"LOG_LEVEL":                   roleBoth,
-		"INTERNAL_HTTP_SERVER_ADDR":   roleBoth,
-		"MCP_ENABLED":                 roleServer,
-		"MCP_WRITE_TOOLS":             roleServer,
-		"MCP_HTTP_SERVER_ADDR":        roleServer,
-		"DOCKER_EXECUTOR_OWNER_ID":    roleBoth,
-		"K8S_EXECUTOR_NAMESPACE":      roleBoth,
-		"K8S_EXECUTOR_OWNER_ID":       roleBoth,
-		"PIPELINE_RUNTIME_CPU_LIMIT":  roleBoth,
-		"PIPELINE_IDLE_TIMEOUT":       roleBoth,
+		"DB_DSN":                       roleServer,
+		"AUTH_JWT_SECRET":              roleServer,
+		"WATERMILL_TRANSPORT":          roleServer,
+		"PIPELINE_EXECUTOR_API_TOKEN":  roleServer,
+		"EXECUTOR_API_URL":             roleExecutor,
+		"EXECUTOR_API_TOKEN":           roleExecutor,
+		"LOG_LEVEL":                    roleBoth,
+		"INTERNAL_HTTP_SERVER_ADDR":    roleBoth,
+		"MCP_ENABLED":                  roleServer,
+		"MCP_WRITE_TOOLS":              roleServer,
+		"MCP_HTTP_SERVER_ADDR":         roleServer,
+		"DOCKER_EXECUTOR_OWNER_ID":     roleBoth,
+		"K8S_EXECUTOR_NAMESPACE":       roleBoth,
+		"K8S_EXECUTOR_OWNER_ID":        roleBoth,
+		"K8S_EXECUTOR_OWNER_ID_PREFIX": roleBoth,
+		"PIPELINE_RUNTIME_CPU_LIMIT":   roleBoth,
+		"PIPELINE_IDLE_TIMEOUT":        roleBoth,
 	} {
 		if got := roles[key]; got != want {
 			t.Errorf("%s: role %q, want %q", key, got, want)

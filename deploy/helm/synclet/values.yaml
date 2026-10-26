@@ -60,6 +60,7 @@ image:
 
 ## @section Server parameters
 server:
+  ## Above 1 only in distributed mode: standalone mode runs one server pod and fails to render otherwise.
   replicaCount: 1
   strategy:
     type: RollingUpdate
@@ -158,11 +159,14 @@ server:
   ## Ingress is enabled, or from the first gateway hostname when only the HTTPRoute is.
   ## Required when both are enabled.
   publicUrl: ""
-  ## Enable PDB when running with replicaCount > 1 for high availability.
+  ## PodDisruptionBudget of the server pods, distributed mode only: standalone mode runs one
+  ## server pod and fails to render with replicaCount above 1 or pdb.enabled true.
+  ## enabled unset renders a PDB when replicaCount is above 1; true always, false never.
+  ## A set minAvailable replaces maxUnavailable.
   pdb:
-    enabled: false
-    minAvailable: 1
-    # maxUnavailable: 1  # alternative to minAvailable — uncomment and remove minAvailable
+    # enabled: false
+    maxUnavailable: 1
+    # minAvailable: 1
   serviceMonitor:
     enabled: false
     port: internal      # scrape metrics from the internal service (not public)
@@ -243,6 +247,12 @@ mcp:
 ## @section Jobs parameters (distributed mode only)
 jobs:
   replicaCount: 1
+  ## PodDisruptionBudget of the jobs pods: enabled unset renders one when replicaCount is
+  ## above 1; true always, false never. A set minAvailable replaces maxUnavailable.
+  pdb:
+    # enabled: false
+    maxUnavailable: 1
+    # minAvailable: 1
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -290,7 +300,7 @@ jobs:
 ## Set enabled: false if you run the executor outside the chart (e.g. external deployment).
 ## The executor runs as a StatefulSet behind a headless Service: each pod keeps its name
 ## (<fullname>-executor-0, -1, ...) across restarts, and that name is its owner id unless
-## k8s.ownerId is set. Pods update one at a time, highest ordinal first; after a scale-down
+## k8s.ownerId is set, which makes it <k8s.ownerId>-<ordinal>. Pods update one at a time, highest ordinal first; after a scale-down
 ## the Jobs a removed ordinal left behind wait until a pod with that ordinal runs again.
 ## Executor pods start in parallel, since each replica claims jobs on its own and never waits for another.
 ## Upgrading from a chart that ran the executor as a Deployment: delete the old Deployment
@@ -301,6 +311,12 @@ jobs:
 executor:
   enabled: true
   replicaCount: 1
+  ## PodDisruptionBudget of the executor pods: enabled unset renders one when replicaCount is
+  ## above 1; true always, false never. A set minAvailable replaces maxUnavailable.
+  pdb:
+    # enabled: false
+    maxUnavailable: 1
+    # minAvailable: 1
   updateStrategy:
     type: RollingUpdate
   resources:
@@ -366,10 +382,10 @@ executor:
 k8s:
   namespace: ""
   ## Owner label the Kubernetes executor stamps on its Jobs and Secrets; it reconciles and
-  ## removes only those carrying it. Empty uses the pod name of each executor replica
-  ## (distributed mode) or the release fullname (standalone mode). Executors sharing one
-  ## namespace, such as two releases, need distinct values; a set value is shared by all
-  ## executor replicas.
+  ## removes only those carrying it. Executors sharing one namespace, such as two releases,
+  ## need distinct values. Empty uses the pod name of each executor replica (distributed
+  ## mode) or the release fullname (standalone mode). In distributed mode a set value is a
+  ## prefix: each replica's owner id is <ownerId>-<ordinal>, so replicas never share one.
   ownerId: ""
   defaultMemory: 2Gi
   defaultCPU: "1"
@@ -528,7 +544,8 @@ pipeline:
   ## If a sync receives no records for this duration, it's cancelled as idle.
   idleTimeout: "10m"
   ## Owner label the Docker executor stamps on its connector containers; orphan cleanup removes only its own.
-  ## Empty uses the pod hostname. Executors sharing one Docker daemon need distinct values.
+  ## Needed only when the server runs the Docker executor (it does not start without one); executors sharing
+  ## one Docker daemon need distinct values.
   dockerOwnerId: ""
 
   ## Connector tasks
