@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.0.0](https://github.com/synclet-io/synclet/compare/synclet-helm-v0.11.0...synclet-helm-v1.0.0) (2026-10-29)
+
+
+### ⚠ BREAKING CHANGES
+
+* **executor:** executors require an owner ID; chart sets one per replica and adds PDBs
+* **auth:** verified-email OIDC linking, browser-bound OIDC state, registration off by default, shared rate limits in Postgres
+* **pipeline:** connector pods run only under the instance-wide service account
+
+### Features
+
+* **auth:** verified-email OIDC linking, browser-bound OIDC state, registration off by default, shared rate limits in Postgres ([9409d68](https://github.com/synclet-io/synclet/commit/9409d68ad523125630ea621281dfa5673726cf1a))
+* **pipeline:** connector pods run only under the instance-wide service account ([cc3abf7](https://github.com/synclet-io/synclet/commit/cc3abf7f9ef8cc3e223e492b49562206009bd3af))
+
+
+### Bug Fixes
+
+* **executor:** executors require an owner ID; chart sets one per replica and adds PDBs ([714fb8f](https://github.com/synclet-io/synclet/commit/714fb8f6cacf33af0f71ff680b2275674ff7887d))
+
 ## [0.11.0](https://github.com/synclet-io/synclet/compare/synclet-helm-v0.10.0...synclet-helm-v0.11.0) (2026-10-21)
 
 
