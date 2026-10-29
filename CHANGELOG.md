@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.0.0](https://github.com/synclet-io/synclet/compare/synclet-v0.16.0...synclet-v1.0.0) (2026-10-29)
+
+
+### ⚠ BREAKING CHANGES
+
+* **executor:** executors require an owner ID; chart sets one per replica and adds PDBs
+* **auth:** verified-email OIDC linking, browser-bound OIDC state, registration off by default, shared rate limits in Postgres
+* **executor:** drop docker_volumes; connectors reach host files only under /local
+* **pipeline:** connector pods run only under the instance-wide service account
+
+### Features
+
+* **auth:** verified-email OIDC linking, browser-bound OIDC state, registration off by default, shared rate limits in Postgres ([9409d68](https://github.com/synclet-io/synclet/commit/9409d68ad523125630ea621281dfa5673726cf1a))
+* **executor:** drop docker_volumes; connectors reach host files only under /local ([2c50c59](https://github.com/synclet-io/synclet/commit/2c50c59bf1fd16effb16a227ecf4e3ec0e50cf32))
+* **mapper:** datetime cast target for timestamps without time zone ([f43b689](https://github.com/synclet-io/synclet/commit/f43b68930bdb08a03b8d4eada4dd20947b5bc547))
+* **pipeline:** connector pods run only under the instance-wide service account ([cc3abf7](https://github.com/synclet-io/synclet/commit/cc3abf7f9ef8cc3e223e492b49562206009bd3af))
+* **ui:** expand and collapse all namespaces in stream config ([0b8b943](https://github.com/synclet-io/synclet/commit/0b8b9430f39a64c00ae03d868b0012cb63118eb4))
+
+
+### Bug Fixes
+
+* **e2e:** disable rate limits in e2e servers ([56d56c1](https://github.com/synclet-io/synclet/commit/56d56c161b3da33bd7551205f09d1a94d2c4da50))
+* **executor:** executors require an owner ID; chart sets one per replica and adds PDBs ([714fb8f](https://github.com/synclet-io/synclet/commit/714fb8f6cacf33af0f71ff680b2275674ff7887d))
+
 ## [0.16.0](https://github.com/synclet-io/synclet/compare/synclet-v0.15.0...synclet-v0.16.0) (2026-10-22)
 
 
