@@ -30,6 +30,8 @@ function exampleValue(column: Column): unknown {
       return true
     case 'timestamp':
       return '2026-01-01T12:00:00Z'
+    case 'datetime':
+      return '2026-01-01T12:00:00'
     case 'date':
       return '2026-01-01'
     case 'object':

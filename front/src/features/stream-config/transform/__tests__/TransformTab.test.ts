@@ -195,6 +195,20 @@ describe('transformTab', () => {
     ])
   })
 
+  it('writes a datetime cast with its format and timezone', async () => {
+    const wrapper = mountTab(row())
+    await addStep(wrapper, 'cast')
+    const c = card(wrapper, 0)
+    await c.get('input[data-testid="entry-field"]').setValue('created_at')
+    await c.get('select[data-testid="entry-cast-to"]').setValue('datetime')
+    await c.get('input[data-testid="cast-format"]').setValue('unix')
+    await c.get('input[data-testid="cast-timezone"]').setValue('Europe/Kyiv')
+
+    expect(lastMappers(wrapper)).toEqual([
+      { cast: { created_at: { to: 'datetime', format: 'unix', timezone: 'Europe/Kyiv' } } },
+    ])
+  })
+
   it('moves a step up and removes one', async () => {
     const wrapper = mountTab(row({ mappers: [{ hash: ['email'] }, { filter: 'true' }, { rename: { cust_id: 'customer_id' } }] }))
     await card(wrapper, 1).get('[data-testid="step-up"]').trigger('click')

@@ -58,20 +58,20 @@ Writes a field from a CEL expression. The field can be new or existing; it takes
 
 ## cast
 
-Converts a field to `string`, `integer`, `number`, `boolean`, `timestamp`, `date`, `object` or `array`. The value is either the target type alone or a spec:
+Converts a field to `string`, `integer`, `number`, `boolean`, `timestamp`, `datetime`, `date`, `object` or `array`. The value is either the target type alone or a spec:
 
 | Key | Applies to | Meaning |
 |---|---|---|
 | `to` | all | Target type (required). |
-| `format` | timestamp, date, string | `iso8601` (default), `unix`, `unix_ms` or a pattern of the tokens `yyyy yy MM dd HH hh a mm ss SSS XXX` (a literal letter goes in single quotes: `yyyy-MM-dd'T'HH:mm:ss`). For timestamp and date it is the input format; for string it is the output format of an ISO 8601 input. |
-| `timezone` | timestamp, date | IANA name for values without an offset, such as `Europe/Kyiv`. Default UTC. |
+| `format` | timestamp, datetime, date, string | `iso8601` (default), `unix`, `unix_ms` or a pattern of the tokens `yyyy yy MM dd HH hh a mm ss SSS XXX` (a literal letter goes in single quotes: `yyyy-MM-dd'T'HH:mm:ss`). For timestamp, datetime and date it is the input format; for string it is the output format of an ISO 8601 input. |
+| `timezone` | timestamp, datetime, date | IANA name for values without an offset, such as `Europe/Kyiv`. Default UTC. |
 | `decimal_separator`, `thousands_separator` | integer, number | For text such as `1.234,56`. |
 | `trim`, `strip_prefix`, `strip_suffix` | integer, number | Remove spaces, a currency sign or a unit before parsing. |
 | `true_values`, `false_values` | boolean | Text meaning true or false, case-insensitive. Default `true 1 yes y t` and `false 0 no n f`. |
 | `source` | all | CEL expression to cast instead of the field; the field can be new. |
 | `on_error` | all | `fail`, `null` or `skip` for this field, overriding the step's. |
 
-A timestamp is written as an RFC 3339 string, a date as `yyyy-MM-dd`; `integer` rejects a fractional value.
+A timestamp is written as an RFC 3339 string and a date as `yyyy-MM-dd`. A datetime is written as `yyyy-MM-ddTHH:mm:ss[.fraction]` without an offset, in the cast's timezone (UTC by default); destinations store it as a timestamp without time zone (BigQuery DATETIME). `integer` rejects a fractional value.
 
 ```json mappers
 [

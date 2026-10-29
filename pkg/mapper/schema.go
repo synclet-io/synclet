@@ -21,6 +21,7 @@ var (
 	schemaNumber    = json.RawMessage(`{"type":"number"}`)
 	schemaBoolean   = json.RawMessage(`{"type":"boolean"}`)
 	schemaTimestamp = json.RawMessage(`{"type":"string","format":"date-time","airbyte_type":"timestamp_with_timezone"}`)
+	schemaDatetime  = json.RawMessage(`{"type":"string","format":"date-time","airbyte_type":"timestamp_without_timezone"}`)
 	schemaDate      = json.RawMessage(`{"type":"string","format":"date"}`)
 	schemaObject    = json.RawMessage(`{"type":"object"}`)
 	schemaArray     = json.RawMessage(`{"type":"array"}`)
@@ -277,6 +278,8 @@ func castSchema(target string) json.RawMessage {
 		return schemaBoolean
 	case CastTimestamp:
 		return schemaTimestamp
+	case CastDatetime:
+		return schemaDatetime
 	case CastDate:
 		return schemaDate
 	case CastObject:

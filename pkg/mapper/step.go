@@ -21,6 +21,7 @@ const (
 	CastNumber    = "number"
 	CastBoolean   = "boolean"
 	CastTimestamp = "timestamp"
+	CastDatetime  = "datetime"
 	CastDate      = "date"
 	CastObject    = "object"
 	CastArray     = "array"

@@ -17,7 +17,7 @@ const emit = defineEmits<{
 const formatPresets = ['iso8601', 'unix', 'unix_ms', 'dd.MM.yyyy HH:mm', 'dd.MM.yyyy', 'yyyy-MM-dd HH:mm:ss', 'MM/dd/yyyy']
 const formatListId = useId()
 
-const isTime = computed(() => props.spec.to === 'timestamp' || props.spec.to === 'date')
+const isTime = computed(() => ['timestamp', 'datetime', 'date'].includes(props.spec.to))
 const isNumber = computed(() => props.spec.to === 'integer' || props.spec.to === 'number')
 const isJson = computed(() => props.spec.to === 'object' || props.spec.to === 'array')
 const hasFormat = computed(() => isTime.value || props.spec.to === 'string')

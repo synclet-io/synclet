@@ -25,6 +25,9 @@ var (
 	errFilterValue = errors.New("filter did not return a bool")
 )
 
+// datetimeLayout writes a wall-clock timestamp without a zone offset.
+const datetimeLayout = "2006-01-02T15:04:05.999999999"
+
 // DecodeRecord decodes a record's JSON data, keeping numbers as json.Number
 // so Run reads them as the schema says.
 func DecodeRecord(data []byte) (map[string]any, error) {
@@ -395,14 +398,17 @@ func (cc *compiledCast) convert(val any) (any, error) {
 		return cc.toNumber(val)
 	case CastBoolean:
 		return toBoolean(spec, val)
-	case CastTimestamp, CastDate:
+	case CastTimestamp, CastDatetime, CastDate:
 		parsed, err := cc.format.parse(val, cc.loc)
 		if err != nil {
 			return nil, err
 		}
 
-		if spec.To == CastDate {
+		switch spec.To {
+		case CastDate:
 			return parsed.Format(time.DateOnly), nil
+		case CastDatetime:
+			return parsed.In(cc.loc).Format(datetimeLayout), nil
 		}
 
 		return parsed.Format(time.RFC3339Nano), nil

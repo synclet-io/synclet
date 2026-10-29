@@ -52,7 +52,7 @@ const WELL_KNOWN_TYPE_REF = /WellKnownTypes\.json#\/definitions\/(\w+)$/
 
 const WELL_KNOWN_TYPES: Record<string, string> = {
   TimestampWithTimezone: 'timestamp',
-  TimestampWithoutTimezone: 'timestamp',
+  TimestampWithoutTimezone: 'datetime',
   Date: 'date',
   Integer: 'integer',
   Number: 'number',
@@ -62,7 +62,7 @@ const WELL_KNOWN_TYPES: Record<string, string> = {
 
 const AIRBYTE_TYPES: Record<string, string> = {
   timestamp_with_timezone: 'timestamp',
-  timestamp_without_timezone: 'timestamp',
+  timestamp_without_timezone: 'datetime',
   date: 'date',
   integer: 'integer',
 }

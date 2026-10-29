@@ -228,10 +228,10 @@ describe('schemaColumns airbyte types', () => {
     })
     const types = Object.fromEntries(cols.map(c => [c.name, c.type]))
     expect(types).toMatchObject({
-      created_at: 'timestamp',
+      created_at: 'datetime',
       updated_at: 'timestamp',
       born_on: 'date',
-      seen_at: 'timestamp',
+      seen_at: 'datetime',
       day: 'date',
       visits: 'integer',
       name: 'string',

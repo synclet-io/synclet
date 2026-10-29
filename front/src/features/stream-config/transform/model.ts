@@ -46,7 +46,7 @@ export const MAPPER_LABELS: Record<MapperKind, string> = {
   drop: 'Drop',
 }
 
-export const CAST_TARGETS = ['string', 'integer', 'number', 'boolean', 'timestamp', 'date', 'object', 'array']
+export const CAST_TARGETS = ['string', 'integer', 'number', 'boolean', 'timestamp', 'datetime', 'date', 'object', 'array']
 
 const castKeys: Array<[keyof CastOptions, string]> = [
   ['to', 'to'],
