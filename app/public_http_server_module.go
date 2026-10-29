@@ -93,6 +93,19 @@ type rateLimitConfig struct {
 	// TrustedProxies lists the IPs or CIDR ranges of reverse proxies whose
 	// X-Forwarded-For and X-Real-IP headers identify the client.
 	TrustedProxies []string `env:"TRUSTED_PROXIES" envSeparator:","`
+	// Disabled turns off the per-IP limits on the auth endpoints and the MCP
+	// OAuth client registration. For test environments only.
+	Disabled bool `env:"DISABLED" envDefault:"false"`
+}
+
+// limits returns the given per-procedure limits, or none when rate limiting
+// is disabled.
+func (c *rateLimitConfig) limits(limits map[string]connectutil.RateLimitConfig) map[string]connectutil.RateLimitConfig {
+	if c.Disabled {
+		return nil
+	}
+
+	return limits
 }
 
 func newConnectRPCRateLimitInterceptor(store connectutil.RateLimitStore, cfg *rateLimitConfig) (ordering.OrderedItem[connect.Interceptor], error) {
@@ -103,13 +116,13 @@ func newConnectRPCRateLimitInterceptor(store connectutil.RateLimitStore, cfg *ra
 
 	rateLimiter := connectutil.NewRateLimitInterceptor(
 		store,
-		map[string]connectutil.RateLimitConfig{
+		cfg.limits(map[string]connectutil.RateLimitConfig{
 			"/synclet.publicapi.auth.v1.AuthService/Login":                {Limit: 10, Window: time.Minute},
 			"/synclet.publicapi.auth.v1.AuthService/Register":             {Limit: 3, Window: time.Minute},
 			"/synclet.publicapi.auth.v1.AuthService/RefreshToken":         {Limit: 20, Window: time.Minute},
 			"/synclet.publicapi.auth.v1.AuthService/RequestPasswordReset": {Limit: 10, Window: time.Minute},
 			"/synclet.publicapi.auth.v1.AuthService/ResetPassword":        {Limit: 10, Window: time.Minute},
-		},
+		}),
 		connectutil.WithTrustedProxies(trustedProxies),
 	)
 

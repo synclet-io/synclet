@@ -60,6 +60,7 @@ func startSyncletServer(t *testing.T, env map[string]string) *syncletServer {
 		"SECRET_ENCRYPTION_KEY=PjsJSmk5MpLbSjsXYdIeflREhQ57B7+Sz0b0/VreDRk=",
 		"AUTH_JWT_SECRET=e2e-test-jwt-secret-key-that-is-long-enough",
 		"AUTH_REGISTRATION_ENABLED=true",
+		"RATE_LIMIT_DISABLED=true",
 		"PIPELINE_EXECUTOR_API_TOKEN=e2e-test-internal-secret",
 		"DOCKER_EXECUTOR_OWNER_ID=e2e",
 	)

@@ -136,9 +136,9 @@ func newOAuthRegisterLimiter(store connectutil.RateLimitStore, cfg *rateLimitCon
 
 	limiter := connectutil.NewRateLimitInterceptor(
 		store,
-		map[string]connectutil.RateLimitConfig{
+		cfg.limits(map[string]connectutil.RateLimitConfig{
 			authhttp.RegisterPath: {Limit: 10, Window: time.Minute},
-		},
+		}),
 		connectutil.WithTrustedProxies(trustedProxies),
 	)
 
