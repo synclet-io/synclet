@@ -1,5 +1,7 @@
 import { ref, watch } from 'vue'
 
+export const INVALID_CONFIG_MESSAGE = 'Some configuration fields are missing or invalid. Fix the highlighted fields and try again.'
+
 export function cleanConfig(obj: Record<string, any>): Record<string, any> {
   const result: Record<string, any> = {}
   for (const [k, v] of Object.entries(obj)) {

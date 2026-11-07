@@ -7,7 +7,7 @@ import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import InstanceConfigField from './InstanceConfigField.vue'
 import { INSTANCE_KINDS, useInstance, useUpdateInstance } from './instanceKind'
-import { useConfigEditor } from './useConfigEditor'
+import { INVALID_CONFIG_MESSAGE, useConfigEditor } from './useConfigEditor'
 
 const props = defineProps<{
   kind: InstanceKind
@@ -27,6 +27,7 @@ const { data: spec, isLoading: specLoading, error: specLoadError } = useConnecto
 
 const name = ref('')
 const config = useConfigEditor()
+const configField = ref<InstanceType<typeof InstanceConfigField> | null>(null)
 const saving = ref(false)
 const error = ref('')
 
@@ -63,8 +64,12 @@ function toggleJson() {
 async function handleSave() {
   if (!instance.value)
     return
-  saving.value = true
   error.value = ''
+  if (configField.value && !configField.value.validate()) {
+    error.value = INVALID_CONFIG_MESSAGE
+    return
+  }
+  saving.value = true
   try {
     await updateMutation.mutateAsync({
       id: instance.value.id,
@@ -113,6 +118,7 @@ function handleDiscard() {
         <SInput v-model="name" :label="`${meta.title} Name`" :placeholder="`My ${meta.title}`" required />
 
         <InstanceConfigField
+          ref="configField"
           v-model:values="config.values.value"
           v-model:json-text="config.jsonText.value"
           :json-mode="config.jsonMode.value"

@@ -11,7 +11,7 @@ import { computed, ref } from 'vue'
 import { onBeforeRouteLeave, useRouter } from 'vue-router'
 import InstanceConfigField from './InstanceConfigField.vue'
 import { INSTANCE_KINDS, useCreateInstance, useTestInstanceConnection } from './instanceKind'
-import { useConfigEditor } from './useConfigEditor'
+import { INVALID_CONFIG_MESSAGE, useConfigEditor } from './useConfigEditor'
 
 const props = defineProps<{
   kind: InstanceKind
@@ -24,6 +24,7 @@ const step = ref(1)
 const selectedConnector = ref<ManagedConnector | null>(null)
 const name = ref('')
 const config = useConfigEditor()
+const configField = ref<InstanceType<typeof InstanceConfigField> | null>(null)
 const error = ref('')
 const search = ref('')
 const starredOnly = ref(false)
@@ -118,6 +119,10 @@ async function handleCreate() {
     return
   error.value = ''
   testTaskId.value = null
+  if (configField.value && !configField.value.validate()) {
+    error.value = INVALID_CONFIG_MESSAGE
+    return
+  }
   try {
     const instance = await createMutation.create({
       name: name.value,
@@ -270,6 +275,7 @@ const connectorSections = computed(() => {
           />
 
           <InstanceConfigField
+            ref="configField"
             v-model:values="config.values.value"
             v-model:json-text="config.jsonText.value"
             :json-mode="config.jsonMode.value"

@@ -1,21 +1,30 @@
 <script setup lang="ts">
-import type { JsonSchema } from '@shared/lib/jsonSchemaUtils'
+import type { JsonSchema, ValidationError } from '@shared/lib/jsonSchemaUtils'
+import type { SchemaFormContext } from './schemaForm/context'
+import { dateLayoutFor } from '@shared/lib/dateFormats'
 import {
+  coerceArrayItems,
   getFieldDefaults,
   getOrderedProperties,
   humanizeKey,
-
-  mergeAllOf,
-  resolveOneOf,
+  normalizeProperties,
   validateField,
+  validateObjectValue,
 } from '@shared/lib/jsonSchemaUtils'
-import DOMPurify from 'dompurify'
-import { computed, ref, watch } from 'vue'
+import { renderDescription } from '@shared/lib/schemaDescription'
+import { computed, inject, provide, reactive, ref, watch } from 'vue'
+import { joinFieldPath, schemaFormContextKey } from './schemaForm/context'
+import DateField from './schemaForm/DateField.vue'
+import EnumMultiSelect from './schemaForm/EnumMultiSelect.vue'
+import JsonObjectField from './schemaForm/JsonObjectField.vue'
+import OneOfField from './schemaForm/OneOfField.vue'
 
 const props = defineProps<{
   schema: JsonSchema
   modelValue: Record<string, unknown>
   rootRequired?: string[]
+  /** Dotted path of this form's value inside the root form's value; empty for the root form. */
+  path?: string
 }>()
 
 const emit = defineEmits<{
@@ -24,11 +33,46 @@ const emit = defineEmits<{
 
 const touched = defineModel<Record<string, boolean>>('touched', { default: () => ({}) })
 
-const resolvedSchema = computed(() => mergeAllOf(props.schema))
+const resolvedSchema = computed(() => normalizeProperties(props.schema))
 
-const orderedKeys = computed(() => getOrderedProperties(resolvedSchema.value))
+const orderedKeys = computed(() => getOrderedProperties(resolvedSchema.value)
+  .filter(key => !resolvedSchema.value.properties?.[key]?.airbyte_hidden))
 
 const requiredSet = computed(() => new Set(props.rootRequired ?? resolvedSchema.value.required ?? []))
+
+const parentContext = inject(schemaFormContextKey, null)
+const ctx: SchemaFormContext = parentContext ?? {
+  showAll: ref(false),
+  selections: reactive({}),
+  invalidJson: reactive({}),
+  errors: computed(() => {
+    const errors = validateObjectValue(
+      props.modelValue ?? {},
+      { ...resolvedSchema.value, required: [...requiredSet.value] },
+      props.path ?? '',
+      { selectedBranch: path => ctx.selections[path] },
+    )
+    for (const [field, message] of Object.entries(ctx.invalidJson)) {
+      if (!errors.some(e => e.field === field))
+        errors.push({ field, message })
+    }
+    return errors
+  }),
+}
+if (!parentContext)
+  provide(schemaFormContextKey, ctx)
+
+/** Validates the whole value, shows the error of every invalid field and returns the errors. */
+function validate(): ValidationError[] {
+  ctx.showAll.value = true
+  return ctx.errors.value
+}
+
+defineExpose({ validate })
+
+function fieldPath(key: string): string {
+  return joinFieldPath(props.path, key)
+}
 
 // Apply defaults on mount
 watch(
@@ -56,6 +100,8 @@ function markTouched(key: string) {
 }
 
 function getError(key: string, fieldSchema: JsonSchema): string | null {
+  if (ctx.showAll.value)
+    return ctx.errors.value.find(e => e.field === fieldPath(key))?.message ?? null
   if (!touched.value[key])
     return null
   const err = validateField(props.modelValue[key], fieldSchema, requiredSet.value.has(key))
@@ -77,47 +123,8 @@ function isConst(fieldSchema: JsonSchema): boolean {
   return fieldSchema.const !== undefined
 }
 
-// oneOf handling
-function getOneOfBranchIndex(key: string): number {
-  const fieldSchema = resolvedSchema.value.properties?.[key]
-  if (!fieldSchema?.oneOf)
-    return -1
-  return resolveOneOf(fieldSchema, props.modelValue[key] as Record<string, unknown> ?? {})
-}
-
-function getOneOfTitle(branch: JsonSchema): string {
-  if (branch.title)
-    return branch.title
-  // Find the const discriminator to use as title
-  if (branch.properties) {
-    for (const propSchema of Object.values(branch.properties)) {
-      if (propSchema.const !== undefined)
-        return String(propSchema.const)
-    }
-  }
-  return 'Option'
-}
-
-function selectOneOfBranch(key: string, branchIndex: number) {
-  const fieldSchema = resolvedSchema.value.properties?.[key]
-  if (!fieldSchema?.oneOf)
-    return
-  const branch = fieldSchema.oneOf[branchIndex]
-  if (!branch?.properties)
-    return
-
-  // Auto-set const values from the branch
-  const newValue: Record<string, unknown> = {}
-  for (const [propKey, propSchema] of Object.entries(branch.properties)) {
-    if (propSchema.const !== undefined) {
-      newValue[propKey] = propSchema.const
-    }
-  }
-  updateField(key, newValue)
-}
-
-function handleOneOfSubfieldUpdate(key: string, subValue: Record<string, unknown>) {
-  updateField(key, subValue)
+function enumValue(fieldSchema: JsonSchema, selected: string): unknown {
+  return (fieldSchema.enum ?? []).find(option => String(option) === selected) ?? selected
 }
 
 // Array of strings handling
@@ -147,7 +154,7 @@ function getArrayValue(key: string): string {
 
 function updateArrayField(key: string, text: string) {
   arrayDrafts.value[key] = text
-  updateField(key, parseArrayText(text))
+  updateField(key, coerceArrayItems(parseArrayText(text), resolvedSchema.value.properties?.[key]?.items))
 }
 
 function commitArrayField(key: string) {
@@ -213,43 +220,18 @@ const labelClass = 'block text-sm font-medium text-heading mb-1'
     <template v-for="key in orderedKeys" :key="key">
       <div v-if="resolvedSchema.properties?.[key] && !isConst(resolvedSchema.properties[key])">
         <!-- oneOf field -->
-        <template v-if="resolvedSchema.properties[key].oneOf">
-          <div>
-            <label :class="labelClass">
-              {{ getLabel(key, resolvedSchema.properties[key]) }}
-              <span v-if="requiredSet.has(key)" class="text-danger">*</span>
-            </label>
-            <p v-if="resolvedSchema.properties[key].description" class="text-xs text-text-muted mb-2 [&_a]:text-primary [&_a]:underline" v-html="DOMPurify.sanitize(resolvedSchema.properties[key].description)" />
-
-            <select
-              :value="getOneOfBranchIndex(key)"
-              :class="inputClass"
-              class="mb-3"
-              @change="selectOneOfBranch(key, Number(($event.target as HTMLSelectElement).value))"
-            >
-              <option
-                v-for="(branch, idx) in resolvedSchema.properties[key].oneOf"
-                :key="idx"
-                :value="idx"
-              >
-                {{ getOneOfTitle(branch) }}
-              </option>
-            </select>
-
-            <!-- Render active branch fields -->
-            <div
-              v-if="getOneOfBranchIndex(key) >= 0 && resolvedSchema.properties[key].oneOf![getOneOfBranchIndex(key)]?.properties"
-              class="pl-4 border-l-2 border-border"
-            >
-              <JsonSchemaForm
-                :schema="resolvedSchema.properties[key].oneOf![getOneOfBranchIndex(key)]"
-                :model-value="(modelValue[key] as Record<string, unknown>) ?? {}"
-                :root-required="resolvedSchema.properties[key].oneOf![getOneOfBranchIndex(key)].required"
-                @update:model-value="handleOneOfSubfieldUpdate(key, $event)"
-              />
-            </div>
-          </div>
-        </template>
+        <OneOfField
+          v-if="resolvedSchema.properties[key].oneOf"
+          :field-key="key"
+          :path="fieldPath(key)"
+          :label="getLabel(key, resolvedSchema.properties[key])"
+          :required="requiredSet.has(key)"
+          :schema="resolvedSchema.properties[key]"
+          :model-value="modelValue[key]"
+          :error="getError(key, resolvedSchema.properties[key])"
+          @update:model-value="updateField(key, $event)"
+          @blur="markTouched(key)"
+        />
 
         <!-- Nested object field -->
         <template v-else-if="resolvedSchema.properties[key].type === 'object' && resolvedSchema.properties[key].properties">
@@ -258,15 +240,30 @@ const labelClass = 'block text-sm font-medium text-heading mb-1'
               {{ getLabel(key, resolvedSchema.properties[key]) }}
               <span v-if="requiredSet.has(key)" class="text-danger">*</span>
             </legend>
-            <p v-if="resolvedSchema.properties[key].description" class="text-xs text-text-muted mb-3 [&_a]:text-primary [&_a]:underline" v-html="DOMPurify.sanitize(resolvedSchema.properties[key].description)" />
+            <p v-if="resolvedSchema.properties[key].description" class="text-xs text-text-muted mb-3 [&_a]:text-primary [&_a]:underline" v-html="renderDescription(resolvedSchema.properties[key].description)" />
             <JsonSchemaForm
               :schema="resolvedSchema.properties[key]"
               :model-value="(modelValue[key] as Record<string, unknown>) ?? {}"
               :root-required="resolvedSchema.properties[key].required"
+              :path="fieldPath(key)"
               @update:model-value="updateObjectField(key, $event)"
             />
           </fieldset>
         </template>
+
+        <!-- Object without properties: JSON editor -->
+        <JsonObjectField
+          v-else-if="resolvedSchema.properties[key].type === 'object'"
+          :field-key="key"
+          :path="fieldPath(key)"
+          :label="getLabel(key, resolvedSchema.properties[key])"
+          :required="requiredSet.has(key)"
+          :schema="resolvedSchema.properties[key]"
+          :model-value="modelValue[key]"
+          :error="getError(key, resolvedSchema.properties[key])"
+          @update:model-value="updateField(key, $event)"
+          @blur="markTouched(key)"
+        />
 
         <!-- Boolean -->
         <template v-else-if="resolvedSchema.properties[key].type === 'boolean'">
@@ -282,7 +279,7 @@ const labelClass = 'block text-sm font-medium text-heading mb-1'
               {{ getLabel(key, resolvedSchema.properties[key]) }}
               <span v-if="requiredSet.has(key)" class="text-danger">*</span>
             </label>
-            <span v-if="resolvedSchema.properties[key].description" class="text-xs text-text-muted [&_a]:text-primary [&_a]:underline" v-html="DOMPurify.sanitize(resolvedSchema.properties[key].description)" />
+            <span v-if="resolvedSchema.properties[key].description" class="text-xs text-text-muted [&_a]:text-primary [&_a]:underline" v-html="renderDescription(resolvedSchema.properties[key].description)" />
           </div>
         </template>
 
@@ -297,7 +294,7 @@ const labelClass = 'block text-sm font-medium text-heading mb-1'
               :id="`field-${key}`"
               :value="modelValue[key] ?? ''"
               :class="getError(key, resolvedSchema.properties[key]) ? inputErrorClass : inputClass"
-              @change="updateField(key, ($event.target as HTMLSelectElement).value)"
+              @change="updateField(key, enumValue(resolvedSchema.properties[key], ($event.target as HTMLSelectElement).value))"
             >
               <option value="" disabled>
                 Select...
@@ -306,7 +303,7 @@ const labelClass = 'block text-sm font-medium text-heading mb-1'
                 {{ opt }}
               </option>
             </select>
-            <p v-if="resolvedSchema.properties[key].description" class="text-xs text-text-muted mt-1 [&_a]:text-primary [&_a]:underline" v-html="DOMPurify.sanitize(resolvedSchema.properties[key].description)" />
+            <p v-if="resolvedSchema.properties[key].description" class="text-xs text-text-muted mt-1 [&_a]:text-primary [&_a]:underline" v-html="renderDescription(resolvedSchema.properties[key].description)" />
             <p v-if="getError(key, resolvedSchema.properties[key])" class="text-xs text-danger mt-1">
               {{ getError(key, resolvedSchema.properties[key]) }}
             </p>
@@ -320,7 +317,7 @@ const labelClass = 'block text-sm font-medium text-heading mb-1'
               {{ getLabel(key, resolvedSchema.properties[key]) }}
               <span v-if="requiredSet.has(key)" class="text-danger">*</span>
             </legend>
-            <p v-if="resolvedSchema.properties[key].description" class="text-xs text-text-muted mb-3 [&_a]:text-primary [&_a]:underline" v-html="DOMPurify.sanitize(resolvedSchema.properties[key].description)" />
+            <p v-if="resolvedSchema.properties[key].description" class="text-xs text-text-muted mb-3 [&_a]:text-primary [&_a]:underline" v-html="renderDescription(resolvedSchema.properties[key].description)" />
             <div class="space-y-3">
               <div
                 v-for="(rowId, index) in getRowIds(key)"
@@ -333,6 +330,7 @@ const labelClass = 'block text-sm font-medium text-heading mb-1'
                     :schema="resolvedSchema.properties[key].items!"
                     :model-value="getArrayItems(key)[index] ?? {}"
                     :root-required="resolvedSchema.properties[key].items!.required"
+                    :path="fieldPath(`${key}.${index}`)"
                     @update:model-value="updateArrayItem(key, index, $event)"
                   />
                 </div>
@@ -358,6 +356,19 @@ const labelClass = 'block text-sm font-medium text-heading mb-1'
           </fieldset>
         </template>
 
+        <!-- Array of enum values -->
+        <EnumMultiSelect
+          v-else-if="resolvedSchema.properties[key].type === 'array' && resolvedSchema.properties[key].items?.enum"
+          :field-key="key"
+          :label="getLabel(key, resolvedSchema.properties[key])"
+          :required="requiredSet.has(key)"
+          :schema="resolvedSchema.properties[key]"
+          :model-value="modelValue[key]"
+          :error="getError(key, resolvedSchema.properties[key])"
+          @update:model-value="updateField(key, $event)"
+          @blur="markTouched(key)"
+        />
+
         <!-- Array of strings -->
         <template v-else-if="resolvedSchema.properties[key].type === 'array'">
           <div>
@@ -374,7 +385,7 @@ const labelClass = 'block text-sm font-medium text-heading mb-1'
               @input="updateArrayField(key, ($event.target as HTMLInputElement).value)"
               @blur="commitArrayField(key)"
             >
-            <p v-if="resolvedSchema.properties[key].description" class="text-xs text-text-muted mt-1 [&_a]:text-primary [&_a]:underline" v-html="DOMPurify.sanitize(resolvedSchema.properties[key].description)" />
+            <p v-if="resolvedSchema.properties[key].description" class="text-xs text-text-muted mt-1 [&_a]:text-primary [&_a]:underline" v-html="renderDescription(resolvedSchema.properties[key].description)" />
             <p v-if="getError(key, resolvedSchema.properties[key])" class="text-xs text-danger mt-1">
               {{ getError(key, resolvedSchema.properties[key]) }}
             </p>
@@ -397,12 +408,26 @@ const labelClass = 'block text-sm font-medium text-heading mb-1'
               @input="updateField(key, ($event.target as HTMLInputElement).value === '' ? undefined : Number(($event.target as HTMLInputElement).value))"
               @blur="markTouched(key)"
             >
-            <p v-if="resolvedSchema.properties[key].description" class="text-xs text-text-muted mt-1 [&_a]:text-primary [&_a]:underline" v-html="DOMPurify.sanitize(resolvedSchema.properties[key].description)" />
+            <p v-if="resolvedSchema.properties[key].description" class="text-xs text-text-muted mt-1 [&_a]:text-primary [&_a]:underline" v-html="renderDescription(resolvedSchema.properties[key].description)" />
             <p v-if="getError(key, resolvedSchema.properties[key])" class="text-xs text-danger mt-1">
               {{ getError(key, resolvedSchema.properties[key]) }}
             </p>
           </div>
         </template>
+
+        <!-- Date / date-time -->
+        <DateField
+          v-else-if="dateLayoutFor(resolvedSchema.properties[key].format, resolvedSchema.properties[key].pattern)"
+          :field-key="key"
+          :label="getLabel(key, resolvedSchema.properties[key])"
+          :required="requiredSet.has(key)"
+          :schema="resolvedSchema.properties[key]"
+          :layout="dateLayoutFor(resolvedSchema.properties[key].format, resolvedSchema.properties[key].pattern)!"
+          :model-value="modelValue[key]"
+          :error="getError(key, resolvedSchema.properties[key])"
+          @update:model-value="updateField(key, $event)"
+          @blur="markTouched(key)"
+        />
 
         <!-- Multiline string -->
         <template v-else-if="resolvedSchema.properties[key].multiline">
@@ -420,7 +445,7 @@ const labelClass = 'block text-sm font-medium text-heading mb-1'
               @input="updateField(key, ($event.target as HTMLTextAreaElement).value)"
               @blur="markTouched(key)"
             />
-            <p v-if="resolvedSchema.properties[key].description" class="text-xs text-text-muted mt-1 [&_a]:text-primary [&_a]:underline" v-html="DOMPurify.sanitize(resolvedSchema.properties[key].description)" />
+            <p v-if="resolvedSchema.properties[key].description" class="text-xs text-text-muted mt-1 [&_a]:text-primary [&_a]:underline" v-html="renderDescription(resolvedSchema.properties[key].description)" />
             <p v-if="getError(key, resolvedSchema.properties[key])" class="text-xs text-danger mt-1">
               {{ getError(key, resolvedSchema.properties[key]) }}
             </p>
@@ -452,7 +477,7 @@ const labelClass = 'block text-sm font-medium text-heading mb-1'
                 {{ showSecret[key] ? 'Hide' : 'Show' }}
               </button>
             </div>
-            <p v-if="resolvedSchema.properties[key].description" class="text-xs text-text-muted mt-1 [&_a]:text-primary [&_a]:underline" v-html="DOMPurify.sanitize(resolvedSchema.properties[key].description)" />
+            <p v-if="resolvedSchema.properties[key].description" class="text-xs text-text-muted mt-1 [&_a]:text-primary [&_a]:underline" v-html="renderDescription(resolvedSchema.properties[key].description)" />
             <p v-if="getError(key, resolvedSchema.properties[key])" class="text-xs text-danger mt-1">
               {{ getError(key, resolvedSchema.properties[key]) }}
             </p>
@@ -475,7 +500,7 @@ const labelClass = 'block text-sm font-medium text-heading mb-1'
               @input="updateField(key, ($event.target as HTMLInputElement).value)"
               @blur="markTouched(key)"
             >
-            <p v-if="resolvedSchema.properties[key].description" class="text-xs text-text-muted mt-1 [&_a]:text-primary [&_a]:underline" v-html="DOMPurify.sanitize(resolvedSchema.properties[key].description)" />
+            <p v-if="resolvedSchema.properties[key].description" class="text-xs text-text-muted mt-1 [&_a]:text-primary [&_a]:underline" v-html="renderDescription(resolvedSchema.properties[key].description)" />
             <p v-if="getError(key, resolvedSchema.properties[key])" class="text-xs text-danger mt-1">
               {{ getError(key, resolvedSchema.properties[key]) }}
             </p>
