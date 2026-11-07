@@ -213,6 +213,8 @@ type fakeSecrets struct {
 	values           map[string]string
 	owners           map[string]secretOwner
 	storeErr         error
+	failStoreAfter   int
+	stored           int
 	deleteErr        error
 	deleteByOwnerErr error
 	deletedRefs      []string
@@ -224,10 +226,11 @@ func newFakeSecrets() *fakeSecrets {
 }
 
 func (f *fakeSecrets) StoreSecret(_ context.Context, ownerType string, ownerID uuid.UUID, plaintext string) (string, error) {
-	if f.storeErr != nil {
+	if f.storeErr != nil && f.stored >= f.failStoreAfter {
 		return "", f.storeErr
 	}
 
+	f.stored++
 	ref := secretutil.MakeSecretRef(uuid.New())
 	f.values[ref] = plaintext
 	f.owners[ref] = secretOwner{ownerType: ownerType, ownerID: ownerID}

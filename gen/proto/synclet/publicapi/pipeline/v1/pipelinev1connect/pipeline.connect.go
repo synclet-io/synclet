@@ -75,6 +75,12 @@ const (
 	// SourceServiceListExecutorsProcedure is the fully-qualified name of the SourceService's
 	// ListExecutors RPC.
 	SourceServiceListExecutorsProcedure = "/synclet.publicapi.pipeline.v1.SourceService/ListExecutors"
+	// SourceServiceDuplicateSourceProcedure is the fully-qualified name of the SourceService's
+	// DuplicateSource RPC.
+	SourceServiceDuplicateSourceProcedure = "/synclet.publicapi.pipeline.v1.SourceService/DuplicateSource"
+	// SourceServiceMoveExecutorGroupProcedure is the fully-qualified name of the SourceService's
+	// MoveExecutorGroup RPC.
+	SourceServiceMoveExecutorGroupProcedure = "/synclet.publicapi.pipeline.v1.SourceService/MoveExecutorGroup"
 	// DestinationServiceCreateDestinationProcedure is the fully-qualified name of the
 	// DestinationService's CreateDestination RPC.
 	DestinationServiceCreateDestinationProcedure = "/synclet.publicapi.pipeline.v1.DestinationService/CreateDestination"
@@ -93,6 +99,9 @@ const (
 	// DestinationServiceTestDestinationConnectionProcedure is the fully-qualified name of the
 	// DestinationService's TestDestinationConnection RPC.
 	DestinationServiceTestDestinationConnectionProcedure = "/synclet.publicapi.pipeline.v1.DestinationService/TestDestinationConnection"
+	// DestinationServiceDuplicateDestinationProcedure is the fully-qualified name of the
+	// DestinationService's DuplicateDestination RPC.
+	DestinationServiceDuplicateDestinationProcedure = "/synclet.publicapi.pipeline.v1.DestinationService/DuplicateDestination"
 	// ConnectionServiceCreateConnectionProcedure is the fully-qualified name of the ConnectionService's
 	// CreateConnection RPC.
 	ConnectionServiceCreateConnectionProcedure = "/synclet.publicapi.pipeline.v1.ConnectionService/CreateConnection"
@@ -219,6 +228,13 @@ type SourceServiceClient interface {
 	// ListExecutors returns the executors that reported to the control plane
 	// within the silence timeout.
 	ListExecutors(context.Context, *connect.Request[v1.ListExecutorsRequest]) (*connect.Response[v1.ListExecutorsResponse], error)
+	// DuplicateSource copies a source's config and secrets into a new source in
+	// another executor group. Connections and state are not copied.
+	DuplicateSource(context.Context, *connect.Request[v1.DuplicateSourceRequest]) (*connect.Response[v1.DuplicateSourceResponse], error)
+	// MoveExecutorGroup moves every source and destination of the workspace from
+	// one executor group to another in one transaction. It fails while a job of
+	// the workspace in the source group is scheduled, starting or running.
+	MoveExecutorGroup(context.Context, *connect.Request[v1.MoveExecutorGroupRequest]) (*connect.Response[v1.MoveExecutorGroupResponse], error)
 }
 
 // NewSourceServiceClient constructs a client for the synclet.publicapi.pipeline.v1.SourceService
@@ -298,6 +314,18 @@ func NewSourceServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(sourceServiceMethods.ByName("ListExecutors")),
 			connect.WithClientOptions(opts...),
 		),
+		duplicateSource: connect.NewClient[v1.DuplicateSourceRequest, v1.DuplicateSourceResponse](
+			httpClient,
+			baseURL+SourceServiceDuplicateSourceProcedure,
+			connect.WithSchema(sourceServiceMethods.ByName("DuplicateSource")),
+			connect.WithClientOptions(opts...),
+		),
+		moveExecutorGroup: connect.NewClient[v1.MoveExecutorGroupRequest, v1.MoveExecutorGroupResponse](
+			httpClient,
+			baseURL+SourceServiceMoveExecutorGroupProcedure,
+			connect.WithSchema(sourceServiceMethods.ByName("MoveExecutorGroup")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -314,6 +342,8 @@ type sourceServiceClient struct {
 	getSystemInfo        *connect.Client[v1.GetSystemInfoRequest, v1.GetSystemInfoResponse]
 	getRuntimeDefaults   *connect.Client[v1.GetRuntimeDefaultsRequest, v1.GetRuntimeDefaultsResponse]
 	listExecutors        *connect.Client[v1.ListExecutorsRequest, v1.ListExecutorsResponse]
+	duplicateSource      *connect.Client[v1.DuplicateSourceRequest, v1.DuplicateSourceResponse]
+	moveExecutorGroup    *connect.Client[v1.MoveExecutorGroupRequest, v1.MoveExecutorGroupResponse]
 }
 
 // CreateSource calls synclet.publicapi.pipeline.v1.SourceService.CreateSource.
@@ -371,6 +401,16 @@ func (c *sourceServiceClient) ListExecutors(ctx context.Context, req *connect.Re
 	return c.listExecutors.CallUnary(ctx, req)
 }
 
+// DuplicateSource calls synclet.publicapi.pipeline.v1.SourceService.DuplicateSource.
+func (c *sourceServiceClient) DuplicateSource(ctx context.Context, req *connect.Request[v1.DuplicateSourceRequest]) (*connect.Response[v1.DuplicateSourceResponse], error) {
+	return c.duplicateSource.CallUnary(ctx, req)
+}
+
+// MoveExecutorGroup calls synclet.publicapi.pipeline.v1.SourceService.MoveExecutorGroup.
+func (c *sourceServiceClient) MoveExecutorGroup(ctx context.Context, req *connect.Request[v1.MoveExecutorGroupRequest]) (*connect.Response[v1.MoveExecutorGroupResponse], error) {
+	return c.moveExecutorGroup.CallUnary(ctx, req)
+}
+
 // SourceServiceHandler is an implementation of the synclet.publicapi.pipeline.v1.SourceService
 // service.
 type SourceServiceHandler interface {
@@ -387,6 +427,13 @@ type SourceServiceHandler interface {
 	// ListExecutors returns the executors that reported to the control plane
 	// within the silence timeout.
 	ListExecutors(context.Context, *connect.Request[v1.ListExecutorsRequest]) (*connect.Response[v1.ListExecutorsResponse], error)
+	// DuplicateSource copies a source's config and secrets into a new source in
+	// another executor group. Connections and state are not copied.
+	DuplicateSource(context.Context, *connect.Request[v1.DuplicateSourceRequest]) (*connect.Response[v1.DuplicateSourceResponse], error)
+	// MoveExecutorGroup moves every source and destination of the workspace from
+	// one executor group to another in one transaction. It fails while a job of
+	// the workspace in the source group is scheduled, starting or running.
+	MoveExecutorGroup(context.Context, *connect.Request[v1.MoveExecutorGroupRequest]) (*connect.Response[v1.MoveExecutorGroupResponse], error)
 }
 
 // NewSourceServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -462,6 +509,18 @@ func NewSourceServiceHandler(svc SourceServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(sourceServiceMethods.ByName("ListExecutors")),
 		connect.WithHandlerOptions(opts...),
 	)
+	sourceServiceDuplicateSourceHandler := connect.NewUnaryHandler(
+		SourceServiceDuplicateSourceProcedure,
+		svc.DuplicateSource,
+		connect.WithSchema(sourceServiceMethods.ByName("DuplicateSource")),
+		connect.WithHandlerOptions(opts...),
+	)
+	sourceServiceMoveExecutorGroupHandler := connect.NewUnaryHandler(
+		SourceServiceMoveExecutorGroupProcedure,
+		svc.MoveExecutorGroup,
+		connect.WithSchema(sourceServiceMethods.ByName("MoveExecutorGroup")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/synclet.publicapi.pipeline.v1.SourceService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case SourceServiceCreateSourceProcedure:
@@ -486,6 +545,10 @@ func NewSourceServiceHandler(svc SourceServiceHandler, opts ...connect.HandlerOp
 			sourceServiceGetRuntimeDefaultsHandler.ServeHTTP(w, r)
 		case SourceServiceListExecutorsProcedure:
 			sourceServiceListExecutorsHandler.ServeHTTP(w, r)
+		case SourceServiceDuplicateSourceProcedure:
+			sourceServiceDuplicateSourceHandler.ServeHTTP(w, r)
+		case SourceServiceMoveExecutorGroupProcedure:
+			sourceServiceMoveExecutorGroupHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -539,6 +602,14 @@ func (UnimplementedSourceServiceHandler) ListExecutors(context.Context, *connect
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("synclet.publicapi.pipeline.v1.SourceService.ListExecutors is not implemented"))
 }
 
+func (UnimplementedSourceServiceHandler) DuplicateSource(context.Context, *connect.Request[v1.DuplicateSourceRequest]) (*connect.Response[v1.DuplicateSourceResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("synclet.publicapi.pipeline.v1.SourceService.DuplicateSource is not implemented"))
+}
+
+func (UnimplementedSourceServiceHandler) MoveExecutorGroup(context.Context, *connect.Request[v1.MoveExecutorGroupRequest]) (*connect.Response[v1.MoveExecutorGroupResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("synclet.publicapi.pipeline.v1.SourceService.MoveExecutorGroup is not implemented"))
+}
+
 // DestinationServiceClient is a client for the synclet.publicapi.pipeline.v1.DestinationService
 // service.
 type DestinationServiceClient interface {
@@ -548,6 +619,9 @@ type DestinationServiceClient interface {
 	GetDestination(context.Context, *connect.Request[v1.GetDestinationRequest]) (*connect.Response[v1.GetDestinationResponse], error)
 	ListDestinations(context.Context, *connect.Request[v1.ListDestinationsRequest]) (*connect.Response[v1.ListDestinationsResponse], error)
 	TestDestinationConnection(context.Context, *connect.Request[v1.TestDestinationConnectionRequest]) (*connect.Response[v1.TestDestinationConnectionResponse], error)
+	// DuplicateDestination copies a destination's config and secrets into a new
+	// destination in another executor group. Connections are not copied.
+	DuplicateDestination(context.Context, *connect.Request[v1.DuplicateDestinationRequest]) (*connect.Response[v1.DuplicateDestinationResponse], error)
 }
 
 // NewDestinationServiceClient constructs a client for the
@@ -598,6 +672,12 @@ func NewDestinationServiceClient(httpClient connect.HTTPClient, baseURL string, 
 			connect.WithSchema(destinationServiceMethods.ByName("TestDestinationConnection")),
 			connect.WithClientOptions(opts...),
 		),
+		duplicateDestination: connect.NewClient[v1.DuplicateDestinationRequest, v1.DuplicateDestinationResponse](
+			httpClient,
+			baseURL+DestinationServiceDuplicateDestinationProcedure,
+			connect.WithSchema(destinationServiceMethods.ByName("DuplicateDestination")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -609,6 +689,7 @@ type destinationServiceClient struct {
 	getDestination            *connect.Client[v1.GetDestinationRequest, v1.GetDestinationResponse]
 	listDestinations          *connect.Client[v1.ListDestinationsRequest, v1.ListDestinationsResponse]
 	testDestinationConnection *connect.Client[v1.TestDestinationConnectionRequest, v1.TestDestinationConnectionResponse]
+	duplicateDestination      *connect.Client[v1.DuplicateDestinationRequest, v1.DuplicateDestinationResponse]
 }
 
 // CreateDestination calls synclet.publicapi.pipeline.v1.DestinationService.CreateDestination.
@@ -642,6 +723,11 @@ func (c *destinationServiceClient) TestDestinationConnection(ctx context.Context
 	return c.testDestinationConnection.CallUnary(ctx, req)
 }
 
+// DuplicateDestination calls synclet.publicapi.pipeline.v1.DestinationService.DuplicateDestination.
+func (c *destinationServiceClient) DuplicateDestination(ctx context.Context, req *connect.Request[v1.DuplicateDestinationRequest]) (*connect.Response[v1.DuplicateDestinationResponse], error) {
+	return c.duplicateDestination.CallUnary(ctx, req)
+}
+
 // DestinationServiceHandler is an implementation of the
 // synclet.publicapi.pipeline.v1.DestinationService service.
 type DestinationServiceHandler interface {
@@ -651,6 +737,9 @@ type DestinationServiceHandler interface {
 	GetDestination(context.Context, *connect.Request[v1.GetDestinationRequest]) (*connect.Response[v1.GetDestinationResponse], error)
 	ListDestinations(context.Context, *connect.Request[v1.ListDestinationsRequest]) (*connect.Response[v1.ListDestinationsResponse], error)
 	TestDestinationConnection(context.Context, *connect.Request[v1.TestDestinationConnectionRequest]) (*connect.Response[v1.TestDestinationConnectionResponse], error)
+	// DuplicateDestination copies a destination's config and secrets into a new
+	// destination in another executor group. Connections are not copied.
+	DuplicateDestination(context.Context, *connect.Request[v1.DuplicateDestinationRequest]) (*connect.Response[v1.DuplicateDestinationResponse], error)
 }
 
 // NewDestinationServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -696,6 +785,12 @@ func NewDestinationServiceHandler(svc DestinationServiceHandler, opts ...connect
 		connect.WithSchema(destinationServiceMethods.ByName("TestDestinationConnection")),
 		connect.WithHandlerOptions(opts...),
 	)
+	destinationServiceDuplicateDestinationHandler := connect.NewUnaryHandler(
+		DestinationServiceDuplicateDestinationProcedure,
+		svc.DuplicateDestination,
+		connect.WithSchema(destinationServiceMethods.ByName("DuplicateDestination")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/synclet.publicapi.pipeline.v1.DestinationService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case DestinationServiceCreateDestinationProcedure:
@@ -710,6 +805,8 @@ func NewDestinationServiceHandler(svc DestinationServiceHandler, opts ...connect
 			destinationServiceListDestinationsHandler.ServeHTTP(w, r)
 		case DestinationServiceTestDestinationConnectionProcedure:
 			destinationServiceTestDestinationConnectionHandler.ServeHTTP(w, r)
+		case DestinationServiceDuplicateDestinationProcedure:
+			destinationServiceDuplicateDestinationHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -741,6 +838,10 @@ func (UnimplementedDestinationServiceHandler) ListDestinations(context.Context, 
 
 func (UnimplementedDestinationServiceHandler) TestDestinationConnection(context.Context, *connect.Request[v1.TestDestinationConnectionRequest]) (*connect.Response[v1.TestDestinationConnectionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("synclet.publicapi.pipeline.v1.DestinationService.TestDestinationConnection is not implemented"))
+}
+
+func (UnimplementedDestinationServiceHandler) DuplicateDestination(context.Context, *connect.Request[v1.DuplicateDestinationRequest]) (*connect.Response[v1.DuplicateDestinationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("synclet.publicapi.pipeline.v1.DestinationService.DuplicateDestination is not implemented"))
 }
 
 // ConnectionServiceClient is a client for the synclet.publicapi.pipeline.v1.ConnectionService

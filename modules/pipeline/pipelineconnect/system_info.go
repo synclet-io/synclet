@@ -9,7 +9,9 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	pipelinev1 "github.com/synclet-io/synclet/gen/proto/synclet/publicapi/pipeline/v1"
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinegroups"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinejobs"
+	"github.com/synclet-io/synclet/pkg/connectutil"
 )
 
 // RegistrationStatus reports whether new accounts may sign up.
@@ -97,6 +99,27 @@ func (h *SourceHandler) ListExecutors(ctx context.Context, _ *connect.Request[pi
 	}
 
 	return connect.NewResponse(resp), nil
+}
+
+func (h *SourceHandler) MoveExecutorGroup(ctx context.Context, req *connect.Request[pipelinev1.MoveExecutorGroupRequest]) (*connect.Response[pipelinev1.MoveExecutorGroupResponse], error) {
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := h.moveExecutorGroup.Execute(ctx, pipelinegroups.MoveExecutorGroupParams{
+		WorkspaceID: workspaceID,
+		FromGroup:   req.Msg.GetFromGroup(),
+		ToGroup:     req.Msg.GetToGroup(),
+	})
+	if err != nil {
+		return nil, mapError(err)
+	}
+
+	return connect.NewResponse(&pipelinev1.MoveExecutorGroupResponse{
+		SourcesMoved:      clampInt32(result.SourcesMoved),
+		DestinationsMoved: clampInt32(result.DestinationsMoved),
+	}), nil
 }
 
 func runtimeDefaultsToProto(info RuntimeDefaultsInfo) *pipelinev1.RuntimeDefaults {

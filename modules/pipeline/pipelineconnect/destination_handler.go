@@ -32,6 +32,7 @@ type DestinationHandler struct {
 	listDestinations       *pipelinedestinations.ListDestinations
 	createCheckTask        *pipelinetasks.CreateCheckTask
 	waitForTaskResult      *pipelinetasks.WaitForTaskResult
+	duplicateDestination   *pipelinedestinations.DuplicateDestination
 	connectionCheckTimeout time.Duration
 }
 
@@ -44,6 +45,7 @@ func NewDestinationHandler(
 	listDestinations *pipelinedestinations.ListDestinations,
 	createCheckTask *pipelinetasks.CreateCheckTask,
 	waitForTaskResult *pipelinetasks.WaitForTaskResult,
+	duplicateDestination *pipelinedestinations.DuplicateDestination,
 	svcCfg pipelineservice.Config,
 ) *DestinationHandler {
 	return &DestinationHandler{
@@ -54,6 +56,7 @@ func NewDestinationHandler(
 		listDestinations:       listDestinations,
 		createCheckTask:        createCheckTask,
 		waitForTaskResult:      waitForTaskResult,
+		duplicateDestination:   duplicateDestination,
 		connectionCheckTimeout: svcCfg.ConnectionCheckTimeout,
 	}
 }
@@ -114,8 +117,9 @@ func (h *DestinationHandler) UpdateDestination(ctx context.Context, req *connect
 	}
 
 	params := pipelinedestinations.UpdateDestinationParams{
-		ID:          id,
-		WorkspaceID: workspaceID,
+		ID:            id,
+		WorkspaceID:   workspaceID,
+		ExecutorGroup: req.Msg.ExecutorGroup,
 	}
 
 	if req.Msg.Name != nil {
@@ -326,4 +330,34 @@ func destinationToProto(dest *pipelineservice.Destination) *pipelinev1.Destinati
 	}
 
 	return proto
+}
+
+func (h *DestinationHandler) DuplicateDestination(ctx context.Context, req *connect.Request[pipelinev1.DuplicateDestinationRequest]) (*connect.Response[pipelinev1.DuplicateDestinationResponse], error) {
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	id, err := uuid.Parse(req.Msg.GetId())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	if err := connectutil.ValidateStringLengths(
+		connectutil.StringValidation{Field: "name", Value: req.Msg.GetName(), MaxLen: connectutil.MaxNameLength},
+	); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	dest, err := h.duplicateDestination.Execute(ctx, pipelinedestinations.DuplicateDestinationParams{
+		ID:            id,
+		WorkspaceID:   workspaceID,
+		ExecutorGroup: req.Msg.GetExecutorGroup(),
+		Name:          req.Msg.GetName(),
+	})
+	if err != nil {
+		return nil, mapError(err)
+	}
+
+	return connect.NewResponse(&pipelinev1.DuplicateDestinationResponse{Destination: destinationToProto(dest)}), nil
 }

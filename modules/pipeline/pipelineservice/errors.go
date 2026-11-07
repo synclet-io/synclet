@@ -45,8 +45,18 @@ func (e *NoLiveExecutorError) Error() string {
 	return `no live executor in group "` + e.Group + `"`
 }
 
+// GroupBusyError reports an executor group that has jobs scheduled, starting
+// or running, so its sources and destinations cannot move to another group.
+type GroupBusyError struct {
+	Group string
+}
+
+func (e *GroupBusyError) Error() string {
+	return `group "` + e.Group + `" has active jobs; wait for them to finish or cancel them`
+}
+
 // InUseError reports a resource that connections still reference and so
-// cannot be deleted.
+// cannot be deleted or moved to another executor group.
 type InUseError struct {
 	Resource        string
 	ConnectionNames []string

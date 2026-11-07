@@ -111,6 +111,17 @@ service SourceService {
   rpc ListExecutors(ListExecutorsRequest) returns (ListExecutorsResponse) {
     option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
   }
+  // DuplicateSource copies a source's config and secrets into a new source in
+  // another executor group. Connections and state are not copied.
+  rpc DuplicateSource(DuplicateSourceRequest) returns (DuplicateSourceResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_EDITOR;
+  }
+  // MoveExecutorGroup moves every source and destination of the workspace from
+  // one executor group to another in one transaction. It fails while a job of
+  // the workspace in the source group is scheduled, starting or running.
+  rpc MoveExecutorGroup(MoveExecutorGroupRequest) returns (MoveExecutorGroupResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_ADMIN;
+  }
 }
 
 service DestinationService {
@@ -130,6 +141,11 @@ service DestinationService {
     option (synclet.options.v1.required_role) = REQUIRED_ROLE_VIEWER;
   }
   rpc TestDestinationConnection(TestDestinationConnectionRequest) returns (TestDestinationConnectionResponse) {
+    option (synclet.options.v1.required_role) = REQUIRED_ROLE_EDITOR;
+  }
+  // DuplicateDestination copies a destination's config and secrets into a new
+  // destination in another executor group. Connections are not copied.
+  rpc DuplicateDestination(DuplicateDestinationRequest) returns (DuplicateDestinationResponse) {
     option (synclet.options.v1.required_role) = REQUIRED_ROLE_EDITOR;
   }
 }
@@ -301,11 +317,25 @@ message UpdateSourceRequest {
   optional string name = 2;
   optional google.protobuf.Struct config = 3;
   optional string runtime_config = 4;
+  // executor_group moves the source to another group; refused while any
+  // connection uses the source.
+  optional string executor_group = 5;
 }
 
 message UpdateSourceResponse {
   Source source = 1;
   optional string discover_task_id = 2;
+}
+
+message DuplicateSourceRequest {
+  string id = 1;
+  string executor_group = 2;
+  // name of the copy; empty keeps the original's name.
+  optional string name = 3;
+}
+
+message DuplicateSourceResponse {
+  Source source = 1;
 }
 
 message DeleteSourceRequest {
@@ -446,6 +476,16 @@ message ListExecutorsResponse {
   repeated ExecutorInstance executors = 1;
 }
 
+message MoveExecutorGroupRequest {
+  string from_group = 1;
+  string to_group = 2;
+}
+
+message MoveExecutorGroupResponse {
+  int32 sources_moved = 1;
+  int32 destinations_moved = 2;
+}
+
 // ==================== Destination Messages ====================
 
 message Destination {
@@ -481,9 +521,23 @@ message UpdateDestinationRequest {
   optional string name = 2;
   optional google.protobuf.Struct config = 3;
   optional string runtime_config = 4;
+  // executor_group moves the destination to another group; refused while any
+  // connection uses the destination.
+  optional string executor_group = 5;
 }
 
 message UpdateDestinationResponse {
+  Destination destination = 1;
+}
+
+message DuplicateDestinationRequest {
+  string id = 1;
+  string executor_group = 2;
+  // name of the copy; empty keeps the original's name.
+  optional string name = 3;
+}
+
+message DuplicateDestinationResponse {
   Destination destination = 1;
 }
 

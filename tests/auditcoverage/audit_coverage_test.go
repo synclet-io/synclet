@@ -64,6 +64,7 @@ var audited = map[string][]string{
 	"pipelineconnect.ConnectionHandler.UpdateStreamState":      {"modules/pipeline/pipelineservice/pipelinestate/update_stream_state.go"},
 	"pipelineconnect.DestinationHandler.CreateDestination":     {"modules/pipeline/pipelineservice/pipelinedestinations/create_destination.go"},
 	"pipelineconnect.DestinationHandler.DeleteDestination":     {"modules/pipeline/pipelineservice/pipelinedestinations/delete_destination.go"},
+	"pipelineconnect.DestinationHandler.DuplicateDestination":  {"modules/pipeline/pipelineservice/pipelinedestinations/duplicate_destination.go"},
 	"pipelineconnect.DestinationHandler.TestDestinationConnection": {
 		"modules/pipeline/pipelineservice/pipelinetasks/create_check_task.go",
 	},
@@ -87,6 +88,8 @@ var audited = map[string][]string{
 	"pipelineconnect.SourceHandler.CreateSource":             {"modules/pipeline/pipelineservice/pipelinesources/create_source.go"},
 	"pipelineconnect.SourceHandler.DeleteSource":             {"modules/pipeline/pipelineservice/pipelinesources/delete_source.go"},
 	"pipelineconnect.SourceHandler.DiscoverSourceSchema":     {"modules/pipeline/pipelineservice/pipelinetasks/create_discover_task.go"},
+	"pipelineconnect.SourceHandler.DuplicateSource":          {"modules/pipeline/pipelineservice/pipelinesources/duplicate_source.go"},
+	"pipelineconnect.SourceHandler.MoveExecutorGroup":        {"modules/pipeline/pipelineservice/pipelinegroups/move_executor_group.go"},
 	"pipelineconnect.SourceHandler.TestSourceConnection":     {"modules/pipeline/pipelineservice/pipelinetasks/create_check_task.go"},
 	"pipelineconnect.SourceHandler.UpdateSource":             {"modules/pipeline/pipelineservice/pipelinesources/update_source.go"},
 

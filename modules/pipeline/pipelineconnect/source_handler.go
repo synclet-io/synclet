@@ -16,6 +16,7 @@ import (
 	"github.com/synclet-io/synclet/gen/proto/synclet/publicapi/pipeline/v1/pipelinev1connect"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinecatalog"
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinegroups"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinejobs"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinesecrets"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinesources"
@@ -37,6 +38,8 @@ type SourceHandler struct {
 	createDiscoverTask     *pipelinetasks.CreateDiscoverTask
 	getSourceCatalog       *pipelinecatalog.GetSourceCatalog
 	listExecutors          *pipelinejobs.ListExecutors
+	duplicateSource        *pipelinesources.DuplicateSource
+	moveExecutorGroup      *pipelinegroups.MoveExecutorGroup
 	registrationStatus     RegistrationStatus
 	config                 SourceHandlerConfig
 	connectionCheckTimeout time.Duration
@@ -54,6 +57,8 @@ func NewSourceHandler(
 	createDiscoverTask *pipelinetasks.CreateDiscoverTask,
 	getSourceCatalog *pipelinecatalog.GetSourceCatalog,
 	listExecutors *pipelinejobs.ListExecutors,
+	duplicateSource *pipelinesources.DuplicateSource,
+	moveExecutorGroup *pipelinegroups.MoveExecutorGroup,
 	registrationStatus RegistrationStatus,
 	config SourceHandlerConfig,
 	svcCfg pipelineservice.Config,
@@ -69,6 +74,8 @@ func NewSourceHandler(
 		createDiscoverTask:     createDiscoverTask,
 		getSourceCatalog:       getSourceCatalog,
 		listExecutors:          listExecutors,
+		duplicateSource:        duplicateSource,
+		moveExecutorGroup:      moveExecutorGroup,
 		registrationStatus:     registrationStatus,
 		config:                 config,
 		connectionCheckTimeout: svcCfg.ConnectionCheckTimeout,
@@ -144,8 +151,9 @@ func (h *SourceHandler) UpdateSource(ctx context.Context, req *connect.Request[p
 	}
 
 	params := pipelinesources.UpdateSourceParams{
-		ID:          id,
-		WorkspaceID: workspaceID,
+		ID:            id,
+		WorkspaceID:   workspaceID,
+		ExecutorGroup: req.Msg.ExecutorGroup,
 	}
 
 	if req.Msg.Name != nil {
@@ -423,4 +431,34 @@ func sourceToProto(source *pipelineservice.Source) *pipelinev1.Source {
 	}
 
 	return proto
+}
+
+func (h *SourceHandler) DuplicateSource(ctx context.Context, req *connect.Request[pipelinev1.DuplicateSourceRequest]) (*connect.Response[pipelinev1.DuplicateSourceResponse], error) {
+	workspaceID, err := connectutil.RequireWorkspaceID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	id, err := uuid.Parse(req.Msg.GetId())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	if err := connectutil.ValidateStringLengths(
+		connectutil.StringValidation{Field: "name", Value: req.Msg.GetName(), MaxLen: connectutil.MaxNameLength},
+	); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	src, err := h.duplicateSource.Execute(ctx, pipelinesources.DuplicateSourceParams{
+		ID:            id,
+		WorkspaceID:   workspaceID,
+		ExecutorGroup: req.Msg.GetExecutorGroup(),
+		Name:          req.Msg.GetName(),
+	})
+	if err != nil {
+		return nil, mapError(err)
+	}
+
+	return connect.NewResponse(&pipelinev1.DuplicateSourceResponse{Source: sourceToProto(src)}), nil
 }

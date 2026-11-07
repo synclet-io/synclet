@@ -34,6 +34,9 @@ type UpdateDestinationParams struct {
 	Name          *string
 	Config        *json.RawMessage
 	RuntimeConfig *string // JSON string, nil = don't update, pointer to empty string = clear overrides
+	// ExecutorGroup moves the destination to another group; nil keeps it. A change is
+	// refused with *pipelineservice.InUseError while any connection uses it.
+	ExecutorGroup *string
 }
 
 // Execute updates a destination.
@@ -52,6 +55,21 @@ func (uc *UpdateDestination) Execute(ctx context.Context, params UpdateDestinati
 		return nil, fmt.Errorf("getting destination: %w", err)
 	}
 
+	group := dest.ExecutorGroup
+
+	if params.ExecutorGroup != nil {
+		group, err = pipelineservice.NormalizeExecutorGroup(*params.ExecutorGroup)
+		if err != nil {
+			return nil, err
+		}
+
+		if group != dest.ExecutorGroup {
+			if err := ensureDestinationUnused(ctx, uc.storage, dest); err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	connector, err := uc.storage.ManagedConnectors().First(ctx, &pipelineservice.ManagedConnectorFilter{
 		ID: filter.Equals(dest.ManagedConnectorID),
 	})
@@ -63,7 +81,10 @@ func (uc *UpdateDestination) Execute(ctx context.Context, params UpdateDestinati
 		"name":           dest.Name,
 		"config":         auditConfig(dest.Config, connector.Spec),
 		"runtime_config": auditRuntimeConfig(dest.RuntimeConfig),
+		"executor_group": dest.ExecutorGroup,
 	}
+
+	dest.ExecutorGroup = group
 
 	if params.Name != nil {
 		dest.Name = *params.Name
@@ -104,6 +125,7 @@ func (uc *UpdateDestination) Execute(ctx context.Context, params UpdateDestinati
 			"name":           updated.Name,
 			"config":         auditConfig(updated.Config, connector.Spec),
 			"runtime_config": auditRuntimeConfig(updated.RuntimeConfig),
+			"executor_group": updated.ExecutorGroup,
 		},
 	})
 

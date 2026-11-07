@@ -38,6 +38,8 @@ type fixture struct {
 	storage     *pipelinestorage.Storages
 	workspaceID uuid.UUID
 	connID      uuid.UUID
+	sourceID    uuid.UUID
+	destID      uuid.UUID
 }
 
 func setup(t *testing.T) fixture {
@@ -81,7 +83,7 @@ func setup(t *testing.T) fixture {
 		require.NoError(t, db.Exec(`DELETE FROM pipeline.managed_connectors WHERE id = ?`, connectorID).Error)
 	})
 
-	return fixture{db: db, storage: pipelinestorage.NewStorages(db, &logging.Logger{Delegate: noopLogDelegate{}}, nil), workspaceID: workspaceID, connID: connID}
+	return fixture{db: db, storage: pipelinestorage.NewStorages(db, &logging.Logger{Delegate: noopLogDelegate{}}, nil), workspaceID: workspaceID, connID: connID, sourceID: sourceID, destID: destID}
 }
 
 func (f fixture) scheduleJob(t *testing.T, group string) uuid.UUID {

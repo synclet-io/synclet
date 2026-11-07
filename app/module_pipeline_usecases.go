@@ -9,6 +9,7 @@ import (
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelineconnections"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelineconnectors"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinedestinations"
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinegroups"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinejobs"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinelogs"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinerepositories"
@@ -62,6 +63,7 @@ func pipelineUseCasesModule() fx.Option {
 			pipelinesources.NewGetSource,
 			pipelinesources.NewListSources,
 			pipelinesources.NewUpdateSourceInternal,
+			pipelinesources.NewDuplicateSource,
 		),
 
 		// Destination use cases
@@ -72,6 +74,7 @@ func pipelineUseCasesModule() fx.Option {
 			pipelinedestinations.NewGetDestination,
 			pipelinedestinations.NewListDestinations,
 			pipelinedestinations.NewUpdateDestinationInternal,
+			pipelinedestinations.NewDuplicateDestination,
 		),
 
 		// Connection use cases
@@ -175,6 +178,10 @@ func pipelineUseCasesModule() fx.Option {
 
 		fx.Provide(
 			pipelineworkspaces.NewPurgeWorkspace,
+		),
+
+		fx.Provide(
+			pipelinegroups.NewMoveExecutorGroup,
 		),
 
 		// State use cases
