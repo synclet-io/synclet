@@ -182,3 +182,7 @@ const (
 	ErrWorkflowRunFinishedEventDataNotFound      = NotFoundError("WorkflowRunFinishedEventData")
 	ErrWorkflowRunFinishedEventDataAlreadyExists = AlreadyExistsError("WorkflowRunFinishedEventData")
 )
+const (
+	ErrJobQueueStalledEventDataNotFound      = NotFoundError("JobQueueStalledEventData")
+	ErrJobQueueStalledEventDataAlreadyExists = AlreadyExistsError("JobQueueStalledEventData")
+)

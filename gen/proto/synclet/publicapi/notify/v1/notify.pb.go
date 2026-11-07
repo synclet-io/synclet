@@ -82,6 +82,8 @@ const (
 	NotificationCondition_NOTIFICATION_CONDITION_ON_FAILURE              NotificationCondition = 1
 	NotificationCondition_NOTIFICATION_CONDITION_ON_CONSECUTIVE_FAILURES NotificationCondition = 2
 	NotificationCondition_NOTIFICATION_CONDITION_ON_ZERO_RECORDS         NotificationCondition = 3
+	// A scheduled sync waits past the claim timeout while its executor group is busy.
+	NotificationCondition_NOTIFICATION_CONDITION_ON_JOB_STALLED NotificationCondition = 4
 )
 
 // Enum value maps for NotificationCondition.
@@ -91,12 +93,14 @@ var (
 		1: "NOTIFICATION_CONDITION_ON_FAILURE",
 		2: "NOTIFICATION_CONDITION_ON_CONSECUTIVE_FAILURES",
 		3: "NOTIFICATION_CONDITION_ON_ZERO_RECORDS",
+		4: "NOTIFICATION_CONDITION_ON_JOB_STALLED",
 	}
 	NotificationCondition_value = map[string]int32{
 		"NOTIFICATION_CONDITION_UNSPECIFIED":             0,
 		"NOTIFICATION_CONDITION_ON_FAILURE":              1,
 		"NOTIFICATION_CONDITION_ON_CONSECUTIVE_FAILURES": 2,
 		"NOTIFICATION_CONDITION_ON_ZERO_RECORDS":         3,
+		"NOTIFICATION_CONDITION_ON_JOB_STALLED":          4,
 	}
 )
 
@@ -1350,12 +1354,13 @@ const file_synclet_publicapi_notify_v1_notify_proto_rawDesc = "" +
 	"%NOTIFICATION_CHANNEL_TYPE_UNSPECIFIED\x10\x00\x12#\n" +
 	"\x1fNOTIFICATION_CHANNEL_TYPE_SLACK\x10\x01\x12#\n" +
 	"\x1fNOTIFICATION_CHANNEL_TYPE_EMAIL\x10\x02\x12&\n" +
-	"\"NOTIFICATION_CHANNEL_TYPE_TELEGRAM\x10\x03*\xc6\x01\n" +
+	"\"NOTIFICATION_CHANNEL_TYPE_TELEGRAM\x10\x03*\xf1\x01\n" +
 	"\x15NotificationCondition\x12&\n" +
 	"\"NOTIFICATION_CONDITION_UNSPECIFIED\x10\x00\x12%\n" +
 	"!NOTIFICATION_CONDITION_ON_FAILURE\x10\x01\x122\n" +
 	".NOTIFICATION_CONDITION_ON_CONSECUTIVE_FAILURES\x10\x02\x12*\n" +
-	"&NOTIFICATION_CONDITION_ON_ZERO_RECORDS\x10\x032\xa0\v\n" +
+	"&NOTIFICATION_CONDITION_ON_ZERO_RECORDS\x10\x03\x12)\n" +
+	"%NOTIFICATION_CONDITION_ON_JOB_STALLED\x10\x042\xa0\v\n" +
 	"\x13NotificationService\x12\xa0\x01\n" +
 	"\x19CreateNotificationChannel\x12=.synclet.publicapi.notify.v1.CreateNotificationChannelRequest\x1a>.synclet.publicapi.notify.v1.CreateNotificationChannelResponse\"\x04\x88\xb5\x18\x03\x12\xa0\x01\n" +
 	"\x19UpdateNotificationChannel\x12=.synclet.publicapi.notify.v1.UpdateNotificationChannelRequest\x1a>.synclet.publicapi.notify.v1.UpdateNotificationChannelResponse\"\x04\x88\xb5\x18\x03\x12\xa0\x01\n" +

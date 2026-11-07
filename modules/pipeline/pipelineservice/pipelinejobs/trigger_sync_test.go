@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/synclet-io/synclet/modules/pipeline/internal/pipelinefake"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelineconnections"
 )
@@ -26,6 +27,20 @@ func (s *triggerSyncStorage) Connections() pipelineservice.ConnectionsStorage {
 }
 
 func (s *triggerSyncStorage) Jobs() pipelineservice.JobsStorage { return &s.jobs }
+
+func (s *triggerSyncStorage) Sources() pipelineservice.SourcesStorage {
+	store := pipelinefake.New()
+	store.SourcesTable.Insert(&pipelineservice.Source{ID: s.conn.SourceID, WorkspaceID: s.conn.WorkspaceID, ExecutorGroup: pipelineservice.DefaultExecutorGroup})
+
+	return store.Sources()
+}
+
+func (s *triggerSyncStorage) Executors() pipelineservice.ExecutorsStorage {
+	store := pipelinefake.New()
+	store.AddLiveExecutor(pipelineservice.DefaultExecutorGroup)
+
+	return store.Executors()
+}
 
 func (s *triggerSyncStorage) PipelineEvents() pipelineservice.PipelineEventsOutbox {
 	return &mockPipelineEventsOutbox{}

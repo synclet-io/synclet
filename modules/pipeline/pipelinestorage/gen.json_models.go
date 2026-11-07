@@ -599,6 +599,7 @@ type jsonSource struct {
 	WorkspaceID        uuid.UUID `json:"workspace_id"`
 	Name               string    `json:"name"`
 	ManagedConnectorID uuid.UUID `json:"managed_connector_id"`
+	ExecutorGroup      string    `json:"executor_group"`
 	Config             jsonb     `json:"config"`
 	CreatedAt          time.Time `json:"created_at"`
 	UpdatedAt          time.Time `json:"updated_at"`
@@ -619,6 +620,7 @@ func convertSourceToJsonModel(src *pipelineservice.Source) (*jsonSource, error) 
 	result.WorkspaceID = src.WorkspaceID
 	result.Name = src.Name
 	result.ManagedConnectorID = src.ManagedConnectorID
+	result.ExecutorGroup = src.ExecutorGroup
 	result.Config = src.Config
 	result.CreatedAt = (src.CreatedAt).UTC()
 	result.UpdatedAt = (src.UpdatedAt).UTC()
@@ -636,6 +638,7 @@ func convertSourceFromJsonModel(src *jsonSource) (*pipelineservice.Source, error
 	result.WorkspaceID = src.WorkspaceID
 	result.Name = src.Name
 	result.ManagedConnectorID = src.ManagedConnectorID
+	result.ExecutorGroup = src.ExecutorGroup
 	result.Config = src.Config
 	result.CreatedAt = src.CreatedAt
 	result.UpdatedAt = src.UpdatedAt
@@ -652,6 +655,7 @@ type jsonDestination struct {
 	WorkspaceID        uuid.UUID `json:"workspace_id"`
 	Name               string    `json:"name"`
 	ManagedConnectorID uuid.UUID `json:"managed_connector_id"`
+	ExecutorGroup      string    `json:"executor_group"`
 	Config             jsonb     `json:"config"`
 	CreatedAt          time.Time `json:"created_at"`
 	UpdatedAt          time.Time `json:"updated_at"`
@@ -672,6 +676,7 @@ func convertDestinationToJsonModel(src *pipelineservice.Destination) (*jsonDesti
 	result.WorkspaceID = src.WorkspaceID
 	result.Name = src.Name
 	result.ManagedConnectorID = src.ManagedConnectorID
+	result.ExecutorGroup = src.ExecutorGroup
 	result.Config = src.Config
 	result.CreatedAt = (src.CreatedAt).UTC()
 	result.UpdatedAt = (src.UpdatedAt).UTC()
@@ -689,6 +694,7 @@ func convertDestinationFromJsonModel(src *jsonDestination) (*pipelineservice.Des
 	result.WorkspaceID = src.WorkspaceID
 	result.Name = src.Name
 	result.ManagedConnectorID = src.ManagedConnectorID
+	result.ExecutorGroup = src.ExecutorGroup
 	result.Config = src.Config
 	result.CreatedAt = src.CreatedAt
 	result.UpdatedAt = src.UpdatedAt
@@ -865,6 +871,9 @@ type jsonJob struct {
 	K8sJobName        *string    `json:"k8s_job_name"`
 	FailureReason     *string    `json:"failure_reason"`
 	WorkflowStepRunID *uuid.UUID `json:"workflow_step_run_id"`
+	ExecutorGroup     string     `json:"executor_group"`
+	QueueReason       *string    `json:"queue_reason"`
+	StalledAt         *time.Time `json:"stalled_at"`
 	CreatedAt         time.Time  `json:"created_at"`
 }
 
@@ -938,6 +947,17 @@ func convertJobToJsonModel(src *pipelineservice.Job) (*jsonJob, error) {
 	} else {
 		result.WorkflowStepRunID = toPtr(fromPtr(src.WorkflowStepRunID))
 	}
+	result.ExecutorGroup = src.ExecutorGroup
+	if src.QueueReason == nil {
+		result.QueueReason = nil
+	} else {
+		result.QueueReason = toPtr(fromPtr(src.QueueReason))
+	}
+	if src.StalledAt == nil {
+		result.StalledAt = nil
+	} else {
+		result.StalledAt = toPtr((fromPtr(src.StalledAt)).UTC())
+	}
 	result.CreatedAt = (src.CreatedAt).UTC()
 	return result, nil
 }
@@ -946,16 +966,16 @@ func convertJobFromJsonModel(src *jsonJob) (*pipelineservice.Job, error) {
 	result := &pipelineservice.Job{}
 	result.ID = src.ID
 	result.ConnectionID = src.ConnectionID
-	tmp28, err := convertJobStatusFromDB(src.Status)
+	tmp33, err := convertJobStatusFromDB(src.Status)
 	if err != nil {
 		return nil, err
 	}
-	result.Status = tmp28
-	tmp29, err := convertJobTypeFromDB(src.JobType)
+	result.Status = tmp33
+	tmp34, err := convertJobTypeFromDB(src.JobType)
 	if err != nil {
 		return nil, err
 	}
-	result.JobType = tmp29
+	result.JobType = tmp34
 	result.ScheduledAt = src.ScheduledAt
 	if src.StartedAt == nil {
 		result.StartedAt = nil
@@ -1003,6 +1023,17 @@ func convertJobFromJsonModel(src *jsonJob) (*pipelineservice.Job, error) {
 		result.WorkflowStepRunID = nil
 	} else {
 		result.WorkflowStepRunID = toPtr(fromPtr(src.WorkflowStepRunID))
+	}
+	result.ExecutorGroup = src.ExecutorGroup
+	if src.QueueReason == nil {
+		result.QueueReason = nil
+	} else {
+		result.QueueReason = toPtr(fromPtr(src.QueueReason))
+	}
+	if src.StalledAt == nil {
+		result.StalledAt = nil
+	} else {
+		result.StalledAt = toPtr(fromPtr(src.StalledAt))
 	}
 	result.CreatedAt = src.CreatedAt
 	return result, nil
@@ -1553,17 +1584,18 @@ func convertWorkspaceSettingsFromJsonModel(src *jsonWorkspaceSettings) (*pipelin
 }
 
 type jsonConnectorTask struct {
-	ID           uuid.UUID                 `json:"id"`
-	WorkspaceID  uuid.UUID                 `json:"workspace_id"`
-	TaskType     string                    `json:"task_type"`
-	Status       string                    `json:"status"`
-	Payload      *jsonConnectorTaskPayload `json:"payload"`
-	Result       *jsonConnectorTaskResult  `json:"result"`
-	ErrorMessage *string                   `json:"error_message"`
-	WorkerID     *string                   `json:"worker_id"`
-	CreatedAt    time.Time                 `json:"created_at"`
-	UpdatedAt    time.Time                 `json:"updated_at"`
-	CompletedAt  *time.Time                `json:"completed_at"`
+	ID            uuid.UUID                 `json:"id"`
+	WorkspaceID   uuid.UUID                 `json:"workspace_id"`
+	TaskType      string                    `json:"task_type"`
+	Status        string                    `json:"status"`
+	Payload       *jsonConnectorTaskPayload `json:"payload"`
+	Result        *jsonConnectorTaskResult  `json:"result"`
+	ErrorMessage  *string                   `json:"error_message"`
+	WorkerID      *string                   `json:"worker_id"`
+	ExecutorGroup *string                   `json:"executor_group"`
+	CreatedAt     time.Time                 `json:"created_at"`
+	UpdatedAt     time.Time                 `json:"updated_at"`
+	CompletedAt   *time.Time                `json:"completed_at"`
 }
 
 func (c *jsonConnectorTask) Scan(value any) error {
@@ -1612,6 +1644,11 @@ func convertConnectorTaskToJsonModel(src *pipelineservice.ConnectorTask) (*jsonC
 	} else {
 		result.WorkerID = toPtr(fromPtr(src.WorkerID))
 	}
+	if src.ExecutorGroup == nil {
+		result.ExecutorGroup = nil
+	} else {
+		result.ExecutorGroup = toPtr(fromPtr(src.ExecutorGroup))
+	}
 	result.CreatedAt = (src.CreatedAt).UTC()
 	result.UpdatedAt = (src.UpdatedAt).UTC()
 	if src.CompletedAt == nil {
@@ -1626,27 +1663,27 @@ func convertConnectorTaskFromJsonModel(src *jsonConnectorTask) (*pipelineservice
 	result := &pipelineservice.ConnectorTask{}
 	result.ID = src.ID
 	result.WorkspaceID = src.WorkspaceID
-	tmp16, err := convertConnectorTaskTypeFromDB(src.TaskType)
+	tmp18, err := convertConnectorTaskTypeFromDB(src.TaskType)
 	if err != nil {
 		return nil, err
 	}
-	result.TaskType = tmp16
-	tmp17, err := convertConnectorTaskStatusFromDB(src.Status)
+	result.TaskType = tmp18
+	tmp19, err := convertConnectorTaskStatusFromDB(src.Status)
 	if err != nil {
 		return nil, err
 	}
-	result.Status = tmp17
-	tmp18, err := convertConnectorTaskPayloadFromDB(src.Payload)
+	result.Status = tmp19
+	tmp20, err := convertConnectorTaskPayloadFromDB(src.Payload)
 	if err != nil {
 		return nil, fmt.Errorf("convert ConnectorTaskPayload to service type: %w", err)
 	}
-	result.Payload = tmp18
+	result.Payload = tmp20
 	if src.Result != nil {
-		tmp19, err := convertConnectorTaskResultFromDB(src.Result)
+		tmp21, err := convertConnectorTaskResultFromDB(src.Result)
 		if err != nil {
 			return nil, fmt.Errorf("convert ConnectorTaskResult to service type: %w", err)
 		}
-		result.Result = toPtr(tmp19)
+		result.Result = toPtr(tmp21)
 	} else {
 		result.Result = nil
 	}
@@ -1659,6 +1696,11 @@ func convertConnectorTaskFromJsonModel(src *jsonConnectorTask) (*pipelineservice
 		result.WorkerID = nil
 	} else {
 		result.WorkerID = toPtr(fromPtr(src.WorkerID))
+	}
+	if src.ExecutorGroup == nil {
+		result.ExecutorGroup = nil
+	} else {
+		result.ExecutorGroup = toPtr(fromPtr(src.ExecutorGroup))
 	}
 	result.CreatedAt = src.CreatedAt
 	result.UpdatedAt = src.UpdatedAt
@@ -1714,6 +1756,7 @@ type jsonExecutor struct {
 	Capacity         int                          `json:"capacity"`
 	Capabilities     jsonExecutorCapabilities     `json:"capabilities"`
 	ResourceDefaults jsonExecutorResourceDefaults `json:"resource_defaults"`
+	ExecutorGroup    string                       `json:"executor_group"`
 	FirstSeenAt      time.Time                    `json:"first_seen_at"`
 	LastSeenAt       time.Time                    `json:"last_seen_at"`
 }
@@ -1747,6 +1790,7 @@ func convertExecutorToJsonModel(src *pipelineservice.Executor) (*jsonExecutor, e
 		return nil, errors.Wrap(err, "convert ExecutorResourceDefaults to db")
 	}
 	result.ResourceDefaults = *tmp6
+	result.ExecutorGroup = src.ExecutorGroup
 	result.FirstSeenAt = (src.FirstSeenAt).UTC()
 	result.LastSeenAt = (src.LastSeenAt).UTC()
 	return result, nil
@@ -1756,25 +1800,26 @@ func convertExecutorFromJsonModel(src *jsonExecutor) (*pipelineservice.Executor,
 	result := &pipelineservice.Executor{}
 	result.ID = src.ID
 	result.InstanceID = src.InstanceID
-	tmp11, err := convertExecutorTypeFromDB(src.Type)
+	tmp12, err := convertExecutorTypeFromDB(src.Type)
 	if err != nil {
 		return nil, err
 	}
-	result.Type = tmp11
+	result.Type = tmp12
 	result.Version = src.Version
 	result.Capacity = src.Capacity
-	tmp14, err := convertExecutorCapabilitiesFromJsonModel(toPtr(src.Capabilities))
+	tmp15, err := convertExecutorCapabilitiesFromJsonModel(toPtr(src.Capabilities))
 	if err != nil {
 		return nil, err
 	}
 
-	result.Capabilities = fromPtr(tmp14)
-	tmp15, err := convertExecutorResourceDefaultsFromJsonModel(toPtr(src.ResourceDefaults))
+	result.Capabilities = fromPtr(tmp15)
+	tmp16, err := convertExecutorResourceDefaultsFromJsonModel(toPtr(src.ResourceDefaults))
 	if err != nil {
 		return nil, err
 	}
 
-	result.ResourceDefaults = fromPtr(tmp15)
+	result.ResourceDefaults = fromPtr(tmp16)
+	result.ExecutorGroup = src.ExecutorGroup
 	result.FirstSeenAt = src.FirstSeenAt
 	result.LastSeenAt = src.LastSeenAt
 	return result, nil
@@ -2369,5 +2414,54 @@ func convertWorkflowRunFinishedEventDataFromJsonModel(src *jsonWorkflowRunFinish
 		tmp16 = append(tmp16, el)
 	}
 	result.ConnectionIDs = tmp16
+	return result, nil
+}
+
+type jsonJobQueueStalledEventData struct {
+	WorkspaceID uuid.UUID `json:"workspace_id"`
+	Job         *jsonJob  `json:"job"`
+	Group       string    `json:"group"`
+	WaitedMs    int64     `json:"waited_ms"`
+}
+
+func (j *jsonJobQueueStalledEventData) Scan(value any) error {
+	return json.Unmarshal(value.([]byte), j)
+}
+
+func (j jsonJobQueueStalledEventData) Value() (driver.Value, error) {
+	return json.Marshal(j)
+}
+
+func convertJobQueueStalledEventDataToJsonModel(src *pipelineservice.JobQueueStalledEventData) (*jsonJobQueueStalledEventData, error) {
+	result := &jsonJobQueueStalledEventData{}
+	result.WorkspaceID = src.WorkspaceID
+	if src.Job != nil {
+		tmp1, err := convertJobToJsonModel(src.Job)
+		if err != nil {
+			return nil, errors.Wrap(err, "convert Job to db")
+		}
+		result.Job = tmp1
+	} else {
+		result.Job = nil
+	}
+	result.Group = src.Group
+	result.WaitedMs = src.WaitedMs
+	return result, nil
+}
+
+func convertJobQueueStalledEventDataFromJsonModel(src *jsonJobQueueStalledEventData) (*pipelineservice.JobQueueStalledEventData, error) {
+	result := &pipelineservice.JobQueueStalledEventData{}
+	result.WorkspaceID = src.WorkspaceID
+	if src.Job != nil {
+		tmp5, err := convertJobFromJsonModel(src.Job)
+		if err != nil {
+			return nil, err
+		}
+		result.Job = tmp5
+	} else {
+		result.Job = nil
+	}
+	result.Group = src.Group
+	result.WaitedMs = src.WaitedMs
 	return result, nil
 }

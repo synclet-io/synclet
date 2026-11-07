@@ -25,14 +25,16 @@ func (s *ConnectionsStorage) FindDueConnections(ctx context.Context, limit int) 
 		DestinationID uuid.UUID `gorm:"column:destination_id"`
 		Schedule      string    `gorm:"column:schedule"`
 		MaxAttempts   int       `gorm:"column:max_attempts"`
+		ExecutorGroup string    `gorm:"column:executor_group"`
 	}
 
 	var rows []row
 
 	result := s.DB.WithContext(ctx).
-		Raw(`SELECT c.id, c.source_id, c.destination_id, c.schedule, c.max_attempts
+		Raw(`SELECT c.id, c.source_id, c.destination_id, c.schedule, c.max_attempts, s.executor_group
 		     FROM pipeline.connections c
 		     JOIN workspace.workspaces w ON w.id = c.workspace_id
+		     JOIN pipeline.sources s ON s.id = c.source_id
 		     WHERE c.status = ?
 		       AND c.next_scheduled_at IS NOT NULL
 		       AND c.next_scheduled_at <= NOW()
@@ -63,6 +65,7 @@ func (s *ConnectionsStorage) FindDueConnections(ctx context.Context, limit int) 
 			DestinationID: row.DestinationID,
 			Schedule:      row.Schedule,
 			MaxAttempts:   row.MaxAttempts,
+			ExecutorGroup: row.ExecutorGroup,
 		}
 	}
 

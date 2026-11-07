@@ -27,6 +27,7 @@ const (
 	pipelineEventTypeJobUpdated          = "job.updated"
 	pipelineEventTypeWorkflowRunStarted  = "workflow_run.started"
 	pipelineEventTypeWorkflowRunFinished = "workflow_run.finished"
+	pipelineEventTypeJobQueueStalled     = "job.queue_stalled"
 )
 
 func eventTypeToString(eventType pipelineservice.PipelineEventType) (string, error) {
@@ -39,6 +40,8 @@ func eventTypeToString(eventType pipelineservice.PipelineEventType) (string, err
 		return pipelineEventTypeWorkflowRunStarted, nil
 	case pipelineservice.PipelineEventTypeWorkflowRunFinished:
 		return pipelineEventTypeWorkflowRunFinished, nil
+	case pipelineservice.PipelineEventTypeJobQueueStalled:
+		return pipelineEventTypeJobQueueStalled, nil
 	default:
 		return "", fmt.Errorf("unknown PipelineEventType: %d", eventType)
 	}
@@ -54,6 +57,8 @@ func eventTypeFromString(value string) (pipelineservice.PipelineEventType, error
 		return pipelineservice.PipelineEventTypeWorkflowRunStarted, nil
 	case pipelineEventTypeWorkflowRunFinished:
 		return pipelineservice.PipelineEventTypeWorkflowRunFinished, nil
+	case pipelineEventTypeJobQueueStalled:
+		return pipelineservice.PipelineEventTypeJobQueueStalled, nil
 	default:
 		return 0, fmt.Errorf("unknown PipelineEventType string: %q", value)
 	}
@@ -76,6 +81,9 @@ type jobPayload struct {
 	K8sJobName        *string    `json:"k8s_job_name,omitempty"`
 	FailureReason     *string    `json:"failure_reason,omitempty"`
 	WorkflowStepRunID *uuid.UUID `json:"workflow_step_run_id,omitempty"`
+	ExecutorGroup     string     `json:"executor_group,omitempty"`
+	QueueReason       *string    `json:"queue_reason,omitempty"`
+	StalledAt         *time.Time `json:"stalled_at,omitempty"`
 	CreatedAt         time.Time  `json:"created_at"`
 }
 
@@ -96,6 +104,9 @@ func toJobPayload(job *pipelineservice.Job) jobPayload {
 		K8sJobName:        job.K8sJobName,
 		FailureReason:     job.FailureReason,
 		WorkflowStepRunID: job.WorkflowStepRunID,
+		ExecutorGroup:     job.ExecutorGroup,
+		QueueReason:       job.QueueReason,
+		StalledAt:         job.StalledAt,
 		CreatedAt:         job.CreatedAt,
 	}
 }
@@ -127,6 +138,9 @@ func fromJobPayload(payload jobPayload) (*pipelineservice.Job, error) {
 		K8sJobName:        payload.K8sJobName,
 		FailureReason:     payload.FailureReason,
 		WorkflowStepRunID: payload.WorkflowStepRunID,
+		ExecutorGroup:     payload.ExecutorGroup,
+		QueueReason:       payload.QueueReason,
+		StalledAt:         payload.StalledAt,
 		CreatedAt:         payload.CreatedAt,
 	}, nil
 }
@@ -140,6 +154,13 @@ type jobUpdatedPayload struct {
 	WorkspaceID uuid.UUID  `json:"workspace_id"`
 	OldData     jobPayload `json:"old_data"`
 	NewData     jobPayload `json:"new_data"`
+}
+
+type jobQueueStalledPayload struct {
+	WorkspaceID uuid.UUID  `json:"workspace_id"`
+	Job         jobPayload `json:"job"`
+	Group       string     `json:"group"`
+	WaitedMs    int64      `json:"waited_ms"`
 }
 
 type workflowRunStartedPayload struct {
@@ -193,6 +214,17 @@ func EncodePipelineEvent(event *pipelineservice.PipelineEvent) (metadata map[str
 			WorkspaceID: data.WorkspaceID,
 			OldData:     toJobPayload(data.OldData),
 			NewData:     toJobPayload(data.NewData),
+		}
+	case *pipelineservice.JobQueueStalledEventData:
+		if data == nil || data.Job == nil {
+			return nil, nil, errors.New("job.queue_stalled event missing job")
+		}
+
+		payload = jobQueueStalledPayload{
+			WorkspaceID: data.WorkspaceID,
+			Job:         toJobPayload(data.Job),
+			Group:       data.Group,
+			WaitedMs:    data.WaitedMs,
 		}
 	case *pipelineservice.WorkflowRunStartedEventData:
 		if data == nil {
@@ -285,6 +317,23 @@ func DecodePipelineEvent(metadata map[string]string, body []byte) (*pipelineserv
 			WorkspaceID: payload.WorkspaceID,
 			OldData:     oldJob,
 			NewData:     newJob,
+		}
+	case pipelineEventTypeJobQueueStalled:
+		payload := jobQueueStalledPayload{}
+		if err := json.Unmarshal(body, &payload); err != nil {
+			return nil, fmt.Errorf("unmarshalling job.queue_stalled payload: %w", err)
+		}
+
+		job, err := fromJobPayload(payload.Job)
+		if err != nil {
+			return nil, fmt.Errorf("decoding job: %w", err)
+		}
+
+		data = &pipelineservice.JobQueueStalledEventData{
+			WorkspaceID: payload.WorkspaceID,
+			Job:         job,
+			Group:       payload.Group,
+			WaitedMs:    payload.WaitedMs,
 		}
 	case pipelineEventTypeWorkflowRunStarted:
 		payload := workflowRunStartedPayload{}
@@ -393,6 +442,12 @@ func OrderingKey(event *pipelineservice.PipelineEvent) (string, error) {
 		}
 
 		return data.NewData.ConnectionID.String(), nil
+	case *pipelineservice.JobQueueStalledEventData:
+		if data == nil || data.Job == nil {
+			return "", errors.New("job.queue_stalled event missing job")
+		}
+
+		return data.Job.ConnectionID.String(), nil
 	case *pipelineservice.WorkflowRunStartedEventData:
 		if data == nil {
 			return "", errors.New("workflow_run.started event missing data")

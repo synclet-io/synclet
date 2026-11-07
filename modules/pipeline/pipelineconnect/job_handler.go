@@ -282,14 +282,23 @@ func jobStatusesFromProto(statuses []pipelinev1.JobStatus) ([]pipelineservice.Jo
 
 func jobToProto(job *pipelineservice.Job, attempts []*pipelineservice.JobAttempt) *pipelinev1.Job {
 	protoJob := &pipelinev1.Job{
-		Id:           job.ID.String(),
-		ConnectionId: job.ConnectionID.String(),
-		Status:       jobStatusToProto(job.Status),
-		JobType:      jobTypeToProto(job.JobType),
-		ScheduledAt:  timestamppb.New(job.ScheduledAt),
-		Attempt:      int32(job.Attempt),
-		MaxAttempts:  int32(job.MaxAttempts),
-		CreatedAt:    timestamppb.New(job.CreatedAt),
+		Id:            job.ID.String(),
+		ConnectionId:  job.ConnectionID.String(),
+		Status:        jobStatusToProto(job.Status),
+		JobType:       jobTypeToProto(job.JobType),
+		ScheduledAt:   timestamppb.New(job.ScheduledAt),
+		Attempt:       int32(job.Attempt),
+		MaxAttempts:   int32(job.MaxAttempts),
+		CreatedAt:     timestamppb.New(job.CreatedAt),
+		ExecutorGroup: job.ExecutorGroup,
+	}
+
+	if job.QueueReason != nil {
+		protoJob.QueueReason = *job.QueueReason
+	}
+
+	if job.StalledAt != nil {
+		protoJob.StalledAt = timestamppb.New(*job.StalledAt)
 	}
 
 	if job.StartedAt != nil {

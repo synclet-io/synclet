@@ -67,7 +67,7 @@ func TestWorkflowStepConnectionHandsItsScheduleToTheWorkflow(t *testing.T) {
 
 	trigger := pipelinejobs.NewTriggerSync(
 		pipelineconnections.NewGetConnection(e.store),
-		pipelinejobs.NewQueueJob(e.store, pipelineservice.Config{MaxConcurrentJobs: 10}),
+		pipelinejobs.NewQueueJob(e.store, pipelineservice.Config{MaxConcurrentJobs: 10, ExecutorSilenceTimeout: time.Minute}),
 		pipelineservice.NoopAuditRecorder{},
 	)
 	job, err := trigger.Execute(e.ctx, pipelinejobs.TriggerSyncParams{ConnectionID: e.conns["A"], WorkspaceID: e.workspaceID})

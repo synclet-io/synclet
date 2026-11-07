@@ -38,10 +38,17 @@ type CreateSourceParams struct {
 	Name               string
 	ManagedConnectorID uuid.UUID
 	Config             json.RawMessage
+	// ExecutorGroup places the source in an executor group; empty means default.
+	ExecutorGroup string
 }
 
 // Execute creates a new source.
 func (uc *CreateSource) Execute(ctx context.Context, params CreateSourceParams) (*pipelineservice.Source, error) {
+	group, err := pipelineservice.NormalizeExecutorGroup(params.ExecutorGroup)
+	if err != nil {
+		return nil, err
+	}
+
 	// Verify managed connector exists and is ready.
 	connector, err := uc.storage.ManagedConnectors().First(ctx, &pipelineservice.ManagedConnectorFilter{
 		ID:          filter.Equals(params.ManagedConnectorID),
@@ -68,6 +75,7 @@ func (uc *CreateSource) Execute(ctx context.Context, params CreateSourceParams) 
 		WorkspaceID:        params.WorkspaceID,
 		Name:               params.Name,
 		ManagedConnectorID: params.ManagedConnectorID,
+		ExecutorGroup:      group,
 		Config:             config,
 		CreatedAt:          now,
 		UpdatedAt:          now,

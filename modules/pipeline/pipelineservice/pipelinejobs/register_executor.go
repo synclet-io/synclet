@@ -18,6 +18,8 @@ type RegisterExecutorParams struct {
 	Capacity         int
 	Capabilities     pipelineservice.ExecutorCapabilities
 	ResourceDefaults pipelineservice.ExecutorResourceDefaults
+	// ExecutorGroup is the group the executor declares; empty means default.
+	ExecutorGroup string
 }
 
 // RegisterExecutor records an executor heartbeat in the executor registry.
@@ -35,7 +37,12 @@ func NewRegisterExecutor(storage pipelineservice.Storage) *RegisterExecutor {
 func (uc *RegisterExecutor) Execute(ctx context.Context, params RegisterExecutorParams) error {
 	now := uc.now()
 
-	err := uc.storage.Executors().Upsert(ctx, &pipelineservice.Executor{
+	group, err := pipelineservice.NormalizeExecutorGroup(params.ExecutorGroup)
+	if err != nil {
+		return err
+	}
+
+	err = uc.storage.Executors().Upsert(ctx, &pipelineservice.Executor{
 		ID:               uuid.New(),
 		InstanceID:       params.InstanceID,
 		Type:             params.Type,
@@ -43,6 +50,7 @@ func (uc *RegisterExecutor) Execute(ctx context.Context, params RegisterExecutor
 		Capacity:         params.Capacity,
 		Capabilities:     params.Capabilities,
 		ResourceDefaults: params.ResourceDefaults,
+		ExecutorGroup:    group,
 		FirstSeenAt:      now,
 		LastSeenAt:       now,
 	})

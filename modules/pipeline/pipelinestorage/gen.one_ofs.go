@@ -334,6 +334,14 @@ func (p *jsonPipelineEventData) UnmarshalJSON(bytes []byte) error {
 			return err
 		}
 		p.Val = &value.Value
+	case 40005:
+		var value struct {
+			Value jsonJobQueueStalledEventData `json:"value"`
+		}
+		if err := json.Unmarshal(bytes, &value); err != nil {
+			return err
+		}
+		p.Val = &value.Value
 	}
 	return nil
 }
@@ -407,6 +415,20 @@ func convertPipelineEventDataToDB(val pipelineservice.PipelineEventData) (*jsonP
 		result.OneOfTypeID = 40004
 
 		return result, nil
+	case *pipelineservice.JobQueueStalledEventData:
+		if v != nil {
+			tmp, err := convertJobQueueStalledEventDataToJsonModel(v)
+			if err != nil {
+				return nil, errors.Wrap(err, "convert JobQueueStalledEventData to db")
+			}
+			result.Val = tmp
+		} else {
+			result.Val = nil
+		}
+		result.OneOfType = "JobQueueStalledEventData"
+		result.OneOfTypeID = 40005
+
+		return result, nil
 	}
 	return nil, fmt.Errorf("invalid PipelineEventData value type: %T", val)
 }
@@ -442,6 +464,13 @@ func convertPipelineEventDataFromDB(val *jsonPipelineEventData) (pipelineservice
 		v1, err := convertWorkflowRunFinishedEventDataFromJsonModel(v)
 		if err != nil {
 			return nil, fmt.Errorf("convert WorkflowRunFinishedEventData from db: %w", err)
+		}
+
+		return v1, nil
+	case *jsonJobQueueStalledEventData:
+		v1, err := convertJobQueueStalledEventDataFromJsonModel(v)
+		if err != nil {
+			return nil, fmt.Errorf("convert JobQueueStalledEventData from db: %w", err)
 		}
 
 		return v1, nil

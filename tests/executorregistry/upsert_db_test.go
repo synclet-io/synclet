@@ -19,6 +19,7 @@ import (
 
 	"github.com/synclet-io/synclet/modules/pipeline/pipelinedbstate"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
+	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinejobs"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelinestorage"
 	"github.com/synclet-io/synclet/tests/testdb"
 )
@@ -90,8 +91,9 @@ func TestExecutorsUpsert(t *testing.T) {
 		ResourceDefaults: pipelineservice.ExecutorResourceDefaults{
 			CPURequest: "750m", CPULimit: "750m", CPUExecutorDefault: true,
 		},
-		FirstSeenAt: second,
-		LastSeenAt:  second,
+		ExecutorGroup: "Prod Cluster ACME",
+		FirstSeenAt:   second,
+		LastSeenAt:    second,
 	}))
 
 	rows, err := executors.Find(ctx, &pipelineservice.ExecutorFilter{InstanceID: filter.Equals(instanceID)})
@@ -107,4 +109,41 @@ func TestExecutorsUpsert(t *testing.T) {
 	assert.Equal(t, 0, got.Capacity)
 	assert.Equal(t, []string{"postgres"}, got.Capabilities.NativeDestinations)
 	assert.Equal(t, pipelineservice.ExecutorResourceDefaults{CPURequest: "750m", CPULimit: "750m", CPUExecutorDefault: true}, got.ResourceDefaults)
+	assert.Equal(t, "Prod Cluster ACME", got.ExecutorGroup)
 }
+
+// TestRegisterExecutorGroup asserts that an executor that declares no group
+// is stored in the default group, and a declared group is stored trimmed.
+func TestRegisterExecutorGroup(t *testing.T) {
+	executors := setup(t)
+	ctx := t.Context()
+
+	for _, tc := range []struct{ declared, want string }{
+		{declared: "", want: pipelineservice.DefaultExecutorGroup},
+		{declared: "  us-east ", want: "us-east"},
+	} {
+		instanceID := "executor-" + uuid.NewString()
+
+		t.Cleanup(func() {
+			require.NoError(t, executors.Delete(context.Background(), &pipelineservice.ExecutorFilter{InstanceID: filter.Equals(instanceID)}))
+		})
+
+		require.NoError(t, pipelinejobs.NewRegisterExecutor(executorsOnly{executors: executors}).Execute(ctx, pipelinejobs.RegisterExecutorParams{
+			InstanceID:    instanceID,
+			Type:          pipelineservice.ExecutorTypeDocker,
+			ExecutorGroup: tc.declared,
+		}))
+
+		got, err := executors.First(ctx, &pipelineservice.ExecutorFilter{InstanceID: filter.Equals(instanceID)})
+		require.NoError(t, err)
+		assert.Equal(t, tc.want, got.ExecutorGroup)
+	}
+}
+
+// executorsOnly is a Storage that serves the executor registry alone.
+type executorsOnly struct {
+	pipelineservice.Storage
+	executors pipelineservice.ExecutorsStorage
+}
+
+func (s executorsOnly) Executors() pipelineservice.ExecutorsStorage { return s.executors }

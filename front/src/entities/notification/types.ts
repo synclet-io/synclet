@@ -1,5 +1,5 @@
 export type ChannelType = 'slack' | 'email' | 'telegram'
-export type NotificationCondition = 'on_failure' | 'on_consecutive_failures' | 'on_zero_records'
+export type NotificationCondition = 'on_failure' | 'on_consecutive_failures' | 'on_zero_records' | 'on_job_stalled'
 
 export interface NotificationChannel {
   id: string

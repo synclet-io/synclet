@@ -38,6 +38,7 @@ const conditionOptions: { value: NotificationCondition, label: string, descripti
   { value: 'on_failure', label: 'On failure', description: 'Notify when a sync fails', hasValue: false },
   { value: 'on_consecutive_failures', label: 'On consecutive failures', description: 'Notify after N consecutive failures', hasValue: true },
   { value: 'on_zero_records', label: 'On zero records', description: 'Notify when a sync produces no records', hasValue: false },
+  { value: 'on_job_stalled', label: 'On stalled sync', description: 'Notify when a sync waits past the claim timeout because its executor group is busy', hasValue: false },
 ]
 
 function getChannelRules(channelId: string) {

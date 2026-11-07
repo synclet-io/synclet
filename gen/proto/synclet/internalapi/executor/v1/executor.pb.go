@@ -817,8 +817,10 @@ func (*ReportLogResponse) Descriptor() ([]byte, []int) {
 
 // ClaimJob: executor requests a job to run (D-02)
 type ClaimJobRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	WorkerId      string                 `protobuf:"bytes,1,opt,name=worker_id,json=workerId,proto3" json:"worker_id,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	WorkerId string                 `protobuf:"bytes,1,opt,name=worker_id,json=workerId,proto3" json:"worker_id,omitempty"`
+	// Executor group of the claiming executor; only its jobs are claimed.
+	ExecutorGroup string `protobuf:"bytes,2,opt,name=executor_group,json=executorGroup,proto3" json:"executor_group,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -856,6 +858,13 @@ func (*ClaimJobRequest) Descriptor() ([]byte, []int) {
 func (x *ClaimJobRequest) GetWorkerId() string {
 	if x != nil {
 		return x.WorkerId
+	}
+	return ""
+}
+
+func (x *ClaimJobRequest) GetExecutorGroup() string {
+	if x != nil {
+		return x.ExecutorGroup
 	}
 	return ""
 }
@@ -1285,8 +1294,10 @@ func (x *IsJobActiveResponse) GetActive() bool {
 
 // ClaimConnectorTask: executor requests a connector task to run (D-15)
 type ClaimConnectorTaskRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	WorkerId      string                 `protobuf:"bytes,1,opt,name=worker_id,json=workerId,proto3" json:"worker_id,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	WorkerId string                 `protobuf:"bytes,1,opt,name=worker_id,json=workerId,proto3" json:"worker_id,omitempty"`
+	// Executor group of the claiming executor; its tasks and spec tasks are claimed.
+	ExecutorGroup string `protobuf:"bytes,2,opt,name=executor_group,json=executorGroup,proto3" json:"executor_group,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1324,6 +1335,13 @@ func (*ClaimConnectorTaskRequest) Descriptor() ([]byte, []int) {
 func (x *ClaimConnectorTaskRequest) GetWorkerId() string {
 	if x != nil {
 		return x.WorkerId
+	}
+	return ""
+}
+
+func (x *ClaimConnectorTaskRequest) GetExecutorGroup() string {
+	if x != nil {
+		return x.ExecutorGroup
 	}
 	return ""
 }
@@ -1849,6 +1867,7 @@ type ExecutorHeartbeatRequest struct {
 	Capacity         int32                         `protobuf:"varint,4,opt,name=capacity,proto3" json:"capacity,omitempty"`
 	Capabilities     *ExecutorCapabilities         `protobuf:"bytes,5,opt,name=capabilities,proto3" json:"capabilities,omitempty"`
 	ResourceDefaults *v11.ExecutorResourceDefaults `protobuf:"bytes,6,opt,name=resource_defaults,json=resourceDefaults,proto3" json:"resource_defaults,omitempty"`
+	ExecutorGroup    string                        `protobuf:"bytes,7,opt,name=executor_group,json=executorGroup,proto3" json:"executor_group,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -1923,6 +1942,13 @@ func (x *ExecutorHeartbeatRequest) GetResourceDefaults() *v11.ExecutorResourceDe
 		return x.ResourceDefaults
 	}
 	return nil
+}
+
+func (x *ExecutorHeartbeatRequest) GetExecutorGroup() string {
+	if x != nil {
+		return x.ExecutorGroup
+	}
+	return ""
 }
 
 type ExecutorHeartbeatResponse struct {
@@ -2007,9 +2033,10 @@ const file_synclet_internalapi_executor_v1_executor_proto_rawDesc = "" +
 	"\x10ReportLogRequest\x12\x15\n" +
 	"\x06job_id\x18\x01 \x01(\tR\x05jobId\x12\x1b\n" +
 	"\tlog_lines\x18\x02 \x03(\tR\blogLines\"\x13\n" +
-	"\x11ReportLogResponse\".\n" +
+	"\x11ReportLogResponse\"U\n" +
 	"\x0fClaimJobRequest\x12\x1b\n" +
-	"\tworker_id\x18\x01 \x01(\tR\bworkerId\"\xfe\x06\n" +
+	"\tworker_id\x18\x01 \x01(\tR\bworkerId\x12%\n" +
+	"\x0eexecutor_group\x18\x02 \x01(\tR\rexecutorGroup\"\xfe\x06\n" +
 	"\x10ClaimJobResponse\x12\x17\n" +
 	"\ahas_job\x18\x01 \x01(\bR\x06hasJob\x12\x15\n" +
 	"\x06job_id\x18\x02 \x01(\tR\x05jobId\x12#\n" +
@@ -2050,9 +2077,10 @@ const file_synclet_internalapi_executor_v1_executor_proto_rawDesc = "" +
 	"\x12IsJobActiveRequest\x12\x15\n" +
 	"\x06job_id\x18\x01 \x01(\tR\x05jobId\"-\n" +
 	"\x13IsJobActiveResponse\x12\x16\n" +
-	"\x06active\x18\x01 \x01(\bR\x06active\"8\n" +
+	"\x06active\x18\x01 \x01(\bR\x06active\"_\n" +
 	"\x19ClaimConnectorTaskRequest\x12\x1b\n" +
-	"\tworker_id\x18\x01 \x01(\tR\bworkerId\"\xb3\x02\n" +
+	"\tworker_id\x18\x01 \x01(\tR\bworkerId\x12%\n" +
+	"\x0eexecutor_group\x18\x02 \x01(\tR\rexecutorGroup\"\xb3\x02\n" +
 	"\x1aClaimConnectorTaskResponse\x12\x19\n" +
 	"\bhas_task\x18\x01 \x01(\bR\ahasTask\x12\x17\n" +
 	"\atask_id\x18\x02 \x01(\tR\x06taskId\x12M\n" +
@@ -2081,7 +2109,7 @@ const file_synclet_internalapi_executor_v1_executor_proto_rawDesc = "" +
 	"k8sJobName\"\x17\n" +
 	"\x15SetK8sJobNameResponse\"G\n" +
 	"\x14ExecutorCapabilities\x12/\n" +
-	"\x13native_destinations\x18\x01 \x03(\tR\x12nativeDestinations\"\x84\x03\n" +
+	"\x13native_destinations\x18\x01 \x03(\tR\x12nativeDestinations\"\xab\x03\n" +
 	"\x18ExecutorHeartbeatRequest\x12\x1f\n" +
 	"\vexecutor_id\x18\x01 \x01(\tR\n" +
 	"executorId\x12P\n" +
@@ -2089,7 +2117,8 @@ const file_synclet_internalapi_executor_v1_executor_proto_rawDesc = "" +
 	"\aversion\x18\x03 \x01(\tR\aversion\x12\x1a\n" +
 	"\bcapacity\x18\x04 \x01(\x05R\bcapacity\x12Y\n" +
 	"\fcapabilities\x18\x05 \x01(\v25.synclet.internalapi.executor.v1.ExecutorCapabilitiesR\fcapabilities\x12d\n" +
-	"\x11resource_defaults\x18\x06 \x01(\v27.synclet.publicapi.pipeline.v1.ExecutorResourceDefaultsR\x10resourceDefaults\"\x1b\n" +
+	"\x11resource_defaults\x18\x06 \x01(\v27.synclet.publicapi.pipeline.v1.ExecutorResourceDefaultsR\x10resourceDefaults\x12%\n" +
+	"\x0eexecutor_group\x18\a \x01(\tR\rexecutorGroup\"\x1b\n" +
 	"\x19ExecutorHeartbeatResponse*j\n" +
 	"\rConnectorType\x12\x1e\n" +
 	"\x1aCONNECTOR_TYPE_UNSPECIFIED\x10\x00\x12\x19\n" +

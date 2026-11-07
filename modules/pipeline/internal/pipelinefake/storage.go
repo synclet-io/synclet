@@ -1,6 +1,6 @@
 // Package pipelinefake is an in-memory pipelineservice.Storage for use-case
-// tests. It holds sources, catalog discoveries, connections, configured
-// catalogs, jobs, workflows and their runs; every other
+// tests. It holds sources, destinations, catalog discoveries, connections, configured
+// catalogs, jobs, workflows and their runs, and executors; every other
 // storage panics when used. Transactions run the callback on the same store
 // without rollback.
 package pipelinefake
@@ -26,6 +26,7 @@ type Storage struct {
 	pipelineservice.Storage
 
 	SourcesTable                  *Table[pipelineservice.Source, pipelineservice.SourceFilter]
+	DestinationsTable             *Table[pipelineservice.Destination, pipelineservice.DestinationFilter]
 	CatalogDiscoveriesTable       *Table[pipelineservice.CatalogDiscovery, pipelineservice.CatalogDiscoveryFilter]
 	ConnectionsTable              *Table[pipelineservice.Connection, pipelineservice.ConnectionFilter]
 	ConfiguredCatalogsTable       *Table[pipelineservice.ConfiguredCatalog, pipelineservice.ConfiguredCatalogFilter]
@@ -35,6 +36,7 @@ type Storage struct {
 	WorkflowStepDependenciesTable *Table[pipelineservice.WorkflowStepDependency, pipelineservice.WorkflowStepDependencyFilter]
 	WorkflowRunsTable             *Table[pipelineservice.WorkflowRun, pipelineservice.WorkflowRunFilter]
 	WorkflowStepRunsTable         *Table[pipelineservice.WorkflowStepRun, pipelineservice.WorkflowStepRunFilter]
+	ExecutorsTable                *Table[pipelineservice.Executor, pipelineservice.ExecutorFilter]
 
 	Events []*pipelineservice.PipelineEvent
 	Locks  []string
@@ -45,6 +47,8 @@ func New() *Storage {
 	return &Storage{
 		SourcesTable: newTable(pipelineservice.ErrSourceNotFound,
 			func(e *pipelineservice.Source) uuid.UUID { return e.ID }, matchSource),
+		DestinationsTable: newTable(pipelineservice.ErrDestinationNotFound,
+			func(e *pipelineservice.Destination) uuid.UUID { return e.ID }, matchDestination),
 		CatalogDiscoveriesTable: newTable(pipelineservice.ErrCatalogDiscoveryNotFound,
 			func(e *pipelineservice.CatalogDiscovery) uuid.UUID { return e.ID }, matchCatalogDiscovery),
 		ConnectionsTable: newTable(pipelineservice.ErrConnectionNotFound,
@@ -63,6 +67,8 @@ func New() *Storage {
 			func(e *pipelineservice.WorkflowRun) uuid.UUID { return e.ID }, matchWorkflowRun),
 		WorkflowStepRunsTable: newTable(pipelineservice.ErrWorkflowStepRunNotFound,
 			func(e *pipelineservice.WorkflowStepRun) uuid.UUID { return e.ID }, matchWorkflowStepRun),
+		ExecutorsTable: newTable(pipelineservice.ErrExecutorNotFound,
+			func(e *pipelineservice.Executor) uuid.UUID { return e.ID }, matchExecutor),
 	}
 }
 
@@ -77,6 +83,28 @@ func (s *Storage) WithAdvisoryLock(_ context.Context, scope string, _ int64) err
 }
 
 func (s *Storage) Sources() pipelineservice.SourcesStorage { return s.SourcesTable }
+
+func (s *Storage) Destinations() pipelineservice.DestinationsStorage { return s.DestinationsTable }
+
+func (s *Storage) Executors() pipelineservice.ExecutorsStorage {
+	return &executors{Table: s.ExecutorsTable}
+}
+
+// AddLiveExecutor registers an executor of group seen now.
+func (s *Storage) AddLiveExecutor(group string) {
+	s.ExecutorsTable.Insert(&pipelineservice.Executor{
+		ID: uuid.New(), InstanceID: uuid.NewString(), ExecutorGroup: group, LastSeenAt: time.Now(),
+	})
+}
+
+type unimplementedExecutors struct {
+	pipelineservice.ExecutorsStorage
+}
+
+type executors struct {
+	unimplementedExecutors
+	*Table[pipelineservice.Executor, pipelineservice.ExecutorFilter]
+}
 
 func (s *Storage) CatalogDiscoveries() pipelineservice.CatalogDiscoveriesStorage {
 	return s.CatalogDiscoveriesTable
@@ -193,6 +221,18 @@ func (j *jobs) CountActiveJobs(context.Context) (int, error) {
 	}
 
 	return count, nil
+}
+
+// UpdateIfStatus writes job while its stored status is one of fromStatuses.
+func (j *jobs) UpdateIfStatus(ctx context.Context, job *pipelineservice.Job, fromStatuses ...pipelineservice.JobStatus) (bool, error) {
+	stored := j.Get(job.ID)
+	if stored == nil || !slices.Contains(fromStatuses, stored.Status) {
+		return false, nil
+	}
+
+	_, err := j.Update(ctx, job)
+
+	return err == nil, err
 }
 
 func isActiveJob(status pipelineservice.JobStatus) bool {
@@ -416,8 +456,21 @@ func combine[F any, E any](row *E, or, and []*F, fields bool, match func(*F, *E)
 func matchSource(cond *pipelineservice.SourceFilter, row *pipelineservice.Source) bool {
 	return combine(row, cond.Or, cond.And,
 		value(cond.ID, row.ID) && value(cond.WorkspaceID, row.WorkspaceID) && value(cond.Name, row.Name) &&
-			value(cond.ManagedConnectorID, row.ManagedConnectorID),
+			value(cond.ManagedConnectorID, row.ManagedConnectorID) && value(cond.ExecutorGroup, row.ExecutorGroup),
 		matchSource)
+}
+
+func matchDestination(cond *pipelineservice.DestinationFilter, row *pipelineservice.Destination) bool {
+	return combine(row, cond.Or, cond.And,
+		value(cond.ID, row.ID) && value(cond.WorkspaceID, row.WorkspaceID) && value(cond.Name, row.Name) &&
+			value(cond.ManagedConnectorID, row.ManagedConnectorID) && value(cond.ExecutorGroup, row.ExecutorGroup),
+		matchDestination)
+}
+
+func matchExecutor(cond *pipelineservice.ExecutorFilter, row *pipelineservice.Executor) bool {
+	return combine(row, cond.Or, cond.And,
+		value(cond.ID, row.ID) && value(cond.InstanceID, row.InstanceID) && value(cond.ExecutorGroup, row.ExecutorGroup),
+		matchExecutor)
 }
 
 func matchCatalogDiscovery(cond *pipelineservice.CatalogDiscoveryFilter, row *pipelineservice.CatalogDiscovery) bool {
@@ -447,7 +500,8 @@ func matchJob(cond *pipelineservice.JobFilter, row *pipelineservice.Job) bool {
 	return combine(row, cond.Or, cond.And,
 		value(cond.ID, row.ID) && value(cond.ConnectionID, row.ConnectionID) && value(cond.Status, row.Status) &&
 			value(cond.JobType, row.JobType) && timestamp(cond.StartedAt, row.StartedAt) &&
-			timestamp(cond.HeartbeatAt, row.HeartbeatAt) && pointer(cond.WorkflowStepRunID, row.WorkflowStepRunID),
+			timestamp(cond.HeartbeatAt, row.HeartbeatAt) && pointer(cond.WorkflowStepRunID, row.WorkflowStepRunID) &&
+			value(cond.ExecutorGroup, row.ExecutorGroup),
 		matchJob)
 }
 

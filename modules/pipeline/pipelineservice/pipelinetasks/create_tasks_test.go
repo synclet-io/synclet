@@ -21,7 +21,7 @@ func TestCreateCheckTask(t *testing.T) {
 	t.Run("rejects params without entity or config", func(t *testing.T) {
 		audit := &recordingAudit{}
 
-		_, err := pipelinetasks.NewCreateCheckTask(newTaskStore(), newFakeSecrets(), audit).Execute(ctx, pipelinetasks.CreateCheckTaskParams{WorkspaceID: ws})
+		_, err := pipelinetasks.NewCreateCheckTask(newTaskStore(), newFakeSecrets(), audit, taskCfg).Execute(ctx, pipelinetasks.CreateCheckTaskParams{WorkspaceID: ws})
 		require.ErrorIs(t, err, pipelineservice.ErrMissingCheckTaskParams)
 		assert.Empty(t, audit.events)
 	})
@@ -32,7 +32,7 @@ func TestCreateCheckTask(t *testing.T) {
 		audit := &recordingAudit{}
 		mc := seedConnector(store, ws)
 
-		got, err := pipelinetasks.NewCreateCheckTask(store, secrets, audit).Execute(ctx, pipelinetasks.CreateCheckTaskParams{
+		got, err := pipelinetasks.NewCreateCheckTask(store, secrets, audit, taskCfg).Execute(ctx, pipelinetasks.CreateCheckTaskParams{
 			WorkspaceID:        ws,
 			ManagedConnectorID: &mc.ID,
 			Config:             json.RawMessage(`{"host":"db","password":"hunter2"}`),
@@ -67,7 +67,7 @@ func TestCreateCheckTask(t *testing.T) {
 		foreignRef, err := secrets.StoreSecret(ctx, "source", uuid.New(), "someone-elses-password")
 		require.NoError(t, err)
 
-		_, err = pipelinetasks.NewCreateCheckTask(store, secrets, audit).Execute(ctx, pipelinetasks.CreateCheckTaskParams{
+		_, err = pipelinetasks.NewCreateCheckTask(store, secrets, audit, taskCfg).Execute(ctx, pipelinetasks.CreateCheckTaskParams{
 			WorkspaceID:        ws,
 			ManagedConnectorID: &mc.ID,
 			Config:             json.RawMessage(`{"host":"db","password":"` + foreignRef + `"}`),
@@ -84,7 +84,7 @@ func TestCreateCheckTask(t *testing.T) {
 	})
 
 	t.Run("direct config fails for unknown connector", func(t *testing.T) {
-		_, err := pipelinetasks.NewCreateCheckTask(newTaskStore(), newFakeSecrets(), &recordingAudit{}).Execute(ctx, pipelinetasks.CreateCheckTaskParams{
+		_, err := pipelinetasks.NewCreateCheckTask(newTaskStore(), newFakeSecrets(), &recordingAudit{}, taskCfg).Execute(ctx, pipelinetasks.CreateCheckTaskParams{
 			WorkspaceID:        ws,
 			ManagedConnectorID: uuidPtr(uuid.New()),
 			Config:             json.RawMessage(`{}`),
@@ -96,7 +96,7 @@ func TestCreateCheckTask(t *testing.T) {
 		store := newTaskStore()
 		mc := seedConnector(store, ws)
 
-		_, err := pipelinetasks.NewCreateCheckTask(store, newFakeSecrets(), &recordingAudit{}).Execute(ctx, pipelinetasks.CreateCheckTaskParams{
+		_, err := pipelinetasks.NewCreateCheckTask(store, newFakeSecrets(), &recordingAudit{}, taskCfg).Execute(ctx, pipelinetasks.CreateCheckTaskParams{
 			WorkspaceID:        ws,
 			ManagedConnectorID: &mc.ID,
 			Config:             json.RawMessage(`not json`),
@@ -110,7 +110,7 @@ func TestCreateCheckTask(t *testing.T) {
 		src := &pipelineservice.Source{ID: uuid.New(), WorkspaceID: ws, Name: "prod-postgres", ManagedConnectorID: uuid.New()}
 		store.sources.records[src.ID] = src
 
-		got, err := pipelinetasks.NewCreateCheckTask(store, newFakeSecrets(), audit).Execute(ctx, pipelinetasks.CreateCheckTaskParams{
+		got, err := pipelinetasks.NewCreateCheckTask(store, newFakeSecrets(), audit, taskCfg).Execute(ctx, pipelinetasks.CreateCheckTaskParams{
 			WorkspaceID: ws,
 			SourceID:    &src.ID,
 		})
@@ -136,7 +136,7 @@ func TestCreateCheckTask(t *testing.T) {
 		dst := &pipelineservice.Destination{ID: uuid.New(), WorkspaceID: ws, Name: "warehouse", ManagedConnectorID: uuid.New()}
 		store.destinations.records[dst.ID] = dst
 
-		got, err := pipelinetasks.NewCreateCheckTask(store, newFakeSecrets(), audit).Execute(ctx, pipelinetasks.CreateCheckTaskParams{
+		got, err := pipelinetasks.NewCreateCheckTask(store, newFakeSecrets(), audit, taskCfg).Execute(ctx, pipelinetasks.CreateCheckTaskParams{
 			WorkspaceID:   ws,
 			DestinationID: &dst.ID,
 		})
@@ -161,7 +161,7 @@ func TestCreateCheckTask(t *testing.T) {
 		src := &pipelineservice.Source{ID: uuid.New(), WorkspaceID: uuid.New()}
 		store.sources.records[src.ID] = src
 
-		_, err := pipelinetasks.NewCreateCheckTask(store, newFakeSecrets(), audit).Execute(ctx, pipelinetasks.CreateCheckTaskParams{
+		_, err := pipelinetasks.NewCreateCheckTask(store, newFakeSecrets(), audit, taskCfg).Execute(ctx, pipelinetasks.CreateCheckTaskParams{
 			WorkspaceID: ws,
 			SourceID:    &src.ID,
 		})
@@ -170,7 +170,7 @@ func TestCreateCheckTask(t *testing.T) {
 	})
 
 	t.Run("missing destination is not found", func(t *testing.T) {
-		_, err := pipelinetasks.NewCreateCheckTask(newTaskStore(), newFakeSecrets(), &recordingAudit{}).Execute(ctx, pipelinetasks.CreateCheckTaskParams{
+		_, err := pipelinetasks.NewCreateCheckTask(newTaskStore(), newFakeSecrets(), &recordingAudit{}, taskCfg).Execute(ctx, pipelinetasks.CreateCheckTaskParams{
 			WorkspaceID:   ws,
 			DestinationID: uuidPtr(uuid.New()),
 		})
@@ -184,7 +184,7 @@ func TestCreateCheckTask(t *testing.T) {
 		src := &pipelineservice.Source{ID: uuid.New(), WorkspaceID: ws}
 		store.sources.records[src.ID] = src
 
-		_, err := pipelinetasks.NewCreateCheckTask(store, newFakeSecrets(), audit).Execute(ctx, pipelinetasks.CreateCheckTaskParams{
+		_, err := pipelinetasks.NewCreateCheckTask(store, newFakeSecrets(), audit, taskCfg).Execute(ctx, pipelinetasks.CreateCheckTaskParams{
 			WorkspaceID: ws,
 			SourceID:    &src.ID,
 		})
@@ -203,7 +203,7 @@ func TestCreateDiscoverTask(t *testing.T) {
 		store.sources.records[src.ID] = src
 		audit := &recordingAudit{}
 
-		got, err := pipelinetasks.NewCreateDiscoverTask(store, audit).Execute(ctx, pipelinetasks.CreateDiscoverTaskParams{WorkspaceID: ws, SourceID: src.ID})
+		got, err := pipelinetasks.NewCreateDiscoverTask(store, audit, taskCfg).Execute(ctx, pipelinetasks.CreateDiscoverTaskParams{WorkspaceID: ws, SourceID: src.ID})
 		require.NoError(t, err)
 
 		task := store.tasks.get(got.TaskID)
@@ -227,7 +227,7 @@ func TestCreateDiscoverTask(t *testing.T) {
 
 		audit := &recordingAudit{}
 
-		got, err := pipelinetasks.NewCreateDiscoverTask(store, audit).Execute(ctx, pipelinetasks.CreateDiscoverTaskParams{WorkspaceID: ws, SourceID: src.ID})
+		got, err := pipelinetasks.NewCreateDiscoverTask(store, audit, taskCfg).Execute(ctx, pipelinetasks.CreateDiscoverTaskParams{WorkspaceID: ws, SourceID: src.ID})
 		require.NoError(t, err)
 		assert.Equal(t, existing.ID, got.TaskID)
 		assert.Len(t, store.tasks.records, 2)
@@ -243,7 +243,7 @@ func TestCreateDiscoverTask(t *testing.T) {
 		done.Status = pipelineservice.ConnectorTaskStatusCompleted
 		store.tasks.records[done.ID] = done
 
-		got, err := pipelinetasks.NewCreateDiscoverTask(store, pipelineservice.NoopAuditRecorder{}).Execute(ctx, pipelinetasks.CreateDiscoverTaskParams{WorkspaceID: ws, SourceID: src.ID})
+		got, err := pipelinetasks.NewCreateDiscoverTask(store, pipelineservice.NoopAuditRecorder{}, taskCfg).Execute(ctx, pipelinetasks.CreateDiscoverTaskParams{WorkspaceID: ws, SourceID: src.ID})
 		require.NoError(t, err)
 		assert.NotEqual(t, done.ID, got.TaskID)
 	})
@@ -253,7 +253,7 @@ func TestCreateDiscoverTask(t *testing.T) {
 		src := &pipelineservice.Source{ID: uuid.New(), WorkspaceID: uuid.New()}
 		store.sources.records[src.ID] = src
 
-		_, err := pipelinetasks.NewCreateDiscoverTask(store, pipelineservice.NoopAuditRecorder{}).Execute(ctx, pipelinetasks.CreateDiscoverTaskParams{WorkspaceID: ws, SourceID: src.ID})
+		_, err := pipelinetasks.NewCreateDiscoverTask(store, pipelineservice.NoopAuditRecorder{}, taskCfg).Execute(ctx, pipelinetasks.CreateDiscoverTaskParams{WorkspaceID: ws, SourceID: src.ID})
 		require.ErrorIs(t, err, pipelineservice.ErrSourceNotFound)
 	})
 
@@ -263,7 +263,7 @@ func TestCreateDiscoverTask(t *testing.T) {
 		src := &pipelineservice.Source{ID: uuid.New(), WorkspaceID: ws}
 		store.sources.records[src.ID] = src
 
-		_, err := pipelinetasks.NewCreateDiscoverTask(store, pipelineservice.NoopAuditRecorder{}).Execute(ctx, pipelinetasks.CreateDiscoverTaskParams{WorkspaceID: ws, SourceID: src.ID})
+		_, err := pipelinetasks.NewCreateDiscoverTask(store, pipelineservice.NoopAuditRecorder{}, taskCfg).Execute(ctx, pipelinetasks.CreateDiscoverTaskParams{WorkspaceID: ws, SourceID: src.ID})
 		require.ErrorIs(t, err, errBoom)
 	})
 
@@ -273,7 +273,7 @@ func TestCreateDiscoverTask(t *testing.T) {
 		src := &pipelineservice.Source{ID: uuid.New(), WorkspaceID: ws}
 		store.sources.records[src.ID] = src
 
-		_, err := pipelinetasks.NewCreateDiscoverTask(store, pipelineservice.NoopAuditRecorder{}).Execute(ctx, pipelinetasks.CreateDiscoverTaskParams{WorkspaceID: ws, SourceID: src.ID})
+		_, err := pipelinetasks.NewCreateDiscoverTask(store, pipelineservice.NoopAuditRecorder{}, taskCfg).Execute(ctx, pipelinetasks.CreateDiscoverTaskParams{WorkspaceID: ws, SourceID: src.ID})
 		require.ErrorIs(t, err, errBoom)
 	})
 }

@@ -36,18 +36,19 @@ const (
 	NotificationConditionOnFailure NotificationCondition = iota + 1
 	NotificationConditionOnConsecutiveFailures
 	NotificationConditionOnZeroRecords
+	NotificationConditionOnJobStalled
 )
 
 // user code 'NotificationCondition methods'
 // end user code 'NotificationCondition methods'
 func (n NotificationCondition) IsValid() bool {
-	return n > 0 && n < 4
+	return n > 0 && n < 5
 }
 func (n NotificationCondition) String() string {
-	const names = "OnFailureOnConsecutiveFailuresOnZeroRecords"
+	const names = "OnFailureOnConsecutiveFailuresOnZeroRecordsOnJobStalled"
 
-	var indexes = [...]int32{0, 9, 30, 43}
-	if n < 1 || n > 3 {
+	var indexes = [...]int32{0, 9, 30, 43, 55}
+	if n < 1 || n > 4 {
 		return "NotificationCondition(" + strconv.FormatInt(int64(n), 10) + ")"
 	}
 

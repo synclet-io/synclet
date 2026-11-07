@@ -52,7 +52,7 @@ func NewCreateConnection(storage pipelineservice.Storage, cfg pipelineservice.Co
 // Execute validates source/destination existence and creates the connection.
 func (uc *CreateConnection) Execute(ctx context.Context, params CreateConnectionParams) (*pipelineservice.Connection, error) {
 	// Validate source exists in the workspace — direct storage call, no adapter needed.
-	_, err := uc.storage.Sources().First(ctx, &pipelineservice.SourceFilter{
+	source, err := uc.storage.Sources().First(ctx, &pipelineservice.SourceFilter{
 		ID:          filter.Equals(params.SourceID),
 		WorkspaceID: filter.Equals(params.WorkspaceID),
 	})
@@ -61,12 +61,16 @@ func (uc *CreateConnection) Execute(ctx context.Context, params CreateConnection
 	}
 
 	// Validate destination exists in the workspace — direct storage call, no adapter needed.
-	_, err = uc.storage.Destinations().First(ctx, &pipelineservice.DestinationFilter{
+	destination, err := uc.storage.Destinations().First(ctx, &pipelineservice.DestinationFilter{
 		ID:          filter.Equals(params.DestinationID),
 		WorkspaceID: filter.Equals(params.WorkspaceID),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("validating destination: %w", err)
+	}
+
+	if err := pipelineservice.RequireSameExecutorGroup(source, destination); err != nil {
+		return nil, err
 	}
 
 	schedule := emptyToNil(params.Schedule)

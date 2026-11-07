@@ -150,7 +150,7 @@ type claimTaskTasks struct {
 	task *pipelineservice.ConnectorTask
 }
 
-func (t claimTaskTasks) ClaimPendingTask(_ context.Context, _ string) (*pipelineservice.ConnectorTask, error) {
+func (t claimTaskTasks) ClaimPendingTask(_ context.Context, _, _ string) (*pipelineservice.ConnectorTask, error) {
 	return t.task, nil
 }
 

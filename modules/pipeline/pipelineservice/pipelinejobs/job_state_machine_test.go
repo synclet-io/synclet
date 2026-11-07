@@ -80,7 +80,7 @@ func (j *jobStateJobs) First(_ context.Context, _ *pipelineservice.JobFilter, _ 
 	return &cp, nil
 }
 
-func (j *jobStateJobs) ClaimNextScheduledJob(_ context.Context, workerID string) (*pipelineservice.Job, error) {
+func (j *jobStateJobs) ClaimNextScheduledJob(_ context.Context, workerID, _ string) (*pipelineservice.Job, error) {
 	j.s.job.Status = pipelineservice.JobStatusStarting
 	j.s.job.WorkerID = &workerID
 	cp := *j.s.job

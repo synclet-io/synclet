@@ -227,6 +227,8 @@ func TestConfigInventoryRoles(t *testing.T) {
 		"K8S_EXECUTOR_OWNER_ID_PREFIX": roleBoth,
 		"PIPELINE_RUNTIME_CPU_LIMIT":   roleBoth,
 		"PIPELINE_IDLE_TIMEOUT":        roleBoth,
+		"EXECUTOR_GROUP":               roleExecutor,
+		"PIPELINE_JOB_CLAIM_TIMEOUT":   roleServer,
 	} {
 		if got := roles[key]; got != want {
 			t.Errorf("%s: role %q, want %q", key, got, want)

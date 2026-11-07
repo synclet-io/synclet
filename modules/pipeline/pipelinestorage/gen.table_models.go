@@ -262,6 +262,7 @@ type dbSource struct {
 	WorkspaceID        uuid.UUID `gorm:"column:workspace_id"`
 	Name               string    `gorm:"column:name;type:text"`
 	ManagedConnectorID uuid.UUID `gorm:"column:managed_connector_id"`
+	ExecutorGroup      string    `gorm:"column:executor_group;type:text"`
 	Config             jsonb     `gorm:"column:config"`
 	CreatedAt          time.Time `gorm:"column:created_at"`
 	UpdatedAt          time.Time `gorm:"column:updated_at"`
@@ -274,6 +275,7 @@ func convertSourceToDB(src *pipelineservice.Source) (*dbSource, error) {
 	result.WorkspaceID = src.WorkspaceID
 	result.Name = src.Name
 	result.ManagedConnectorID = src.ManagedConnectorID
+	result.ExecutorGroup = src.ExecutorGroup
 	result.Config = src.Config
 	result.CreatedAt = (src.CreatedAt).UTC()
 	result.UpdatedAt = (src.UpdatedAt).UTC()
@@ -291,6 +293,7 @@ func convertSourceFromDB(src *dbSource) (*pipelineservice.Source, error) {
 	result.WorkspaceID = src.WorkspaceID
 	result.Name = src.Name
 	result.ManagedConnectorID = src.ManagedConnectorID
+	result.ExecutorGroup = src.ExecutorGroup
 	result.Config = src.Config
 	result.CreatedAt = src.CreatedAt
 	result.UpdatedAt = src.UpdatedAt
@@ -310,6 +313,7 @@ type dbDestination struct {
 	WorkspaceID        uuid.UUID `gorm:"column:workspace_id"`
 	Name               string    `gorm:"column:name;type:text"`
 	ManagedConnectorID uuid.UUID `gorm:"column:managed_connector_id"`
+	ExecutorGroup      string    `gorm:"column:executor_group;type:text"`
 	Config             jsonb     `gorm:"column:config"`
 	CreatedAt          time.Time `gorm:"column:created_at"`
 	UpdatedAt          time.Time `gorm:"column:updated_at"`
@@ -322,6 +326,7 @@ func convertDestinationToDB(src *pipelineservice.Destination) (*dbDestination, e
 	result.WorkspaceID = src.WorkspaceID
 	result.Name = src.Name
 	result.ManagedConnectorID = src.ManagedConnectorID
+	result.ExecutorGroup = src.ExecutorGroup
 	result.Config = src.Config
 	result.CreatedAt = (src.CreatedAt).UTC()
 	result.UpdatedAt = (src.UpdatedAt).UTC()
@@ -339,6 +344,7 @@ func convertDestinationFromDB(src *dbDestination) (*pipelineservice.Destination,
 	result.WorkspaceID = src.WorkspaceID
 	result.Name = src.Name
 	result.ManagedConnectorID = src.ManagedConnectorID
+	result.ExecutorGroup = src.ExecutorGroup
 	result.Config = src.Config
 	result.CreatedAt = src.CreatedAt
 	result.UpdatedAt = src.UpdatedAt
@@ -513,6 +519,9 @@ type dbJob struct {
 	K8sJobName        *string    `gorm:"column:k8s_job_name;type:text"`
 	FailureReason     *string    `gorm:"column:failure_reason;type:text"`
 	WorkflowStepRunID *uuid.UUID `gorm:"column:workflow_step_run_id"`
+	ExecutorGroup     string     `gorm:"column:executor_group;type:text"`
+	QueueReason       *string    `gorm:"column:queue_reason;type:text"`
+	StalledAt         *time.Time `gorm:"column:stalled_at"`
 	CreatedAt         time.Time  `gorm:"column:created_at"`
 }
 
@@ -578,6 +587,17 @@ func convertJobToDB(src *pipelineservice.Job) (*dbJob, error) {
 	} else {
 		result.WorkflowStepRunID = toPtr(fromPtr(src.WorkflowStepRunID))
 	}
+	result.ExecutorGroup = src.ExecutorGroup
+	if src.QueueReason == nil {
+		result.QueueReason = nil
+	} else {
+		result.QueueReason = toPtr(fromPtr(src.QueueReason))
+	}
+	if src.StalledAt == nil {
+		result.StalledAt = nil
+	} else {
+		result.StalledAt = toPtr((fromPtr(src.StalledAt)).UTC())
+	}
 	result.CreatedAt = (src.CreatedAt).UTC()
 	return result, nil
 }
@@ -586,16 +606,16 @@ func convertJobFromDB(src *dbJob) (*pipelineservice.Job, error) {
 	result := &pipelineservice.Job{}
 	result.ID = src.ID
 	result.ConnectionID = src.ConnectionID
-	tmp28, err := convertJobStatusFromDB(src.Status)
+	tmp33, err := convertJobStatusFromDB(src.Status)
 	if err != nil {
 		return nil, err
 	}
-	result.Status = tmp28
-	tmp29, err := convertJobTypeFromDB(src.JobType)
+	result.Status = tmp33
+	tmp34, err := convertJobTypeFromDB(src.JobType)
 	if err != nil {
 		return nil, err
 	}
-	result.JobType = tmp29
+	result.JobType = tmp34
 	result.ScheduledAt = src.ScheduledAt
 	if src.StartedAt == nil {
 		result.StartedAt = nil
@@ -643,6 +663,17 @@ func convertJobFromDB(src *dbJob) (*pipelineservice.Job, error) {
 		result.WorkflowStepRunID = nil
 	} else {
 		result.WorkflowStepRunID = toPtr(fromPtr(src.WorkflowStepRunID))
+	}
+	result.ExecutorGroup = src.ExecutorGroup
+	if src.QueueReason == nil {
+		result.QueueReason = nil
+	} else {
+		result.QueueReason = toPtr(fromPtr(src.QueueReason))
+	}
+	if src.StalledAt == nil {
+		result.StalledAt = nil
+	} else {
+		result.StalledAt = toPtr(fromPtr(src.StalledAt))
 	}
 	result.CreatedAt = src.CreatedAt
 	return result, nil
@@ -954,17 +985,18 @@ func (a dbWorkspaceSettings) TableName() string {
 }
 
 type dbConnectorTask struct {
-	ID           uuid.UUID                 `gorm:"column:id"`
-	WorkspaceID  uuid.UUID                 `gorm:"column:workspace_id"`
-	TaskType     string                    `gorm:"column:task_type;type:text"`
-	Status       string                    `gorm:"column:status;type:text"`
-	Payload      *jsonConnectorTaskPayload `gorm:"column:payload"`
-	Result       *jsonConnectorTaskResult  `gorm:"column:result"`
-	ErrorMessage *string                   `gorm:"column:error_message;type:text"`
-	WorkerID     *string                   `gorm:"column:worker_id;type:text"`
-	CreatedAt    time.Time                 `gorm:"column:created_at"`
-	UpdatedAt    time.Time                 `gorm:"column:updated_at"`
-	CompletedAt  *time.Time                `gorm:"column:completed_at"`
+	ID            uuid.UUID                 `gorm:"column:id"`
+	WorkspaceID   uuid.UUID                 `gorm:"column:workspace_id"`
+	TaskType      string                    `gorm:"column:task_type;type:text"`
+	Status        string                    `gorm:"column:status;type:text"`
+	Payload       *jsonConnectorTaskPayload `gorm:"column:payload"`
+	Result        *jsonConnectorTaskResult  `gorm:"column:result"`
+	ErrorMessage  *string                   `gorm:"column:error_message;type:text"`
+	WorkerID      *string                   `gorm:"column:worker_id;type:text"`
+	ExecutorGroup *string                   `gorm:"column:executor_group;type:text"`
+	CreatedAt     time.Time                 `gorm:"column:created_at"`
+	UpdatedAt     time.Time                 `gorm:"column:updated_at"`
+	CompletedAt   *time.Time                `gorm:"column:completed_at"`
 }
 
 func convertConnectorTaskToDB(src *pipelineservice.ConnectorTask) (*dbConnectorTask, error) {
@@ -1005,6 +1037,11 @@ func convertConnectorTaskToDB(src *pipelineservice.ConnectorTask) (*dbConnectorT
 	} else {
 		result.WorkerID = toPtr(fromPtr(src.WorkerID))
 	}
+	if src.ExecutorGroup == nil {
+		result.ExecutorGroup = nil
+	} else {
+		result.ExecutorGroup = toPtr(fromPtr(src.ExecutorGroup))
+	}
 	result.CreatedAt = (src.CreatedAt).UTC()
 	result.UpdatedAt = (src.UpdatedAt).UTC()
 	if src.CompletedAt == nil {
@@ -1019,27 +1056,27 @@ func convertConnectorTaskFromDB(src *dbConnectorTask) (*pipelineservice.Connecto
 	result := &pipelineservice.ConnectorTask{}
 	result.ID = src.ID
 	result.WorkspaceID = src.WorkspaceID
-	tmp16, err := convertConnectorTaskTypeFromDB(src.TaskType)
+	tmp18, err := convertConnectorTaskTypeFromDB(src.TaskType)
 	if err != nil {
 		return nil, err
 	}
-	result.TaskType = tmp16
-	tmp17, err := convertConnectorTaskStatusFromDB(src.Status)
+	result.TaskType = tmp18
+	tmp19, err := convertConnectorTaskStatusFromDB(src.Status)
 	if err != nil {
 		return nil, err
 	}
-	result.Status = tmp17
-	tmp18, err := convertConnectorTaskPayloadFromDB(src.Payload)
+	result.Status = tmp19
+	tmp20, err := convertConnectorTaskPayloadFromDB(src.Payload)
 	if err != nil {
 		return nil, fmt.Errorf("convert ConnectorTaskPayload to service type: %w", err)
 	}
-	result.Payload = tmp18
+	result.Payload = tmp20
 	if src.Result != nil {
-		tmp19, err := convertConnectorTaskResultFromDB(src.Result)
+		tmp21, err := convertConnectorTaskResultFromDB(src.Result)
 		if err != nil {
 			return nil, fmt.Errorf("convert ConnectorTaskResult to service type: %w", err)
 		}
-		result.Result = toPtr(tmp19)
+		result.Result = toPtr(tmp21)
 	} else {
 		result.Result = nil
 	}
@@ -1052,6 +1089,11 @@ func convertConnectorTaskFromDB(src *dbConnectorTask) (*pipelineservice.Connecto
 		result.WorkerID = nil
 	} else {
 		result.WorkerID = toPtr(fromPtr(src.WorkerID))
+	}
+	if src.ExecutorGroup == nil {
+		result.ExecutorGroup = nil
+	} else {
+		result.ExecutorGroup = toPtr(fromPtr(src.ExecutorGroup))
 	}
 	result.CreatedAt = src.CreatedAt
 	result.UpdatedAt = src.UpdatedAt
@@ -1105,6 +1147,7 @@ type dbExecutor struct {
 	Capacity         int                          `gorm:"column:capacity"`
 	Capabilities     jsonExecutorCapabilities     `gorm:"column:capabilities"`
 	ResourceDefaults jsonExecutorResourceDefaults `gorm:"column:resource_defaults"`
+	ExecutorGroup    string                       `gorm:"column:executor_group;type:text"`
 	FirstSeenAt      time.Time                    `gorm:"column:first_seen_at"`
 	LastSeenAt       time.Time                    `gorm:"column:last_seen_at"`
 }
@@ -1130,6 +1173,7 @@ func convertExecutorToDB(src *pipelineservice.Executor) (*dbExecutor, error) {
 		return nil, errors.Wrap(err, "convert ExecutorResourceDefaults to db")
 	}
 	result.ResourceDefaults = *tmp6
+	result.ExecutorGroup = src.ExecutorGroup
 	result.FirstSeenAt = (src.FirstSeenAt).UTC()
 	result.LastSeenAt = (src.LastSeenAt).UTC()
 	return result, nil
@@ -1139,25 +1183,26 @@ func convertExecutorFromDB(src *dbExecutor) (*pipelineservice.Executor, error) {
 	result := &pipelineservice.Executor{}
 	result.ID = src.ID
 	result.InstanceID = src.InstanceID
-	tmp11, err := convertExecutorTypeFromDB(src.Type)
+	tmp12, err := convertExecutorTypeFromDB(src.Type)
 	if err != nil {
 		return nil, err
 	}
-	result.Type = tmp11
+	result.Type = tmp12
 	result.Version = src.Version
 	result.Capacity = src.Capacity
-	tmp14, err := convertExecutorCapabilitiesFromJsonModel(toPtr(src.Capabilities))
+	tmp15, err := convertExecutorCapabilitiesFromJsonModel(toPtr(src.Capabilities))
 	if err != nil {
 		return nil, err
 	}
 
-	result.Capabilities = fromPtr(tmp14)
-	tmp15, err := convertExecutorResourceDefaultsFromJsonModel(toPtr(src.ResourceDefaults))
+	result.Capabilities = fromPtr(tmp15)
+	tmp16, err := convertExecutorResourceDefaultsFromJsonModel(toPtr(src.ResourceDefaults))
 	if err != nil {
 		return nil, err
 	}
 
-	result.ResourceDefaults = fromPtr(tmp15)
+	result.ResourceDefaults = fromPtr(tmp16)
+	result.ExecutorGroup = src.ExecutorGroup
 	result.FirstSeenAt = src.FirstSeenAt
 	result.LastSeenAt = src.LastSeenAt
 	return result, nil

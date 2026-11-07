@@ -396,7 +396,12 @@ func (s *runState) enqueueReady(ctx context.Context, tx pipelineservice.Storage,
 			continue
 		}
 
-		job, err := createScheduledSyncJob(ctx, tx, conn, &stepRun.ID, s.now)
+		source, err := tx.Sources().First(ctx, &pipelineservice.SourceFilter{ID: filter.Equals(conn.SourceID)})
+		if err != nil {
+			return fmt.Errorf("loading source of connection %s: %w", conn.ID, err)
+		}
+
+		job, err := createScheduledSyncJob(ctx, tx, conn, source.ExecutorGroup, &stepRun.ID, s.now)
 		if err != nil {
 			return err
 		}
@@ -413,12 +418,14 @@ func (s *runState) enqueueReady(ctx context.Context, tx pipelineservice.Storage,
 	return nil
 }
 
-// createScheduledSyncJob enqueues a sync job for the connection and
-// publishes job.created. stepRunID ties the job to a workflow step run.
+// createScheduledSyncJob enqueues a sync job for the connection in
+// executorGroup, its source's group, and publishes job.created. stepRunID
+// ties the job to a workflow step run.
 func createScheduledSyncJob(
 	ctx context.Context,
 	tx pipelineservice.Storage,
 	conn *pipelineservice.Connection,
+	executorGroup string,
 	stepRunID *uuid.UUID,
 	now time.Time,
 ) (*pipelineservice.Job, error) {
@@ -431,6 +438,7 @@ func createScheduledSyncJob(
 		Attempt:           1,
 		MaxAttempts:       conn.MaxAttempts,
 		WorkflowStepRunID: stepRunID,
+		ExecutorGroup:     executorGroup,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("creating scheduled job for connection %s: %w", conn.ID, err)

@@ -3,6 +3,7 @@ package pipelinetasks
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/saturn4er/boilerplate-go/lib/filter"
@@ -12,13 +13,15 @@ import (
 
 // CreateDiscoverTask creates a connector discover task for a source.
 type CreateDiscoverTask struct {
-	storage pipelineservice.Storage
-	audit   pipelineservice.AuditRecorder
+	storage        pipelineservice.Storage
+	audit          pipelineservice.AuditRecorder
+	silenceTimeout time.Duration
+	now            func() time.Time
 }
 
 // NewCreateDiscoverTask creates a new CreateDiscoverTask use case.
-func NewCreateDiscoverTask(storage pipelineservice.Storage, audit pipelineservice.AuditRecorder) *CreateDiscoverTask {
-	return &CreateDiscoverTask{storage: storage, audit: audit}
+func NewCreateDiscoverTask(storage pipelineservice.Storage, audit pipelineservice.AuditRecorder, cfg pipelineservice.Config) *CreateDiscoverTask {
+	return &CreateDiscoverTask{storage: storage, audit: audit, silenceTimeout: cfg.ExecutorSilenceTimeout, now: time.Now}
 }
 
 // CreateDiscoverTaskParams holds parameters for creating a discover task.
@@ -38,6 +41,10 @@ func (uc *CreateDiscoverTask) Execute(ctx context.Context, params CreateDiscover
 	})
 	if err != nil {
 		return nil, fmt.Errorf("finding source: %w", err)
+	}
+
+	if err := pipelineservice.RequireLiveExecutor(ctx, uc.storage, src.ExecutorGroup, uc.silenceTimeout, uc.now()); err != nil {
+		return nil, err
 	}
 
 	// Deduplicate: check for existing pending/running discover tasks for this source.
@@ -65,6 +72,7 @@ func (uc *CreateDiscoverTask) Execute(ctx context.Context, params CreateDiscover
 			SourceID:           params.SourceID,
 			ManagedConnectorID: src.ManagedConnectorID,
 		},
+		ExecutorGroup: &src.ExecutorGroup,
 	}
 
 	if _, err := uc.storage.ConnectorTasks().Create(ctx, task); err != nil {

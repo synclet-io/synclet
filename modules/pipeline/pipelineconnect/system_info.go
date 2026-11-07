@@ -92,6 +92,7 @@ func (h *SourceHandler) ListExecutors(ctx context.Context, _ *connect.Request[pi
 			ResourceDefaults:   domainExecutorResourceDefaultsToProto(executor.ResourceDefaults),
 			FirstSeenAt:        timestamppb.New(executor.FirstSeenAt),
 			LastSeenAt:         timestamppb.New(executor.LastSeenAt),
+			ExecutorGroup:      executor.ExecutorGroup,
 		})
 	}
 

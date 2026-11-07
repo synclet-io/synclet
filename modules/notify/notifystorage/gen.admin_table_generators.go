@@ -425,6 +425,7 @@ func NewTableGenerators() table.GeneratorList {
 				{Value: "on_failure", Text: "OnFailure"},
 				{Value: "on_consecutive_failures", Text: "OnConsecutiveFailures"},
 				{Value: "on_zero_records", Text: "OnZeroRecords"},
+				{Value: "on_job_stalled", Text: "OnJobStalled"},
 			})
 			info.AddField("ConditionValue", "condition_value", db.Int)
 			info.FieldSortable()

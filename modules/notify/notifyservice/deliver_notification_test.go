@@ -547,3 +547,30 @@ func TestDeliverNotification_WorkflowEventSendsOncePerChannel(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 1, mock.deliveryCount(), "a workflow failure reaches each channel once")
 }
+
+func TestDeliverNotification_OnJobStalled(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		condition NotificationCondition
+		event     NotificationEvent
+		want      int
+	}{
+		{name: "OnJobStalled matches a stalled sync", condition: NotificationConditionOnJobStalled, event: NotificationEventJobStalled, want: 1},
+		{name: "OnFailure does not match a stalled sync", condition: NotificationConditionOnFailure, event: NotificationEventJobStalled, want: 0},
+		{name: "OnJobStalled does not match a failed sync", condition: NotificationConditionOnJobStalled, event: NotificationEventFailed, want: 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			channelID, wsID := uuid.New(), uuid.New()
+			channel := &NotificationChannel{ID: channelID, WorkspaceID: wsID, ChannelType: ChannelTypeSlack, Enabled: true}
+			rule := &NotificationRule{ID: uuid.New(), WorkspaceID: wsID, ChannelID: channelID, Condition: tc.condition, Enabled: true}
+
+			mock := &mockChannelDeliverer{}
+			uc := NewDeliverNotification(newTestStorage([]*NotificationChannel{channel}, []*NotificationRule{rule}), map[ChannelType]ChannelDeliverer{ChannelTypeSlack: mock}, nil)
+
+			require.NoError(t, uc.Execute(context.Background(), DeliverNotificationParams{
+				WorkspaceID: wsID, ConnectionID: uuid.New(), Event: tc.event, ExecutorGroup: "us", WaitedMs: 300000,
+			}))
+			assert.Equal(t, tc.want, mock.deliveryCount())
+		})
+	}
+}

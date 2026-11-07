@@ -107,7 +107,7 @@ type bundleJobs struct {
 	s *bundleStorage
 }
 
-func (j *bundleJobs) ClaimNextScheduledJob(context.Context, string) (*pipelineservice.Job, error) {
+func (j *bundleJobs) ClaimNextScheduledJob(context.Context, string, string) (*pipelineservice.Job, error) {
 	cp := *j.s.job
 
 	return &cp, nil

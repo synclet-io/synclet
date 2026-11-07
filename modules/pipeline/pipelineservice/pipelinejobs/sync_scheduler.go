@@ -21,17 +21,19 @@ const SchedulerLockScope = "sync_scheduler"
 // counts active jobs to respect the concurrency limit, and prioritizes
 // connections by oldest last-sync completion time.
 type SyncScheduler struct {
-	storage pipelineservice.Storage
-	limit   int
-	logger  *logging.Logger
+	storage        pipelineservice.Storage
+	limit          int
+	silenceTimeout time.Duration
+	logger         *logging.Logger
 }
 
 // NewSyncScheduler creates a new SyncScheduler.
 func NewSyncScheduler(storage pipelineservice.Storage, config pipelineservice.Config, logger *logging.Logger) *SyncScheduler {
 	return &SyncScheduler{
-		storage: storage,
-		limit:   config.MaxConcurrentJobs,
-		logger:  logger,
+		storage:        storage,
+		limit:          config.MaxConcurrentJobs,
+		silenceTimeout: config.ExecutorSilenceTimeout,
+		logger:         logger,
 	}
 }
 
@@ -120,7 +122,9 @@ func startDueWorkflows(ctx context.Context, tx pipelineservice.Storage, now time
 }
 
 // scheduleConnections creates a job for each connection due for a sync, up
-// to remaining, and returns how many it created.
+// to remaining, and returns how many it created. A connection whose executor
+// group has no live executor gets no job: its next run is advanced and its
+// status reason names the group.
 func (s *SyncScheduler) scheduleConnections(ctx context.Context, tx pipelineservice.Storage, remaining int) (int, error) {
 	if remaining <= 0 {
 		return 0, nil
@@ -157,6 +161,7 @@ func (s *SyncScheduler) scheduleConnections(ctx context.Context, tx pipelineserv
 
 	now := time.Now()
 	created := 0
+	liveGroups := map[string]bool{}
 
 	for _, conn := range dueConnections {
 		connRecord := connByID[conn.ConnectionID]
@@ -164,13 +169,36 @@ func (s *SyncScheduler) scheduleConnections(ctx context.Context, tx pipelineserv
 			return 0, fmt.Errorf("due connection %s not found", conn.ConnectionID)
 		}
 
+		live, known := liveGroups[conn.ExecutorGroup]
+		if !known {
+			live, err = pipelineservice.HasLiveExecutor(ctx, tx, conn.ExecutorGroup, s.silenceTimeout, now)
+			if err != nil {
+				return 0, err
+			}
+
+			liveGroups[conn.ExecutorGroup] = live
+		}
+
+		if !live {
+			reason := (&pipelineservice.NoLiveExecutorError{Group: conn.ExecutorGroup}).Error()
+			connRecord.StatusReason = &reason
+			pipelineservice.RecomputeNextScheduledAt(connRecord, now)
+
+			if _, err := tx.Connections().Update(ctx, connRecord); err != nil {
+				return 0, fmt.Errorf("skipping connection %s without a live executor: %w", conn.ConnectionID, err)
+			}
+
+			continue
+		}
+
 		jobConn := *connRecord
 		jobConn.MaxAttempts = conn.MaxAttempts
 
-		if _, err := createScheduledSyncJob(ctx, tx, &jobConn, nil, now); err != nil {
+		if _, err := createScheduledSyncJob(ctx, tx, &jobConn, conn.ExecutorGroup, nil, now); err != nil {
 			return 0, err
 		}
 
+		clearNoLiveExecutorReason(connRecord)
 		pipelineservice.RecomputeNextScheduledAt(connRecord, now)
 
 		if _, err := tx.Connections().Update(ctx, connRecord); err != nil {

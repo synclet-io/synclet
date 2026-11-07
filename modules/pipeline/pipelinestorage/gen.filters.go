@@ -245,6 +245,10 @@ func buildSourceFilterExpr(filter *pipelineservice.SourceFilter, options ...func
 			Column: opts.columnPrefix + "managed_connector_id",
 			Filter: filter.ManagedConnectorID,
 		},
+		dbutil.ColumnFilter[string]{
+			Column: opts.columnPrefix + "executor_group",
+			Filter: filter.ExecutorGroup,
+		},
 		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
 			if filter.Or == nil {
 				return nil, nil
@@ -301,6 +305,10 @@ func buildDestinationFilterExpr(filter *pipelineservice.DestinationFilter, optio
 		dbutil.ColumnFilter[uuid.UUID]{
 			Column: opts.columnPrefix + "managed_connector_id",
 			Filter: filter.ManagedConnectorID,
+		},
+		dbutil.ColumnFilter[string]{
+			Column: opts.columnPrefix + "executor_group",
+			Filter: filter.ExecutorGroup,
 		},
 		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
 			if filter.Or == nil {
@@ -442,6 +450,10 @@ func buildJobFilterExpr(filter *pipelineservice.JobFilter, options ...func(*filt
 		dbutil.ColumnFilter[*uuid.UUID]{
 			Column: opts.columnPrefix + "workflow_step_run_id",
 			Filter: filter.WorkflowStepRunID,
+		},
+		dbutil.ColumnFilter[string]{
+			Column: opts.columnPrefix + "executor_group",
+			Filter: filter.ExecutorGroup,
 		},
 		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
 			if filter.Or == nil {
@@ -843,6 +855,10 @@ func buildConnectorTaskFilterExpr(filter *pipelineservice.ConnectorTaskFilter, o
 			Filter: filter.Status,
 			Mapper: convertConnectorTaskStatusToDB,
 		},
+		dbutil.ColumnFilter[*string]{
+			Column: opts.columnPrefix + "executor_group",
+			Filter: filter.ExecutorGroup,
+		},
 		dbutil.ColumnFilter[time.Time]{
 			Column: opts.columnPrefix + "created_at",
 			Filter: filter.CreatedAt,
@@ -961,6 +977,10 @@ func buildExecutorFilterExpr(filter *pipelineservice.ExecutorFilter, options ...
 			Column: opts.columnPrefix + "type",
 			Filter: filter.Type,
 			Mapper: convertExecutorTypeToDB,
+		},
+		dbutil.ColumnFilter[string]{
+			Column: opts.columnPrefix + "executor_group",
+			Filter: filter.ExecutorGroup,
 		},
 		dbutil.ExpressionBuilderFunc(func() (clause.Expression, error) {
 			if filter.Or == nil {

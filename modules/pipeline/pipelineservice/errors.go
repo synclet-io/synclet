@@ -35,6 +35,16 @@ func (e *ValidationError) Error() string {
 	return "validation error: " + e.Message
 }
 
+// NoLiveExecutorError reports an executor group with no executor that sent
+// a registration heartbeat within the silence timeout.
+type NoLiveExecutorError struct {
+	Group string
+}
+
+func (e *NoLiveExecutorError) Error() string {
+	return `no live executor in group "` + e.Group + `"`
+}
+
 // InUseError reports a resource that connections still reference and so
 // cannot be deleted.
 type InUseError struct {

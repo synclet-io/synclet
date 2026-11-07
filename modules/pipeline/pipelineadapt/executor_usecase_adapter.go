@@ -36,6 +36,7 @@ type UseCaseExecutorBackend struct {
 	isTaskActive       *pipelinejobs.IsTaskActive
 	setK8sJobName      *pipelinejobs.SetK8sJobName
 	registerExecutor   *pipelinejobs.RegisterExecutor
+	group              pipelineexec.ExecutorGroup
 }
 
 // NewUseCaseExecutorBackend creates a new UseCaseExecutorBackend.
@@ -55,6 +56,7 @@ func NewUseCaseExecutorBackend(
 	isTaskActive *pipelinejobs.IsTaskActive,
 	setK8sJobName *pipelinejobs.SetK8sJobName,
 	registerExecutor *pipelinejobs.RegisterExecutor,
+	group pipelineexec.ExecutorGroup,
 ) *UseCaseExecutorBackend {
 	return &UseCaseExecutorBackend{
 		claimJobBundle:     claimJobBundle,
@@ -72,12 +74,13 @@ func NewUseCaseExecutorBackend(
 		isTaskActive:       isTaskActive,
 		setK8sJobName:      setK8sJobName,
 		registerExecutor:   registerExecutor,
+		group:              group,
 	}
 }
 
 // ClaimJob claims the next available job and returns the full executor bundle.
 func (a *UseCaseExecutorBackend) ClaimJob(ctx context.Context, workerID string) (*pipelineexec.ClaimJobResult, error) {
-	result, err := a.claimJobBundle.Execute(ctx, pipelinejobs.ClaimJobParams{WorkerID: workerID})
+	result, err := a.claimJobBundle.Execute(ctx, pipelinejobs.ClaimJobParams{WorkerID: workerID, ExecutorGroup: string(a.group)})
 	if err != nil {
 		return nil, fmt.Errorf("claiming job bundle: %w", err)
 	}
@@ -202,7 +205,7 @@ func (a *UseCaseExecutorBackend) ReportLog(ctx context.Context, jobID uuid.UUID,
 
 // ClaimConnectorTask claims the next pending connector task (D-15).
 func (a *UseCaseExecutorBackend) ClaimConnectorTask(ctx context.Context, workerID string) (*pipelineexec.ClaimConnectorTaskResult, error) {
-	result, err := a.claimTask.Execute(ctx, workerID)
+	result, err := a.claimTask.Execute(ctx, workerID, string(a.group))
 	if err != nil {
 		return nil, fmt.Errorf("claiming connector task: %w", err)
 	}
@@ -287,5 +290,6 @@ func (a *UseCaseExecutorBackend) ExecutorHeartbeat(ctx context.Context, info pip
 		Capacity:         info.Capacity,
 		Capabilities:     info.Capabilities,
 		ResourceDefaults: info.ResourceDefaults,
+		ExecutorGroup:    info.Group,
 	})
 }

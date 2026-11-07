@@ -37,11 +37,12 @@ func NewClaimTask(storage pipelineservice.Storage, secrets pipelineservice.Secre
 	}
 }
 
-// Execute claims the next pending task, resolves image and config, and returns the bundle.
+// Execute claims the next pending task of executorGroup, or a spec task,
+// resolves image and config, and returns the bundle.
 // Returns nil, nil when no pending tasks are available.
-func (uc *ClaimTask) Execute(ctx context.Context, workerID string) (*ClaimTaskResult, error) {
+func (uc *ClaimTask) Execute(ctx context.Context, workerID, executorGroup string) (*ClaimTaskResult, error) {
 	// 1. Atomically claim the next pending task.
-	task, err := uc.storage.ConnectorTasks().ClaimPendingTask(ctx, workerID)
+	task, err := uc.storage.ConnectorTasks().ClaimPendingTask(ctx, workerID, executorGroup)
 	if err != nil {
 		return nil, fmt.Errorf("claiming pending task: %w", err)
 	}

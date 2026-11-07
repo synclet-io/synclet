@@ -29,10 +29,17 @@ func newEnv(t *testing.T, names ...string) *env {
 	e := &env{ctx: context.Background(), store: pipelinefake.New(), workspaceID: uuid.New(), conns: map[string]uuid.UUID{}}
 	e.advancer = pipelinejobs.NewAdvanceWorkflowRuns(e.store, pipelineservice.Config{MaxConcurrentJobs: 10}, nil)
 
+	e.store.AddLiveExecutor(pipelineservice.DefaultExecutorGroup)
+
 	for _, name := range names {
 		id := uuid.New()
+		source := &pipelineservice.Source{ID: uuid.New(), WorkspaceID: e.workspaceID, ExecutorGroup: pipelineservice.DefaultExecutorGroup}
+		e.store.SourcesTable.Insert(source)
+		destination := &pipelineservice.Destination{ID: uuid.New(), WorkspaceID: e.workspaceID, ExecutorGroup: pipelineservice.DefaultExecutorGroup}
+		e.store.DestinationsTable.Insert(destination)
 		e.store.ConnectionsTable.Insert(&pipelineservice.Connection{
 			ID: id, WorkspaceID: e.workspaceID, Name: name, Status: pipelineservice.ConnectionStatusActive, MaxAttempts: 1,
+			SourceID: source.ID, DestinationID: destination.ID,
 		})
 		e.store.ConfigureStreams(id, "users")
 		e.conns[name] = id

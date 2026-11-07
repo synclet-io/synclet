@@ -38,10 +38,17 @@ type CreateDestinationParams struct {
 	Name               string
 	ManagedConnectorID uuid.UUID
 	Config             json.RawMessage
+	// ExecutorGroup places the destination in an executor group; empty means default.
+	ExecutorGroup string
 }
 
 // Execute creates a new destination.
 func (uc *CreateDestination) Execute(ctx context.Context, params CreateDestinationParams) (*pipelineservice.Destination, error) {
+	group, err := pipelineservice.NormalizeExecutorGroup(params.ExecutorGroup)
+	if err != nil {
+		return nil, err
+	}
+
 	// Verify managed connector exists and is ready.
 	connector, err := uc.storage.ManagedConnectors().First(ctx, &pipelineservice.ManagedConnectorFilter{
 		ID:          filter.Equals(params.ManagedConnectorID),
@@ -68,6 +75,7 @@ func (uc *CreateDestination) Execute(ctx context.Context, params CreateDestinati
 		WorkspaceID:        params.WorkspaceID,
 		Name:               params.Name,
 		ManagedConnectorID: params.ManagedConnectorID,
+		ExecutorGroup:      group,
 		Config:             config,
 		CreatedAt:          now,
 		UpdatedAt:          now,

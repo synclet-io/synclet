@@ -251,3 +251,32 @@ func TestEncodeDecode_WorkflowRunFinishedRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, data.WorkflowID.String(), key)
 }
+
+func TestEncodeDecode_JobQueueStalledRoundTrip(t *testing.T) {
+	job := newJob(pipelineservice.JobStatusScheduled)
+	job.ExecutorGroup = "us"
+	job.QueueReason = ptr(`executors in group "us" are busy`)
+	job.StalledAt = ptr(job.ScheduledAt.Add(5 * time.Minute))
+
+	event := &pipelineservice.PipelineEvent{
+		EventType: pipelineservice.PipelineEventTypeJobQueueStalled,
+		Data: &pipelineservice.JobQueueStalledEventData{
+			WorkspaceID: uuid.New(),
+			Job:         job,
+			Group:       "us",
+			WaitedMs:    300000,
+		},
+	}
+
+	metadata, body, err := EncodePipelineEvent(event)
+	require.NoError(t, err)
+	assert.Equal(t, "job.queue_stalled", metadata[eventutil.MetadataKeyEventType])
+
+	decoded, err := DecodePipelineEvent(metadata, body)
+	require.NoError(t, err)
+	require.True(t, event.Equals(decoded), "round-trip must preserve event equality")
+
+	key, err := OrderingKey(event)
+	require.NoError(t, err)
+	assert.Equal(t, job.ConnectionID.String(), key)
+}

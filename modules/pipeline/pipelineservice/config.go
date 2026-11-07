@@ -21,6 +21,9 @@ type Config struct {
 	// ExecutorSilenceTimeout is how long an executor stays listed after its
 	// last registration heartbeat.
 	ExecutorSilenceTimeout time.Duration
+	// JobClaimTimeout is how long a scheduled sync job may wait unclaimed
+	// before it fails (no live executor in its group) or is marked stalled.
+	JobClaimTimeout time.Duration
 	// LogArchiveEnabled moves the logs of finished jobs from Postgres to the LogArchive.
 	LogArchiveEnabled bool
 	// LogArchiveBackend names the configured LogArchive backend.

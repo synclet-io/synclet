@@ -30,6 +30,33 @@ type taskStore struct {
 	catalogs     *catalogStorage
 	connections  *connectionStorage
 	configured   *configuredCatalogStorage
+	executors    *executorStorage
+}
+
+// taskCfg is the Config of the task use cases under test.
+var taskCfg = pipelineservice.Config{ExecutorSilenceTimeout: time.Minute}
+
+// executorStorage holds the registry rows the live-executor check reads.
+type executorStorage struct {
+	pipelineservice.ExecutorsStorage
+	records []*pipelineservice.Executor
+}
+
+func (s *executorStorage) Find(_ context.Context, f *pipelineservice.ExecutorFilter, _ ...optionutil.Option[dbutil.SelectOptions]) ([]*pipelineservice.Executor, error) {
+	var out []*pipelineservice.Executor
+
+	for _, rec := range s.records {
+		if matches(f.ExecutorGroup, rec.ExecutorGroup) {
+			out = append(out, rec)
+		}
+	}
+
+	return out, nil
+}
+
+// liveExecutor is a registry row of group seen just now.
+func liveExecutor(group string) *pipelineservice.Executor {
+	return &pipelineservice.Executor{ID: uuid.New(), InstanceID: uuid.NewString(), ExecutorGroup: group, LastSeenAt: time.Now()}
 }
 
 func newTaskStore(records ...*pipelineservice.ConnectorTask) *taskStore {
@@ -46,7 +73,12 @@ func newTaskStore(records ...*pipelineservice.ConnectorTask) *taskStore {
 		catalogs:     &catalogStorage{},
 		connections:  &connectionStorage{records: map[uuid.UUID]*pipelineservice.Connection{}},
 		configured:   &configuredCatalogStorage{records: map[uuid.UUID]*pipelineservice.ConfiguredCatalog{}},
+		executors:    &executorStorage{records: []*pipelineservice.Executor{liveExecutor(""), liveExecutor(pipelineservice.DefaultExecutorGroup)}},
 	}
+}
+
+func (s *taskStore) Executors() pipelineservice.ExecutorsStorage {
+	return s.executors
 }
 
 func (s *taskStore) ConnectorTasks() pipelineservice.ConnectorTasksStorage {
@@ -240,7 +272,7 @@ func (s *taskStorage) Delete(_ context.Context, f *pipelineservice.ConnectorTask
 	return nil
 }
 
-func (s *taskStorage) ClaimPendingTask(_ context.Context, workerID string) (*pipelineservice.ConnectorTask, error) {
+func (s *taskStorage) ClaimPendingTask(_ context.Context, workerID, _ string) (*pipelineservice.ConnectorTask, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 

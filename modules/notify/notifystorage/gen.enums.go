@@ -42,6 +42,7 @@ const (
 	notificationConditionOnFailure             = "on_failure"
 	notificationConditionOnConsecutiveFailures = "on_consecutive_failures"
 	notificationConditionOnZeroRecords         = "on_zero_records"
+	notificationConditionOnJobStalled          = "on_job_stalled"
 )
 
 func convertNotificationConditionToDB(notificationConditionValue notifyservice.NotificationCondition) (string, error) {
@@ -49,6 +50,7 @@ func convertNotificationConditionToDB(notificationConditionValue notifyservice.N
 		notifyservice.NotificationConditionOnFailure:             notificationConditionOnFailure,
 		notifyservice.NotificationConditionOnConsecutiveFailures: notificationConditionOnConsecutiveFailures,
 		notifyservice.NotificationConditionOnZeroRecords:         notificationConditionOnZeroRecords,
+		notifyservice.NotificationConditionOnJobStalled:          notificationConditionOnJobStalled,
 	}[notificationConditionValue]
 	if !ok {
 		return "", fmt.Errorf("unknown NotificationCondition value: %d", notificationConditionValue)
@@ -61,6 +63,7 @@ func convertNotificationConditionFromDB(notificationConditionValue string) (noti
 		notificationConditionOnFailure:             notifyservice.NotificationConditionOnFailure,
 		notificationConditionOnConsecutiveFailures: notifyservice.NotificationConditionOnConsecutiveFailures,
 		notificationConditionOnZeroRecords:         notifyservice.NotificationConditionOnZeroRecords,
+		notificationConditionOnJobStalled:          notifyservice.NotificationConditionOnJobStalled,
 	}[notificationConditionValue]
 	if !ok {
 		return 0, fmt.Errorf("unknown NotificationCondition db value: %s", notificationConditionValue)

@@ -33,7 +33,8 @@ func NewQueueJob(storage pipelineservice.Storage, cfg pipelineservice.Config) *Q
 // Execute creates a new pending job. It reads retry config from the connection
 // if MaxAttempts is not provided. It also checks for duplicate pending/running
 // jobs, and refuses a sync of a connection with no configured stream with a
-// *NoConfiguredStreamsError.
+// *NoConfiguredStreamsError. The job runs in the group of the connection's
+// source; a group without a live executor is a *NoLiveExecutorError.
 func (uc *QueueJob) Execute(ctx context.Context, params QueueJobParams) (*pipelineservice.Job, error) {
 	// Load connection to get retry config if not provided.
 	conn, err := uc.storage.Connections().First(ctx, &pipelineservice.ConnectionFilter{
@@ -62,6 +63,18 @@ func (uc *QueueJob) Execute(ctx context.Context, params QueueJobParams) (*pipeli
 		return nil, &pipelineservice.ValidationError{Field: "connection_id", Message: "connection already has an active job"}
 	}
 
+	source, err := uc.storage.Sources().First(ctx, &pipelineservice.SourceFilter{
+		ID:          filter.Equals(conn.SourceID),
+		WorkspaceID: filter.Equals(conn.WorkspaceID),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("loading source of connection %s: %w", conn.ID, err)
+	}
+
+	if err := pipelineservice.RequireLiveExecutor(ctx, uc.storage, source.ExecutorGroup, uc.cfg.ExecutorSilenceTimeout, time.Now()); err != nil {
+		return nil, err
+	}
+
 	maxAttempts := params.MaxAttempts
 	if maxAttempts <= 0 {
 		maxAttempts = conn.MaxAttempts
@@ -77,14 +90,15 @@ func (uc *QueueJob) Execute(ctx context.Context, params QueueJobParams) (*pipeli
 	}
 
 	job := &pipelineservice.Job{
-		ID:           uuid.New(),
-		ConnectionID: params.ConnectionID,
-		Status:       pipelineservice.JobStatusScheduled,
-		JobType:      params.JobType,
-		ScheduledAt:  scheduledAt,
-		Attempt:      1,
-		MaxAttempts:  maxAttempts,
-		CreatedAt:    time.Now(),
+		ID:            uuid.New(),
+		ConnectionID:  params.ConnectionID,
+		Status:        pipelineservice.JobStatusScheduled,
+		JobType:       params.JobType,
+		ScheduledAt:   scheduledAt,
+		Attempt:       1,
+		MaxAttempts:   maxAttempts,
+		CreatedAt:     time.Now(),
+		ExecutorGroup: source.ExecutorGroup,
 	}
 
 	var created *pipelineservice.Job
@@ -96,6 +110,12 @@ func (uc *QueueJob) Execute(ctx context.Context, params QueueJobParams) (*pipeli
 		}
 
 		created = createdJob
+
+		if clearNoLiveExecutorReason(conn) {
+			if _, err := tx.Connections().Update(ctx, conn); err != nil {
+				return fmt.Errorf("clearing status reason of connection %s: %w", conn.ID, err)
+			}
+		}
 
 		return tx.PipelineEvents().Send(ctx, &pipelineservice.PipelineEvent{
 			EventType: pipelineservice.PipelineEventTypeJobCreated,

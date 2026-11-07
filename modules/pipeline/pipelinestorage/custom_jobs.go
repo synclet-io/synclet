@@ -15,24 +15,26 @@ import (
 // Sets status to 'starting', assigns worker_id, started_at, and heartbeat_at.
 // The first claim of a job draws its sync_id from pipeline.job_sync_id_seq;
 // later claims of the same job keep it.
+// Only jobs of executorGroup are claimed, and the claim clears queue_reason.
 // Returns nil, nil if no scheduled jobs are available.
-func (s *JobsStorage) ClaimNextScheduledJob(ctx context.Context, workerID string) (*pipelinesvc.Job, error) {
+func (s *JobsStorage) ClaimNextScheduledJob(ctx context.Context, workerID, executorGroup string) (*pipelinesvc.Job, error) {
 	var row dbJob
 	now := time.Now()
 
 	result := s.DB.WithContext(ctx).
 		Raw(`UPDATE pipeline.jobs SET status = ?, worker_id = ?, started_at = ?, heartbeat_at = ?,
-		       sync_id = COALESCE(sync_id, nextval('pipeline.job_sync_id_seq'))
+		       sync_id = COALESCE(sync_id, nextval('pipeline.job_sync_id_seq')),
+		       queue_reason = NULL
 		     WHERE id = (
 		       SELECT id FROM pipeline.jobs
-		       WHERE status = ?
+		       WHERE status = ? AND executor_group = ?
 		       ORDER BY created_at ASC
 		       LIMIT 1
 		       FOR UPDATE SKIP LOCKED
 		     )
 		     RETURNING *`,
 			jobStatusStarting, workerID, now, now,
-			jobStatusScheduled).
+			jobStatusScheduled, executorGroup).
 		Scan(&row)
 	if result.Error != nil {
 		return nil, fmt.Errorf("claiming scheduled job: %w", result.Error)

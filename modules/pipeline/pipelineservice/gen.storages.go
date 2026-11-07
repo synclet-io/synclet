@@ -80,6 +80,8 @@ type DueConnection struct {
 	DestinationID uuid.UUID
 	Schedule      string
 	MaxAttempts   int
+	// ExecutorGroup is the group of the connection's source.
+	ExecutorGroup string
 }
 
 // TagCount is a connection tag and the number of connections that carry it.
@@ -92,7 +94,7 @@ type TagCount struct {
 type JobsStorage interface {
 	dbutil.EntityStorage[Job, JobFilter]
 	// user code 'Job metods'
-	ClaimNextScheduledJob(ctx context.Context, workerID string) (*Job, error)
+	ClaimNextScheduledJob(ctx context.Context, workerID, executorGroup string) (*Job, error)
 	CountActiveJobs(ctx context.Context) (int, error)
 	UpdateIfStatus(ctx context.Context, job *Job, fromStatuses ...JobStatus) (bool, error)
 	TouchHeartbeat(ctx context.Context, id uuid.UUID, at time.Time) (bool, error)
@@ -140,7 +142,7 @@ type WorkspaceSettingsStorage dbutil.EntityStorage[WorkspaceSettings, WorkspaceS
 type ConnectorTasksStorage interface {
 	dbutil.EntityStorage[ConnectorTask, ConnectorTaskFilter]
 	// user code 'ConnectorTask metods'
-	ClaimPendingTask(ctx context.Context, workerID string) (*ConnectorTask, error)
+	ClaimPendingTask(ctx context.Context, workerID, executorGroup string) (*ConnectorTask, error)
 	// end user code 'ConnectorTask metods'
 }
 

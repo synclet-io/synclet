@@ -658,6 +658,7 @@ const (
 	pipelineEventTypeJobUpdated          = "job_updated"
 	pipelineEventTypeWorkflowRunStarted  = "workflow_run_started"
 	pipelineEventTypeWorkflowRunFinished = "workflow_run_finished"
+	pipelineEventTypeJobQueueStalled     = "job_queue_stalled"
 )
 
 func convertPipelineEventTypeToDB(pipelineEventTypeValue pipelineservice.PipelineEventType) (string, error) {
@@ -666,6 +667,7 @@ func convertPipelineEventTypeToDB(pipelineEventTypeValue pipelineservice.Pipelin
 		pipelineservice.PipelineEventTypeJobUpdated:          pipelineEventTypeJobUpdated,
 		pipelineservice.PipelineEventTypeWorkflowRunStarted:  pipelineEventTypeWorkflowRunStarted,
 		pipelineservice.PipelineEventTypeWorkflowRunFinished: pipelineEventTypeWorkflowRunFinished,
+		pipelineservice.PipelineEventTypeJobQueueStalled:     pipelineEventTypeJobQueueStalled,
 	}[pipelineEventTypeValue]
 	if !ok {
 		return "", fmt.Errorf("unknown PipelineEventType value: %d", pipelineEventTypeValue)
@@ -679,6 +681,7 @@ func convertPipelineEventTypeFromDB(pipelineEventTypeValue string) (pipelineserv
 		pipelineEventTypeJobUpdated:          pipelineservice.PipelineEventTypeJobUpdated,
 		pipelineEventTypeWorkflowRunStarted:  pipelineservice.PipelineEventTypeWorkflowRunStarted,
 		pipelineEventTypeWorkflowRunFinished: pipelineservice.PipelineEventTypeWorkflowRunFinished,
+		pipelineEventTypeJobQueueStalled:     pipelineservice.PipelineEventTypeJobQueueStalled,
 	}[pipelineEventTypeValue]
 	if !ok {
 		return 0, fmt.Errorf("unknown PipelineEventType db value: %s", pipelineEventTypeValue)

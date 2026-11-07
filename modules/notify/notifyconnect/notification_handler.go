@@ -62,12 +62,14 @@ var conditionFromProto = map[notifyv1.NotificationCondition]notifyservice.Notifi
 	notifyv1.NotificationCondition_NOTIFICATION_CONDITION_ON_FAILURE:              notifyservice.NotificationConditionOnFailure,
 	notifyv1.NotificationCondition_NOTIFICATION_CONDITION_ON_CONSECUTIVE_FAILURES: notifyservice.NotificationConditionOnConsecutiveFailures,
 	notifyv1.NotificationCondition_NOTIFICATION_CONDITION_ON_ZERO_RECORDS:         notifyservice.NotificationConditionOnZeroRecords,
+	notifyv1.NotificationCondition_NOTIFICATION_CONDITION_ON_JOB_STALLED:          notifyservice.NotificationConditionOnJobStalled,
 }
 
 var conditionToProto = map[notifyservice.NotificationCondition]notifyv1.NotificationCondition{
 	notifyservice.NotificationConditionOnFailure:             notifyv1.NotificationCondition_NOTIFICATION_CONDITION_ON_FAILURE,
 	notifyservice.NotificationConditionOnConsecutiveFailures: notifyv1.NotificationCondition_NOTIFICATION_CONDITION_ON_CONSECUTIVE_FAILURES,
 	notifyservice.NotificationConditionOnZeroRecords:         notifyv1.NotificationCondition_NOTIFICATION_CONDITION_ON_ZERO_RECORDS,
+	notifyservice.NotificationConditionOnJobStalled:          notifyv1.NotificationCondition_NOTIFICATION_CONDITION_ON_JOB_STALLED,
 }
 
 // NotificationHandler implements the NotificationService ConnectRPC handler.
@@ -296,12 +298,12 @@ func (h *NotificationHandler) CreateNotificationRule(ctx context.Context, req *c
 	}
 
 	if req.Msg.GetCondition() == notifyv1.NotificationCondition_NOTIFICATION_CONDITION_UNSPECIFIED {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid condition: must be one of on_failure, on_consecutive_failures, on_zero_records"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid condition: must be one of on_failure, on_consecutive_failures, on_zero_records, on_job_stalled"))
 	}
 
 	cond, ok := conditionFromProto[req.Msg.GetCondition()]
 	if !ok {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid condition: must be one of on_failure, on_consecutive_failures, on_zero_records"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid condition: must be one of on_failure, on_consecutive_failures, on_zero_records, on_job_stalled"))
 	}
 
 	rule, err := h.createNotificationRule.Execute(ctx, notifyservice.CreateNotificationRuleParams{

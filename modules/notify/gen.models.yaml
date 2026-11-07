@@ -6,7 +6,7 @@ types:
         is_valid: true
         stringer: true
     - name: NotificationCondition
-      values: [ OnFailure, OnConsecutiveFailures, OnZeroRecords ]
+      values: [ OnFailure, OnConsecutiveFailures, OnZeroRecords, OnJobStalled ]
       helpers:
         is_valid: true
         stringer: true

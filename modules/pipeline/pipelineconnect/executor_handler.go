@@ -221,8 +221,14 @@ func (h *ExecutorHandler) ReportLog(ctx context.Context, req *connect.Request[ex
 
 // ClaimJob claims the next available job and returns the full executor bundle per D-02.
 func (h *ExecutorHandler) ClaimJob(ctx context.Context, req *connect.Request[executorv1.ClaimJobRequest]) (*connect.Response[executorv1.ClaimJobResponse], error) {
+	group, err := pipelineservice.NormalizeExecutorGroup(req.Msg.GetExecutorGroup())
+	if err != nil {
+		return nil, mapError(err)
+	}
+
 	result, err := h.claimJobBundle.Execute(ctx, pipelinejobs.ClaimJobParams{
-		WorkerID: req.Msg.GetWorkerId(),
+		WorkerID:      req.Msg.GetWorkerId(),
+		ExecutorGroup: group,
 	})
 	if err != nil {
 		h.logger.WithError(err).Error(ctx, "executor: claim job failed")
@@ -324,7 +330,12 @@ func (h *ExecutorHandler) IsJobActive(ctx context.Context, req *connect.Request[
 
 // ClaimConnectorTask claims the next pending connector task for the given worker (D-15).
 func (h *ExecutorHandler) ClaimConnectorTask(ctx context.Context, req *connect.Request[executorv1.ClaimConnectorTaskRequest]) (*connect.Response[executorv1.ClaimConnectorTaskResponse], error) {
-	result, err := h.claimTask.Execute(ctx, req.Msg.GetWorkerId())
+	group, err := pipelineservice.NormalizeExecutorGroup(req.Msg.GetExecutorGroup())
+	if err != nil {
+		return nil, mapError(err)
+	}
+
+	result, err := h.claimTask.Execute(ctx, req.Msg.GetWorkerId(), group)
 	if err != nil {
 		h.logger.WithError(err).Error(ctx, "executor: claim connector task failed")
 
@@ -458,6 +469,7 @@ func (h *ExecutorHandler) ExecutorHeartbeat(ctx context.Context, req *connect.Re
 		Capacity:         int(req.Msg.GetCapacity()),
 		Capabilities:     pipelineservice.ExecutorCapabilities{NativeDestinations: req.Msg.GetCapabilities().GetNativeDestinations()},
 		ResourceDefaults: protoExecutorResourceDefaultsToDomain(req.Msg.GetResourceDefaults()),
+		ExecutorGroup:    req.Msg.GetExecutorGroup(),
 	}); err != nil {
 		h.logger.WithError(err).Error(ctx, "executor: registration failed",
 			"executor_id", req.Msg.GetExecutorId())

@@ -18,7 +18,7 @@ const (
 	ErrWebhookURLMissing      baseErr = "webhook_url missing from channel config"
 	ErrBotTokenMissing        baseErr = "bot_token missing from channel config" //nolint:gosec // error message, not a credential
 	ErrChatIDMissing          baseErr = "chat_id missing from channel config"
-	ErrInvalidCondition       baseErr = "invalid condition: must be one of on_failure, on_consecutive_failures, on_zero_records"
+	ErrInvalidCondition       baseErr = "invalid condition: must be one of on_failure, on_consecutive_failures, on_zero_records, on_job_stalled"
 	ErrConditionValueRequired baseErr = "condition_value must be >= 1 for on_consecutive_failures"
 )
 

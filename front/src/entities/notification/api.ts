@@ -21,12 +21,14 @@ const conditionFromProto: Record<number, NotificationCondition> = {
   [ProtoNotificationCondition.ON_FAILURE]: 'on_failure',
   [ProtoNotificationCondition.ON_CONSECUTIVE_FAILURES]: 'on_consecutive_failures',
   [ProtoNotificationCondition.ON_ZERO_RECORDS]: 'on_zero_records',
+  [ProtoNotificationCondition.ON_JOB_STALLED]: 'on_job_stalled',
 }
 
 const conditionToProto: Record<NotificationCondition, ProtoNotificationCondition> = {
   on_failure: ProtoNotificationCondition.ON_FAILURE,
   on_consecutive_failures: ProtoNotificationCondition.ON_CONSECUTIVE_FAILURES,
   on_zero_records: ProtoNotificationCondition.ON_ZERO_RECORDS,
+  on_job_stalled: ProtoNotificationCondition.ON_JOB_STALLED,
 }
 
 function parseConfig(config: string | undefined | null): { config: Record<string, string>, invalid: boolean } {

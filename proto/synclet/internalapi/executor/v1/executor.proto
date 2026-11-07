@@ -120,6 +120,8 @@ message ReportLogResponse {}
 // ClaimJob: executor requests a job to run (D-02)
 message ClaimJobRequest {
   string worker_id = 1;
+  // Executor group of the claiming executor; only its jobs are claimed.
+  string executor_group = 2;
 }
 
 // ClaimJobResponse: full bundle so executor has everything in one RPC call (D-02)
@@ -172,6 +174,8 @@ message IsJobActiveResponse {
 // ClaimConnectorTask: executor requests a connector task to run (D-15)
 message ClaimConnectorTaskRequest {
     string worker_id = 1;
+    // Executor group of the claiming executor; its tasks and spec tasks are claimed.
+    string executor_group = 2;
 }
 
 message ClaimConnectorTaskResponse {
@@ -237,6 +241,7 @@ message ExecutorHeartbeatRequest {
   int32 capacity = 4;
   ExecutorCapabilities capabilities = 5;
   synclet.publicapi.pipeline.v1.ExecutorResourceDefaults resource_defaults = 6;
+  string executor_group = 7;
 }
 
 message ExecutorHeartbeatResponse {}

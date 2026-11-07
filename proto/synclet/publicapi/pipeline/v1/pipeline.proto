@@ -277,6 +277,8 @@ message Source {
   string connector_name = 10;
   string connector_image = 11;
   string connector_tag = 12;
+  // Executor group whose executors run this source's syncs and tasks.
+  string executor_group = 13;
 }
 
 message CreateSourceRequest {
@@ -285,6 +287,8 @@ message CreateSourceRequest {
   string managed_connector_id = 3;
   reserved 4;
   google.protobuf.Struct config = 5;
+  // Executor group; empty means "default".
+  string executor_group = 6;
 }
 
 message CreateSourceResponse {
@@ -335,6 +339,8 @@ message TestSourceConnectionRequest {
   // Option 2: Test with raw config (from setup page, no source created yet).
   string managed_connector_id = 2;
   google.protobuf.Struct config = 3;
+  // Executor group that runs a raw-config check; empty means "default".
+  string executor_group = 4;
 }
 
 message TestSourceConnectionResponse {
@@ -431,6 +437,7 @@ message ExecutorInstance {
   ExecutorResourceDefaults resource_defaults = 6;
   google.protobuf.Timestamp first_seen_at = 7;
   google.protobuf.Timestamp last_seen_at = 8;
+  string executor_group = 9;
 }
 
 message ListExecutorsRequest {}
@@ -451,6 +458,8 @@ message Destination {
   google.protobuf.Timestamp created_at = 7;
   google.protobuf.Timestamp updated_at = 8;
   optional string runtime_config = 9;
+  // Executor group whose executors run this destination's tasks.
+  string executor_group = 10;
 }
 
 message CreateDestinationRequest {
@@ -459,6 +468,8 @@ message CreateDestinationRequest {
   string managed_connector_id = 3;
   reserved 4;
   google.protobuf.Struct config = 5;
+  // Executor group; empty means "default".
+  string executor_group = 6;
 }
 
 message CreateDestinationResponse {
@@ -507,6 +518,8 @@ message TestDestinationConnectionRequest {
   // Option 2: Test with raw config (from setup page, no destination created yet).
   string managed_connector_id = 2;
   google.protobuf.Struct config = 3;
+  // Executor group that runs a raw-config check; empty means "default".
+  string executor_group = 4;
 }
 
 message TestDestinationConnectionResponse {
@@ -828,6 +841,11 @@ message Job {
   int32 max_attempts = 10;
   google.protobuf.Timestamp created_at = 11;
   repeated JobAttempt attempts = 12;
+  string executor_group = 13;
+  // Why a scheduled job is still waiting for an executor; empty once claimed.
+  string queue_reason = 14;
+  // When the job was first reported as stalled in the queue.
+  google.protobuf.Timestamp stalled_at = 15;
 }
 
 message JobAttempt {

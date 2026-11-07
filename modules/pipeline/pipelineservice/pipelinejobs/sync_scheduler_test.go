@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/go-pnp/go-pnp/pkg/optionutil"
 	"github.com/google/uuid"
@@ -28,6 +29,25 @@ type mockSchedulerStorage struct {
 	createErr          error
 	updatedConnections []*pipelineservice.Connection
 	txExecuted         bool
+	// deadGroups are executor groups without a live executor; every other
+	// group has one.
+	deadGroups map[string]bool
+}
+
+// mockSchedulerExecutorsStorage serves one live executor per group outside
+// deadGroups.
+type mockSchedulerExecutorsStorage struct {
+	pipelineservice.ExecutorsStorage
+	parent *mockSchedulerStorage
+}
+
+func (m *mockSchedulerExecutorsStorage) Find(_ context.Context, f *pipelineservice.ExecutorFilter, _ ...optionutil.Option[dbutil.SelectOptions]) ([]*pipelineservice.Executor, error) {
+	eq, ok := f.ExecutorGroup.(*filter.EqualsFilter[string])
+	if !ok || m.parent.deadGroups[eq.Value] {
+		return nil, nil
+	}
+
+	return []*pipelineservice.Executor{{ExecutorGroup: eq.Value, LastSeenAt: time.Now()}}, nil
 }
 
 // mockSchedulerConnectionsStorage implements pipelineservice.ConnectionsStorage for test.
@@ -101,6 +121,10 @@ func (w *mockSchedulerStorageWrapper) WithAdvisoryLock(ctx context.Context, scop
 
 func (w *mockSchedulerStorageWrapper) Connections() pipelineservice.ConnectionsStorage {
 	return w.connectionsMock
+}
+
+func (w *mockSchedulerStorageWrapper) Executors() pipelineservice.ExecutorsStorage {
+	return &mockSchedulerExecutorsStorage{parent: w.mock}
 }
 
 func (w *mockSchedulerStorageWrapper) Jobs() pipelineservice.JobsStorage {

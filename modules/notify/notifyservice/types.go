@@ -29,4 +29,8 @@ type WebhookEvent struct {
 	WorkflowName  string `json:"workflow_name,omitempty"`
 	WorkflowRunID string `json:"workflow_run_id,omitempty"`
 	Error         string `json:"error,omitempty"`
+	// ExecutorGroup and WaitedMs describe a stalled sync: the group whose
+	// executors are busy and how long the job has waited for one.
+	ExecutorGroup string `json:"executor_group,omitempty"`
+	WaitedMs      int64  `json:"waited_ms,omitempty"`
 }

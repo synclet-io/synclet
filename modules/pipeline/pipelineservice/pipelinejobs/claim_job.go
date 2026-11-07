@@ -13,6 +13,8 @@ import (
 // ClaimJobParams holds parameters for claiming a job.
 type ClaimJobParams struct {
 	WorkerID string
+	// ExecutorGroup is the claiming executor's group; only its jobs are claimed.
+	ExecutorGroup string
 }
 
 // ClaimJob atomically claims the next scheduled job for a worker.
@@ -33,7 +35,7 @@ func NewClaimJob(storage pipelineservice.Storage, logger *logging.Logger) *Claim
 // The claim is atomic in storage. The JobUpdated event is published afterwards;
 // a publish failure is logged, not returned, so the claim stands.
 func (uc *ClaimJob) Execute(ctx context.Context, params ClaimJobParams) (*pipelineservice.Job, error) {
-	job, err := uc.storage.Jobs().ClaimNextScheduledJob(ctx, params.WorkerID)
+	job, err := uc.storage.Jobs().ClaimNextScheduledJob(ctx, params.WorkerID, params.ExecutorGroup)
 	if err != nil {
 		return nil, fmt.Errorf("claiming next scheduled job: %w", err)
 	}

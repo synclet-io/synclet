@@ -23,6 +23,7 @@ func buildExecutorInfo(t *testing.T, configs fx.Option, newInfo any) pipelineexe
 	app := fx.New(
 		fx.NopLogger,
 		configs,
+		executorRegistrationConfigModule(),
 		fx.Provide(configutil.NewPrefixedConfigProvider[executorRuntimeConfig]("PIPELINE_")),
 		fx.Provide(newInfo),
 		fx.Populate(&info),
@@ -35,7 +36,7 @@ func buildExecutorInfo(t *testing.T, configs fx.Option, newInfo any) pipelineexe
 func TestDockerExecutorInfo(t *testing.T) {
 	t.Setenv("DOCKER_EXECUTOR_OWNER_ID", "docker-0")
 	t.Setenv("PIPELINE_RUNTIME_CPU_LIMIT", "2")
-	unsetEnv(t, "DOCKER_EXECUTOR_MAX_CONCURRENT_JOBS", "PIPELINE_RUNTIME_CPU_REQUEST", "PIPELINE_RUNTIME_MEMORY_REQUEST", "PIPELINE_RUNTIME_MEMORY_LIMIT")
+	unsetEnv(t, "EXECUTOR_GROUP", "DOCKER_EXECUTOR_MAX_CONCURRENT_JOBS", "PIPELINE_RUNTIME_CPU_REQUEST", "PIPELINE_RUNTIME_MEMORY_REQUEST", "PIPELINE_RUNTIME_MEMORY_LIMIT")
 
 	info := buildExecutorInfo(t, fx.Provide(configutil.NewPrefixedConfigProvider[dockerExecutorConfig]("DOCKER_EXECUTOR_")), newDockerExecutorInfo)
 
@@ -45,6 +46,7 @@ func TestDockerExecutorInfo(t *testing.T) {
 		Version:          buildinfo.Version(),
 		Capacity:         5,
 		ResourceDefaults: pipelineservice.ExecutorResourceDefaults{CPULimit: "2"},
+		Group:            pipelineservice.DefaultExecutorGroup,
 	}, info)
 }
 
@@ -53,6 +55,7 @@ func TestK8sExecutorInfo(t *testing.T) {
 	t.Setenv("K8S_EXECUTOR_DEFAULT_CPU", "750m")
 	t.Setenv("K8S_EXECUTOR_DEFAULT_MEMORY", "3Gi")
 	t.Setenv("PIPELINE_RUNTIME_MEMORY_LIMIT", "1Gi")
+	t.Setenv("EXECUTOR_GROUP", "  Prod Cluster ACME ")
 	unsetEnv(t, "KUBERNETES_SERVICE_HOST", "PIPELINE_RUNTIME_CPU_REQUEST", "PIPELINE_RUNTIME_CPU_LIMIT", "PIPELINE_RUNTIME_MEMORY_REQUEST")
 
 	info := buildExecutorInfo(t, k8sExecutorConfigModule(), newK8sExecutorInfo)
@@ -67,6 +70,7 @@ func TestK8sExecutorInfo(t *testing.T) {
 			CPUExecutorDefault: true,
 			MemoryLimit:        "1Gi",
 		},
+		Group: "Prod Cluster ACME",
 	}, info)
 }
 
@@ -87,6 +91,7 @@ func TestExecutorInfo_RequiresOwnerID(t *testing.T) {
 			app := fx.New(
 				fx.NopLogger,
 				tt.configs,
+				executorRegistrationConfigModule(),
 				fx.Provide(configutil.NewPrefixedConfigProvider[executorRuntimeConfig]("PIPELINE_")),
 				fx.Provide(tt.newInfo),
 				fx.Invoke(func(pipelineexec.ExecutorInfo) {}),
@@ -102,4 +107,19 @@ func TestK8sSyncRunner_RequiresOwnerID(t *testing.T) {
 
 	_, err = newK8sSyncRunner(&k8sExecutorConfig{OwnerID: "blue", OwnerIDPrefix: "blue"}, "token")
 	require.ErrorContains(t, err, "K8S_EXECUTOR_OWNER_ID_PREFIX")
+}
+
+func TestExecutorGroup_RejectsInvalidName(t *testing.T) {
+	t.Setenv("DOCKER_EXECUTOR_OWNER_ID", "docker-0")
+	t.Setenv("EXECUTOR_GROUP", "a\nb")
+
+	app := fx.New(
+		fx.NopLogger,
+		fx.Provide(configutil.NewPrefixedConfigProvider[dockerExecutorConfig]("DOCKER_EXECUTOR_")),
+		executorRegistrationConfigModule(),
+		fx.Provide(configutil.NewPrefixedConfigProvider[executorRuntimeConfig]("PIPELINE_")),
+		fx.Provide(newDockerExecutorInfo),
+		fx.Invoke(func(pipelineexec.ExecutorInfo) {}),
+	)
+	require.ErrorContains(t, app.Err(), "EXECUTOR_GROUP")
 }

@@ -18,6 +18,7 @@ const (
 	NotificationEventCompleted NotificationEvent = iota + 1
 	NotificationEventFailed
 	NotificationEventWorkflowFailed
+	NotificationEventJobStalled
 )
 
 func (e NotificationEvent) String() string {
@@ -28,6 +29,8 @@ func (e NotificationEvent) String() string {
 		return "sync.failed"
 	case NotificationEventWorkflowFailed:
 		return "workflow.failed"
+	case NotificationEventJobStalled:
+		return "sync.stalled"
 	default:
 		return "unknown"
 	}
@@ -48,6 +51,10 @@ type DeliverNotificationParams struct {
 	WorkflowName        string
 	WorkflowRunID       uuid.UUID
 	Error               string
+	// JobID, ExecutorGroup and WaitedMs describe the job of a stalled sync.
+	JobID         uuid.UUID
+	ExecutorGroup string
+	WaitedMs      int64
 }
 
 func (p DeliverNotificationParams) isWorkflowEvent() bool {
@@ -142,6 +149,8 @@ func evaluateCondition(rule *NotificationRule, params DeliverNotificationParams)
 		return params.Event == NotificationEventFailed && params.ConsecutiveFailures >= rule.ConditionValue
 	case NotificationConditionOnZeroRecords:
 		return params.Event == NotificationEventCompleted && params.RecordsSynced == 0
+	case NotificationConditionOnJobStalled:
+		return params.Event == NotificationEventJobStalled
 	default:
 		return false
 	}
@@ -170,10 +179,16 @@ func (uc *DeliverNotification) dispatchToChannel(ctx context.Context, channelID,
 	}
 
 	event := WebhookEvent{
-		Event:        params.Event.String(),
-		Timestamp:    time.Now(),
-		WorkflowName: params.WorkflowName,
-		Error:        params.Error,
+		Event:         params.Event.String(),
+		Timestamp:     time.Now(),
+		WorkflowName:  params.WorkflowName,
+		Error:         params.Error,
+		ExecutorGroup: params.ExecutorGroup,
+		WaitedMs:      params.WaitedMs,
+	}
+
+	if params.JobID != uuid.Nil {
+		event.JobID = params.JobID.String()
 	}
 
 	if params.isWorkflowEvent() {

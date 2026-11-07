@@ -10,7 +10,7 @@ import (
 // ClaimPendingTask atomically claims the oldest pending connector task for the given worker.
 // Uses FOR UPDATE SKIP LOCKED to prevent race conditions between multiple executors.
 // Returns nil, nil if no pending task is available.
-func (s *ConnectorTasksStorage) ClaimPendingTask(ctx context.Context, workerID string) (*pipelinesvc.ConnectorTask, error) {
+func (s *ConnectorTasksStorage) ClaimPendingTask(ctx context.Context, workerID, executorGroup string) (*pipelinesvc.ConnectorTask, error) {
 	var row dbConnectorTask
 
 	result := s.DB.WithContext(ctx).
@@ -18,14 +18,14 @@ func (s *ConnectorTasksStorage) ClaimPendingTask(ctx context.Context, workerID s
 		     SET status = ?, worker_id = ?, updated_at = NOW()
 		     WHERE id = (
 		         SELECT id FROM pipeline.connector_tasks
-		         WHERE status = ?
+		         WHERE status = ? AND (executor_group = ? OR executor_group IS NULL)
 		         ORDER BY created_at ASC
 		         LIMIT 1
 		         FOR UPDATE SKIP LOCKED
 		     )
 		     RETURNING *`,
 			connectorTaskStatusRunning, workerID,
-			connectorTaskStatusPending).
+			connectorTaskStatusPending, executorGroup).
 		Scan(&row)
 	if result.Error != nil {
 		return nil, fmt.Errorf("claiming pending connector task: %w", result.Error)

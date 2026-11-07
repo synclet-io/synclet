@@ -118,6 +118,18 @@ func matchesTags(f filter.ArrayFilter[string], tags []string) bool {
 func seedConnection(t *testing.T, store *createConnStore, conn *pipelineservice.Connection) {
 	t.Helper()
 
+	for id := range store.sources.records {
+		if conn.SourceID == uuid.Nil {
+			conn.SourceID = id
+		}
+	}
+
+	for id := range store.destinations.records {
+		if conn.DestinationID == uuid.Nil {
+			conn.DestinationID = id
+		}
+	}
+
 	store.connections.records[conn.ID] = conn
 }
 

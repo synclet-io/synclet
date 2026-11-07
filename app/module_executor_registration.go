@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"os"
 	"time"
 
@@ -16,18 +17,30 @@ import (
 )
 
 // executorRegistrationConfig sets how often an executor reports itself to the
-// executor registry.
+// executor registry and the executor group it declares.
 type executorRegistrationConfig struct {
 	Interval time.Duration `env:"REGISTRATION_INTERVAL" envDefault:"15s"`
+	Group    string        `env:"GROUP" envDefault:"default"`
 }
 
-// executorRegistrationConfigModule provides the registration interval to a
-// process that runs an executor.
+// executorRegistrationConfigModule provides the registration interval and the
+// executor group to a process that runs an executor.
 func executorRegistrationConfigModule() fx.Option {
 	return fx.Provide(
 		configutil.NewPrefixedConfigProvider[executorRegistrationConfig]("EXECUTOR_"),
 		configutil.NewPrefixedConfigInfoProvider[executorRegistrationConfig]("EXECUTOR_"),
+		newExecutorGroup,
 	)
+}
+
+// newExecutorGroup normalizes EXECUTOR_GROUP; an invalid name stops the process.
+func newExecutorGroup(cfg *executorRegistrationConfig) (pipelineexec.ExecutorGroup, error) {
+	group, err := pipelineservice.NormalizeExecutorGroup(cfg.Group)
+	if err != nil {
+		return "", fmt.Errorf("EXECUTOR_GROUP: %w", err)
+	}
+
+	return pipelineexec.ExecutorGroup(group), nil
 }
 
 // executorRegistrationModule sends the executor's registration heartbeat at
@@ -55,7 +68,7 @@ func newExecutorRegistrationJob(
 
 // newDockerExecutorInfo describes the Docker executor: its capacity is its
 // concurrent sync limit and its resource defaults are the runtime defaults.
-func newDockerExecutorInfo(cfg *dockerExecutorConfig, runtime *executorRuntimeConfig) (pipelineexec.ExecutorInfo, error) {
+func newDockerExecutorInfo(cfg *dockerExecutorConfig, runtime *executorRuntimeConfig, group pipelineexec.ExecutorGroup) (pipelineexec.ExecutorInfo, error) {
 	ownerID, err := pipelineexec.ResolveOwnerID(cfg.OwnerID, "", "DOCKER_EXECUTOR_OWNER_ID", "", "Docker daemon", os.Hostname)
 	if err != nil {
 		return pipelineexec.ExecutorInfo{}, err
@@ -66,6 +79,7 @@ func newDockerExecutorInfo(cfg *dockerExecutorConfig, runtime *executorRuntimeCo
 		Type:     pipelineservice.ExecutorTypeDocker,
 		Version:  buildinfo.Version(),
 		Capacity: cfg.MaxConcurrentJobs,
+		Group:    string(group),
 		ResourceDefaults: pipelineservice.ExecutorResourceDefaults{
 			CPURequest:    runtime.Runtime.CPURequest,
 			CPULimit:      runtime.Runtime.CPULimit,
@@ -78,7 +92,7 @@ func newDockerExecutorInfo(cfg *dockerExecutorConfig, runtime *executorRuntimeCo
 // newK8sExecutorInfo describes the Kubernetes executor: it has no concurrency
 // limit of its own, and a resource with neither request nor limit set takes
 // the executor's default as both.
-func newK8sExecutorInfo(cfg *k8sExecutorConfig, runtime *executorRuntimeConfig) (pipelineexec.ExecutorInfo, error) {
+func newK8sExecutorInfo(cfg *k8sExecutorConfig, runtime *executorRuntimeConfig, group pipelineexec.ExecutorGroup) (pipelineexec.ExecutorInfo, error) {
 	ownerID, err := resolveK8sOwnerID(cfg)
 	if err != nil {
 		return pipelineexec.ExecutorInfo{}, err
@@ -104,5 +118,6 @@ func newK8sExecutorInfo(cfg *k8sExecutorConfig, runtime *executorRuntimeConfig) 
 		Type:             pipelineservice.ExecutorTypeK8s,
 		Version:          buildinfo.Version(),
 		ResourceDefaults: defaults,
+		Group:            string(group),
 	}, nil
 }

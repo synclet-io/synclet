@@ -89,7 +89,7 @@ func scheduleJob(t *testing.T, db *gorm.DB, connID uuid.UUID) uuid.UUID {
 func claim(t *testing.T, storage *pipelinestorage.Storages, want uuid.UUID) *pipelineservice.Job {
 	t.Helper()
 
-	job, err := storage.Jobs().ClaimNextScheduledJob(context.Background(), "worker-1")
+	job, err := storage.Jobs().ClaimNextScheduledJob(context.Background(), "worker-1", "default")
 	require.NoError(t, err)
 	require.NotNil(t, job)
 	require.Equal(t, want, job.ID)

@@ -46,7 +46,7 @@ func TestClaimTask(t *testing.T) {
 	t.Run("returns nil when nothing is pending", func(t *testing.T) {
 		store := newTaskStore()
 
-		got, err := pipelinetasks.NewClaimTask(store, newFakeSecrets()).Execute(ctx, "worker-1")
+		got, err := pipelinetasks.NewClaimTask(store, newFakeSecrets()).Execute(ctx, "worker-1", "default")
 		require.NoError(t, err)
 		assert.Nil(t, got)
 	})
@@ -55,7 +55,7 @@ func TestClaimTask(t *testing.T) {
 		store := newTaskStore()
 		store.tasks.claimErr = errBoom
 
-		_, err := pipelinetasks.NewClaimTask(store, newFakeSecrets()).Execute(ctx, "worker-1")
+		_, err := pipelinetasks.NewClaimTask(store, newFakeSecrets()).Execute(ctx, "worker-1", "default")
 		require.ErrorIs(t, err, errBoom)
 	})
 
@@ -65,7 +65,7 @@ func TestClaimTask(t *testing.T) {
 		task := pendingTask(ws, pipelineservice.ConnectorTaskTypeSpec, &pipelineservice.SpecPayload{ManagedConnectorID: mc.ID})
 		store.tasks.records[task.ID] = task
 
-		got, err := pipelinetasks.NewClaimTask(store, newFakeSecrets()).Execute(ctx, "worker-1")
+		got, err := pipelinetasks.NewClaimTask(store, newFakeSecrets()).Execute(ctx, "worker-1", "default")
 		require.NoError(t, err)
 		require.NotNil(t, got)
 		assert.Equal(t, task.ID, got.TaskID)
@@ -86,7 +86,7 @@ func TestClaimTask(t *testing.T) {
 		task := pendingTask(ws, pipelineservice.ConnectorTaskTypeSpec, &pipelineservice.SpecPayload{ManagedConnectorID: mc.ID})
 		store.tasks.records[task.ID] = task
 
-		_, err := pipelinetasks.NewClaimTask(store, newFakeSecrets()).Execute(ctx, "worker-1")
+		_, err := pipelinetasks.NewClaimTask(store, newFakeSecrets()).Execute(ctx, "worker-1", "default")
 		require.ErrorIs(t, err, pipelineservice.ErrManagedConnectorNotFound)
 	})
 
@@ -101,7 +101,7 @@ func TestClaimTask(t *testing.T) {
 		task := pendingTask(ws, pipelineservice.ConnectorTaskTypeCheck, &pipelineservice.CheckPayload{ManagedConnectorID: mc.ID, Config: &cfg})
 		store.tasks.records[task.ID] = task
 
-		got, err := pipelinetasks.NewClaimTask(store, secrets).Execute(ctx, "worker-1")
+		got, err := pipelinetasks.NewClaimTask(store, secrets).Execute(ctx, "worker-1", "default")
 		require.NoError(t, err)
 		assert.JSONEq(t, `{"host":"db","password":"hunter2"}`, string(got.Config))
 	})
@@ -114,7 +114,7 @@ func TestClaimTask(t *testing.T) {
 		task := pendingTask(ws, pipelineservice.ConnectorTaskTypeCheck, &pipelineservice.CheckPayload{ManagedConnectorID: mc.ID, SourceID: &src.ID})
 		store.tasks.records[task.ID] = task
 
-		got, err := pipelinetasks.NewClaimTask(store, newFakeSecrets()).Execute(ctx, "worker-1")
+		got, err := pipelinetasks.NewClaimTask(store, newFakeSecrets()).Execute(ctx, "worker-1", "default")
 		require.NoError(t, err)
 		assert.JSONEq(t, `{"host":"src"}`, string(got.Config))
 	})
@@ -127,7 +127,7 @@ func TestClaimTask(t *testing.T) {
 		task := pendingTask(ws, pipelineservice.ConnectorTaskTypeCheck, &pipelineservice.CheckPayload{ManagedConnectorID: mc.ID, DestinationID: &dst.ID})
 		store.tasks.records[task.ID] = task
 
-		got, err := pipelinetasks.NewClaimTask(store, newFakeSecrets()).Execute(ctx, "worker-1")
+		got, err := pipelinetasks.NewClaimTask(store, newFakeSecrets()).Execute(ctx, "worker-1", "default")
 		require.NoError(t, err)
 		assert.JSONEq(t, `{"host":"dst"}`, string(got.Config))
 	})
@@ -138,7 +138,7 @@ func TestClaimTask(t *testing.T) {
 		task := pendingTask(ws, pipelineservice.ConnectorTaskTypeCheck, &pipelineservice.CheckPayload{ManagedConnectorID: mc.ID, SourceID: uuidPtr(uuid.New())})
 		store.tasks.records[task.ID] = task
 
-		_, err := pipelinetasks.NewClaimTask(store, newFakeSecrets()).Execute(ctx, "worker-1")
+		_, err := pipelinetasks.NewClaimTask(store, newFakeSecrets()).Execute(ctx, "worker-1", "default")
 		require.ErrorIs(t, err, pipelineservice.ErrSourceNotFound)
 	})
 
@@ -148,7 +148,7 @@ func TestClaimTask(t *testing.T) {
 		task := pendingTask(ws, pipelineservice.ConnectorTaskTypeCheck, &pipelineservice.CheckPayload{ManagedConnectorID: mc.ID, DestinationID: uuidPtr(uuid.New())})
 		store.tasks.records[task.ID] = task
 
-		_, err := pipelinetasks.NewClaimTask(store, newFakeSecrets()).Execute(ctx, "worker-1")
+		_, err := pipelinetasks.NewClaimTask(store, newFakeSecrets()).Execute(ctx, "worker-1", "default")
 		require.ErrorIs(t, err, pipelineservice.ErrDestinationNotFound)
 	})
 
@@ -159,7 +159,7 @@ func TestClaimTask(t *testing.T) {
 		task := pendingTask(ws, pipelineservice.ConnectorTaskTypeCheck, &pipelineservice.CheckPayload{ManagedConnectorID: mc.ID, Config: &cfg})
 		store.tasks.records[task.ID] = task
 
-		_, err := pipelinetasks.NewClaimTask(store, newFakeSecrets()).Execute(ctx, "worker-1")
+		_, err := pipelinetasks.NewClaimTask(store, newFakeSecrets()).Execute(ctx, "worker-1", "default")
 		require.ErrorIs(t, err, errBoom)
 	})
 
@@ -168,7 +168,7 @@ func TestClaimTask(t *testing.T) {
 		task := pendingTask(ws, pipelineservice.ConnectorTaskTypeCheck, &pipelineservice.CheckPayload{ManagedConnectorID: uuid.New()})
 		store.tasks.records[task.ID] = task
 
-		_, err := pipelinetasks.NewClaimTask(store, newFakeSecrets()).Execute(ctx, "worker-1")
+		_, err := pipelinetasks.NewClaimTask(store, newFakeSecrets()).Execute(ctx, "worker-1", "default")
 		require.ErrorIs(t, err, pipelineservice.ErrManagedConnectorNotFound)
 	})
 
@@ -180,7 +180,7 @@ func TestClaimTask(t *testing.T) {
 		task := pendingTask(ws, pipelineservice.ConnectorTaskTypeDiscover, &pipelineservice.DiscoverPayload{ManagedConnectorID: mc.ID, SourceID: src.ID})
 		store.tasks.records[task.ID] = task
 
-		got, err := pipelinetasks.NewClaimTask(store, newFakeSecrets()).Execute(ctx, "worker-1")
+		got, err := pipelinetasks.NewClaimTask(store, newFakeSecrets()).Execute(ctx, "worker-1", "default")
 		require.NoError(t, err)
 		assert.Equal(t, "airbyte/source-postgres:1.0.0", got.Image)
 		assert.JSONEq(t, `{"db":"x"}`, string(got.Config))
@@ -191,7 +191,7 @@ func TestClaimTask(t *testing.T) {
 		task := pendingTask(ws, pipelineservice.ConnectorTaskTypeDiscover, &pipelineservice.DiscoverPayload{ManagedConnectorID: uuid.New(), SourceID: uuid.New()})
 		store.tasks.records[task.ID] = task
 
-		_, err := pipelinetasks.NewClaimTask(store, newFakeSecrets()).Execute(ctx, "worker-1")
+		_, err := pipelinetasks.NewClaimTask(store, newFakeSecrets()).Execute(ctx, "worker-1", "default")
 		require.ErrorIs(t, err, pipelineservice.ErrManagedConnectorNotFound)
 	})
 
@@ -201,7 +201,7 @@ func TestClaimTask(t *testing.T) {
 		task := pendingTask(ws, pipelineservice.ConnectorTaskTypeDiscover, &pipelineservice.DiscoverPayload{ManagedConnectorID: mc.ID, SourceID: uuid.New()})
 		store.tasks.records[task.ID] = task
 
-		_, err := pipelinetasks.NewClaimTask(store, newFakeSecrets()).Execute(ctx, "worker-1")
+		_, err := pipelinetasks.NewClaimTask(store, newFakeSecrets()).Execute(ctx, "worker-1", "default")
 		require.ErrorIs(t, err, pipelineservice.ErrSourceNotFound)
 	})
 
@@ -213,7 +213,7 @@ func TestClaimTask(t *testing.T) {
 		task := pendingTask(ws, pipelineservice.ConnectorTaskTypeDiscover, &pipelineservice.DiscoverPayload{ManagedConnectorID: mc.ID, SourceID: src.ID})
 		store.tasks.records[task.ID] = task
 
-		_, err := pipelinetasks.NewClaimTask(store, newFakeSecrets()).Execute(ctx, "worker-1")
+		_, err := pipelinetasks.NewClaimTask(store, newFakeSecrets()).Execute(ctx, "worker-1", "default")
 		require.Error(t, err)
 	})
 
@@ -260,7 +260,7 @@ func TestClaimTask(t *testing.T) {
 				task := pendingTask(ws, tt.taskType, tt.payload(mc, src, dst))
 				store.tasks.records[task.ID] = task
 
-				got, err := pipelinetasks.NewClaimTask(store, newFakeSecrets()).Execute(ctx, "worker-1")
+				got, err := pipelinetasks.NewClaimTask(store, newFakeSecrets()).Execute(ctx, "worker-1", "default")
 				require.NoError(t, err)
 
 				wantRuntime := ""
@@ -278,7 +278,7 @@ func TestClaimTask(t *testing.T) {
 		task := pendingTask(ws, pipelineservice.ConnectorTaskTypeSpec, nil)
 		store.tasks.records[task.ID] = task
 
-		_, err := pipelinetasks.NewClaimTask(store, newFakeSecrets()).Execute(ctx, "worker-1")
+		_, err := pipelinetasks.NewClaimTask(store, newFakeSecrets()).Execute(ctx, "worker-1", "default")
 		require.ErrorContains(t, err, "unknown payload type")
 	})
 }
@@ -309,7 +309,7 @@ func TestClaimTask_ConcurrentClaimersGetExactlyOneWinner(t *testing.T) {
 
 			<-start
 
-			got, err := uc.Execute(context.Background(), workerID)
+			got, err := uc.Execute(context.Background(), workerID, "default")
 			assert.NoError(t, err)
 
 			if got != nil {

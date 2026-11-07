@@ -234,6 +234,22 @@ func (w *WorkflowRunFinishedEventData) PipelineEventDataEquals(to PipelineEventD
 
 	return w.Equals(toTyped)
 }
+func (*JobQueueStalledEventData) isPipelineEventData() {}
+func (j *JobQueueStalledEventData) PipelineEventDataEquals(to PipelineEventData) bool {
+	if (j == nil) != (to == nil) {
+		return false
+	}
+	if j == nil && to == nil {
+		return true
+	}
+
+	toTyped, ok := to.(*JobQueueStalledEventData)
+	if !ok {
+		return false
+	}
+
+	return j.Equals(toTyped)
+}
 
 func copyPipelineEventData(val PipelineEventData) PipelineEventData {
 	if val == nil {
@@ -251,6 +267,9 @@ func copyPipelineEventData(val PipelineEventData) PipelineEventData {
 		valCopy := val.Copy()
 		return &valCopy
 	case *WorkflowRunFinishedEventData:
+		valCopy := val.Copy()
+		return &valCopy
+	case *JobQueueStalledEventData:
 		valCopy := val.Copy()
 		return &valCopy
 	}
@@ -1084,6 +1103,7 @@ const (
 	SourceFieldWorkspaceID
 	SourceFieldName
 	SourceFieldManagedConnectorID
+	SourceFieldExecutorGroup
 	SourceFieldConfig
 	SourceFieldCreatedAt
 	SourceFieldUpdatedAt
@@ -1095,6 +1115,7 @@ type SourceFilter struct {
 	WorkspaceID        filter.Filter[uuid.UUID]
 	Name               filter.Filter[string]
 	ManagedConnectorID filter.Filter[uuid.UUID]
+	ExecutorGroup      filter.Filter[string]
 	Or                 []*SourceFilter
 	And                []*SourceFilter
 }
@@ -1105,6 +1126,7 @@ type Source struct {
 	WorkspaceID        uuid.UUID
 	Name               string
 	ManagedConnectorID uuid.UUID
+	ExecutorGroup      string
 	Config             jsonb
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
@@ -1120,6 +1142,7 @@ func (s *Source) Copy() Source {
 	result.WorkspaceID = s.WorkspaceID
 	result.Name = s.Name
 	result.ManagedConnectorID = s.ManagedConnectorID
+	result.ExecutorGroup = s.ExecutorGroup
 	result.Config = s.Config
 	result.CreatedAt = s.CreatedAt
 	result.UpdatedAt = s.UpdatedAt
@@ -1150,6 +1173,9 @@ func (s *Source) Equals(to *Source) bool {
 	if s.ManagedConnectorID != to.ManagedConnectorID {
 		return false
 	}
+	if s.ExecutorGroup != to.ExecutorGroup {
+		return false
+	}
 	if s.Config != to.Config {
 		return false
 	}
@@ -1178,6 +1204,7 @@ const (
 	DestinationFieldWorkspaceID
 	DestinationFieldName
 	DestinationFieldManagedConnectorID
+	DestinationFieldExecutorGroup
 	DestinationFieldConfig
 	DestinationFieldCreatedAt
 	DestinationFieldUpdatedAt
@@ -1189,6 +1216,7 @@ type DestinationFilter struct {
 	WorkspaceID        filter.Filter[uuid.UUID]
 	Name               filter.Filter[string]
 	ManagedConnectorID filter.Filter[uuid.UUID]
+	ExecutorGroup      filter.Filter[string]
 	Or                 []*DestinationFilter
 	And                []*DestinationFilter
 }
@@ -1199,6 +1227,7 @@ type Destination struct {
 	WorkspaceID        uuid.UUID
 	Name               string
 	ManagedConnectorID uuid.UUID
+	ExecutorGroup      string
 	Config             jsonb
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
@@ -1214,6 +1243,7 @@ func (d *Destination) Copy() Destination {
 	result.WorkspaceID = d.WorkspaceID
 	result.Name = d.Name
 	result.ManagedConnectorID = d.ManagedConnectorID
+	result.ExecutorGroup = d.ExecutorGroup
 	result.Config = d.Config
 	result.CreatedAt = d.CreatedAt
 	result.UpdatedAt = d.UpdatedAt
@@ -1242,6 +1272,9 @@ func (d *Destination) Equals(to *Destination) bool {
 		return false
 	}
 	if d.ManagedConnectorID != to.ManagedConnectorID {
+		return false
+	}
+	if d.ExecutorGroup != to.ExecutorGroup {
 		return false
 	}
 	if d.Config != to.Config {
@@ -1488,6 +1521,9 @@ const (
 	JobFieldK8sJobName
 	JobFieldFailureReason
 	JobFieldWorkflowStepRunID
+	JobFieldExecutorGroup
+	JobFieldQueueReason
+	JobFieldStalledAt
 	JobFieldCreatedAt
 )
 
@@ -1499,6 +1535,7 @@ type JobFilter struct {
 	StartedAt         filter.Filter[*time.Time]
 	HeartbeatAt       filter.Filter[*time.Time]
 	WorkflowStepRunID filter.Filter[*uuid.UUID]
+	ExecutorGroup     filter.Filter[string]
 	Or                []*JobFilter
 	And               []*JobFilter
 }
@@ -1521,6 +1558,9 @@ type Job struct {
 	K8sJobName        *string
 	FailureReason     *string
 	WorkflowStepRunID *uuid.UUID
+	ExecutorGroup     string
+	QueueReason       *string
+	StalledAt         *time.Time
 	CreatedAt         time.Time
 }
 
@@ -1580,6 +1620,17 @@ func (j *Job) Copy() Job {
 		var tmp8 uuid.UUID
 		tmp8 = (*j.WorkflowStepRunID)
 		result.WorkflowStepRunID = &tmp8
+	}
+	result.ExecutorGroup = j.ExecutorGroup
+	if j.QueueReason != nil {
+		var tmp9 string
+		tmp9 = (*j.QueueReason)
+		result.QueueReason = &tmp9
+	}
+	if j.StalledAt != nil {
+		var tmp10 time.Time
+		tmp10 = (*j.StalledAt)
+		result.StalledAt = &tmp10
 	}
 	result.CreatedAt = j.CreatedAt
 
@@ -1682,6 +1733,25 @@ func (j *Job) Equals(to *Job) bool {
 	}
 	if j.WorkflowStepRunID != nil && to.WorkflowStepRunID != nil {
 		if (*j.WorkflowStepRunID) != (*to.WorkflowStepRunID) {
+			return false
+		}
+	}
+	if j.ExecutorGroup != to.ExecutorGroup {
+		return false
+	}
+	if (j.QueueReason == nil) != (to.QueueReason == nil) {
+		return false
+	}
+	if j.QueueReason != nil && to.QueueReason != nil {
+		if (*j.QueueReason) != (*to.QueueReason) {
+			return false
+		}
+	}
+	if (j.StalledAt == nil) != (to.StalledAt == nil) {
+		return false
+	}
+	if j.StalledAt != nil && to.StalledAt != nil {
+		if (*j.StalledAt) != (*to.StalledAt) {
 			return false
 		}
 	}
@@ -2601,36 +2671,39 @@ const (
 	ConnectorTaskFieldResult
 	ConnectorTaskFieldErrorMessage
 	ConnectorTaskFieldWorkerID
+	ConnectorTaskFieldExecutorGroup
 	ConnectorTaskFieldCreatedAt
 	ConnectorTaskFieldUpdatedAt
 	ConnectorTaskFieldCompletedAt
 )
 
 type ConnectorTaskFilter struct {
-	ID          filter.Filter[uuid.UUID]
-	WorkspaceID filter.Filter[uuid.UUID]
-	TaskType    filter.Filter[ConnectorTaskType]
-	Status      filter.Filter[ConnectorTaskStatus]
-	CreatedAt   filter.Filter[time.Time]
-	UpdatedAt   filter.Filter[time.Time]
-	CompletedAt filter.Filter[*time.Time]
-	Or          []*ConnectorTaskFilter
-	And         []*ConnectorTaskFilter
+	ID            filter.Filter[uuid.UUID]
+	WorkspaceID   filter.Filter[uuid.UUID]
+	TaskType      filter.Filter[ConnectorTaskType]
+	Status        filter.Filter[ConnectorTaskStatus]
+	ExecutorGroup filter.Filter[*string]
+	CreatedAt     filter.Filter[time.Time]
+	UpdatedAt     filter.Filter[time.Time]
+	CompletedAt   filter.Filter[*time.Time]
+	Or            []*ConnectorTaskFilter
+	And           []*ConnectorTaskFilter
 }
 type ConnectorTaskOrder order.Order[ConnectorTaskField]
 
 type ConnectorTask struct {
-	ID           uuid.UUID
-	WorkspaceID  uuid.UUID
-	TaskType     ConnectorTaskType
-	Status       ConnectorTaskStatus
-	Payload      ConnectorTaskPayload
-	Result       *ConnectorTaskResult
-	ErrorMessage *string
-	WorkerID     *string
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
-	CompletedAt  *time.Time
+	ID            uuid.UUID
+	WorkspaceID   uuid.UUID
+	TaskType      ConnectorTaskType
+	Status        ConnectorTaskStatus
+	Payload       ConnectorTaskPayload
+	Result        *ConnectorTaskResult
+	ErrorMessage  *string
+	WorkerID      *string
+	ExecutorGroup *string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	CompletedAt   *time.Time
 }
 
 // user code 'ConnectorTask methods'
@@ -2658,12 +2731,17 @@ func (c *ConnectorTask) Copy() ConnectorTask {
 		tmp2 = (*c.WorkerID)
 		result.WorkerID = &tmp2
 	}
+	if c.ExecutorGroup != nil {
+		var tmp3 string
+		tmp3 = (*c.ExecutorGroup)
+		result.ExecutorGroup = &tmp3
+	}
 	result.CreatedAt = c.CreatedAt
 	result.UpdatedAt = c.UpdatedAt
 	if c.CompletedAt != nil {
-		var tmp3 time.Time
-		tmp3 = (*c.CompletedAt)
-		result.CompletedAt = &tmp3
+		var tmp4 time.Time
+		tmp4 = (*c.CompletedAt)
+		result.CompletedAt = &tmp4
 	}
 
 	return result
@@ -2711,6 +2789,14 @@ func (c *ConnectorTask) Equals(to *ConnectorTask) bool {
 	}
 	if c.WorkerID != nil && to.WorkerID != nil {
 		if (*c.WorkerID) != (*to.WorkerID) {
+			return false
+		}
+	}
+	if (c.ExecutorGroup == nil) != (to.ExecutorGroup == nil) {
+		return false
+	}
+	if c.ExecutorGroup != nil && to.ExecutorGroup != nil {
+		if (*c.ExecutorGroup) != (*to.ExecutorGroup) {
 			return false
 		}
 	}
@@ -2808,16 +2894,18 @@ const (
 	ExecutorFieldCapacity
 	ExecutorFieldCapabilities
 	ExecutorFieldResourceDefaults
+	ExecutorFieldExecutorGroup
 	ExecutorFieldFirstSeenAt
 	ExecutorFieldLastSeenAt
 )
 
 type ExecutorFilter struct {
-	ID         filter.Filter[uuid.UUID]
-	InstanceID filter.Filter[string]
-	Type       filter.Filter[ExecutorType]
-	Or         []*ExecutorFilter
-	And        []*ExecutorFilter
+	ID            filter.Filter[uuid.UUID]
+	InstanceID    filter.Filter[string]
+	Type          filter.Filter[ExecutorType]
+	ExecutorGroup filter.Filter[string]
+	Or            []*ExecutorFilter
+	And           []*ExecutorFilter
 }
 type ExecutorOrder order.Order[ExecutorField]
 
@@ -2829,6 +2917,7 @@ type Executor struct {
 	Capacity         int
 	Capabilities     ExecutorCapabilities
 	ResourceDefaults ExecutorResourceDefaults
+	ExecutorGroup    string
 	FirstSeenAt      time.Time
 	LastSeenAt       time.Time
 }
@@ -2845,6 +2934,7 @@ func (e *Executor) Copy() Executor {
 	result.Capacity = e.Capacity
 	result.Capabilities = e.Capabilities.Copy()         // model
 	result.ResourceDefaults = e.ResourceDefaults.Copy() // model
+	result.ExecutorGroup = e.ExecutorGroup
 	result.FirstSeenAt = e.FirstSeenAt
 	result.LastSeenAt = e.LastSeenAt
 
@@ -2876,6 +2966,9 @@ func (e *Executor) Equals(to *Executor) bool {
 		return false
 	}
 	if !e.ResourceDefaults.Equals(&to.ResourceDefaults) {
+		return false
+	}
+	if e.ExecutorGroup != to.ExecutorGroup {
 		return false
 	}
 	if e.FirstSeenAt != to.FirstSeenAt {
@@ -3745,6 +3838,72 @@ func (w *WorkflowRunFinishedEventData) Equals(to *WorkflowRunFinishedEventData) 
 		if w.ConnectionIDs[idx] != to.ConnectionIDs[idx] {
 			return false
 		}
+	}
+
+	return true
+}
+
+type JobQueueStalledEventDataField byte
+
+const (
+	JobQueueStalledEventDataFieldWorkspaceID JobQueueStalledEventDataField = iota + 1
+	JobQueueStalledEventDataFieldJob
+	JobQueueStalledEventDataFieldGroup
+	JobQueueStalledEventDataFieldWaitedMs
+)
+
+type JobQueueStalledEventDataFilter struct {
+	Or  []*JobQueueStalledEventDataFilter
+	And []*JobQueueStalledEventDataFilter
+}
+type JobQueueStalledEventDataOrder order.Order[JobQueueStalledEventDataField]
+
+type JobQueueStalledEventData struct {
+	WorkspaceID uuid.UUID
+	Job         *Job
+	Group       string
+	WaitedMs    int64
+}
+
+// user code 'JobQueueStalledEventData methods'
+// end user code 'JobQueueStalledEventData methods'
+
+func (j *JobQueueStalledEventData) Copy() JobQueueStalledEventData {
+	var result JobQueueStalledEventData
+	result.WorkspaceID = j.WorkspaceID
+	if j.Job != nil {
+		var tmp Job
+		tmp = (*j.Job).Copy() // model
+		result.Job = &tmp
+	}
+	result.Group = j.Group
+	result.WaitedMs = j.WaitedMs
+
+	return result
+}
+func (j *JobQueueStalledEventData) Equals(to *JobQueueStalledEventData) bool {
+	if (j == nil) != (to == nil) {
+		return false
+	}
+	if j == nil && to == nil {
+		return true
+	}
+	if j.WorkspaceID != to.WorkspaceID {
+		return false
+	}
+	if (j.Job == nil) != (to.Job == nil) {
+		return false
+	}
+	if j.Job != nil && to.Job != nil {
+		if !(*j.Job).Equals(&(*to.Job)) {
+			return false
+		}
+	}
+	if j.Group != to.Group {
+		return false
+	}
+	if j.WaitedMs != to.WaitedMs {
+		return false
 	}
 
 	return true

@@ -268,6 +268,7 @@ types:
         - { name: WorkspaceID, type: uuid, filterable: true }
         - { name: Name, type: string, filterable: true }
         - { name: ManagedConnectorID, type: uuid, filterable: true }
+        - { name: ExecutorGroup, type: string, filterable: true }
         - { name: Config, type: jsonb }
         - { name: CreatedAt, type: timestamp }
         - { name: UpdatedAt, type: timestamp }
@@ -280,6 +281,7 @@ types:
         - { name: WorkspaceID, type: uuid, filterable: true }
         - { name: Name, type: string, filterable: true }
         - { name: ManagedConnectorID, type: uuid, filterable: true }
+        - { name: ExecutorGroup, type: string, filterable: true }
         - { name: Config, type: jsonb }
         - { name: CreatedAt, type: timestamp }
         - { name: UpdatedAt, type: timestamp }
@@ -329,6 +331,9 @@ types:
         - { name: K8sJobName, type: "*string" }
         - { name: FailureReason, type: "*string" }
         - { name: WorkflowStepRunID, type: "*uuid", filterable: true }
+        - { name: ExecutorGroup, type: string, filterable: true }
+        - { name: QueueReason, type: "*string" }
+        - { name: StalledAt, type: "*timestamp" }
         - { name: CreatedAt, type: timestamp }
 
     - name: JobAttempt
@@ -466,6 +471,7 @@ types:
         - { name: Result, type: "*ConnectorTaskResult" }
         - { name: ErrorMessage, type: "*string" }
         - { name: WorkerID, type: "*string" }
+        - { name: ExecutorGroup, type: "*string", filterable: true }
         - { name: CreatedAt, type: timestamp, filterable: true }
         - { name: UpdatedAt, type: timestamp, filterable: true }
         - { name: CompletedAt, type: "*timestamp", filterable: true }
@@ -491,6 +497,7 @@ types:
         - { name: Capacity, type: int }
         - { name: Capabilities, type: ExecutorCapabilities }
         - { name: ResourceDefaults, type: ExecutorResourceDefaults }
+        - { name: ExecutorGroup, type: string, filterable: true }
         - { name: FirstSeenAt, type: timestamp }
         - { name: LastSeenAt, type: timestamp }
 

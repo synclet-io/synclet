@@ -45,6 +45,7 @@ type pipelineJobsConfig struct {
 	RepositorySync             time.Duration `env:"REPOSITORY_SYNC_INTERVAL" envDefault:"1h"`
 	ConnectorTaskRetention     time.Duration `env:"CONNECTOR_TASK_RETENTION_INTERVAL" envDefault:"5m"`
 	StaleConnectorTaskWatchdog time.Duration `env:"STALE_CONNECTOR_TASK_WATCHDOG_INTERVAL" envDefault:"5m"`
+	ClaimTimeout               time.Duration `env:"CLAIM_TIMEOUT" envDefault:"5m"`
 }
 
 // pipelineRuntimeConfig holds K8s resource defaults for pipeline containers.
@@ -256,6 +257,7 @@ func newPipelineServiceConfig(cfg *pipelineConfig) pipelineservice.Config {
 		RegistryFetchTimeout:        cfg.RegistryFetchTimeout,
 		HeartbeatTimeout:            cfg.HeartbeatTimeout,
 		ExecutorSilenceTimeout:      cfg.ExecutorSilenceTimeout,
+		JobClaimTimeout:             cfg.Jobs.ClaimTimeout,
 		LogArchiveEnabled:           cfg.LogArchive.Backend != logArchiveBackendNone,
 		LogArchiveBackend:           cfg.LogArchive.Backend,
 		MaxLogLinesPerAttempt:       cfg.MaxLogLinesPerAttempt,

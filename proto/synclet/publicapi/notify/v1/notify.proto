@@ -19,6 +19,8 @@ enum NotificationCondition {
   NOTIFICATION_CONDITION_ON_FAILURE = 1;
   NOTIFICATION_CONDITION_ON_CONSECUTIVE_FAILURES = 2;
   NOTIFICATION_CONDITION_ON_ZERO_RECORDS = 3;
+  // A scheduled sync waits past the claim timeout while its executor group is busy.
+  NOTIFICATION_CONDITION_ON_JOB_STALLED = 4;
 }
 
 // NotificationService manages notification channels and rules.

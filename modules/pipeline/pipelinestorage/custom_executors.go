@@ -21,7 +21,7 @@ func (s *ExecutorsStorage) Upsert(ctx context.Context, executor *pipelinesvc.Exe
 		Clauses(clause.OnConflict{
 			Columns: []clause.Column{{Name: "instance_id"}},
 			DoUpdates: clause.AssignmentColumns([]string{
-				"type", "version", "capacity", "capabilities", "resource_defaults", "last_seen_at",
+				"type", "version", "capacity", "capabilities", "resource_defaults", "executor_group", "last_seen_at",
 			}),
 		}).
 		Create(model)

@@ -39,7 +39,7 @@ func TestBackend_TokenInterceptorSetsHeader(t *testing.T) {
 	}))
 	defer server.Close()
 
-	backend := NewBackend(server.URL, "test-secret-token")
+	backend := NewBackend(server.URL, "test-secret-token", "default")
 	require.NotNil(t, backend)
 
 	// Call IsJobActive (simplest RPC) to trigger the interceptor.
@@ -67,7 +67,7 @@ func TestBackend_ReportCompletionSendsExitCodes(t *testing.T) {
 	server := httptest.NewServer(handler)
 	defer server.Close()
 
-	backend := NewBackend(server.URL, "token")
+	backend := NewBackend(server.URL, "token", "default")
 	err := backend.ReportCompletion(t.Context(), pipelineexec.ReportCompletionParams{
 		JobID:          uuid.New(),
 		ConnectionID:   uuid.New(),
@@ -166,7 +166,7 @@ func TestBackend_ClaimConnectorTaskCarriesRuntimeSettings(t *testing.T) {
 	server := httptest.NewServer(handler)
 	defer server.Close()
 
-	got, err := NewBackend(server.URL, "token").ClaimConnectorTask(t.Context(), "worker")
+	got, err := NewBackend(server.URL, "token", "default").ClaimConnectorTask(t.Context(), "worker")
 	require.NoError(t, err)
 	require.NotNil(t, got)
 	assert.JSONEq(t, `{"memory_request":"256Mi"}`, got.RuntimeConfig)

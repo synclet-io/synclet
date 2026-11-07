@@ -93,7 +93,12 @@ type ExecutorInfo struct {
 	Capacity         int
 	Capabilities     pipelineservice.ExecutorCapabilities
 	ResourceDefaults pipelineservice.ExecutorResourceDefaults
+	// Group is the executor group whose jobs and tasks the executor claims.
+	Group string
 }
+
+// ExecutorGroup is the normalized group of the executor in this process.
+type ExecutorGroup string
 
 // SyncReporter is the part of the executor API a running sync reports
 // through: confirmed state, connector config updates and log lines.

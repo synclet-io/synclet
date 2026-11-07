@@ -33,7 +33,12 @@ func pipelineJobsModule(options *RunAppOptions) fx.Option {
 	)
 }
 
-func newPipelineStaleJobWatchdogJob(cfg *pipelineConfig, failStale *pipelinejobs.FailStaleJobs, logger *logging.Logger) jobber.Job {
+func newPipelineStaleJobWatchdogJob(
+	cfg *pipelineConfig,
+	failStale *pipelinejobs.FailStaleJobs,
+	failUnclaimed *pipelinejobs.FailUnclaimedJobs,
+	logger *logging.Logger,
+) jobber.Job {
 	return jobber.NewIntervalJob(jobber.IntervalJobParams{
 		Name:             "stale_job_watchdog",
 		Interval:         cfg.Jobs.WatchdogInterval,
@@ -46,6 +51,15 @@ func newPipelineStaleJobWatchdogJob(cfg *pipelineConfig, failStale *pipelinejobs
 
 			if failed > 0 {
 				logger.WithField("count", failed).Info(ctx, "watchdog: failed stale jobs")
+			}
+
+			unclaimed, err := failUnclaimed.Execute(ctx)
+			if err != nil {
+				return err
+			}
+
+			if unclaimed > 0 {
+				logger.WithField("count", unclaimed).Info(ctx, "watchdog: failed unclaimed jobs")
 			}
 
 			return nil

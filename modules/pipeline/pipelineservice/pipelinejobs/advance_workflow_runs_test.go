@@ -41,7 +41,12 @@ func newWorkflowFixture(t *testing.T, names []string, after map[string][]string)
 	fx := &workflowFixture{store: store, runID: run.ID, steps: map[string]*pipelineservice.WorkflowStep{}, stepRuns: map[string]uuid.UUID{}}
 
 	for _, name := range names {
-		conn := &pipelineservice.Connection{ID: uuid.New(), WorkspaceID: workspaceID, Name: name, Status: pipelineservice.ConnectionStatusActive, MaxAttempts: 2}
+		source := &pipelineservice.Source{ID: uuid.New(), WorkspaceID: workspaceID, ExecutorGroup: pipelineservice.DefaultExecutorGroup}
+		store.SourcesTable.Insert(source)
+
+		conn := &pipelineservice.Connection{
+			ID: uuid.New(), WorkspaceID: workspaceID, Name: name, Status: pipelineservice.ConnectionStatusActive, MaxAttempts: 2, SourceID: source.ID,
+		}
 		store.ConnectionsTable.Insert(conn)
 		store.ConfigureStreams(conn.ID, "users")
 

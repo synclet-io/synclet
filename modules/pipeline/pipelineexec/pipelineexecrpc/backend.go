@@ -48,6 +48,7 @@ type Backend struct {
 	client         executorv1connect.ExecutorServiceClient
 	retryBaseDelay time.Duration
 	retryMaxDelay  time.Duration
+	group          string
 }
 
 // rpcMaxAttempts caps sendWithRetry; with the default delays a call failing
@@ -55,8 +56,8 @@ type Backend struct {
 const rpcMaxAttempts = 10
 
 // NewBackend returns a client of the executor API at apiURL authenticating
-// with token.
-func NewBackend(apiURL, token string) *Backend {
+// with token, claiming the jobs and tasks of group.
+func NewBackend(apiURL, token, group string) *Backend {
 	httpClient := &http.Client{Timeout: 30 * time.Second}
 
 	var opts []connect.ClientOption
@@ -70,6 +71,7 @@ func NewBackend(apiURL, token string) *Backend {
 		client:         client,
 		retryBaseDelay: time.Second,
 		retryMaxDelay:  30 * time.Second,
+		group:          group,
 	}
 }
 
@@ -79,7 +81,8 @@ func (a *Backend) ClaimJob(ctx context.Context, workerID string) (*pipelineexec.
 
 	err := a.sendWithRetry(ctx, "ClaimJob", func(ctx context.Context) error {
 		resp, callErr := a.client.ClaimJob(ctx, connect.NewRequest(&executorv1.ClaimJobRequest{
-			WorkerId: workerID,
+			WorkerId:      workerID,
+			ExecutorGroup: a.group,
 		}))
 		if callErr != nil {
 			return callErr
@@ -275,7 +278,8 @@ func (a *Backend) ClaimConnectorTask(ctx context.Context, workerID string) (*pip
 
 	err := a.sendWithRetry(ctx, "ClaimConnectorTask", func(ctx context.Context) error {
 		resp, callErr := a.client.ClaimConnectorTask(ctx, connect.NewRequest(&executorv1.ClaimConnectorTaskRequest{
-			WorkerId: workerID,
+			WorkerId:      workerID,
+			ExecutorGroup: a.group,
 		}))
 		if callErr != nil {
 			return callErr
@@ -498,6 +502,7 @@ func (a *Backend) ExecutorHeartbeat(ctx context.Context, info pipelineexec.Execu
 			Capabilities: &executorv1.ExecutorCapabilities{
 				NativeDestinations: info.Capabilities.NativeDestinations,
 			},
+			ExecutorGroup: info.Group,
 			ResourceDefaults: &pipelinev1.ExecutorResourceDefaults{
 				CpuRequest:            info.ResourceDefaults.CPURequest,
 				CpuLimit:              info.ResourceDefaults.CPULimit,

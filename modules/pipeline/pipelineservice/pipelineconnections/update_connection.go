@@ -57,6 +57,10 @@ func (uc *UpdateConnection) Execute(ctx context.Context, params UpdateConnection
 
 		before = connectionToAuditPayload(conn)
 
+		if err := requireConnectionSameGroup(ctx, tx, conn); err != nil {
+			return err
+		}
+
 		if err := applyConnectionUpdate(ctx, tx, conn, params); err != nil {
 			return err
 		}
@@ -85,6 +89,28 @@ func (uc *UpdateConnection) Execute(ctx context.Context, params UpdateConnection
 	})
 
 	return updated, nil
+}
+
+// requireConnectionSameGroup rejects a connection whose source and
+// destination belong to different executor groups.
+func requireConnectionSameGroup(ctx context.Context, tx pipelineservice.Storage, conn *pipelineservice.Connection) error {
+	source, err := tx.Sources().First(ctx, &pipelineservice.SourceFilter{
+		ID:          filter.Equals(conn.SourceID),
+		WorkspaceID: filter.Equals(conn.WorkspaceID),
+	})
+	if err != nil {
+		return fmt.Errorf("getting source: %w", err)
+	}
+
+	destination, err := tx.Destinations().First(ctx, &pipelineservice.DestinationFilter{
+		ID:          filter.Equals(conn.DestinationID),
+		WorkspaceID: filter.Equals(conn.WorkspaceID),
+	})
+	if err != nil {
+		return fmt.Errorf("getting destination: %w", err)
+	}
+
+	return pipelineservice.RequireSameExecutorGroup(source, destination)
 }
 
 func applyConnectionUpdate(ctx context.Context, tx pipelineservice.Storage, conn *pipelineservice.Connection, params UpdateConnectionParams) error {

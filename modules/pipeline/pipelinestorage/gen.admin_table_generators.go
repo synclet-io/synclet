@@ -810,6 +810,25 @@ func NewTableGenerators() table.GeneratorList {
 				}
 				return values
 			}
+			info.AddField("ExecutorGroup", "executor_group", db.Text)
+			info.FieldSortable()
+			info.FieldFilterable(types.FilterType{
+				FormType: form.Text,
+			},
+			)
+			formList.AddField("ExecutorGroup", "executor_group", db.Text, form.Text)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
 			info.AddField("Config", "config", db.Text)
 			info.FieldSortable()
 			formList.AddField("Config", "config", db.Text, form.Text)
@@ -946,6 +965,25 @@ func NewTableGenerators() table.GeneratorList {
 			},
 			)
 			formList.AddField("ManagedConnectorID", "managed_connector_id", db.UUID, form.Text)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+			info.AddField("ExecutorGroup", "executor_group", db.Text)
+			info.FieldSortable()
+			info.FieldFilterable(types.FilterType{
+				FormType: form.Text,
+			},
+			)
+			formList.AddField("ExecutorGroup", "executor_group", db.Text, form.Text)
 			formList.PreProcessFn = func(values form1.Values) form1.Values {
 				for k, v := range values {
 					for i, v := range v {
@@ -1650,6 +1688,55 @@ func NewTableGenerators() table.GeneratorList {
 			},
 			)
 			formList.AddField("WorkflowStepRunID", "workflow_step_run_id", db.UUID, form.Text)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+			info.AddField("ExecutorGroup", "executor_group", db.Text)
+			info.FieldSortable()
+			info.FieldFilterable(types.FilterType{
+				FormType: form.Text,
+			},
+			)
+			formList.AddField("ExecutorGroup", "executor_group", db.Text, form.Text)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+			info.AddField("QueueReason", "queue_reason", db.Text)
+			info.FieldSortable()
+			formList.AddField("QueueReason", "queue_reason", db.Text, form.Text)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+			info.AddField("StalledAt", "stalled_at", db.Timestamp)
+			info.FieldSortable()
+			formList.AddField("StalledAt", "stalled_at", db.Timestamp, form.Datetime)
 			formList.PreProcessFn = func(values form1.Values) form1.Values {
 				for k, v := range values {
 					for i, v := range v {
@@ -2628,6 +2715,25 @@ func NewTableGenerators() table.GeneratorList {
 				}
 				return values
 			}
+			info.AddField("ExecutorGroup", "executor_group", db.Text)
+			info.FieldSortable()
+			info.FieldFilterable(types.FilterType{
+				FormType: form.Text,
+			},
+			)
+			formList.AddField("ExecutorGroup", "executor_group", db.Text, form.Text)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
 			info.AddField("CreatedAt", "created_at", db.Timestamp)
 			info.FieldSortable()
 			info.FieldFilterable(types.FilterType{
@@ -2911,6 +3017,25 @@ func NewTableGenerators() table.GeneratorList {
 			info.AddField("ResourceDefaults", "resource_defaults", db.JSON)
 			info.FieldSortable()
 			formList.AddField("ResourceDefaults", "resource_defaults", db.JSON, form.Code)
+			formList.PreProcessFn = func(values form1.Values) form1.Values {
+				for k, v := range values {
+					for i, v := range v {
+						if strings.Contains(v, "%") {
+							if newV, err := url.QueryUnescape(v); err == nil {
+								values[k][i] = newV
+							}
+						}
+					}
+				}
+				return values
+			}
+			info.AddField("ExecutorGroup", "executor_group", db.Text)
+			info.FieldSortable()
+			info.FieldFilterable(types.FilterType{
+				FormType: form.Text,
+			},
+			)
+			formList.AddField("ExecutorGroup", "executor_group", db.Text, form.Text)
 			formList.PreProcessFn = func(values form1.Values) form1.Values {
 				for k, v := range values {
 					for i, v := range v {

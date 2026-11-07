@@ -91,6 +91,7 @@ func (h *DestinationHandler) CreateDestination(ctx context.Context, req *connect
 		Name:               req.Msg.GetName(),
 		ManagedConnectorID: managedConnectorID,
 		Config:             config,
+		ExecutorGroup:      req.Msg.GetExecutorGroup(),
 	})
 	if err != nil {
 		return nil, mapError(err)
@@ -271,6 +272,7 @@ func (h *DestinationHandler) TestDestinationConnection(ctx context.Context, req 
 
 		params.ManagedConnectorID = &mcID
 		params.Config = configJSON
+		params.ExecutorGroup = req.Msg.GetExecutorGroup()
 	} else if req.Msg.GetId() != "" {
 		// Existing destination path.
 		id, err := uuid.Parse(req.Msg.GetId())
@@ -314,6 +316,7 @@ func destinationToProto(dest *pipelineservice.Destination) *pipelinev1.Destinati
 		WorkspaceId:        dest.WorkspaceID.String(),
 		Name:               dest.Name,
 		ManagedConnectorId: dest.ManagedConnectorID.String(),
+		ExecutorGroup:      dest.ExecutorGroup,
 		Config:             config,
 		CreatedAt:          timestamppb.New(dest.CreatedAt),
 		UpdatedAt:          timestamppb.New(dest.UpdatedAt),

@@ -108,6 +108,7 @@ func (h *SourceHandler) CreateSource(ctx context.Context, req *connect.Request[p
 		Name:               req.Msg.GetName(),
 		ManagedConnectorID: managedConnectorID,
 		Config:             config,
+		ExecutorGroup:      req.Msg.GetExecutorGroup(),
 	})
 	if err != nil {
 		return nil, mapError(err)
@@ -316,6 +317,7 @@ func (h *SourceHandler) TestSourceConnection(ctx context.Context, req *connect.R
 
 		params.ManagedConnectorID = &mcID
 		params.Config = configJSON
+		params.ExecutorGroup = req.Msg.GetExecutorGroup()
 	} else if req.Msg.GetId() != "" {
 		// Existing source path.
 		id, err := uuid.Parse(req.Msg.GetId())
@@ -411,6 +413,7 @@ func sourceToProto(source *pipelineservice.Source) *pipelinev1.Source {
 		WorkspaceId:        source.WorkspaceID.String(),
 		Name:               source.Name,
 		ManagedConnectorId: source.ManagedConnectorID.String(),
+		ExecutorGroup:      source.ExecutorGroup,
 		Config:             config,
 		CreatedAt:          timestamppb.New(source.CreatedAt),
 		UpdatedAt:          timestamppb.New(source.UpdatedAt),

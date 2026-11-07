@@ -46,8 +46,8 @@ func rpcBackendModule() fx.Option {
 	)
 }
 
-func newRPCExecutorBackend(cfg *executorBackendConfig) *pipelineexecrpc.Backend {
-	return pipelineexecrpc.NewBackend(cfg.URL, cfg.Token)
+func newRPCExecutorBackend(cfg *executorBackendConfig, group pipelineexec.ExecutorGroup) *pipelineexecrpc.Backend {
+	return pipelineexecrpc.NewBackend(cfg.URL, cfg.Token, string(group))
 }
 
 // processModule is the infrastructure every synclet process has: environment,

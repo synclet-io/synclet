@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/saturn4er/boilerplate-go/lib/filter"
@@ -14,14 +15,21 @@ import (
 
 // CreateCheckTask creates a connector check task for a source or destination.
 type CreateCheckTask struct {
-	storage pipelineservice.Storage
-	secrets pipelineservice.SecretsProvider
-	audit   pipelineservice.AuditRecorder
+	storage        pipelineservice.Storage
+	secrets        pipelineservice.SecretsProvider
+	audit          pipelineservice.AuditRecorder
+	silenceTimeout time.Duration
+	now            func() time.Time
 }
 
 // NewCreateCheckTask creates a new CreateCheckTask use case.
-func NewCreateCheckTask(storage pipelineservice.Storage, secrets pipelineservice.SecretsProvider, audit pipelineservice.AuditRecorder) *CreateCheckTask {
-	return &CreateCheckTask{storage: storage, secrets: secrets, audit: audit}
+func NewCreateCheckTask(
+	storage pipelineservice.Storage,
+	secrets pipelineservice.SecretsProvider,
+	audit pipelineservice.AuditRecorder,
+	cfg pipelineservice.Config,
+) *CreateCheckTask {
+	return &CreateCheckTask{storage: storage, secrets: secrets, audit: audit, silenceTimeout: cfg.ExecutorSilenceTimeout, now: time.Now}
 }
 
 // CreateCheckTaskParams holds parameters for creating a check task.
@@ -35,6 +43,9 @@ type CreateCheckTaskParams struct {
 	// Option 2: Test with raw config (no source/destination created yet).
 	ManagedConnectorID *uuid.UUID
 	Config             json.RawMessage // Plaintext config from the frontend.
+	// ExecutorGroup runs a raw-config check; empty means default. A check of
+	// a stored entity runs in that entity's group.
+	ExecutorGroup string
 }
 
 // Execute creates a connector check task and returns the task ID and records a
@@ -52,9 +63,19 @@ func (uc *CreateCheckTask) Execute(ctx context.Context, params CreateCheckTaskPa
 	taskID := uuid.New()
 	payload := &pipelineservice.CheckPayload{}
 
-	var auditEvent *pipelineservice.AuditEvent
+	var (
+		auditEvent *pipelineservice.AuditEvent
+		group      string
+	)
 
 	if hasDirectConfig {
+		var err error
+
+		group, err = pipelineservice.NormalizeExecutorGroup(params.ExecutorGroup)
+		if err != nil {
+			return nil, err
+		}
+
 		// Direct config path: encrypt secrets and store config in the payload.
 		connector, err := uc.storage.ManagedConnectors().First(ctx, &pipelineservice.ManagedConnectorFilter{
 			ID:          filter.Equals(*params.ManagedConnectorID),
@@ -88,6 +109,7 @@ func (uc *CreateCheckTask) Execute(ctx context.Context, params CreateCheckTaskPa
 				return nil, fmt.Errorf("finding source: %w", err)
 			}
 
+			group = src.ExecutorGroup
 			payload.SourceID = params.SourceID
 			payload.ManagedConnectorID = src.ManagedConnectorID
 			auditEvent = &pipelineservice.AuditEvent{ResourceType: "source", ResourceID: src.ID, ResourceLabel: src.Name}
@@ -100,18 +122,24 @@ func (uc *CreateCheckTask) Execute(ctx context.Context, params CreateCheckTaskPa
 				return nil, fmt.Errorf("finding destination: %w", err)
 			}
 
+			group = dst.ExecutorGroup
 			payload.DestinationID = params.DestinationID
 			payload.ManagedConnectorID = dst.ManagedConnectorID
 			auditEvent = &pipelineservice.AuditEvent{ResourceType: "destination", ResourceID: dst.ID, ResourceLabel: dst.Name}
 		}
 	}
 
+	if err := pipelineservice.RequireLiveExecutor(ctx, uc.storage, group, uc.silenceTimeout, uc.now()); err != nil {
+		return nil, err
+	}
+
 	task := &pipelineservice.ConnectorTask{
-		ID:          taskID,
-		WorkspaceID: params.WorkspaceID,
-		TaskType:    pipelineservice.ConnectorTaskTypeCheck,
-		Status:      pipelineservice.ConnectorTaskStatusPending,
-		Payload:     payload,
+		ID:            taskID,
+		WorkspaceID:   params.WorkspaceID,
+		TaskType:      pipelineservice.ConnectorTaskTypeCheck,
+		Status:        pipelineservice.ConnectorTaskStatusPending,
+		Payload:       payload,
+		ExecutorGroup: &group,
 	}
 
 	if _, err := uc.storage.ConnectorTasks().Create(ctx, task); err != nil {
