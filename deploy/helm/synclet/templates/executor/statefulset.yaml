@@ -3,7 +3,8 @@
 {{- if and .Values.executor.strategy (ne (toJson .Values.executor.strategy) (toJson $legacyStrategy)) }}
 {{- fail "executor.strategy was renamed to executor.updateStrategy: the executor is a StatefulSet now, whose updateStrategy takes type RollingUpdate or OnDelete (no maxSurge)" }}
 {{- end }}
-{{- if and (eq .Values.mode "distributed") .Values.executor.enabled }}
+{{- include "synclet.validateExecutorMode" . }}
+{{- if include "synclet.runsExecutor" . }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -27,6 +28,9 @@ spec:
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/executor/configmap.yaml") . | sha256sum }}
         checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- with .Values.executor.group }}
+        synclet.io/executor-group: {{ . | quote }}
+        {{- end }}
         {{- with .Values.executor.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}

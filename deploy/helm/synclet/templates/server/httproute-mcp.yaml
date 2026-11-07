@@ -1,4 +1,4 @@
-{{- if include "synclet.mcpRoute" . }}
+{{- if and (include "synclet.controlPlane" .) (include "synclet.mcpRoute" .) }}
 {{- $mcp := include "synclet.mcp" . | fromYaml }}
 {{- if not $mcp.gateway.parentRefs }}
 {{- fail "mcp.gateway.parentRefs is required when mcp.exposure is separate and server.gateway.enabled is true" }}

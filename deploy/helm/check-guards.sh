@@ -102,6 +102,30 @@ expect_fail "mcp unknown exposure" \
   'mcp.exposure must be shared or separate (got "public")' \
   --set mcp.enabled=true --set mcp.exposure=public
 
+expect_fail "executor mode without controlPlane.url" \
+  "mode=executor needs controlPlane.url" \
+  --set mode=executor --set controlPlane.existingSecret=synclet-executor-token
+
+expect_fail "executor mode without controlPlane.existingSecret" \
+  "mode=executor needs controlPlane.existingSecret" \
+  --set mode=executor --set controlPlane.url=https://executor-api.example.com
+
+expect_fail "executor mode with an http control plane" \
+  "controlPlane.url must use https:// (set controlPlane.insecure=true to allow http://)" \
+  --set mode=executor --set controlPlane.url=http://cp:8081 --set controlPlane.existingSecret=synclet-executor-token
+
+expect_fail "executor API gateway without parentRefs" \
+  "internalApi.gateway.parentRefs is required when internalApi.gateway.enabled is true" \
+  --set internalApi.gateway.enabled=true
+
+expect_ok "executor mode with an https control plane" \
+  --set mode=executor --set controlPlane.url=https://executor-api.example.com \
+  --set controlPlane.existingSecret=synclet-executor-token
+
+expect_ok "executor mode with an insecure http control plane" \
+  --set mode=executor --set controlPlane.url=http://cp:8081 --set controlPlane.insecure=true \
+  --set controlPlane.existingSecret=synclet-executor-token
+
 if [ "$failures" -gt 0 ]; then
   echo "$failures check(s) failed"
   exit 1

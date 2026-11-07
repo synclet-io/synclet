@@ -1,3 +1,4 @@
+{{- if include "synclet.controlPlane" . }}
 {{- if .Values.postgresql.enabled }}
 apiVersion: v1
 kind: Service
@@ -40,4 +41,5 @@ spec:
       name: postgres
   selector:
     {{- include "synclet.postgres.selectorLabels" . | nindent 4 }}
+{{- end }}
 {{- end }}

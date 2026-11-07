@@ -2,7 +2,10 @@
 Synclet has been deployed!
 
 Mode: {{ .Values.mode }}
-{{- if eq .Values.mode "standalone" }}
+{{- if eq .Values.mode "executor" }}
+  Running a data-plane-only executor: it claims the jobs of executor group
+  "{{ .Values.executor.group | default "default" }}" from the control plane at {{ .Values.controlPlane.url }}.
+{{- else if eq .Values.mode "standalone" }}
   Server is running in standalone mode (API + Jobs + Executor in a single pod).
 {{- else }}
   Running in distributed mode: server and jobs Deployments and an executor StatefulSet.
@@ -16,6 +19,8 @@ UPGRADE NOTE (breaking): the executor runs as the StatefulSet {{ $fullname }}-ex
   executor.updateStrategy (type RollingUpdate or OnDelete, no maxSurge).
 {{- end }}
 {{- end }}
+
+{{- if include "synclet.controlPlane" . }}
 
 To get the application URL:
 {{- $publicURL := include "synclet.publicURL" . }}
@@ -38,4 +43,5 @@ on uninstall.
 
 WARNING: Built-in PostgreSQL is intended for development/testing only.
 For production, set postgresql.enabled=false and configure externalDatabase.
+{{- end }}
 {{- end }}

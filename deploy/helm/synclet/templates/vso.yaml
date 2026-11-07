@@ -1,3 +1,4 @@
+{{- if include "synclet.controlPlane" . }}
 {{- if .Values.vso.enabled }}
 {{- if .Values.vso.auth.create }}
 apiVersion: secrets.hashicorp.com/v1beta1
@@ -58,5 +59,6 @@ spec:
   destination:
     name: {{ include "synclet.vso.dbSecretName" . }}
     create: true
+{{- end }}
 {{- end }}
 {{- end }}

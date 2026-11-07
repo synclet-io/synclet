@@ -1,4 +1,4 @@
-{{- if and (eq .Values.mode "distributed") .Values.executor.enabled }}
+{{- if include "synclet.runsExecutor" . }}
 {{- include "synclet.pdb" (dict
   "pdb" .Values.executor.pdb
   "replicas" .Values.executor.replicaCount

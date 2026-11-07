@@ -1,0 +1,55 @@
+{{- $gateway := dig "gateway" dict (.Values.internalApi | default dict) }}
+{{- if and (include "synclet.controlPlane" .) (dig "enabled" false $gateway) }}
+{{- if not $gateway.parentRefs }}
+{{- fail "internalApi.gateway.parentRefs is required when internalApi.gateway.enabled is true" }}
+{{- end }}
+{{- $fullname := include "synclet.fullname" . }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $fullname }}-executor-api
+  labels:
+    {{- include "synclet.server.labels" . | nindent 4 }}
+    {{- with $gateway.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with $gateway.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  parentRefs:
+    {{- range $gateway.parentRefs }}
+    - name: {{ required "internalApi.gateway.parentRefs[].name is required" .name }}
+      {{- with .namespace }}
+      namespace: {{ . }}
+      {{- end }}
+      {{- with .sectionName }}
+      sectionName: {{ . }}
+      {{- end }}
+      {{- with .port }}
+      port: {{ . }}
+      {{- end }}
+    {{- end }}
+  {{- with $gateway.hostnames }}
+  hostnames:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/synclet.internalapi.executor.v1.ExecutorService/"
+      backendRefs:
+        - name: {{ $fullname }}-internal
+          port: {{ .Values.server.service.ports.internal }}
+      {{- with $gateway.timeouts }}
+      timeouts:
+        {{- with .request }}
+        request: {{ . | quote }}
+        {{- end }}
+        {{- with .backendRequest }}
+        backendRequest: {{ . | quote }}
+        {{- end }}
+      {{- end }}
+{{- end }}

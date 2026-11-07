@@ -1,0 +1,33 @@
+{{- $ingress := dig "ingress" dict (.Values.internalApi | default dict) }}
+{{- if and (include "synclet.controlPlane" .) (dig "enabled" false $ingress) }}
+{{- $fullname := include "synclet.fullname" . }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $fullname }}-executor-api
+  labels:
+    {{- include "synclet.server.labels" . | nindent 4 }}
+  {{- with $ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with $ingress.ingressClassName }}
+  ingressClassName: {{ . }}
+  {{- end }}
+  tls:
+    - hosts:
+        - {{ required "internalApi.ingress.hostname is required when internalApi.ingress.enabled is true" $ingress.hostname }}
+      secretName: {{ $ingress.tlsSecretName | default (printf "%s-executor-api-tls" $fullname) }}
+  rules:
+    - host: {{ $ingress.hostname }}
+      http:
+        paths:
+          - path: /synclet.internalapi.executor.v1.ExecutorService/
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $fullname }}-internal
+                port:
+                  number: {{ .Values.server.service.ports.internal }}
+{{- end }}

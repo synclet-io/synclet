@@ -7,7 +7,19 @@ global:
 ## @section Common parameters
 nameOverride: ""
 fullnameOverride: ""
-mode: standalone  # standalone | distributed
+mode: standalone  # standalone | distributed | executor
+## Control plane an executor-mode release connects to; ignored in the other modes.
+controlPlane:
+  ## Base URL of the control plane's executor API, as exposed by its internalApi.ingress or
+  ## internalApi.gateway (e.g. https://executor-api.example.com). Required in executor mode.
+  url: ""
+  ## Allow an http:// url. The internal API token and decrypted connector configs cross
+  ## clusters on this link, so keep it false outside test clusters.
+  insecure: false
+  ## Secret in the release namespace holding the control plane's internal API token
+  ## (its internalApi secret). Required in executor mode; the chart never generates it.
+  existingSecret: ""
+  existingSecretKey: "internal-api-secret"
 environment: production
 logLevel: info
 ## Deprecated: use cors.allowAllOrigins, which takes precedence when both are set.
@@ -296,7 +308,12 @@ jobs:
   tolerations: []
   affinity: {}
 
-## @section Executor parameters (distributed mode only)
+## @section Executor parameters (distributed and executor mode)
+## mode: executor renders a data-plane-only release: the executor StatefulSet, its ConfigMap,
+## headless Service, ServiceAccount and connector RBAC, and nothing of the control plane (no
+## server, jobs, Postgres, Garage or generated Secret). The executor and its connector pods
+## call the control plane at controlPlane.url with the token from controlPlane.existingSecret.
+## See values-remote-executor.yaml and values-remote-control-plane.yaml.
 ## Set enabled: false if you run the executor outside the chart (e.g. external deployment).
 ## The executor runs as a StatefulSet behind a headless Service: each pod keeps its name
 ## (<fullname>-executor-0, -1, ...) across restarts, and that name is its owner id unless
@@ -310,6 +327,9 @@ jobs:
 ## executor.strategy fails to render.
 executor:
   enabled: true
+  ## Executor group the executor claims jobs for (EXECUTOR_GROUP): a free-form label, empty
+  ## means "default". A set group is the pods' synclet.io/executor-group annotation.
+  group: ""
   replicaCount: 1
   ## PodDisruptionBudget of the executor pods: enabled unset renders one when replicaCount is
   ## above 1; true always, false never. A set minAvailable replaces maxUnavailable.
@@ -705,6 +725,28 @@ internalApi:
   secret: ""
   existingSecret: ""
   existingSecretKey: "internal-api-secret"
+  ## Exposure of the executor API to executors in other clusters (mode: executor releases).
+  ## Both route only the ExecutorService path of the internal port, which this token guards;
+  ## the rest of the internal port stays in-cluster.
+  ingress:
+    enabled: false
+    ingressClassName: ""
+    hostname: ""
+    ## The Ingress always terminates TLS, with this Secret (default <fullname>-executor-api-tls).
+    tlsSecretName: ""
+    annotations: {}
+  ## HTTPRoute (gateway.networking.k8s.io/v1). The route cannot require TLS itself: attach it
+  ## to an https listener, since the token and decrypted connector configs cross it.
+  gateway:
+    enabled: false
+    parentRefs: []
+    # - name: synclet-gateway
+    #   namespace: gateway-system
+    #   sectionName: https
+    hostnames: []
+    timeouts: {}
+    labels: {}
+    annotations: {}
 
 ## @section PostgreSQL parameters
 ## WARNING: The built-in PostgreSQL is intended for development and testing only.

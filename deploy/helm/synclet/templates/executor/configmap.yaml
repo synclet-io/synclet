@@ -1,4 +1,4 @@
-{{- if and (eq .Values.mode "distributed") .Values.executor.enabled }}
+{{- if include "synclet.runsExecutor" . }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -9,7 +9,10 @@ data:
   ENVIRONMENT: {{ .Values.environment | quote }}
   LOG_LEVEL: {{ .Values.logLevel | quote }}
   INTERNAL_HTTP_SERVER_ADDR: {{ printf "0.0.0.0:%v" .Values.server.containerPorts.internal | quote }}
-  EXECUTOR_API_URL: {{ include "synclet.internalServerAddr" . | quote }}
+  EXECUTOR_API_URL: {{ include "synclet.executorApiURL" . | quote }}
+  {{- with .Values.executor.group }}
+  EXECUTOR_GROUP: {{ . | quote }}
+  {{- end }}
   PIPELINE_IDLE_TIMEOUT: {{ .Values.pipeline.idleTimeout | quote }}
   {{- with include "synclet.pipelineRuntimeEnv" . }}{{ . | trim | nindent 2 }}{{ end }}
   {{- include "synclet.k8sExecutorEnv" . | nindent 2 }}

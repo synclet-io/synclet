@@ -1,0 +1,22 @@
+## Control-plane release whose executor API is reachable from data planes in other clusters
+## (see values-remote-executor.yaml). Only the ExecutorService path of the internal port is
+## exposed; the internalApi token guards it.
+mode: distributed
+
+internalApi:
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hostname: executor-api.example.com
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt
+  gateway:
+    enabled: true
+    ## Attach the route to an https listener: the token and decrypted connector configs
+    ## cross clusters on this link.
+    parentRefs:
+      - name: public-gateway
+        namespace: gateway-system
+        sectionName: https
+    hostnames:
+      - executor-api.example.com

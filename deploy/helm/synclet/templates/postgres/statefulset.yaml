@@ -1,3 +1,4 @@
+{{- if include "synclet.controlPlane" . }}
 {{- if .Values.postgresql.enabled }}
 apiVersion: apps/v1
 kind: StatefulSet
@@ -83,4 +84,5 @@ spec:
         resources:
           requests:
             storage: {{ .Values.postgresql.primary.persistence.size }}
+{{- end }}
 {{- end }}

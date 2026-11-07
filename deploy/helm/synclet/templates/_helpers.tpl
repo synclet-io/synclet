@@ -128,6 +128,53 @@ app.kubernetes.io/component: postgres
 {{- end }}
 
 {{/*
+synclet.controlPlane is non-empty when the release runs the control plane
+(server, jobs, database, secrets): every mode but executor.
+*/}}
+{{- define "synclet.controlPlane" -}}
+{{- if ne .Values.mode "executor" }}true{{- end }}
+{{- end }}
+
+{{/*
+synclet.runsExecutor is non-empty when the release runs the executor
+StatefulSet: distributed or executor mode with executor.enabled.
+*/}}
+{{- define "synclet.runsExecutor" -}}
+{{- if and (has .Values.mode (list "distributed" "executor")) .Values.executor.enabled }}true{{- end }}
+{{- end }}
+
+{{/*
+synclet.validateExecutorMode fails when executor mode lacks the control plane
+it connects to, or would reach it over plain http without controlPlane.insecure.
+*/}}
+{{- define "synclet.validateExecutorMode" -}}
+{{- if eq .Values.mode "executor" }}
+{{- $cp := .Values.controlPlane | default dict }}
+{{- if not $cp.url }}
+{{- fail "mode=executor needs controlPlane.url" }}
+{{- end }}
+{{- if not $cp.existingSecret }}
+{{- fail "mode=executor needs controlPlane.existingSecret" }}
+{{- end }}
+{{- if and (not (hasPrefix "https://" $cp.url)) (not $cp.insecure) }}
+{{- fail "controlPlane.url must use https:// (set controlPlane.insecure=true to allow http://)" }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{/*
+URL the executor and its connector pods reach the executor API at: the
+remote control plane in executor mode, the in-cluster internal Service otherwise.
+*/}}
+{{- define "synclet.executorApiURL" -}}
+{{- if eq .Values.mode "executor" -}}
+{{- .Values.controlPlane.url -}}
+{{- else -}}
+{{- include "synclet.internalServerAddr" . -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 ServiceAccount name.
 */}}
 {{- define "synclet.serviceAccountName" -}}
@@ -143,7 +190,7 @@ Whether the executor deployment runs under an account of its own.
 */}}
 {{- define "synclet.executor.ownServiceAccount" -}}
 {{- $sa := .Values.executor.serviceAccount | default (dict "create" true) }}
-{{- if and (eq .Values.mode "distributed") .Values.executor.enabled (or $sa.create $sa.name) }}true{{- end }}
+{{- if and (include "synclet.runsExecutor" .) (or $sa.create $sa.name) }}true{{- end }}
 {{- end }}
 
 {{/*
@@ -632,7 +679,12 @@ Secret env vars of executor pods: only the token they authenticate to the contro
 - name: EXECUTOR_API_TOKEN
   valueFrom:
     secretKeyRef:
+      {{- if eq .Values.mode "executor" }}
+      name: {{ .Values.controlPlane.existingSecret }}
+      key: {{ .Values.controlPlane.existingSecretKey | default "internal-api-secret" }}
+      {{- else }}
       {{- include "synclet.internalApi.secretRef" . | nindent 6 }}
+      {{- end }}
 {{- end }}
 
 {{/*
@@ -769,7 +821,7 @@ Settings of the Kubernetes executor, apart from its owner id.
 {{- define "synclet.k8sExecutorEnv" -}}
 K8S_EXECUTOR_NAMESPACE: {{ .Values.k8s.namespace | quote }}
 K8S_EXECUTOR_SYNCLET_IMAGE: {{ include "synclet.image" . | quote }}
-K8S_EXECUTOR_SERVER_ADDR: {{ include "synclet.internalServerAddr" . | quote }}
+K8S_EXECUTOR_SERVER_ADDR: {{ include "synclet.executorApiURL" . | quote }}
 K8S_EXECUTOR_DEFAULT_MEMORY: {{ .Values.k8s.defaultMemory | quote }}
 K8S_EXECUTOR_DEFAULT_CPU: {{ .Values.k8s.defaultCPU | quote }}
 K8S_EXECUTOR_JOB_WORKER_INTERVAL: {{ .Values.pipeline.workerInterval | quote }}

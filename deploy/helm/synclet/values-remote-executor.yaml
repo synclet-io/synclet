@@ -1,0 +1,23 @@
+## Data-plane-only release: an executor in this cluster that runs connector pods for the
+## sources and destinations of one executor group and reaches the control plane over HTTPS.
+## The control-plane release exposes its executor API with internalApi.ingress or
+## internalApi.gateway (see values-remote-control-plane.yaml).
+##
+## The executor authenticates with the control plane's internal API token. Copy it into a
+## Secret of this release's namespace before installing:
+##   kubectl --context control-plane -n synclet get secret synclet \
+##     -o jsonpath='{.data.internal-api-secret}' | base64 -d > token
+##   kubectl --context data-plane -n synclet create secret generic synclet-executor-token \
+##     --from-file=internal-api-secret=token
+## (With internalApi.existingSecret or VSO on the control plane, copy the token from there.)
+mode: executor
+
+controlPlane:
+  url: https://executor-api.example.com
+  existingSecret: synclet-executor-token
+
+executor:
+  group: Prod Cluster ACME
+
+k8s:
+  namespace: synclet-connectors

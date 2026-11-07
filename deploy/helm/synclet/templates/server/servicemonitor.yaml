@@ -1,3 +1,4 @@
+{{- if include "synclet.controlPlane" . }}
 {{- if .Values.server.serviceMonitor.enabled }}
 {{- $port := dig "port" "internal" .Values.server.serviceMonitor }}
 {{- if ne $port "internal" }}
@@ -28,4 +29,5 @@ spec:
       path: {{ .Values.server.serviceMonitor.path }}
       interval: {{ .Values.server.serviceMonitor.interval }}
       scrapeTimeout: {{ .Values.server.serviceMonitor.scrapeTimeout }}
+{{- end }}
 {{- end }}

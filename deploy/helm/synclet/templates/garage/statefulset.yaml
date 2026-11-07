@@ -1,3 +1,4 @@
+{{- if include "synclet.controlPlane" . }}
 {{- if include "synclet.garage.enabled" . }}
 {{- $garage := .Values.logArchive.garage }}
 {{- $secretName := include "synclet.garage.secretName" . }}
@@ -105,4 +106,5 @@ spec:
         resources:
           requests:
             storage: {{ $garage.persistence.size }}
+{{- end }}
 {{- end }}

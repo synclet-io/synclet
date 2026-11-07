@@ -1,5 +1,5 @@
 {{- $sm := dig "serviceMonitor" (dict) .Values.executor }}
-{{- if and (eq .Values.mode "distributed") .Values.executor.enabled (dig "enabled" false $sm) }}
+{{- if and (include "synclet.runsExecutor" .) (dig "enabled" false $sm) }}
 apiVersion: v1
 kind: Service
 metadata:

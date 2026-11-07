@@ -1,4 +1,4 @@
-{{- $chartBinding := and .Values.serviceAccount.create (or .Values.executor.enabled (eq .Values.mode "standalone")) }}
+{{- $chartBinding := and .Values.serviceAccount.create (or (include "synclet.runsExecutor" .) (eq .Values.mode "standalone")) }}
 {{- $executorBinding := include "synclet.executor.ownServiceAccount" . }}
 {{- if or $chartBinding $executorBinding }}
 apiVersion: rbac.authorization.k8s.io/v1

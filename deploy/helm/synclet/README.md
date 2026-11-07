@@ -72,8 +72,24 @@ The simplest setup, suited to small and medium workloads.
 The API scales on its own, and a failing sync cannot take it down.
 Set `executor.enabled: false` to run the executor outside the chart.
 
-In both modes the executor launches each sync as a Kubernetes Job in `k8s.namespace`, the release namespace when empty.
+**Executor** (`mode: executor`): a data-plane-only release with the executor StatefulSet and its connector RBAC, and no server, jobs, Postgres or generated Secret.
+It runs the jobs of one executor group (`executor.group`) against a control plane in another cluster.
+
+In every mode the executor launches each sync as a Kubernetes Job in `k8s.namespace`, the release namespace when empty.
 A namespace set there must exist before install.
+
+## Remote data plane
+
+An executor in another cluster reaches the control plane over HTTPS:
+
+1. On the control plane, expose the executor API with `internalApi.ingress` or `internalApi.gateway` ([values-remote-control-plane.yaml](values-remote-control-plane.yaml)).
+   Both route only the `/synclet.internalapi.executor.v1.ExecutorService/` path of the internal port, which the `internalApi` token guards.
+   The Ingress always terminates TLS; attach the HTTPRoute to an https listener.
+2. Copy the control plane's internal API token into a Secret of the data-plane namespace.
+3. Install the data plane with `mode: executor`, `controlPlane.url`, `controlPlane.existingSecret` and `executor.group` ([values-remote-executor.yaml](values-remote-executor.yaml)).
+   `controlPlane.url` must be `https://` unless `controlPlane.insecure: true`.
+
+`executor.group` also applies in distributed mode, where it sets the group of the in-cluster executor.
 
 ## Main values
 

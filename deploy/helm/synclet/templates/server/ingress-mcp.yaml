@@ -1,4 +1,4 @@
-{{- if include "synclet.mcpIngress" . }}
+{{- if and (include "synclet.controlPlane" .) (include "synclet.mcpIngress" .) }}
 {{- $mcp := include "synclet.mcp" . | fromYaml }}
 {{- $hostname := required "mcp.ingress.hostname is required when mcp.exposure is separate and server.ingress.enabled is true" $mcp.ingress.hostname }}
 apiVersion: networking.k8s.io/v1

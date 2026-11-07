@@ -1,5 +1,5 @@
 {{- $sm := dig "serviceMonitor" (dict) .Values.executor }}
-{{- if and (eq .Values.mode "distributed") .Values.executor.enabled (dig "enabled" false $sm) }}
+{{- if and (include "synclet.runsExecutor" .) (dig "enabled" false $sm) }}
 {{- $port := dig "port" "internal" $sm }}
 {{- if ne $port "internal" }}
 {{- fail (printf "executor.serviceMonitor.port must name a port the Service exposes (internal), got %q" $port) }}

@@ -1,3 +1,4 @@
+{{- if include "synclet.controlPlane" . }}
 {{- if eq .Values.mode "distributed" }}
 {{- include "synclet.pdb" (dict
   "pdb" .Values.server.pdb
@@ -5,4 +6,5 @@
   "name" (printf "%s-server" (include "synclet.fullname" .))
   "labels" (include "synclet.server.labels" .)
   "selectorLabels" (include "synclet.server.selectorLabels" .)) }}
+{{- end }}
 {{- end }}

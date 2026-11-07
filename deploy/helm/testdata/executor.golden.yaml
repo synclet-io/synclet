@@ -1,0 +1,240 @@
+---
+# Source: synclet/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: t-synclet
+  labels:
+    helm.sh/chart: synclet-CHART_VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: "APP_VERSION"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+---
+# Source: synclet/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: t-synclet-executor
+  labels:
+    helm.sh/chart: synclet-CHART_VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: "APP_VERSION"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: executor
+---
+# Source: synclet/templates/executor/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: t-synclet-executor
+  labels:
+    helm.sh/chart: synclet-CHART_VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: "APP_VERSION"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: executor
+data:
+  ENVIRONMENT: "production"
+  LOG_LEVEL: "info"
+  INTERNAL_HTTP_SERVER_ADDR: "0.0.0.0:8081"
+  EXECUTOR_API_URL: "https://executor-api.example.com"
+  EXECUTOR_GROUP: "Prod Cluster ACME"
+  PIPELINE_IDLE_TIMEOUT: "10m"
+  K8S_EXECUTOR_NAMESPACE: "synclet-connectors"
+  K8S_EXECUTOR_SYNCLET_IMAGE: "ghcr.io/synclet-io/synclet:APP_VERSION"
+  K8S_EXECUTOR_SERVER_ADDR: "https://executor-api.example.com"
+  K8S_EXECUTOR_DEFAULT_MEMORY: "2Gi"
+  K8S_EXECUTOR_DEFAULT_CPU: "1"
+  K8S_EXECUTOR_JOB_WORKER_INTERVAL: "5s"
+  K8S_EXECUTOR_JOB_RESOURCE_CLEANUP_INTERVAL: "5m"
+---
+# Source: synclet/templates/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: t-synclet-connector-runner
+  namespace: synclet-connectors
+  labels:
+    helm.sh/chart: synclet-CHART_VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: "APP_VERSION"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+rules:
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["create", "delete", "get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods", "pods/log"]
+    verbs: ["get", "list", "watch", "delete"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["create", "delete", "get", "list", "update"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["create", "delete", "get", "list"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create"]
+---
+# Source: synclet/templates/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: t-synclet-connector-runner
+  namespace: synclet-connectors
+  labels:
+    helm.sh/chart: synclet-CHART_VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: "APP_VERSION"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: t-synclet-connector-runner
+subjects:
+  - kind: ServiceAccount
+    name: t-synclet
+    namespace: synclet
+---
+# Source: synclet/templates/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: t-synclet-executor-connector-runner
+  namespace: synclet-connectors
+  labels:
+    helm.sh/chart: synclet-CHART_VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: "APP_VERSION"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: executor
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: t-synclet-connector-runner
+subjects:
+  - kind: ServiceAccount
+    name: t-synclet-executor
+    namespace: synclet
+---
+# Source: synclet/templates/executor/service-headless.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: t-synclet-executor
+  labels:
+    helm.sh/chart: synclet-CHART_VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: "APP_VERSION"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: executor
+spec:
+  clusterIP: None
+  ports:
+    - port: 8081
+      targetPort: internal
+      protocol: TCP
+      name: internal
+  selector:
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/component: executor
+---
+# Source: synclet/templates/executor/statefulset.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: t-synclet-executor
+  labels:
+    helm.sh/chart: synclet-CHART_VERSION
+    app.kubernetes.io/name: synclet
+    app.kubernetes.io/instance: t
+    app.kubernetes.io/version: "APP_VERSION"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: synclet
+    app.kubernetes.io/component: executor
+spec:
+  serviceName: t-synclet-executor
+  podManagementPolicy: Parallel
+  replicas: 1
+  revisionHistoryLimit: 3
+  updateStrategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: synclet
+      app.kubernetes.io/instance: t
+      app.kubernetes.io/component: executor
+  template:
+    metadata:
+      annotations:
+        checksum/config: SHA256
+        checksum/secret: SHA256
+        synclet.io/executor-group: "Prod Cluster ACME"
+      labels:
+        app.kubernetes.io/name: synclet
+        app.kubernetes.io/instance: t
+        app.kubernetes.io/component: executor
+    spec:
+      serviceAccountName: t-synclet-executor
+      terminationGracePeriodSeconds: 120
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        fsGroup: 65534
+      containers:
+        - name: executor
+          image: ghcr.io/synclet-io/synclet:APP_VERSION
+          imagePullPolicy: IfNotPresent
+          command: ["synclet", "k8s-executor"]
+          ports:
+            - name: internal
+              containerPort: 8081
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: t-synclet-executor
+          env:
+            - name: EXECUTOR_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  key: internal-api-secret
+                  name: synclet-executor-token
+            - name: K8S_EXECUTOR_OWNER_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            limits:
+              cpu: "1"
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 256Mi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi

@@ -1,3 +1,4 @@
+{{- if include "synclet.controlPlane" . }}
 {{- if include "synclet.garage.enabled" . }}
 apiVersion: v1
 kind: ConfigMap
@@ -21,4 +22,5 @@ data:
 
     [admin]
     api_bind_addr = "0.0.0.0:{{ .Values.logArchive.garage.service.adminPort }}"
+{{- end }}
 {{- end }}

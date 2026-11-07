@@ -49,6 +49,10 @@ type manifest struct {
 		} `yaml:"ports"`
 		Endpoints []map[string]string `yaml:"endpoints"`
 		Template  struct {
+			Metadata struct {
+				Labels      map[string]string `yaml:"labels"`
+				Annotations map[string]string `yaml:"annotations"`
+			} `yaml:"metadata"`
 			Spec struct {
 				ServiceAccountName string      `yaml:"serviceAccountName"`
 				InitContainers     []container `yaml:"initContainers"`
@@ -803,6 +807,13 @@ func TestChart_Golden(t *testing.T) {
 			"--set", "executor.livenessProbe.enabled=true",
 			"--set", "executor.readinessProbe.enabled=true",
 		}},
+		{name: "executor", args: []string{"-f", "synclet/values-remote-executor.yaml"}},
+		{name: "executor-insecure", args: []string{
+			"-f", "synclet/values-remote-executor.yaml",
+			"--set", "controlPlane.url=http://cp:8081",
+			"--set", "controlPlane.insecure=true",
+		}},
+		{name: "executor-api", args: []string{"-f", "synclet/values-remote-control-plane.yaml"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			got := placeholders.Replace(string(renderRaw(t, append(slices.Clone(goldenSecrets), tc.args...)...)))
@@ -1015,4 +1026,193 @@ func TestChart_DistributedPDBs(t *testing.T) {
 
 	zero := pdbs(slices.Concat(scaled, []string{"--set", "server.pdb.maxUnavailable=0"})...)
 	assert.EqualValues(t, 0, zero["t-synclet-server"]["maxUnavailable"], "an explicit maxUnavailable 0 is kept")
+}
+
+func envValue(c container, name string) (envVar, bool) {
+	for _, e := range c.Env {
+		if e.Name == name {
+			return e, true
+		}
+	}
+
+	return envVar{}, false
+}
+
+var executorValues = []string{"-f", "synclet/values-remote-executor.yaml"}
+
+func TestChart_ExecutorMode(t *testing.T) {
+	docs := renderChart(t, executorValues...)
+
+	kinds := make([]string, 0, len(docs))
+	for _, m := range docs {
+		kinds = append(kinds, m.Kind+"/"+m.Metadata.Name)
+	}
+
+	assert.ElementsMatch(t, []string{
+		"ServiceAccount/t-synclet",
+		"ServiceAccount/t-synclet-executor",
+		"Role/t-synclet-connector-runner",
+		"RoleBinding/t-synclet-connector-runner",
+		"RoleBinding/t-synclet-executor-connector-runner",
+		"ConfigMap/t-synclet-executor",
+		"Service/t-synclet-executor",
+		"StatefulSet/t-synclet-executor",
+	}, kinds)
+
+	cm := docs.get(t, "ConfigMap", "t-synclet-executor")
+	assert.Equal(t, "https://executor-api.example.com", cm.Data["EXECUTOR_API_URL"])
+	assert.Equal(t, "https://executor-api.example.com", cm.Data["K8S_EXECUTOR_SERVER_ADDR"])
+	assert.Equal(t, "Prod Cluster ACME", cm.Data["EXECUTOR_GROUP"])
+
+	sts := docs.get(t, "StatefulSet", "t-synclet-executor")
+	token, ok := envValue(sts.container(t, "executor"), "EXECUTOR_API_TOKEN")
+	require.True(t, ok)
+	require.NotNil(t, token.ValueFrom)
+	require.NotNil(t, token.ValueFrom.SecretKeyRef)
+	assert.Equal(t, "synclet-executor-token", token.ValueFrom.SecretKeyRef.Name)
+	assert.Equal(t, "internal-api-secret", token.ValueFrom.SecretKeyRef.Key)
+
+	assert.Equal(t, "Prod Cluster ACME", sts.Spec.Template.Metadata.Annotations["synclet.io/executor-group"])
+
+	for _, m := range docs {
+		for key, value := range m.Metadata.Labels {
+			assert.NotEqual(t, "Prod Cluster ACME", value, "%s/%s label %s", m.Kind, m.Metadata.Name, key)
+		}
+	}
+
+	for key, value := range sts.Spec.Template.Metadata.Labels {
+		assert.NotEqual(t, "Prod Cluster ACME", value, "pod label %s", key)
+	}
+}
+
+func TestChart_ExecutorModeInsecureURL(t *testing.T) {
+	args := append(slices.Clone(executorValues), "--set", "controlPlane.url=http://cp:8081")
+
+	out, err := helmTemplate(t, args...).CombinedOutput()
+	require.Error(t, err)
+	assert.Contains(t, string(out), "controlPlane.url must use https:// (set controlPlane.insecure=true to allow http://)")
+
+	cm := renderChart(t, append(args, "--set", "controlPlane.insecure=true")...).get(t, "ConfigMap", "t-synclet-executor")
+	assert.Equal(t, "http://cp:8081", cm.Data["EXECUTOR_API_URL"])
+}
+
+func TestChart_ExecutorModeNeedsControlPlane(t *testing.T) {
+	for msg, args := range map[string][]string{
+		"mode=executor needs controlPlane.url":            {"--set", "mode=executor", "--set", "controlPlane.existingSecret=tok"},
+		"mode=executor needs controlPlane.existingSecret": {"--set", "mode=executor", "--set", "controlPlane.url=https://cp"},
+	} {
+		out, err := helmTemplate(t, args...).CombinedOutput()
+		require.Error(t, err, msg)
+		assert.Contains(t, string(out), msg)
+	}
+}
+
+func TestChart_ExecutorGroupDistributed(t *testing.T) {
+	cm := renderChart(t, "--set", "mode=distributed", "--set", "executor.group=us-east").get(t, "ConfigMap", "t-synclet-executor")
+	assert.Equal(t, "us-east", cm.Data["EXECUTOR_GROUP"])
+
+	docs := renderChart(t, "--set", "mode=distributed")
+	assert.NotContains(t, docs.get(t, "ConfigMap", "t-synclet-executor").Data, "EXECUTOR_GROUP")
+	assert.NotContains(t, docs.get(t, "StatefulSet", "t-synclet-executor").Spec.Template.Metadata.Annotations, "synclet.io/executor-group")
+}
+
+type executorAPIRoute struct {
+	Kind     string `yaml:"kind"`
+	Metadata struct {
+		Name string `yaml:"name"`
+	} `yaml:"metadata"`
+	Spec struct {
+		TLS []struct {
+			Hosts      []string `yaml:"hosts"`
+			SecretName string   `yaml:"secretName"`
+		} `yaml:"tls"`
+		Rules []struct {
+			Host string `yaml:"host"`
+			HTTP struct {
+				Paths []struct {
+					Path     string `yaml:"path"`
+					PathType string `yaml:"pathType"`
+					Backend  struct {
+						Service struct {
+							Name string `yaml:"name"`
+							Port struct {
+								Number int `yaml:"number"`
+							} `yaml:"port"`
+						} `yaml:"service"`
+					} `yaml:"backend"`
+				} `yaml:"paths"`
+			} `yaml:"http"`
+			Matches []struct {
+				Path struct {
+					Type  string `yaml:"type"`
+					Value string `yaml:"value"`
+				} `yaml:"path"`
+			} `yaml:"matches"`
+			BackendRefs []struct {
+				Name string `yaml:"name"`
+				Port int    `yaml:"port"`
+			} `yaml:"backendRefs"`
+		} `yaml:"rules"`
+	} `yaml:"spec"`
+}
+
+func executorAPIRoutes(t *testing.T, args ...string) map[string]executorAPIRoute {
+	t.Helper()
+
+	routes := map[string]executorAPIRoute{}
+	dec := yaml.NewDecoder(bytes.NewReader(renderRaw(t, args...)))
+
+	for {
+		var doc executorAPIRoute
+
+		err := dec.Decode(&doc)
+		if errors.Is(err, io.EOF) {
+			return routes
+		}
+
+		require.NoError(t, err)
+
+		if doc.Metadata.Name == "t-synclet-executor-api" {
+			routes[doc.Kind] = doc
+		}
+	}
+}
+
+const executorServicePath = "/synclet.internalapi.executor.v1.ExecutorService/"
+
+func TestChart_ExecutorAPIExposure(t *testing.T) {
+	routes := executorAPIRoutes(t, "-f", "synclet/values-remote-control-plane.yaml")
+
+	ingress, ok := routes["Ingress"]
+	require.True(t, ok, "executor API Ingress not rendered")
+	require.Len(t, ingress.Spec.Rules, 1)
+	assert.Equal(t, "executor-api.example.com", ingress.Spec.Rules[0].Host)
+	require.Len(t, ingress.Spec.Rules[0].HTTP.Paths, 1)
+	path := ingress.Spec.Rules[0].HTTP.Paths[0]
+	assert.Equal(t, executorServicePath, path.Path)
+	assert.Equal(t, "Prefix", path.PathType)
+	assert.Equal(t, "t-synclet-internal", path.Backend.Service.Name)
+	assert.Equal(t, 8081, path.Backend.Service.Port.Number)
+	require.Len(t, ingress.Spec.TLS, 1)
+	assert.Equal(t, []string{"executor-api.example.com"}, ingress.Spec.TLS[0].Hosts)
+	assert.Equal(t, "t-synclet-executor-api-tls", ingress.Spec.TLS[0].SecretName)
+
+	route, ok := routes["HTTPRoute"]
+	require.True(t, ok, "executor API HTTPRoute not rendered")
+	require.Len(t, route.Spec.Rules, 1)
+	require.Len(t, route.Spec.Rules[0].Matches, 1)
+	assert.Equal(t, "PathPrefix", route.Spec.Rules[0].Matches[0].Path.Type)
+	assert.Equal(t, executorServicePath, route.Spec.Rules[0].Matches[0].Path.Value)
+	require.Len(t, route.Spec.Rules[0].BackendRefs, 1)
+	assert.Equal(t, "t-synclet-internal", route.Spec.Rules[0].BackendRefs[0].Name)
+	assert.Equal(t, 8081, route.Spec.Rules[0].BackendRefs[0].Port)
+
+	assert.Empty(t, executorAPIRoutes(t))
+	assert.Empty(t, executorAPIRoutes(t, "--set", "mode=distributed"))
+}
+
+func TestChart_ExecutorAPIGatewayNeedsParentRefs(t *testing.T) {
+	out, err := helmTemplate(t, "--set", "internalApi.gateway.enabled=true").CombinedOutput()
+	require.Error(t, err)
+	assert.Contains(t, string(out), "internalApi.gateway.parentRefs is required when internalApi.gateway.enabled is true")
 }
