@@ -56,7 +56,7 @@ func (uc *ClaimTask) Execute(ctx context.Context, workerID, executorGroup string
 
 	switch payload := task.Payload.(type) {
 	case *pipelineservice.CheckPayload:
-		target, err = uc.resolveCheckPayload(ctx, task.WorkspaceID, payload)
+		target, err = uc.resolveCheckPayload(ctx, task.ID, task.WorkspaceID, payload)
 	case *pipelineservice.SpecPayload:
 		target.image, err = uc.resolveSpecPayload(ctx, task.WorkspaceID, payload)
 	case *pipelineservice.DiscoverPayload:
@@ -99,7 +99,7 @@ func entityRuntimeConfig(runtimeConfig *string) string {
 
 // resolveCheckPayload resolves the target of a check task.
 // CheckPayload may contain inline config or reference a source/destination.
-func (uc *ClaimTask) resolveCheckPayload(ctx context.Context, workspaceID uuid.UUID, payload *pipelineservice.CheckPayload) (claimTarget, error) {
+func (uc *ClaimTask) resolveCheckPayload(ctx context.Context, taskID, workspaceID uuid.UUID, payload *pipelineservice.CheckPayload) (claimTarget, error) {
 	var target claimTarget
 
 	// Resolve managed connector for image, scoped to workspace.
@@ -113,10 +113,16 @@ func (uc *ClaimTask) resolveCheckPayload(ctx context.Context, workspaceID uuid.U
 
 	target.image = connector.DockerImage + ":" + connector.DockerTag
 
-	// Resolve config: use inline config if present, otherwise load from source/destination.
-	var configJSON string
+	// Resolve config: use inline config if present, otherwise load from
+	// source/destination. ownerType/ownerID name who holds the config's secrets.
+	var (
+		configJSON string
+		ownerType  string
+		ownerID    uuid.UUID
+	)
 	if payload.Config != nil {
 		configJSON = *payload.Config
+		ownerType, ownerID = pipelineservice.SecretOwnerConnectorTask, taskID
 	} else if payload.SourceID != nil {
 		src, err := uc.storage.Sources().First(ctx, &pipelineservice.SourceFilter{
 			ID:          filter.Equals(*payload.SourceID),
@@ -127,6 +133,7 @@ func (uc *ClaimTask) resolveCheckPayload(ctx context.Context, workspaceID uuid.U
 		}
 
 		configJSON = src.Config
+		ownerType, ownerID = "source", src.ID
 		target.runtimeConfig = entityRuntimeConfig(src.RuntimeConfig)
 	} else if payload.DestinationID != nil {
 		dest, err := uc.storage.Destinations().First(ctx, &pipelineservice.DestinationFilter{
@@ -138,11 +145,12 @@ func (uc *ClaimTask) resolveCheckPayload(ctx context.Context, workspaceID uuid.U
 		}
 
 		configJSON = dest.Config
+		ownerType, ownerID = "destination", dest.ID
 		target.runtimeConfig = entityRuntimeConfig(dest.RuntimeConfig)
 	}
 
 	// Decrypt config secrets.
-	decrypted, err := pipelinesecrets.DecryptConfigSecrets(ctx, uc.secrets, configJSON)
+	decrypted, err := pipelinesecrets.DecryptConfigSecrets(ctx, uc.secrets, ownerType, ownerID, configJSON)
 	if err != nil {
 		return claimTarget{}, fmt.Errorf("decrypting config secrets: %w", err)
 	}
@@ -190,7 +198,7 @@ func (uc *ClaimTask) resolveDiscoverPayload(ctx context.Context, workspaceID uui
 	}
 
 	// Decrypt config secrets.
-	decrypted, err := pipelinesecrets.DecryptConfigSecrets(ctx, uc.secrets, src.Config)
+	decrypted, err := pipelinesecrets.DecryptConfigSecrets(ctx, uc.secrets, "source", src.ID, src.Config)
 	if err != nil {
 		return claimTarget{}, fmt.Errorf("decrypting config secrets: %w", err)
 	}

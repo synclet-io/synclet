@@ -9,7 +9,7 @@ import (
 // SecretsProvider manages encrypted secret storage for the notify module.
 type SecretsProvider interface {
 	StoreSecret(ctx context.Context, ownerType string, ownerID uuid.UUID, plaintext string) (secretRef string, err error)
-	RetrieveSecret(ctx context.Context, secretRef string) (plaintext string, err error)
+	RetrieveSecret(ctx context.Context, ownerType string, ownerID uuid.UUID, secretRef string) (plaintext string, err error)
 	DeleteSecret(ctx context.Context, secretRef string) error
 	DeleteByOwner(ctx context.Context, ownerType string, ownerID uuid.UUID) error
 }

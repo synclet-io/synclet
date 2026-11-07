@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/saturn4er/boilerplate-go/lib/filter"
 )
 
@@ -27,9 +28,14 @@ func NewRetrieveSecret(storage Storage, cfg Config) *RetrieveSecret {
 // RetrieveSecretParams contains the parameters for retrieving a secret.
 type RetrieveSecretParams struct {
 	SecretRef string
+	// OwnerType and OwnerID name the owner the caller expects; a secret held by
+	// any other owner is reported as not found.
+	OwnerType string
+	OwnerID   uuid.UUID
 }
 
-// Execute retrieves and decrypts a secret by its reference.
+// Execute retrieves and decrypts a secret by its reference when it belongs to
+// the expected owner.
 // Supports lazy key rotation: if decryption with the current key fails and a
 // previous key is configured, tries the previous key. On success with the
 // previous key, re-encrypts with the current key and updates the DB record.
@@ -40,7 +46,9 @@ func (uc *RetrieveSecret) Execute(ctx context.Context, params RetrieveSecretPara
 	}
 
 	secret, err := uc.storage.Secrets().First(ctx, &SecretFilter{
-		ID: filter.Equals(id),
+		ID:        filter.Equals(id),
+		OwnerType: filter.Equals(params.OwnerType),
+		OwnerID:   filter.Equals(params.OwnerID),
 	})
 	if err != nil {
 		return "", fmt.Errorf("secret not found: %s: %w", params.SecretRef, err)

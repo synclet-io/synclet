@@ -238,9 +238,9 @@ func (f *fakeSecrets) StoreSecret(_ context.Context, ownerType string, ownerID u
 	return ref, nil
 }
 
-func (f *fakeSecrets) RetrieveSecret(_ context.Context, secretRef string) (string, error) {
+func (f *fakeSecrets) RetrieveSecret(_ context.Context, ownerType string, ownerID uuid.UUID, secretRef string) (string, error) {
 	plaintext, ok := f.values[secretRef]
-	if !ok {
+	if !ok || f.owners[secretRef] != (secretOwner{ownerType: ownerType, ownerID: ownerID}) {
 		return "", errors.New("secret not found")
 	}
 

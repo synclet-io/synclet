@@ -82,7 +82,7 @@ func TestSyncRepository_FetchFailureIsPersistedOutsideTx(t *testing.T) {
 
 	uc := NewSyncRepository(
 		storage,
-		NewRegistryFetcher(pipelineservice.Config{RegistryFetchTimeout: 5 * time.Second}),
+		NewRegistryFetcher(pipelineservice.Config{RegistryFetchTimeout: 5 * time.Second, RegistryAllowPrivateAddresses: true}),
 		nil,
 		nil,
 		pipelineservice.NoopAuditRecorder{},

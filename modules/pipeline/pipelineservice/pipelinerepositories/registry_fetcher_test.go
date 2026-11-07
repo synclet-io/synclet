@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
+	"github.com/synclet-io/synclet/pkg/connectutil"
 )
 
 func TestRegistryFetcherSpecParsing(t *testing.T) {
@@ -36,7 +37,7 @@ func TestRegistryFetcherSpecParsing(t *testing.T) {
 	}))
 	defer server.Close()
 
-	fetcher := NewRegistryFetcher(pipelineservice.Config{RegistryFetchTimeout: 60 * time.Second})
+	fetcher := NewRegistryFetcher(pipelineservice.Config{RegistryFetchTimeout: 60 * time.Second, RegistryAllowPrivateAddresses: true})
 	connectors, err := fetcher.Fetch(context.Background(), server.URL, nil)
 	require.NoError(t, err)
 	require.Len(t, connectors, 1)
@@ -62,7 +63,7 @@ func TestRegistryFetcherNoSpec(t *testing.T) {
 	}))
 	defer server.Close()
 
-	fetcher := NewRegistryFetcher(pipelineservice.Config{RegistryFetchTimeout: 60 * time.Second})
+	fetcher := NewRegistryFetcher(pipelineservice.Config{RegistryFetchTimeout: 60 * time.Second, RegistryAllowPrivateAddresses: true})
 	connectors, err := fetcher.Fetch(context.Background(), server.URL, nil)
 	require.NoError(t, err)
 	require.Len(t, connectors, 1)
@@ -87,7 +88,7 @@ func TestRegistryFetcherSpecNilConnectionSpec(t *testing.T) {
 	}))
 	defer server.Close()
 
-	fetcher := NewRegistryFetcher(pipelineservice.Config{RegistryFetchTimeout: 60 * time.Second})
+	fetcher := NewRegistryFetcher(pipelineservice.Config{RegistryFetchTimeout: 60 * time.Second, RegistryAllowPrivateAddresses: true})
 	connectors, err := fetcher.Fetch(context.Background(), server.URL, nil)
 	require.NoError(t, err)
 	require.Len(t, connectors, 1)
@@ -114,7 +115,7 @@ func TestRegistryFetcherDestinationSpec(t *testing.T) {
 	}))
 	defer server.Close()
 
-	fetcher := NewRegistryFetcher(pipelineservice.Config{RegistryFetchTimeout: 60 * time.Second})
+	fetcher := NewRegistryFetcher(pipelineservice.Config{RegistryFetchTimeout: 60 * time.Second, RegistryAllowPrivateAddresses: true})
 	connectors, err := fetcher.Fetch(context.Background(), server.URL, nil)
 	require.NoError(t, err)
 	require.Len(t, connectors, 1)
@@ -131,7 +132,7 @@ func fetchSingleSource(t *testing.T, entry string) ConnectorData {
 	}))
 	defer server.Close()
 
-	fetcher := NewRegistryFetcher(pipelineservice.Config{RegistryFetchTimeout: 60 * time.Second})
+	fetcher := NewRegistryFetcher(pipelineservice.Config{RegistryFetchTimeout: 60 * time.Second, RegistryAllowPrivateAddresses: true})
 	connectors, err := fetcher.Fetch(context.Background(), server.URL, nil)
 	require.NoError(t, err)
 	require.Len(t, connectors, 1)
@@ -178,4 +179,26 @@ func TestRegistryFetcherMergesBreakingChangesReleasesWin(t *testing.T) {
 		"2.0.0": {Message: "releases wins"},
 		"3.0.0": {Message: "releases only"},
 	}, connector.Metadata.BreakingChanges)
+}
+
+func TestRegistryFetcherPrivateAddresses(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"sources": [], "destinations": []}`))
+	}))
+	defer server.Close()
+
+	t.Run("blocked by default", func(t *testing.T) {
+		fetcher := NewRegistryFetcher(pipelineservice.Config{RegistryFetchTimeout: 5 * time.Second})
+
+		_, err := fetcher.Fetch(context.Background(), server.URL, nil)
+		require.ErrorIs(t, err, connectutil.ErrWebhookAddressBlocked)
+	})
+
+	t.Run("allowed when enabled", func(t *testing.T) {
+		fetcher := NewRegistryFetcher(pipelineservice.Config{RegistryFetchTimeout: 5 * time.Second, RegistryAllowPrivateAddresses: true})
+
+		_, err := fetcher.Fetch(context.Background(), server.URL, nil)
+		require.NoError(t, err)
+	})
 }

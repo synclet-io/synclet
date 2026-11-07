@@ -60,14 +60,18 @@ func EncryptConfigSecrets(ctx context.Context, secrets pipelineservice.SecretsPr
 	return string(result), nil
 }
 
-// DecryptConfigSecrets resolves all $secret:uuid references in configJSON to plaintext.
-func DecryptConfigSecrets(ctx context.Context, secrets pipelineservice.SecretsProvider, configJSON string) (string, error) {
+// DecryptConfigSecrets resolves all $secret:uuid references in configJSON to
+// plaintext. Every reference must be held by ownerType/ownerID, the owner of
+// the config.
+func DecryptConfigSecrets(ctx context.Context, secrets pipelineservice.SecretsProvider, ownerType string, ownerID uuid.UUID, configJSON string) (string, error) {
+	owner := secretOwner{ownerType: ownerType, ownerID: ownerID}
+
 	var configMap map[string]any
 	if err := json.Unmarshal([]byte(configJSON), &configMap); err != nil {
 		return "", fmt.Errorf("parsing config JSON: %w", err)
 	}
 
-	if err := decryptMap(ctx, secrets, configMap); err != nil {
+	if err := decryptMap(ctx, secrets, owner, configMap); err != nil {
 		return "", err
 	}
 
@@ -81,9 +85,9 @@ func DecryptConfigSecrets(ctx context.Context, secrets pipelineservice.SecretsPr
 
 // decryptMap recursively walks a map, including every array element, and
 // replaces $secret: references with plaintext.
-func decryptMap(ctx context.Context, secrets pipelineservice.SecretsProvider, obj map[string]any) error {
+func decryptMap(ctx context.Context, secrets pipelineservice.SecretsProvider, owner secretOwner, obj map[string]any) error {
 	for key, value := range obj {
-		decrypted, err := decryptValue(ctx, secrets, key, value)
+		decrypted, err := decryptValue(ctx, secrets, owner, key, value)
 		if err != nil {
 			return err
 		}
@@ -94,11 +98,11 @@ func decryptMap(ctx context.Context, secrets pipelineservice.SecretsProvider, ob
 	return nil
 }
 
-func decryptValue(ctx context.Context, secrets pipelineservice.SecretsProvider, key string, value any) (any, error) {
+func decryptValue(ctx context.Context, secrets pipelineservice.SecretsProvider, owner secretOwner, key string, value any) (any, error) {
 	switch val := value.(type) {
 	case string:
 		if secretutil.IsSecretRef(val) {
-			plaintext, err := secrets.RetrieveSecret(ctx, val)
+			plaintext, err := secrets.RetrieveSecret(ctx, owner.ownerType, owner.ownerID, val)
 			if err != nil {
 				return nil, fmt.Errorf("retrieving secret for field %q: %w", key, err)
 			}
@@ -106,12 +110,12 @@ func decryptValue(ctx context.Context, secrets pipelineservice.SecretsProvider, 
 			return plaintext, nil
 		}
 	case map[string]any:
-		if err := decryptMap(ctx, secrets, val); err != nil {
+		if err := decryptMap(ctx, secrets, owner, val); err != nil {
 			return nil, err
 		}
 	case []any:
 		for i, item := range val {
-			decrypted, err := decryptValue(ctx, secrets, key, item)
+			decrypted, err := decryptValue(ctx, secrets, owner, key, item)
 			if err != nil {
 				return nil, err
 			}
@@ -121,4 +125,10 @@ func decryptValue(ctx context.Context, secrets pipelineservice.SecretsProvider, 
 	}
 
 	return value, nil
+}
+
+// secretOwner names the owner every secret of a config must be held by.
+type secretOwner struct {
+	ownerType string
+	ownerID   uuid.UUID
 }

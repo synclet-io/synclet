@@ -46,7 +46,7 @@ func (s *SlackChannel) Deliver(ctx context.Context, channel *NotificationChannel
 
 	// Decrypt webhook URL if it's a secret reference.
 	if secretutil.IsSecretRef(webhookURL) {
-		decrypted, err := s.secrets.RetrieveSecret(ctx, webhookURL)
+		decrypted, err := s.secrets.RetrieveSecret(ctx, "channel", channel.ID, webhookURL)
 		if err != nil {
 			return fmt.Errorf("decrypting slack webhook_url: %w", err)
 		}

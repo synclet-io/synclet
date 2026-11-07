@@ -60,7 +60,11 @@ func (uc *CreateSource) Execute(ctx context.Context, params CreateSourceParams) 
 
 	now := time.Now()
 	srcID := uuid.New()
-	config := string(params.Config)
+	// A new resource owns no secrets yet, so any $secret: ref in its config is rejected.
+	config, err := pipelinesecrets.MergeMaskedSecrets("", string(params.Config))
+	if err != nil {
+		return nil, err
+	}
 
 	// Encrypt secret fields using the managed connector's spec.
 	encryptedConfig, encErr := pipelinesecrets.EncryptConfigSecrets(ctx, uc.secrets, "source", srcID, config, connector.Spec)

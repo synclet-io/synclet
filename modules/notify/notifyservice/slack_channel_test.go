@@ -22,7 +22,7 @@ type noopSecretsProvider struct{}
 func (n *noopSecretsProvider) StoreSecret(_ context.Context, _ string, _ uuid.UUID, plaintext string) (string, error) {
 	return plaintext, nil
 }
-func (n *noopSecretsProvider) RetrieveSecret(_ context.Context, secretRef string) (string, error) {
+func (n *noopSecretsProvider) RetrieveSecret(_ context.Context, _ string, _ uuid.UUID, secretRef string) (string, error) {
 	return secretRef, nil
 }
 func (n *noopSecretsProvider) DeleteSecret(_ context.Context, _ string) error { return nil }

@@ -11,6 +11,7 @@ import (
 	"go.uber.org/multierr"
 
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
+	"github.com/synclet-io/synclet/pkg/connectutil"
 )
 
 // ConnectorData holds parsed connector information from a registry response.
@@ -34,11 +35,15 @@ type RegistryFetcher struct {
 	httpClient *http.Client
 }
 
-// NewRegistryFetcher creates a new RegistryFetcher with a default HTTP client.
+// NewRegistryFetcher creates a RegistryFetcher. Unless
+// cfg.RegistryAllowPrivateAddresses is set, it connects only to public
+// addresses, redirects included.
 func NewRegistryFetcher(cfg pipelineservice.Config) *RegistryFetcher {
-	return &RegistryFetcher{
-		httpClient: &http.Client{Timeout: cfg.RegistryFetchTimeout},
+	if cfg.RegistryAllowPrivateAddresses {
+		return &RegistryFetcher{httpClient: &http.Client{Timeout: cfg.RegistryFetchTimeout}}
 	}
+
+	return &RegistryFetcher{httpClient: connectutil.NewWebhookHTTPClient(cfg.RegistryFetchTimeout)}
 }
 
 // airbyteRegistry represents the top-level structure of the Airbyte OSS registry JSON.

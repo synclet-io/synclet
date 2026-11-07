@@ -16,9 +16,15 @@ var ErrWebhookAddressBlocked = errors.New("webhook address is private or interna
 // for every redirect and for a hostname whose DNS answer changes after
 // ValidateWebhookURL ran. The client dials directly, without a proxy.
 func NewWebhookHTTPClient(timeout time.Duration) *http.Client {
+	return newGuardedHTTPClient(timeout, isBlockedIP)
+}
+
+func newGuardedHTTPClient(timeout time.Duration, blocked func(net.IP) bool) *http.Client {
 	dialer := &net.Dialer{
 		Timeout: timeout,
-		Control: refuseBlockedAddress,
+		Control: func(_, address string, _ syscall.RawConn) error {
+			return refuseBlockedAddress(address, blocked)
+		},
 	}
 
 	transport := http.DefaultTransport.(*http.Transport).Clone() //nolint:forcetypeassert // DefaultTransport is always *http.Transport
@@ -31,14 +37,14 @@ func NewWebhookHTTPClient(timeout time.Duration) *http.Client {
 	}
 }
 
-func refuseBlockedAddress(_, address string, _ syscall.RawConn) error {
+func refuseBlockedAddress(address string, blocked func(net.IP) bool) error {
 	host, _, err := net.SplitHostPort(address)
 	if err != nil {
 		return fmt.Errorf("parsing dial address %q: %w", address, err)
 	}
 
 	ip := net.ParseIP(host)
-	if ip == nil || isBlockedIP(ip) {
+	if ip == nil || blocked(ip) {
 		return fmt.Errorf("dialing %s: %w", host, ErrWebhookAddressBlocked)
 	}
 

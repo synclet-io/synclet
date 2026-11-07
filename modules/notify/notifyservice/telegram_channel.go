@@ -42,7 +42,7 @@ func (t *TelegramChannel) Deliver(ctx context.Context, channel *NotificationChan
 
 	// Decrypt bot token if it's a secret reference.
 	if secretutil.IsSecretRef(botToken) {
-		decrypted, err := t.secrets.RetrieveSecret(ctx, botToken)
+		decrypted, err := t.secrets.RetrieveSecret(ctx, "channel", channel.ID, botToken)
 		if err != nil {
 			return fmt.Errorf("decrypting telegram bot_token: %w", err)
 		}

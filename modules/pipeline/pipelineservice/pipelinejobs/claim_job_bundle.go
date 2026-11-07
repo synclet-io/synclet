@@ -148,13 +148,13 @@ func (uc *ClaimJobBundle) loadBundle(ctx context.Context, job *pipelineservice.J
 	}
 
 	// 5. Decrypt source config.
-	decryptedSourceConfig, err := pipelinesecrets.DecryptConfigSecrets(ctx, uc.secrets, src.Config)
+	decryptedSourceConfig, err := pipelinesecrets.DecryptConfigSecrets(ctx, uc.secrets, "source", src.ID, src.Config)
 	if err != nil {
 		return nil, fmt.Errorf("decrypting source config: %w", err)
 	}
 
 	// 6. Decrypt dest config.
-	decryptedDestConfig, err := pipelinesecrets.DecryptConfigSecrets(ctx, uc.secrets, dest.Config)
+	decryptedDestConfig, err := pipelinesecrets.DecryptConfigSecrets(ctx, uc.secrets, "destination", dest.ID, dest.Config)
 	if err != nil {
 		return nil, fmt.Errorf("decrypting destination config: %w", err)
 	}

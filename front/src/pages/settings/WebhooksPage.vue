@@ -27,7 +27,30 @@ import {
 import { Pencil, Plus, Power, Send, Trash2, Webhook as WebhookIcon } from 'lucide-vue-next'
 import { computed, reactive, ref } from 'vue'
 
-const LOCAL_URL_RE = /^http:\/\/(?:localhost|127\.\d{1,3}\.\d{1,3}\.\d{1,3})(?::\d+)?(?:$|\/)/
+const PRIVATE_HOST_RES = [
+  /^localhost$/,
+  /\.localhost$/,
+  /^127\./,
+  /^10\./,
+  /^192\.168\./,
+  /^172\.(?:1[6-9]|2\d|3[01])\./,
+  /^169\.254\./,
+  /^\[::1\]$/,
+]
+
+function isPublicHttpsURL(raw: string): boolean {
+  let parsed: URL
+  try {
+    parsed = new URL(raw)
+  }
+  catch {
+    return false
+  }
+  if (parsed.protocol !== 'https:')
+    return false
+  const host = parsed.hostname.toLowerCase()
+  return !PRIVATE_HOST_RES.some(re => re.test(host))
+}
 
 const auth = useAuth()
 const toast = useToast()
@@ -112,10 +135,8 @@ function validateForm(): string | null {
   if (!url)
     return 'URL is required'
 
-  const httpsOk = url.startsWith('https://')
-  const localhostOk = LOCAL_URL_RE.test(url)
-  if (!httpsOk && !localhostOk)
-    return 'URL must use HTTPS (HTTP allowed only for localhost / 127.x.x.x)'
+  if (!isPublicHttpsURL(url))
+    return 'URL must be HTTPS and reach a public address'
 
   if (dialog.mode === 'create' && dialog.form.events.length === 0)
     return 'Select at least one event'
@@ -322,7 +343,7 @@ function eventLabel(value: WebhookEvent): string {
           <label class="block text-sm font-medium text-text-primary mb-1">URL</label>
           <SInput v-model="dialog.form.url" type="url" placeholder="https://example.com/webhook" required />
           <p class="mt-1 text-xs text-text-muted">
-            Must be HTTPS. HTTP is only allowed for localhost / 127.x.x.x.
+            Must be HTTPS. Localhost and private network addresses are not allowed.
           </p>
         </div>
 

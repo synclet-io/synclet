@@ -33,9 +33,9 @@ func (a *SecretsAdapter) StoreSecret(ctx context.Context, ownerType string, owne
 	})
 }
 
-// RetrieveSecret decrypts and returns a secret value.
-func (a *SecretsAdapter) RetrieveSecret(ctx context.Context, secretRef string) (string, error) {
-	return a.retrieve.Execute(ctx, secretservice.RetrieveSecretParams{SecretRef: secretRef})
+// RetrieveSecret decrypts and returns a secret value held by the given owner.
+func (a *SecretsAdapter) RetrieveSecret(ctx context.Context, ownerType string, ownerID uuid.UUID, secretRef string) (string, error) {
+	return a.retrieve.Execute(ctx, secretservice.RetrieveSecretParams{SecretRef: secretRef, OwnerType: ownerType, OwnerID: ownerID})
 }
 
 // DeleteSecret removes a single secret.

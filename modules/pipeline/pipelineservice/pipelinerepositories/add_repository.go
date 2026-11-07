@@ -9,6 +9,7 @@ import (
 	"github.com/saturn4er/boilerplate-go/lib/filter"
 
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice"
+	"github.com/synclet-io/synclet/pkg/connectutil"
 )
 
 // AddRepository creates a repository and immediately syncs it to validate the URL.
@@ -18,11 +19,12 @@ type AddRepository struct {
 	syncRepo *SyncRepository
 	secrets  pipelineservice.SecretsProvider
 	audit    pipelineservice.AuditRecorder
+	config   pipelineservice.Config
 }
 
 // NewAddRepository creates a new AddRepository use case.
-func NewAddRepository(storage pipelineservice.Storage, syncRepo *SyncRepository, secrets pipelineservice.SecretsProvider, audit pipelineservice.AuditRecorder) *AddRepository {
-	return &AddRepository{storage: storage, syncRepo: syncRepo, secrets: secrets, audit: audit}
+func NewAddRepository(storage pipelineservice.Storage, syncRepo *SyncRepository, secrets pipelineservice.SecretsProvider, audit pipelineservice.AuditRecorder, config pipelineservice.Config) *AddRepository {
+	return &AddRepository{storage: storage, syncRepo: syncRepo, secrets: secrets, audit: audit, config: config}
 }
 
 // AddRepositoryParams holds parameters for creating a repository.
@@ -33,8 +35,16 @@ type AddRepositoryParams struct {
 	AuthHeader  *string
 }
 
-// Execute creates a repository record and immediately syncs it.
+// Execute creates a repository record and immediately syncs it. Unless private
+// addresses are allowed, a URL that resolves to a private, loopback or
+// link-local address is rejected before anything is stored.
 func (uc *AddRepository) Execute(ctx context.Context, params AddRepositoryParams) (*pipelineservice.Repository, error) {
+	if !uc.config.RegistryAllowPrivateAddresses {
+		if err := connectutil.ValidateWebhookURL(params.URL); err != nil {
+			return nil, &pipelineservice.ValidationError{Field: "url", Message: err.Error()}
+		}
+	}
+
 	now := time.Now()
 	repo := &pipelineservice.Repository{
 		ID:             uuid.New(),

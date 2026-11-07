@@ -51,7 +51,7 @@ func (uc *SyncRepository) Execute(ctx context.Context, params SyncRepositoryPara
 
 	authHeader := repo.AuthHeader
 	if authHeader != nil && secretutil.IsSecretRef(*authHeader) {
-		plaintext, err := uc.secrets.RetrieveSecret(ctx, *authHeader)
+		plaintext, err := uc.secrets.RetrieveSecret(ctx, "repository", repo.ID, *authHeader)
 		if err != nil {
 			return nil, fmt.Errorf("decrypting auth header: %w", err)
 		}

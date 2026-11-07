@@ -17,6 +17,7 @@ import (
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinecatalog"
 	"github.com/synclet-io/synclet/modules/pipeline/pipelineservice/pipelinestate"
 	"github.com/synclet-io/synclet/pkg/protocol"
+	"github.com/synclet-io/synclet/pkg/secretutil"
 )
 
 // bundleStorage serves one connection, its source and destination, a
@@ -28,6 +29,9 @@ type bundleStorage struct {
 	catalog     string
 	generations map[string]*pipelineservice.StreamGeneration
 	jobCount    int
+	srcConfig   string
+	destConfig  string
+	secrets     pipelineservice.SecretsProvider
 }
 
 func newBundleStorage(t *testing.T, streams []protocol.ConfiguredAirbyteStream, generations map[string]int64) *bundleStorage {
@@ -57,6 +61,8 @@ func newBundleStorage(t *testing.T, streams []protocol.ConfiguredAirbyteStream, 
 		catalog:     string(streamsJSON),
 		generations: map[string]*pipelineservice.StreamGeneration{},
 		jobCount:    10,
+		srcConfig:   "{}",
+		destConfig:  "{}",
 	}
 
 	for name, gen := range generations {
@@ -113,6 +119,11 @@ func (j *bundleJobs) ClaimNextScheduledJob(context.Context, string, string) (*pi
 	return &cp, nil
 }
 
+// First reports no job, so marking an unprepared job failed is a logged no-op.
+func (j *bundleJobs) First(context.Context, *pipelineservice.JobFilter, ...optionutil.Option[dbutil.SelectOptions]) (*pipelineservice.Job, error) {
+	return nil, pipelineservice.NotFoundError("Job")
+}
+
 func (j *bundleJobs) Count(context.Context, *pipelineservice.JobFilter) (int, error) {
 	return j.s.jobCount, nil
 }
@@ -123,7 +134,7 @@ type bundleSources struct {
 }
 
 func (b *bundleSources) First(context.Context, *pipelineservice.SourceFilter, ...optionutil.Option[dbutil.SelectOptions]) (*pipelineservice.Source, error) {
-	return &pipelineservice.Source{ID: b.s.conn.SourceID, WorkspaceID: b.s.conn.WorkspaceID, Config: "{}"}, nil
+	return &pipelineservice.Source{ID: b.s.conn.SourceID, WorkspaceID: b.s.conn.WorkspaceID, Config: b.s.srcConfig}, nil
 }
 
 type bundleDestinations struct {
@@ -132,7 +143,7 @@ type bundleDestinations struct {
 }
 
 func (b *bundleDestinations) First(context.Context, *pipelineservice.DestinationFilter, ...optionutil.Option[dbutil.SelectOptions]) (*pipelineservice.Destination, error) {
-	return &pipelineservice.Destination{ID: b.s.conn.DestinationID, WorkspaceID: b.s.conn.WorkspaceID, Config: "{}"}, nil
+	return &pipelineservice.Destination{ID: b.s.conn.DestinationID, WorkspaceID: b.s.conn.WorkspaceID, Config: b.s.destConfig}, nil
 }
 
 type bundleManagedConnectors struct {
@@ -200,7 +211,7 @@ func newTestClaimJobBundle(storage *bundleStorage) *ClaimJobBundle {
 		pipelinecatalog.NewPopulateGenerationIDs(storage),
 		pipelinestate.NewGetSyncState(storage),
 		storage,
-		nil,
+		storage.secrets,
 		logger,
 	)
 }
@@ -289,4 +300,52 @@ func TestClaimJobBundleRetryKeepsSyncID(t *testing.T) {
 		"users":  {gen: 6, minGen: 6, syncID: 4711},
 		"orders": {gen: 2, minGen: 0, syncID: 4711},
 	}, second)
+}
+
+type ownedSecret struct {
+	ownerType string
+	ownerID   uuid.UUID
+	plaintext string
+}
+
+// ownerCheckedSecrets resolves a reference only for the owner it was stored under.
+type ownerCheckedSecrets struct {
+	pipelineservice.SecretsProvider
+	secrets map[string]ownedSecret
+}
+
+func (f *ownerCheckedSecrets) StoreSecret(_ context.Context, ownerType string, ownerID uuid.UUID, plaintext string) (string, error) {
+	ref := secretutil.MakeSecretRef(uuid.New())
+	f.secrets[ref] = ownedSecret{ownerType: ownerType, ownerID: ownerID, plaintext: plaintext}
+
+	return ref, nil
+}
+
+func (f *ownerCheckedSecrets) RetrieveSecret(_ context.Context, ownerType string, ownerID uuid.UUID, ref string) (string, error) {
+	secret, ok := f.secrets[ref]
+	if !ok || secret.ownerType != ownerType || secret.ownerID != ownerID {
+		return "", pipelineservice.NotFoundError("Secret")
+	}
+
+	return secret.plaintext, nil
+}
+
+func TestClaimJobBundleDecryptsConfigsUnderTheirOwners(t *testing.T) {
+	storage := newBundleStorage(t, generationTestStreams(), nil)
+	secrets := &ownerCheckedSecrets{secrets: map[string]ownedSecret{}}
+	storage.secrets = secrets
+
+	srcRef, err := secrets.StoreSecret(context.Background(), "source", storage.conn.SourceID, "src-pw")
+	require.NoError(t, err)
+	destRef, err := secrets.StoreSecret(context.Background(), "destination", storage.conn.DestinationID, "dest-pw")
+	require.NoError(t, err)
+
+	storage.srcConfig = `{"password":"` + srcRef + `"}`
+	storage.destConfig = `{"password":"` + destRef + `"}`
+
+	result, err := newTestClaimJobBundle(storage).Execute(context.Background(), ClaimJobParams{WorkerID: "worker-1"})
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.JSONEq(t, `{"password":"src-pw"}`, string(result.SourceConfig))
+	assert.JSONEq(t, `{"password":"dest-pw"}`, string(result.DestConfig))
 }

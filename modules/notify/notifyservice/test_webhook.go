@@ -82,7 +82,7 @@ func (uc *TestWebhook) Execute(ctx context.Context, params TestWebhookParams) (T
 	if webhook.Secret != "" {
 		secret := webhook.Secret
 		if secretutil.IsSecretRef(secret) {
-			decrypted, err := uc.secrets.RetrieveSecret(ctx, secret)
+			decrypted, err := uc.secrets.RetrieveSecret(ctx, "webhook", webhook.ID, secret)
 			if err != nil {
 				return TestWebhookResult{}, fmt.Errorf("decrypting webhook secret: %w", err)
 			}

@@ -94,12 +94,15 @@ func TestClaimTask(t *testing.T) {
 		store := newTaskStore()
 		secrets := newFakeSecrets()
 		mc := seedConnector(store, ws)
-		ref, err := secrets.StoreSecret(ctx, "connector_task", uuid.New(), "hunter2")
+		payload := &pipelineservice.CheckPayload{ManagedConnectorID: mc.ID}
+		task := pendingTask(ws, pipelineservice.ConnectorTaskTypeCheck, payload)
+		store.tasks.records[task.ID] = task
+
+		ref, err := secrets.StoreSecret(ctx, pipelineservice.SecretOwnerConnectorTask, task.ID, "hunter2")
 		require.NoError(t, err)
 
 		cfg := `{"host":"db","password":"` + ref + `"}`
-		task := pendingTask(ws, pipelineservice.ConnectorTaskTypeCheck, &pipelineservice.CheckPayload{ManagedConnectorID: mc.ID, Config: &cfg})
-		store.tasks.records[task.ID] = task
+		payload.Config = &cfg
 
 		got, err := pipelinetasks.NewClaimTask(store, secrets).Execute(ctx, "worker-1", "default")
 		require.NoError(t, err)
@@ -130,6 +133,61 @@ func TestClaimTask(t *testing.T) {
 		got, err := pipelinetasks.NewClaimTask(store, newFakeSecrets()).Execute(ctx, "worker-1", "default")
 		require.NoError(t, err)
 		assert.JSONEq(t, `{"host":"dst"}`, string(got.Config))
+	})
+
+	t.Run("check task decrypts a stored config under its own owner", func(t *testing.T) {
+		store := newTaskStore()
+		secrets := newFakeSecrets()
+		mc := seedConnector(store, ws)
+
+		src := &pipelineservice.Source{ID: uuid.New(), WorkspaceID: ws, ManagedConnectorID: mc.ID}
+		srcRef, err := secrets.StoreSecret(ctx, "source", src.ID, "src-pw")
+		require.NoError(t, err)
+
+		src.Config = `{"password":"` + srcRef + `"}`
+		store.sources.records[src.ID] = src
+
+		dst := &pipelineservice.Destination{ID: src.ID, WorkspaceID: ws, ManagedConnectorID: mc.ID}
+		dstRef, err := secrets.StoreSecret(ctx, "destination", dst.ID, "dst-pw")
+		require.NoError(t, err)
+
+		dst.Config = `{"password":"` + dstRef + `"}`
+		store.destinations.records[dst.ID] = dst
+
+		srcTask := pendingTask(ws, pipelineservice.ConnectorTaskTypeCheck, &pipelineservice.CheckPayload{ManagedConnectorID: mc.ID, SourceID: &src.ID})
+		store.tasks.records[srcTask.ID] = srcTask
+
+		got, err := pipelinetasks.NewClaimTask(store, secrets).Execute(ctx, "worker-1", "default")
+		require.NoError(t, err)
+		assert.JSONEq(t, `{"password":"src-pw"}`, string(got.Config))
+
+		delete(store.tasks.records, srcTask.ID)
+		dstTask := pendingTask(ws, pipelineservice.ConnectorTaskTypeCheck, &pipelineservice.CheckPayload{ManagedConnectorID: mc.ID, DestinationID: &dst.ID})
+		store.tasks.records[dstTask.ID] = dstTask
+
+		got, err = pipelinetasks.NewClaimTask(store, secrets).Execute(ctx, "worker-1", "default")
+		require.NoError(t, err)
+		assert.JSONEq(t, `{"password":"dst-pw"}`, string(got.Config))
+	})
+
+	t.Run("discover task decrypts the source config under the source", func(t *testing.T) {
+		store := newTaskStore()
+		secrets := newFakeSecrets()
+		mc := seedConnector(store, ws)
+
+		src := &pipelineservice.Source{ID: uuid.New(), WorkspaceID: ws, ManagedConnectorID: mc.ID}
+		ref, err := secrets.StoreSecret(ctx, "source", src.ID, "src-pw")
+		require.NoError(t, err)
+
+		src.Config = `{"password":"` + ref + `"}`
+		store.sources.records[src.ID] = src
+
+		task := pendingTask(ws, pipelineservice.ConnectorTaskTypeDiscover, &pipelineservice.DiscoverPayload{ManagedConnectorID: mc.ID, SourceID: src.ID})
+		store.tasks.records[task.ID] = task
+
+		got, err := pipelinetasks.NewClaimTask(store, secrets).Execute(ctx, "worker-1", "default")
+		require.NoError(t, err)
+		assert.JSONEq(t, `{"password":"src-pw"}`, string(got.Config))
 	})
 
 	t.Run("check task fails when referenced source is missing", func(t *testing.T) {

@@ -17,7 +17,10 @@ type Config struct {
 	StatsRollupHourlyLookback   time.Duration
 	StatsRollupDailyLookback    time.Duration
 	RegistryFetchTimeout        time.Duration
-	HeartbeatTimeout            time.Duration
+	// RegistryAllowPrivateAddresses lets connector registries live on private,
+	// loopback or link-local addresses.
+	RegistryAllowPrivateAddresses bool
+	HeartbeatTimeout              time.Duration
 	// ExecutorSilenceTimeout is how long an executor stays listed after its
 	// last registration heartbeat.
 	ExecutorSilenceTimeout time.Duration

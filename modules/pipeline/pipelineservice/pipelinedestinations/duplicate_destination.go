@@ -60,7 +60,7 @@ func (uc *DuplicateDestination) Execute(ctx context.Context, params DuplicateDes
 
 	destID := uuid.New()
 
-	config, err := uc.copyConfig(ctx, destID, original.Config, connector.Spec)
+	config, err := uc.copyConfig(ctx, original.ID, destID, original.Config, connector.Spec)
 	if err != nil {
 		return nil, uc.discardSecrets(ctx, destID, err)
 	}
@@ -106,9 +106,10 @@ func (uc *DuplicateDestination) Execute(ctx context.Context, params DuplicateDes
 }
 
 // copyConfig gives every secret of config, referenced or plaintext at a field
-// spec marks secret, a new reference owned by id.
-func (uc *DuplicateDestination) copyConfig(ctx context.Context, id uuid.UUID, config, spec string) (string, error) {
-	copied, err := pipelinesecrets.CopyConfigSecrets(ctx, uc.secrets, "destination", id, config)
+// spec marks secret, a new reference owned by id. Referenced secrets must be
+// held by the original, originalID.
+func (uc *DuplicateDestination) copyConfig(ctx context.Context, originalID, id uuid.UUID, config, spec string) (string, error) {
+	copied, err := pipelinesecrets.CopyConfigSecrets(ctx, uc.secrets, "destination", originalID, "destination", id, config)
 	if err != nil {
 		return "", fmt.Errorf("copying destination config secrets: %w", err)
 	}

@@ -320,6 +320,7 @@ executor:
 | `PIPELINE_MAX_CONCURRENT_JOBS` | Concurrent sync jobs | `10` |
 | `PIPELINE_IDLE_TIMEOUT` | Cancel a sync that receives no records for this long | `10m` |
 | `PIPELINE_JOB_SCHEDULER_INTERVAL` | How often due connections are scheduled | `30s` |
+| `PIPELINE_REGISTRY_ALLOW_PRIVATE_ADDRESSES` | Allow connector repository URLs on private, loopback or link-local addresses | `false` |
 | `PIPELINE_LOG_MAX_LINES_PER_ATTEMPT` | Stored log lines per job attempt; `0` disables the cap | `100000` |
 | `PIPELINE_LOG_ARCHIVE_BACKEND` | Where logs of finished jobs go: `none`, `filesystem`, `s3` or `gcs` | `none` |
 | `PIPELINE_LOG_ARCHIVE_DIR` | Base directory for the `filesystem` backend | empty |

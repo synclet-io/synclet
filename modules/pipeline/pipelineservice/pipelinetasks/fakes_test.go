@@ -393,30 +393,37 @@ type fakeSecrets struct {
 	pipelineservice.SecretsProvider
 	mu        sync.Mutex
 	values    map[string]string
+	owners    map[string]secretOwner
 	deleted   []uuid.UUID
 	deleteErr error
 }
 
 func newFakeSecrets() *fakeSecrets {
-	return &fakeSecrets{values: map[string]string{}}
+	return &fakeSecrets{values: map[string]string{}, owners: map[string]secretOwner{}}
 }
 
-func (s *fakeSecrets) StoreSecret(_ context.Context, _ string, _ uuid.UUID, plaintext string) (string, error) {
+type secretOwner struct {
+	ownerType string
+	ownerID   uuid.UUID
+}
+
+func (s *fakeSecrets) StoreSecret(_ context.Context, ownerType string, ownerID uuid.UUID, plaintext string) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	ref := secretutil.MakeSecretRef(uuid.New())
 	s.values[ref] = plaintext
+	s.owners[ref] = secretOwner{ownerType: ownerType, ownerID: ownerID}
 
 	return ref, nil
 }
 
-func (s *fakeSecrets) RetrieveSecret(_ context.Context, ref string) (string, error) {
+func (s *fakeSecrets) RetrieveSecret(_ context.Context, ownerType string, ownerID uuid.UUID, ref string) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	v, ok := s.values[ref]
-	if !ok {
+	if !ok || s.owners[ref] != (secretOwner{ownerType: ownerType, ownerID: ownerID}) {
 		return "", errBoom
 	}
 

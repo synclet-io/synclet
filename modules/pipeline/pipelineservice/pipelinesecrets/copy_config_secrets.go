@@ -14,15 +14,18 @@ import (
 // CopyConfigSecrets stores the plaintext behind every $secret: reference in
 // configJSON, at any depth and whatever the connector spec marks, as a new
 // secret of ownerType/ownerID and returns the config with the new references.
+// Every reference must be held by fromType/fromID, the owner of configJSON.
 // The original secrets are left untouched. On error some secrets may already
 // be stored under ownerID; the caller removes them with DeleteByOwner.
-func CopyConfigSecrets(ctx context.Context, secrets pipelineservice.SecretsProvider, ownerType string, ownerID uuid.UUID, configJSON string) (string, error) {
+func CopyConfigSecrets(ctx context.Context, secrets pipelineservice.SecretsProvider, fromType string, fromID uuid.UUID, ownerType string, ownerID uuid.UUID, configJSON string) (string, error) {
+	from := secretOwner{ownerType: fromType, ownerID: fromID}
+
 	var config any
 	if err := json.Unmarshal([]byte(configJSON), &config); err != nil {
 		return "", fmt.Errorf("parsing config JSON: %w", err)
 	}
 
-	copied, err := copySecretRefs(ctx, secrets, ownerType, ownerID, config)
+	copied, err := copySecretRefs(ctx, secrets, from, ownerType, ownerID, config)
 	if err != nil {
 		return "", err
 	}
@@ -35,14 +38,14 @@ func CopyConfigSecrets(ctx context.Context, secrets pipelineservice.SecretsProvi
 	return string(result), nil
 }
 
-func copySecretRefs(ctx context.Context, secrets pipelineservice.SecretsProvider, ownerType string, ownerID uuid.UUID, value any) (any, error) {
+func copySecretRefs(ctx context.Context, secrets pipelineservice.SecretsProvider, from secretOwner, ownerType string, ownerID uuid.UUID, value any) (any, error) {
 	switch val := value.(type) {
 	case string:
 		if !secretutil.IsSecretRef(val) {
 			return val, nil
 		}
 
-		plaintext, err := secrets.RetrieveSecret(ctx, val)
+		plaintext, err := secrets.RetrieveSecret(ctx, from.ownerType, from.ownerID, val)
 		if err != nil {
 			return nil, fmt.Errorf("retrieving secret: %w", err)
 		}
@@ -55,7 +58,7 @@ func copySecretRefs(ctx context.Context, secrets pipelineservice.SecretsProvider
 		return ref, nil
 	case map[string]any:
 		for key, item := range val {
-			copied, err := copySecretRefs(ctx, secrets, ownerType, ownerID, item)
+			copied, err := copySecretRefs(ctx, secrets, from, ownerType, ownerID, item)
 			if err != nil {
 				return nil, fmt.Errorf("field %q: %w", key, err)
 			}
@@ -64,7 +67,7 @@ func copySecretRefs(ctx context.Context, secrets pipelineservice.SecretsProvider
 		}
 	case []any:
 		for i, item := range val {
-			copied, err := copySecretRefs(ctx, secrets, ownerType, ownerID, item)
+			copied, err := copySecretRefs(ctx, secrets, from, ownerType, ownerID, item)
 			if err != nil {
 				return nil, err
 			}

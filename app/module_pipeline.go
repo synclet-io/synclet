@@ -92,25 +92,26 @@ const (
 
 // pipelineConfig holds pipeline module configuration loaded from environment variables.
 type pipelineConfig struct {
-	Jobs                        pipelineJobsConfig       `envPrefix:"JOB_"`
-	Runtime                     pipelineRuntimeConfig    `envPrefix:"RUNTIME_"`
-	MaxConcurrentJobs           int                      `env:"MAX_CONCURRENT_JOBS" envDefault:"10"`
-	IdleTimeout                 time.Duration            `env:"IDLE_TIMEOUT" envDefault:"10m"`
-	ExecutorAPIToken            string                   `env:"EXECUTOR_API_TOKEN"`
-	ConnectorTaskRetention      time.Duration            `env:"CONNECTOR_TASK_RETENTION" envDefault:"24h"`
-	ConnectorTaskRunningTimeout time.Duration            `env:"CONNECTOR_TASK_RUNNING_TIMEOUT" envDefault:"5m"`
-	ConnectorTaskPendingTimeout time.Duration            `env:"CONNECTOR_TASK_PENDING_TIMEOUT" envDefault:"1m"`
-	DefaultMaxAttempts          int                      `env:"DEFAULT_MAX_ATTEMPTS" envDefault:"3"`
-	HeartbeatTimeout            time.Duration            `env:"HEARTBEAT_TIMEOUT" envDefault:"30s"`
-	ExecutorSilenceTimeout      time.Duration            `env:"EXECUTOR_SILENCE_TIMEOUT" envDefault:"60s"`
-	ConnectionCheckTimeout      time.Duration            `env:"CONNECTION_CHECK_TIMEOUT" envDefault:"2m"`
-	ConnectorTaskPollInterval   time.Duration            `env:"CONNECTOR_TASK_POLL_INTERVAL" envDefault:"500ms"`
-	EventEmitTimeout            time.Duration            `env:"EVENT_EMIT_TIMEOUT" envDefault:"30s"`
-	StatsRollupHourlyLookback   time.Duration            `env:"STATS_ROLLUP_HOURLY_LOOKBACK" envDefault:"2h"`
-	StatsRollupDailyLookback    time.Duration            `env:"STATS_ROLLUP_DAILY_LOOKBACK" envDefault:"48h"`
-	RegistryFetchTimeout        time.Duration            `env:"REGISTRY_FETCH_TIMEOUT" envDefault:"60s"`
-	LogArchive                  pipelineLogArchiveConfig `envPrefix:"LOG_ARCHIVE_"`
-	MaxLogLinesPerAttempt       int                      `env:"LOG_MAX_LINES_PER_ATTEMPT" envDefault:"100000"`
+	Jobs                          pipelineJobsConfig       `envPrefix:"JOB_"`
+	Runtime                       pipelineRuntimeConfig    `envPrefix:"RUNTIME_"`
+	MaxConcurrentJobs             int                      `env:"MAX_CONCURRENT_JOBS" envDefault:"10"`
+	IdleTimeout                   time.Duration            `env:"IDLE_TIMEOUT" envDefault:"10m"`
+	ExecutorAPIToken              string                   `env:"EXECUTOR_API_TOKEN"`
+	ConnectorTaskRetention        time.Duration            `env:"CONNECTOR_TASK_RETENTION" envDefault:"24h"`
+	ConnectorTaskRunningTimeout   time.Duration            `env:"CONNECTOR_TASK_RUNNING_TIMEOUT" envDefault:"5m"`
+	ConnectorTaskPendingTimeout   time.Duration            `env:"CONNECTOR_TASK_PENDING_TIMEOUT" envDefault:"1m"`
+	DefaultMaxAttempts            int                      `env:"DEFAULT_MAX_ATTEMPTS" envDefault:"3"`
+	HeartbeatTimeout              time.Duration            `env:"HEARTBEAT_TIMEOUT" envDefault:"30s"`
+	ExecutorSilenceTimeout        time.Duration            `env:"EXECUTOR_SILENCE_TIMEOUT" envDefault:"60s"`
+	ConnectionCheckTimeout        time.Duration            `env:"CONNECTION_CHECK_TIMEOUT" envDefault:"2m"`
+	ConnectorTaskPollInterval     time.Duration            `env:"CONNECTOR_TASK_POLL_INTERVAL" envDefault:"500ms"`
+	EventEmitTimeout              time.Duration            `env:"EVENT_EMIT_TIMEOUT" envDefault:"30s"`
+	StatsRollupHourlyLookback     time.Duration            `env:"STATS_ROLLUP_HOURLY_LOOKBACK" envDefault:"2h"`
+	StatsRollupDailyLookback      time.Duration            `env:"STATS_ROLLUP_DAILY_LOOKBACK" envDefault:"48h"`
+	RegistryFetchTimeout          time.Duration            `env:"REGISTRY_FETCH_TIMEOUT" envDefault:"60s"`
+	RegistryAllowPrivateAddresses bool                     `env:"REGISTRY_ALLOW_PRIVATE_ADDRESSES" envDefault:"false"`
+	LogArchive                    pipelineLogArchiveConfig `envPrefix:"LOG_ARCHIVE_"`
+	MaxLogLinesPerAttempt         int                      `env:"LOG_MAX_LINES_PER_ATTEMPT" envDefault:"100000"`
 }
 
 // defaults converts pipelineRuntimeConfig to RuntimeDefaults.
@@ -242,25 +243,26 @@ func newPipelineRuntimeDefaults(cfg *pipelineConfig) pipelineservice.RuntimeDefa
 
 func newPipelineServiceConfig(cfg *pipelineConfig) pipelineservice.Config {
 	return pipelineservice.Config{
-		RuntimeDefaults:             cfg.Runtime.defaults(),
-		IdleTimeout:                 cfg.IdleTimeout,
-		MaxConcurrentJobs:           cfg.MaxConcurrentJobs,
-		ConnectorTaskRetention:      cfg.ConnectorTaskRetention,
-		ConnectorTaskRunningTimeout: cfg.ConnectorTaskRunningTimeout,
-		ConnectorTaskPendingTimeout: cfg.ConnectorTaskPendingTimeout,
-		DefaultMaxAttempts:          cfg.DefaultMaxAttempts,
-		ConnectionCheckTimeout:      cfg.ConnectionCheckTimeout,
-		ConnectorTaskPollInterval:   cfg.ConnectorTaskPollInterval,
-		EventEmitTimeout:            cfg.EventEmitTimeout,
-		StatsRollupHourlyLookback:   cfg.StatsRollupHourlyLookback,
-		StatsRollupDailyLookback:    cfg.StatsRollupDailyLookback,
-		RegistryFetchTimeout:        cfg.RegistryFetchTimeout,
-		HeartbeatTimeout:            cfg.HeartbeatTimeout,
-		ExecutorSilenceTimeout:      cfg.ExecutorSilenceTimeout,
-		JobClaimTimeout:             cfg.Jobs.ClaimTimeout,
-		LogArchiveEnabled:           cfg.LogArchive.Backend != logArchiveBackendNone,
-		LogArchiveBackend:           cfg.LogArchive.Backend,
-		MaxLogLinesPerAttempt:       cfg.MaxLogLinesPerAttempt,
+		RuntimeDefaults:               cfg.Runtime.defaults(),
+		IdleTimeout:                   cfg.IdleTimeout,
+		MaxConcurrentJobs:             cfg.MaxConcurrentJobs,
+		ConnectorTaskRetention:        cfg.ConnectorTaskRetention,
+		ConnectorTaskRunningTimeout:   cfg.ConnectorTaskRunningTimeout,
+		ConnectorTaskPendingTimeout:   cfg.ConnectorTaskPendingTimeout,
+		DefaultMaxAttempts:            cfg.DefaultMaxAttempts,
+		ConnectionCheckTimeout:        cfg.ConnectionCheckTimeout,
+		ConnectorTaskPollInterval:     cfg.ConnectorTaskPollInterval,
+		EventEmitTimeout:              cfg.EventEmitTimeout,
+		StatsRollupHourlyLookback:     cfg.StatsRollupHourlyLookback,
+		StatsRollupDailyLookback:      cfg.StatsRollupDailyLookback,
+		RegistryFetchTimeout:          cfg.RegistryFetchTimeout,
+		RegistryAllowPrivateAddresses: cfg.RegistryAllowPrivateAddresses,
+		HeartbeatTimeout:              cfg.HeartbeatTimeout,
+		ExecutorSilenceTimeout:        cfg.ExecutorSilenceTimeout,
+		JobClaimTimeout:               cfg.Jobs.ClaimTimeout,
+		LogArchiveEnabled:             cfg.LogArchive.Backend != logArchiveBackendNone,
+		LogArchiveBackend:             cfg.LogArchive.Backend,
+		MaxLogLinesPerAttempt:         cfg.MaxLogLinesPerAttempt,
 	}
 }
 

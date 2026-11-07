@@ -2,12 +2,12 @@ package secretservice
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/go-pnp/go-pnp/pkg/optionutil"
 	"github.com/google/uuid"
 	dbutil "github.com/saturn4er/boilerplate-go/lib/dbutil"
+	"github.com/saturn4er/boilerplate-go/lib/filter"
 	idempotency "github.com/saturn4er/boilerplate-go/lib/idempotency"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,12 +21,22 @@ type stubSecretsStorage struct {
 	stored *Secret
 }
 
-func (s *stubSecretsStorage) First(_ context.Context, _ *SecretFilter, _ ...optionutil.Option[dbutil.SelectOptions]) (*Secret, error) {
-	if s.secret == nil {
-		return nil, errors.New("not found")
+func (s *stubSecretsStorage) First(_ context.Context, f *SecretFilter, _ ...optionutil.Option[dbutil.SelectOptions]) (*Secret, error) {
+	if s.secret == nil || !matchesEquals(f.ID, s.secret.ID) || !matchesEquals(f.OwnerType, s.secret.OwnerType) || !matchesEquals(f.OwnerID, s.secret.OwnerID) {
+		return nil, ErrSecretNotFound
 	}
 
 	return s.secret, nil
+}
+
+func matchesEquals[E comparable](f filter.Filter[E], value E) bool {
+	if f == nil {
+		return true
+	}
+
+	eq, ok := f.(*filter.EqualsFilter[E])
+
+	return ok && eq.Value == value
 }
 
 func (s *stubSecretsStorage) Update(_ context.Context, secret *Secret) (*Secret, error) {
@@ -221,4 +231,43 @@ func TestRetrieveSecret_InvalidRefRejected(t *testing.T) {
 
 	_, err := retriever.Execute(ctx, RetrieveSecretParams{SecretRef: "not-a-secret-ref"}) //nolint:gosec // test fixture, not a real credential
 	require.Error(t, err)
+}
+
+func TestRetrieveSecret_ChecksOwner(t *testing.T) {
+	ctx := context.Background()
+	key := randomKey(t)
+
+	ciphertext, salt, nonce, err := Encrypt(key, []byte("owner-only"))
+	require.NoError(t, err)
+
+	id := uuid.New()
+	sourceA := uuid.New()
+	store := &stubSecretsStorage{
+		secret: &Secret{
+			ID:             id,
+			OwnerType:      "source",
+			OwnerID:        sourceA,
+			EncryptedValue: ciphertext,
+			Salt:           salt,
+			Nonce:          nonce,
+			KeyVersion:     1,
+		},
+	}
+	retriever := NewRetrieveSecret(&stubStorage{secrets: store}, Config{MasterKey: key, KeyVersion: 1})
+
+	t.Run("same owner", func(t *testing.T) {
+		got, err := retriever.Execute(ctx, RetrieveSecretParams{SecretRef: MakeSecretRef(id), OwnerType: "source", OwnerID: sourceA})
+		require.NoError(t, err)
+		assert.Equal(t, "owner-only", got)
+	})
+
+	t.Run("other owner of the same type", func(t *testing.T) {
+		_, err := retriever.Execute(ctx, RetrieveSecretParams{SecretRef: MakeSecretRef(id), OwnerType: "source", OwnerID: uuid.New()})
+		require.ErrorIs(t, err, ErrSecretNotFound)
+	})
+
+	t.Run("same id, other owner type", func(t *testing.T) {
+		_, err := retriever.Execute(ctx, RetrieveSecretParams{SecretRef: MakeSecretRef(id), OwnerType: "destination", OwnerID: sourceA})
+		require.ErrorIs(t, err, ErrSecretNotFound)
+	})
 }

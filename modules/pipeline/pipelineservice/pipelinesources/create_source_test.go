@@ -43,7 +43,7 @@ func TestCreateSource(t *testing.T) {
 		ref, _ := stored["password"].(string)
 		assert.True(t, secretutil.IsSecretRef(ref))
 
-		plaintext, err := secrets.RetrieveSecret(context.Background(), ref)
+		plaintext, err := secrets.RetrieveSecret(context.Background(), ownerType, created.ID, ref)
 		require.NoError(t, err)
 		assert.Equal(t, "pl41nt3xt-pw", plaintext)
 		assert.Equal(t, 1, secrets.countForOwner(created.ID))
@@ -147,7 +147,7 @@ func TestCreateSource(t *testing.T) {
 			Config:             json.RawMessage(`{not json`),
 		})
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "parsing config JSON")
+		assert.Contains(t, err.Error(), "config JSON")
 		assert.Empty(t, store.sources.records)
 	})
 
@@ -167,4 +167,39 @@ func TestCreateSource(t *testing.T) {
 		require.ErrorIs(t, err, store.sources.createErr)
 		assert.Empty(t, audit.events)
 	})
+}
+
+const specWithHeaderSecrets = `{"connectionSpecification":{"type":"object","properties":{
+	"password":{"type":"string","airbyte_secret":true},
+	"headers":{"type":"array","items":{"type":"object","properties":{
+		"name":{"type":"string"},
+		"value":{"type":"string","airbyte_secret":true}}}}}}}`
+
+func TestCreateSource_RejectsSecretRefs(t *testing.T) {
+	ws := uuid.New()
+
+	for name, config := range map[string]func(ref string) string{
+		"secret field": func(ref string) string { return `{"password":"` + ref + `"}` },
+		"array item":   func(ref string) string { return `{"headers":[{"name":"x","value":"` + ref + `"}]}` },
+	} {
+		t.Run(name, func(t *testing.T) {
+			store := newSrcStore()
+			conn := store.addConnector(ws, specWithHeaderSecrets)
+			secrets := newFakeSecrets()
+			foreignRef := secrets.seed(uuid.New(), "someone-elses-password")
+
+			uc := pipelinesources.NewCreateSource(store, secrets, &captureAudit{}, newLogger())
+			_, err := uc.Execute(context.Background(), pipelinesources.CreateSourceParams{
+				WorkspaceID:        ws,
+				Name:               "stolen",
+				ManagedConnectorID: conn.ID,
+				Config:             json.RawMessage(config(foreignRef)),
+			})
+
+			var validationErr *pipelineservice.ValidationError
+			require.ErrorAs(t, err, &validationErr)
+			assert.Empty(t, store.sources.records)
+			assert.Len(t, secrets.values, 1)
+		})
+	}
 }

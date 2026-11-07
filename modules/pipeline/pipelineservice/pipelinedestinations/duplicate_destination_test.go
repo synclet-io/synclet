@@ -138,7 +138,7 @@ func TestDuplicateDestination(t *testing.T) {
 		assert.NotEqual(t, ref, dupRef)
 		assert.Equal(t, secretOwner{ownerType: ownerType, ownerID: dup.ID}, secrets.owners[dupRef])
 
-		plain, err := pipelinesecrets.DecryptConfigSecrets(context.Background(), secrets, dup.Config)
+		plain, err := pipelinesecrets.DecryptConfigSecrets(context.Background(), secrets, ownerType, dup.ID, dup.Config)
 		require.NoError(t, err)
 		assert.JSONEq(t, `{"host":"db","password":"hunter2"}`, plain)
 

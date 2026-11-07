@@ -38,10 +38,12 @@ func (p *DBSecretsProvider) StoreSecret(ctx context.Context, ownerType string, o
 	})
 }
 
-// RetrieveSecret decrypts and returns a secret value.
-func (p *DBSecretsProvider) RetrieveSecret(ctx context.Context, secretRef string) (string, error) {
+// RetrieveSecret decrypts and returns a secret value held by the given owner.
+func (p *DBSecretsProvider) RetrieveSecret(ctx context.Context, ownerType string, ownerID uuid.UUID, secretRef string) (string, error) {
 	return p.retrieveSecret.Execute(ctx, secretservice.RetrieveSecretParams{
 		SecretRef: secretRef,
+		OwnerType: ownerType,
+		OwnerID:   ownerID,
 	})
 }
 

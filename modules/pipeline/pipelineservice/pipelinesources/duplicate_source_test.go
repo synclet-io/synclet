@@ -61,6 +61,16 @@ func TestDuplicateSourceSecrets(t *testing.T) {
 		assert.Len(t, store.sources.records, 1)
 	})
 
+	t.Run("a reference owned by another source is not copied", func(t *testing.T) {
+		store, secrets, src := setup(t, specWithTwoSecrets)
+		src.Config = `{"host":"db","password":"` + secrets.seed(uuid.New(), "not-mine") + `"}`
+
+		_, err := duplicate(store, secrets, src)
+		require.Error(t, err)
+		assert.Len(t, store.sources.records, 1)
+		assert.Len(t, secrets.owners, 3)
+	})
+
 	t.Run("a failed create leaves no secrets of the copy", func(t *testing.T) {
 		store, secrets, src := setup(t, specWithTwoSecrets)
 		store.sources.createErr = errors.New("db down")
@@ -138,7 +148,7 @@ func TestDuplicateSource(t *testing.T) {
 		assert.NotEqual(t, ref, dupRef)
 		assert.Equal(t, secretOwner{ownerType: ownerType, ownerID: dup.ID}, secrets.owners[dupRef])
 
-		plain, err := pipelinesecrets.DecryptConfigSecrets(context.Background(), secrets, dup.Config)
+		plain, err := pipelinesecrets.DecryptConfigSecrets(context.Background(), secrets, ownerType, dup.ID, dup.Config)
 		require.NoError(t, err)
 		assert.JSONEq(t, `{"host":"db","password":"hunter2"}`, plain)
 

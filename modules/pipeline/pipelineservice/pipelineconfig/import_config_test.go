@@ -208,7 +208,7 @@ func (s *fakeSecrets) StoreSecret(_ context.Context, _ string, _ uuid.UUID, plai
 	return ref, nil
 }
 
-func (s *fakeSecrets) RetrieveSecret(_ context.Context, ref string) (string, error) {
+func (s *fakeSecrets) RetrieveSecret(_ context.Context, _ string, _ uuid.UUID, ref string) (string, error) {
 	return s.values[ref], nil
 }
 
