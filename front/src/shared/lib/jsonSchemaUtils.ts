@@ -390,7 +390,16 @@ export function validateValue(
   }
 
   const err = validateField(value, schema, isRequired)
-  return err ? [{ ...err, field: path }] : []
+  if (err)
+    return [{ ...err, field: path }]
+
+  const itemSchema = schema.items ? normalizeSchema(schema.items) : undefined
+  if (Array.isArray(value) && itemSchema && schemaType(itemSchema) === 'object' && itemSchema.properties) {
+    return value.flatMap((item, index) => isPlainObject(item)
+      ? validateObjectValue(item, itemSchema, joinPath(path, String(index)), options)
+      : [error('Must be an object', joinPath(path, String(index)))])
+  }
+  return []
 }
 
 const UNDERSCORE_RE = /_/g

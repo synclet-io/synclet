@@ -7,6 +7,7 @@ import {
   mergeAllOf,
   resolveOneOf,
   validateField,
+  validateObjectValue,
 } from '../jsonSchemaUtils'
 
 describe('getOrderedProperties', () => {
@@ -249,5 +250,33 @@ describe('mergeAllOf', () => {
   it('returns schema unchanged if no allOf', () => {
     const schema = { type: 'object', properties: { x: { type: 'string' } } }
     expect(mergeAllOf(schema)).toEqual(schema)
+  })
+})
+
+describe('validateObjectValue with arrays of objects', () => {
+  const schema: JsonSchema = {
+    type: 'object',
+    properties: {
+      graph_api_headers: {
+        type: 'array',
+        items: {
+          type: 'object',
+          required: ['name', 'value'],
+          properties: {
+            name: { type: 'string' },
+            value: { type: 'string', airbyte_secret: true, pattern: '^Bearer .+$' },
+          },
+        },
+      },
+    },
+  }
+
+  it('reports a required field missing in a row by its row path', () => {
+    const errors = validateObjectValue({ graph_api_headers: [{ name: 'X-A', value: 'Bearer a' }, { name: 'X-B' }] }, schema)
+    expect(errors).toEqual([{ field: 'graph_api_headers.1.value', message: 'This field is required' }])
+  })
+
+  it('accepts the stored secret mask in a row', () => {
+    expect(validateObjectValue({ graph_api_headers: [{ name: 'X-A', value: '********' }] }, schema)).toEqual([])
   })
 })
