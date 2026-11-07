@@ -155,6 +155,45 @@ function commitArrayField(key: string) {
   markTouched(key)
 }
 
+// Array of objects handling
+function isObjectArray(fieldSchema: JsonSchema): boolean {
+  return fieldSchema.type === 'array' && fieldSchema.items?.type === 'object' && !!fieldSchema.items.properties
+}
+
+function getArrayItems(key: string): Record<string, unknown>[] {
+  const value = props.modelValue[key]
+  return Array.isArray(value) ? value as Record<string, unknown>[] : []
+}
+
+// Stable row keys, so a removed row takes its own input state with it.
+const rowIds: Record<string, number[]> = {}
+let nextRowId = 0
+
+function getRowIds(key: string): number[] {
+  const ids = rowIds[key] ?? []
+  const count = getArrayItems(key).length
+  while (ids.length < count)
+    ids.push(nextRowId++)
+  ids.length = count
+  rowIds[key] = ids
+  return ids
+}
+
+function addArrayItem(key: string) {
+  updateField(key, [...getArrayItems(key), {}])
+}
+
+function removeArrayItem(key: string, index: number) {
+  rowIds[key]?.splice(index, 1)
+  updateField(key, getArrayItems(key).filter((_, i) => i !== index))
+}
+
+function updateArrayItem(key: string, index: number, value: Record<string, unknown>) {
+  const items = [...getArrayItems(key)]
+  items[index] = value
+  updateField(key, items)
+}
+
 // Nested object handling
 function updateObjectField(key: string, subValue: Record<string, unknown>) {
   updateField(key, subValue)
@@ -272,6 +311,51 @@ const labelClass = 'block text-sm font-medium text-heading mb-1'
               {{ getError(key, resolvedSchema.properties[key]) }}
             </p>
           </div>
+        </template>
+
+        <!-- Array of objects -->
+        <template v-else-if="isObjectArray(resolvedSchema.properties[key])">
+          <fieldset class="border border-border rounded-lg p-4">
+            <legend class="text-sm font-medium text-heading px-2">
+              {{ getLabel(key, resolvedSchema.properties[key]) }}
+              <span v-if="requiredSet.has(key)" class="text-danger">*</span>
+            </legend>
+            <p v-if="resolvedSchema.properties[key].description" class="text-xs text-text-muted mb-3 [&_a]:text-primary [&_a]:underline" v-html="DOMPurify.sanitize(resolvedSchema.properties[key].description)" />
+            <div class="space-y-3">
+              <div
+                v-for="(rowId, index) in getRowIds(key)"
+                :key="rowId"
+                class="flex items-start gap-3 border border-border rounded-lg p-3"
+                data-testid="array-item"
+              >
+                <div class="flex-1">
+                  <JsonSchemaForm
+                    :schema="resolvedSchema.properties[key].items!"
+                    :model-value="getArrayItems(key)[index] ?? {}"
+                    :root-required="resolvedSchema.properties[key].items!.required"
+                    @update:model-value="updateArrayItem(key, index, $event)"
+                  />
+                </div>
+                <button
+                  type="button"
+                  class="text-xs text-text-muted hover:text-danger mt-1"
+                  :aria-label="`Remove ${getLabel(key, resolvedSchema.properties[key])} item ${index + 1}`"
+                  data-testid="array-item-remove"
+                  @click="removeArrayItem(key, index)"
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+            <button
+              type="button"
+              class="mt-3 text-sm font-medium text-primary hover:underline"
+              data-testid="array-item-add"
+              @click="addArrayItem(key)"
+            >
+              Add item
+            </button>
+          </fieldset>
         </template>
 
         <!-- Array of strings -->

@@ -308,6 +308,96 @@ describe('jsonSchemaForm', () => {
     })
   })
 
+  describe('object array fields', () => {
+    const headersSchema = {
+      type: 'object',
+      properties: {
+        graph_api_headers: {
+          type: 'array',
+          title: 'Custom headers',
+          items: {
+            type: 'object',
+            required: ['name', 'value'],
+            properties: {
+              name: { type: 'string', title: 'Name' },
+              value: { type: 'string', title: 'Value', airbyte_secret: true },
+            },
+          },
+        },
+      },
+    }
+
+    function mountBound(modelValue: Record<string, unknown> = {}) {
+      const w = mount(JsonSchemaForm, {
+        props: {
+          'schema': headersSchema,
+          modelValue,
+          'onUpdate:modelValue': (v: Record<string, unknown>) => w.setProps({ modelValue: v }),
+        },
+      })
+      return w
+    }
+
+    function lastEmitted(w: ReturnType<typeof mountBound>) {
+      return w.emitted('update:modelValue')!.at(-1)![0] as Record<string, unknown>
+    }
+
+    it('renders one row per item with its fields and a masked secret input', () => {
+      const w = mountBound({
+        graph_api_headers: [
+          { name: 'X-A', value: '********' },
+          { name: 'X-B', value: '********' },
+        ],
+      })
+      const rows = w.findAll('[data-testid="array-item"]')
+      expect(rows).toHaveLength(2)
+      expect((rows[0].find('input[type="text"]').element as HTMLInputElement).value).toBe('X-A')
+      const secret = rows[1].find('input[type="password"]')
+      expect(secret.exists()).toBe(true)
+      expect((secret.element as HTMLInputElement).value).toBe('********')
+      expect(w.text()).not.toContain('Comma-separated')
+    })
+
+    it('adds a row and emits the items as objects', async () => {
+      const w = mountBound()
+      await w.find('[data-testid="array-item-add"]').trigger('click')
+      const row = w.find('[data-testid="array-item"]')
+      await row.find('input[type="text"]').setValue('X-A')
+      await row.find('input[type="password"]').setValue('secret-a')
+      expect(lastEmitted(w).graph_api_headers).toEqual([{ name: 'X-A', value: 'secret-a' }])
+    })
+
+    it('removes the chosen row and keeps the others', async () => {
+      const w = mountBound({
+        graph_api_headers: [
+          { name: 'X-A', value: '********' },
+          { name: 'X-B', value: '********' },
+        ],
+      })
+      await w.findAll('[data-testid="array-item-remove"]')[0].trigger('click')
+      expect(lastEmitted(w).graph_api_headers).toEqual([{ name: 'X-B', value: '********' }])
+      const rows = w.findAll('[data-testid="array-item"]')
+      expect(rows).toHaveLength(1)
+      expect((rows[0].find('input[type="text"]').element as HTMLInputElement).value).toBe('X-B')
+    })
+
+    it('validates required item fields', async () => {
+      const w = mountBound({ graph_api_headers: [{}] })
+      const row = w.find('[data-testid="array-item"]')
+      await row.find('input[type="password"]').trigger('blur')
+      expect(row.text()).toContain('This field is required')
+    })
+
+    it('keeps the comma-separated input for arrays of strings', () => {
+      const w = mountForm({
+        type: 'object',
+        properties: { schemas: { type: 'array', items: { type: 'string' } } },
+      })
+      expect(w.find('input[placeholder="Comma-separated values"]').exists()).toBe(true)
+      expect(w.find('[data-testid="array-item-add"]').exists()).toBe(false)
+    })
+  })
+
   describe('validation', () => {
     it('shows error for empty required field on blur', async () => {
       const w = mountForm({

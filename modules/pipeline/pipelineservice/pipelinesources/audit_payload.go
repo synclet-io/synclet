@@ -22,9 +22,9 @@ func auditConfig(configJSON, specJSON string) any {
 		specPaths = nil
 	}
 
-	plaintextPaths := make([]string, 0, len(specPaths))
+	var plaintextPaths []string
 
-	for _, path := range specPaths {
+	for _, path := range pipelinesecrets.ExpandSecretPaths(cfg, specPaths) {
 		if val, ok := pipelinesecrets.GetNestedField(cfg, path); ok {
 			if ref, isStr := val.(string); !isStr || !secretutil.IsSecretRef(ref) {
 				plaintextPaths = append(plaintextPaths, path)

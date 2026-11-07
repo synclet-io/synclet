@@ -30,3 +30,22 @@ func TestAuditConfig_UnparsableSpecFallsBackToKeyNames(t *testing.T) {
 	assert.Equal(t, "plain-id", got["client_id"])
 	assert.Equal(t, auditutil.RedactMask, got["api_token"])
 }
+
+func TestAuditConfig_MasksPlaintextArrayItems(t *testing.T) {
+	spec := `{"connectionSpecification":{"properties":{
+		"graph_api_headers":{"type":"array","items":{"type":"object","properties":{
+			"name":{"type":"string"},
+			"value":{"type":"string","airbyte_secret":true}
+		}}}
+	}}}`
+	ref := "$secret:7d3c3a0e-8c0e-4a59-9c8e-4f8f2a1b2c3d"
+	config := `{"graph_api_headers":[{"name":"X-A","value":"plain-header"},{"name":"X-B","value":"` + ref + `"}]}`
+
+	got, ok := auditConfig(config, spec).(map[string]any)
+	assert.True(t, ok)
+
+	headers, ok := got["graph_api_headers"].([]any)
+	assert.True(t, ok)
+	assert.Equal(t, map[string]any{"name": "X-A", "value": auditutil.RedactMask}, headers[0])
+	assert.Equal(t, map[string]any{"name": "X-B", "value": ref}, headers[1])
+}

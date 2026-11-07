@@ -153,6 +153,109 @@ func TestUpdateConfigSecrets_RemovedFieldDeletesSecret(t *testing.T) {
 	assert.Equal(t, []string{storedRef}, secrets.deleted)
 }
 
+func TestMergeMaskedSecrets_ArrayItems(t *testing.T) {
+	stored := `{"graph_api_headers":[{"name":"a","value":"` + storedRef + `"},{"name":"b","value":"` + otherRef + `"}]}`
+
+	tests := []struct {
+		name     string
+		incoming string
+		want     string
+	}{
+		{
+			name:     "masks keep each element's ref",
+			incoming: `{"graph_api_headers":[{"name":"a","value":"********"},{"name":"b2","value":"********"}]}`,
+			want:     `{"graph_api_headers":[{"name":"a","value":"` + storedRef + `"},{"name":"b2","value":"` + otherRef + `"}]}`,
+		},
+		{
+			name:     "removed first row keeps the second row's ref",
+			incoming: `{"graph_api_headers":[{"name":"b","value":"********"}]}`,
+			want:     `{"graph_api_headers":[{"name":"b","value":"` + otherRef + `"}]}`,
+		},
+		{
+			name:     "added row keeps existing refs",
+			incoming: `{"graph_api_headers":[{"name":"new","value":"nv"},{"name":"a","value":"********"},{"name":"b","value":"********"}]}`,
+			want:     `{"graph_api_headers":[{"name":"new","value":"nv"},{"name":"a","value":"` + storedRef + `"},{"name":"b","value":"` + otherRef + `"}]}`,
+		},
+		{
+			name:     "removed row and added row of equal length keep each ref with its row",
+			incoming: `{"graph_api_headers":[{"name":"b","value":"********"},{"name":"c","value":"new"}]}`,
+			want:     `{"graph_api_headers":[{"name":"b","value":"` + otherRef + `"},{"name":"c","value":"new"}]}`,
+		},
+		{
+			name:     "mask in a row matching nothing stored is dropped",
+			incoming: `{"graph_api_headers":[{"name":"c","value":"********"}]}`,
+			want:     `{"graph_api_headers":[{"name":"c"}]}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := MergeMaskedSecrets(stored, tt.incoming)
+			require.NoError(t, err)
+			assert.JSONEq(t, tt.want, got)
+		})
+	}
+}
+
+func TestMergeMaskedSecrets_RejectsRefMovedToAnotherRow(t *testing.T) {
+	stored := `{"graph_api_headers":[{"name":"a","value":"` + storedRef + `"},{"name":"b","value":"` + otherRef + `"}]}`
+
+	_, err := MergeMaskedSecrets(stored, `{"graph_api_headers":[{"name":"a","value":"`+otherRef+`"},{"name":"b","value":"`+storedRef+`"}]}`)
+
+	var validationErr *pipelineservice.ValidationError
+	require.ErrorAs(t, err, &validationErr)
+}
+
+const headersSpec = `{"connectionSpecification":{"properties":{
+	"graph_api_headers":{"type":"array","items":{"type":"object","properties":{
+		"name":{"type":"string"},
+		"value":{"type":"string","airbyte_secret":true}
+	}}}
+}}}`
+
+func TestUpdateConfigSecrets_EncryptsPlaintextArrayItem(t *testing.T) {
+	secrets := newFakeSecrets()
+	existing := `{"graph_api_headers":[{"name":"a","value":"plain-a"}]}`
+
+	got, err := UpdateConfigSecrets(context.Background(), secrets, "source", uuid.New(), existing,
+		`{"graph_api_headers":[{"name":"a","value":"plain-a"}]}`, headersSpec)
+	require.NoError(t, err)
+
+	require.Len(t, secrets.stored, 1)
+
+	for ref, plaintext := range secrets.stored {
+		assert.Equal(t, "plain-a", plaintext)
+		assert.JSONEq(t, `{"graph_api_headers":[{"name":"a","value":"`+ref+`"}]}`, got)
+	}
+
+	assert.Empty(t, secrets.deleted)
+}
+
+func TestUpdateConfigSecrets_RemovedRowDeletesOnlyItsSecret(t *testing.T) {
+	secrets := newFakeSecrets()
+	existing := `{"graph_api_headers":[{"name":"a","value":"` + storedRef + `"},{"name":"b","value":"` + otherRef + `"}]}`
+
+	got, err := UpdateConfigSecrets(context.Background(), secrets, "source", uuid.New(), existing,
+		`{"graph_api_headers":[{"name":"b","value":"********"}]}`, headersSpec)
+	require.NoError(t, err)
+
+	assert.JSONEq(t, `{"graph_api_headers":[{"name":"b","value":"`+otherRef+`"}]}`, got)
+	assert.Empty(t, secrets.stored)
+	assert.Equal(t, []string{storedRef}, secrets.deleted)
+}
+
+func TestUpdateConfigSecrets_ReplacedArrayItemDeletesOld(t *testing.T) {
+	secrets := newFakeSecrets()
+	existing := `{"graph_api_headers":[{"name":"a","value":"` + storedRef + `"}]}`
+
+	_, err := UpdateConfigSecrets(context.Background(), secrets, "source", uuid.New(), existing,
+		`{"graph_api_headers":[{"name":"a","value":"rotated"}]}`, headersSpec)
+	require.NoError(t, err)
+
+	require.Len(t, secrets.stored, 1)
+	assert.Equal(t, []string{storedRef}, secrets.deleted)
+}
+
 func TestUpdateConfigSecrets_ForeignRefRejected(t *testing.T) {
 	secrets := newFakeSecrets()
 

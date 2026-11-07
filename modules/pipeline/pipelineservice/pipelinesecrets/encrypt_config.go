@@ -28,7 +28,7 @@ func EncryptConfigSecrets(ctx context.Context, secrets pipelineservice.SecretsPr
 		return "", fmt.Errorf("parsing config JSON: %w", err)
 	}
 
-	for _, path := range secretPaths {
+	for _, path := range ExpandSecretPaths(configMap, secretPaths) {
 		val, ok := GetNestedField(configMap, path)
 		if !ok {
 			continue
@@ -79,33 +79,46 @@ func DecryptConfigSecrets(ctx context.Context, secrets pipelineservice.SecretsPr
 	return string(result), nil
 }
 
-// decryptMap recursively walks a map and replaces $secret: references with plaintext.
+// decryptMap recursively walks a map, including every array element, and
+// replaces $secret: references with plaintext.
 func decryptMap(ctx context.Context, secrets pipelineservice.SecretsProvider, obj map[string]any) error {
 	for key, value := range obj {
-		switch val := value.(type) {
-		case string:
-			if secretutil.IsSecretRef(val) {
-				plaintext, err := secrets.RetrieveSecret(ctx, val)
-				if err != nil {
-					return fmt.Errorf("retrieving secret for field %q: %w", key, err)
-				}
-
-				obj[key] = plaintext
-			}
-		case map[string]any:
-			if err := decryptMap(ctx, secrets, val); err != nil {
-				return err
-			}
-		case []any:
-			for _, item := range val {
-				if m, ok := item.(map[string]any); ok {
-					if err := decryptMap(ctx, secrets, m); err != nil {
-						return err
-					}
-				}
-			}
+		decrypted, err := decryptValue(ctx, secrets, key, value)
+		if err != nil {
+			return err
 		}
+
+		obj[key] = decrypted
 	}
 
 	return nil
+}
+
+func decryptValue(ctx context.Context, secrets pipelineservice.SecretsProvider, key string, value any) (any, error) {
+	switch val := value.(type) {
+	case string:
+		if secretutil.IsSecretRef(val) {
+			plaintext, err := secrets.RetrieveSecret(ctx, val)
+			if err != nil {
+				return nil, fmt.Errorf("retrieving secret for field %q: %w", key, err)
+			}
+
+			return plaintext, nil
+		}
+	case map[string]any:
+		if err := decryptMap(ctx, secrets, val); err != nil {
+			return nil, err
+		}
+	case []any:
+		for i, item := range val {
+			decrypted, err := decryptValue(ctx, secrets, key, item)
+			if err != nil {
+				return nil, err
+			}
+
+			val[i] = decrypted
+		}
+	}
+
+	return value, nil
 }

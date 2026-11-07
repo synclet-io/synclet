@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"strconv"
 
 	"github.com/google/uuid"
@@ -86,14 +87,10 @@ func mergeMaskedValue(stored, incoming any, path string) (resolved any, keep boo
 		}
 	case []any:
 		storedList, _ := stored.([]any)
+		storedItems := matchStoredItems(storedList, val)
 
 		for i, item := range val {
-			var storedItem any
-			if i < len(storedList) {
-				storedItem = storedList[i]
-			}
-
-			merged, _, mergeErr := mergeMaskedValue(storedItem, item, path+"["+strconv.Itoa(i)+"]")
+			merged, _, mergeErr := mergeMaskedValue(storedItems[i], item, path+"["+strconv.Itoa(i)+"]")
 			if mergeErr != nil {
 				return nil, false, mergeErr
 			}
@@ -103,6 +100,92 @@ func mergeMaskedValue(stored, incoming any, path string) (resolved any, keep boo
 	}
 
 	return incoming, true, nil
+}
+
+// matchStoredItems pairs every incoming array element with the stored element
+// it was edited from. An element first pairs with the first unpaired stored
+// element that equals it in every value that is not a mask; a bare mask pairs
+// this way with nothing, as its stored counterpart cannot be told. When the
+// arrays have equal length, an element still unpaired then takes the stored
+// element at its own index if that one is unpaired too, which keeps an edited
+// row's secrets.
+func matchStoredItems(stored, incoming []any) []any {
+	matched := make([]any, len(incoming))
+	paired := make([]bool, len(incoming))
+	used := make([]bool, len(stored))
+
+	for i, item := range incoming {
+		if item == secretutil.SecretMask {
+			continue
+		}
+
+		for j, candidate := range stored {
+			if !used[j] && equalIgnoringMasks(candidate, item) {
+				used[j] = true
+				paired[i] = true
+				matched[i] = candidate
+
+				break
+			}
+		}
+	}
+
+	if len(stored) != len(incoming) {
+		return matched
+	}
+
+	for i := range incoming {
+		if !paired[i] && !used[i] {
+			used[i] = true
+			matched[i] = stored[i]
+		}
+	}
+
+	return matched
+}
+
+// equalIgnoringMasks reports whether incoming equals stored, treating every
+// mask in incoming as equal to whatever is stored at its position.
+func equalIgnoringMasks(stored, incoming any) bool {
+	switch val := incoming.(type) {
+	case string:
+		if val == secretutil.SecretMask {
+			return true
+		}
+
+		storedStr, ok := stored.(string)
+
+		return ok && storedStr == val
+	case map[string]any:
+		storedMap, ok := stored.(map[string]any)
+		if !ok {
+			return false
+		}
+
+		for key, item := range val {
+			storedItem, present := storedMap[key]
+			if !present || !equalIgnoringMasks(storedItem, item) {
+				return false
+			}
+		}
+
+		return true
+	case []any:
+		storedList, ok := stored.([]any)
+		if !ok || len(storedList) != len(val) {
+			return false
+		}
+
+		for i, item := range val {
+			if !equalIgnoringMasks(storedList[i], item) {
+				return false
+			}
+		}
+
+		return true
+	default:
+		return reflect.DeepEqual(stored, incoming)
+	}
 }
 
 // UpdateConfigSecrets encrypts an updated config.
@@ -135,28 +218,39 @@ func UpdateConfigSecrets(ctx context.Context, secrets pipelineservice.SecretsPro
 		return "", fmt.Errorf("parsing new config JSON: %w", err)
 	}
 
+	// Store-before-delete keeps the old secrets intact if StoreSecret fails.
+	for _, path := range ExpandSecretPaths(newMap, secretPaths) {
+		newVal, _ := GetNestedField(newMap, path)
+
+		strVal, _ := newVal.(string)
+		if strVal == "" || secretutil.IsSecretRef(strVal) {
+			continue
+		}
+
+		secretRef, err := secrets.StoreSecret(ctx, ownerType, ownerID, strVal)
+		if err != nil {
+			return "", fmt.Errorf("storing secret for field %q: %w", path, err)
+		}
+
+		SetNestedField(newMap, path, secretRef)
+	}
+
+	keptRefs := map[string]bool{}
+
+	walkAndCollect(newMap, func(value string) {
+		if secretutil.IsSecretRef(value) {
+			keptRefs[value] = true
+		}
+	})
+
 	var staleRefs []string
 
-	for _, path := range secretPaths {
-		newVal, present := GetNestedField(newMap, path)
-		strVal, _ := newVal.(string)
-
-		// Store-before-delete keeps the old secret intact if StoreSecret fails.
-		if strVal != "" && !secretutil.IsSecretRef(strVal) {
-			secretRef, err := secrets.StoreSecret(ctx, ownerType, ownerID, strVal)
-			if err != nil {
-				return "", fmt.Errorf("storing secret for field %q: %w", path, err)
-			}
-
-			SetNestedField(newMap, path, secretRef)
-			strVal = secretRef
+	walkAndCollect(existingMap, func(value string) {
+		if secretutil.IsSecretRef(value) && !keptRefs[value] {
+			keptRefs[value] = true
+			staleRefs = append(staleRefs, value)
 		}
-
-		existingVal, _ := GetNestedField(existingMap, path)
-		if oldRef, ok := existingVal.(string); ok && secretutil.IsSecretRef(oldRef) && (!present || strVal != oldRef) {
-			staleRefs = append(staleRefs, oldRef)
-		}
-	}
+	})
 
 	result, err := json.Marshal(newMap)
 	if err != nil {

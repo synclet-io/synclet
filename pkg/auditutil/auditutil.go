@@ -7,6 +7,7 @@ package auditutil
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -45,7 +46,7 @@ func isSecretKey(name string) bool {
 
 // Redact returns a deep copy of value with the values under secret-looking
 // keys, and under every dot-separated secretPaths entry, replaced by
-// RedactMask. Works recursively on map[string]any and []any structures,
+// RedactMask. A numeric secretPaths segment indexes into an array. Works recursively on map[string]any and []any structures,
 // leaving primitives untouched.
 func Redact(value any, secretPaths ...string) any {
 	out := redactKeys(value)
@@ -87,20 +88,34 @@ func redactKeys(value any) any {
 	}
 }
 
-func maskPath(obj map[string]any, parts []string) {
-	val, ok := obj[parts[0]]
-	if !ok {
-		return
-	}
+func maskPath(current any, parts []string) {
+	switch container := current.(type) {
+	case map[string]any:
+		val, ok := container[parts[0]]
+		if !ok {
+			return
+		}
 
-	if len(parts) == 1 {
-		obj[parts[0]] = mask(val)
+		if len(parts) == 1 {
+			container[parts[0]] = mask(val)
 
-		return
-	}
+			return
+		}
 
-	if child, ok := val.(map[string]any); ok {
-		maskPath(child, parts[1:])
+		maskPath(val, parts[1:])
+	case []any:
+		i, err := strconv.Atoi(parts[0])
+		if err != nil || i < 0 || i >= len(container) {
+			return
+		}
+
+		if len(parts) == 1 {
+			container[i] = mask(container[i])
+
+			return
+		}
+
+		maskPath(container[i], parts[1:])
 	}
 }
 
