@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.1.0](https://github.com/synclet-io/synclet/compare/synclet-v1.0.0...synclet-v1.1.0) (2026-11-07)
+
+
+### Features
+
+* **front:** executor group picker, Duplicate to group and wizard filtering ([1222831](https://github.com/synclet-io/synclet/commit/122283185554674c1e5e1f65f43d0f2fb5b60d78))
+* **helm:** data-plane-only executor release and ExecutorService ingress ([0745eec](https://github.com/synclet-io/synclet/commit/0745eecb5649beb62d83f8440cfe44663704e53c))
+* **pipeline:** executor groups route jobs and connector tasks to data planes ([900acfe](https://github.com/synclet-io/synclet/commit/900acfe00fb510cb5352494a29674db8de7876a0))
+* **pipeline:** move sources and destinations between executor groups ([c186c53](https://github.com/synclet-io/synclet/commit/c186c530cc29a8de3a6af4b6638ac9757fe814d4))
+
+
+### Bug Fixes
+
+* **front:** config form renders and validates the spec shapes it got wrong ([90edebd](https://github.com/synclet-io/synclet/commit/90edebda72ce0c1dfef4725b3855c259468f54b0))
+* **front:** validate array-of-objects rows on submit ([b6811a6](https://github.com/synclet-io/synclet/commit/b6811a6f207a8045158794076e58ccf43c535035))
+* **pipeline:** secrets inside array items and array-of-objects config form ([10c0a8b](https://github.com/synclet-io/synclet/commit/10c0a8b065245e6c5e5b26a7941beb9275a51c0e))
+* **security:** block SSRF on registry fetches and foreign secret refs ([93277d0](https://github.com/synclet-io/synclet/commit/93277d0273f7e541e3c1cdde6c0136df08711399))
+
 ## [1.0.0](https://github.com/synclet-io/synclet/compare/synclet-v0.16.0...synclet-v1.0.0) (2026-10-29)
 
 
