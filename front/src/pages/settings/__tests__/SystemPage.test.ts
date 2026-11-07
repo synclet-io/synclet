@@ -16,6 +16,7 @@ const resourceDefaults = { cpuRequest: '', cpuLimit: '', memoryRequest: '', memo
 function executor(overrides: Partial<ExecutorInstance>): ExecutorInstance {
   return {
     id: 'executor-0',
+    executorGroup: 'default',
     type: 'docker',
     version: 'v0.5.0',
     capacity: 5,

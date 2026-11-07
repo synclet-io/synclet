@@ -6,12 +6,14 @@ import {
   useDeleteDestination,
   useDestination,
   useDestinations,
+  useDuplicateDestination,
   useTestDestinationConnection,
   useUpdateDestination,
 } from '@entities/destination'
 import {
   useCreateSource,
   useDeleteSource,
+  useDuplicateSource,
   useSource,
   useSources,
   useTestSourceConnection,
@@ -59,6 +61,13 @@ export interface CreateInstanceParams {
   name: string
   managedConnectorId: string
   config: Record<string, unknown>
+  executorGroup: string
+}
+
+export interface DuplicateInstanceParams {
+  id: string
+  executorGroup: string
+  name?: string
 }
 
 export function useInstances(kind: InstanceKind, options: { page: Ref<number>, pageSize: number }) {
@@ -87,6 +96,14 @@ export function useCreateInstance(kind: InstanceKind) {
 
 export function useUpdateInstance(kind: InstanceKind) {
   return kind === 'source' ? useUpdateSource() : useUpdateDestination()
+}
+
+export function useDuplicateInstance(kind: InstanceKind) {
+  const mutation = kind === 'source' ? useDuplicateSource() : useDuplicateDestination()
+  return {
+    isPending: mutation.isPending,
+    duplicate: (params: DuplicateInstanceParams): Promise<ConnectorInstance | undefined> => mutation.mutateAsync(params),
+  }
 }
 
 export function useDeleteInstance(kind: InstanceKind) {

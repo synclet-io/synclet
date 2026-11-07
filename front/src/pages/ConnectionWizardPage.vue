@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { Source } from '@entities/source'
 import { configuredCatalogToStreams, getConfiguredCatalog, getConnection, useConfigureStreams, useCreateConnection } from '@entities/connection'
 import { getDestination } from '@entities/destination/api'
 import { getSource } from '@entities/source/api'
@@ -10,9 +11,10 @@ import StepSettings from '@features/connection-wizard/StepSettings.vue'
 import StepStreamConfig from '@features/connection-wizard/StepStreamConfig.vue'
 import { useWizardState, WIZARD_STEPS } from '@features/connection-wizard/useWizardState'
 import WizardStepper from '@features/connection-wizard/WizardStepper.vue'
+import { groupOf } from '@features/executor-group'
 import { getErrorMessage } from '@shared/lib/errorUtils'
 import { PageHeader, SAlert, SButton, SCard, SConfirmDialog, SSkeleton } from '@shared/ui'
-import { onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 
 const route = useRoute()
@@ -115,6 +117,18 @@ function settleLeave(leave: boolean) {
   resolveLeave.value = null
 }
 
+function chooseSource(source: Source) {
+  state.value.source = source
+  if (state.value.destination && groupOf(state.value.destination) !== groupOf(source)) {
+    state.value.destinationId = ''
+    state.value.destination = null
+  }
+}
+
+const sourceGroup = computed(() => state.value.source ? groupOf(state.value.source) : undefined)
+const preselectedDestinationGroup = computed(() =>
+  preselectDestinationId && state.value.destination ? groupOf(state.value.destination) : undefined)
+
 function handleAutoAdvance() {
   next()
 }
@@ -211,14 +225,16 @@ function handleSkipStreams() {
           <StepSelectSource
             v-if="currentStep === 1"
             :source-id="state.sourceId"
+            :group="preselectedDestinationGroup"
             @update:source-id="state.sourceId = $event"
-            @update:source="state.source = $event"
+            @update:source="chooseSource"
             @auto-advance="handleAutoAdvance"
           />
 
           <StepSelectDestination
             v-if="currentStep === 2"
             :destination-id="state.destinationId"
+            :group="sourceGroup"
             @update:destination-id="state.destinationId = $event"
             @update:destination="state.destination = $event"
             @auto-advance="handleAutoAdvance"

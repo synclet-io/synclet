@@ -21,6 +21,7 @@ export interface ExecutorTypeDefaults {
 
 export interface ExecutorInstance {
   id: string
+  executorGroup: string
   type: ExecutorKind
   version: string
   /** Concurrent syncs; 0 means unlimited. */

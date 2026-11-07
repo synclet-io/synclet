@@ -13,6 +13,7 @@ function mkSource(id: string, name: string): Source {
     managedConnectorId: 'mc',
     config: {},
     runtimeConfig: null,
+    executorGroup: 'default',
     createdAt: undefined,
     updatedAt: undefined,
   }
@@ -26,6 +27,7 @@ function mkDest(id: string, name: string): Destination {
     managedConnectorId: 'mc',
     config: {},
     runtimeConfig: null,
+    executorGroup: 'default',
     createdAt: undefined,
     updatedAt: undefined,
   }

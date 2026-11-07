@@ -13,6 +13,7 @@ function mapSource(proto: ProtoSource): Source {
     managedConnectorId: proto.managedConnectorId,
     config: proto.config ?? {},
     runtimeConfig: proto.runtimeConfig ?? null,
+    executorGroup: proto.executorGroup,
     createdAt: tsToDate(proto.createdAt),
     updatedAt: tsToDate(proto.updatedAt),
   }
@@ -34,15 +35,15 @@ export async function getSource(id: string): Promise<Source | undefined> {
   return res.source ? mapSource(res.source) : undefined
 }
 
-export async function createSource(params: { name: string, managedConnectorId: string, config: Record<string, unknown> }): Promise<{ source: Source | undefined, discoverTaskId?: string }> {
-  const res = await sourceClient.createSource({ name: params.name, managedConnectorId: params.managedConnectorId, config: params.config as JsonObject })
+export async function createSource(params: { name: string, managedConnectorId: string, config: Record<string, unknown>, executorGroup?: string }): Promise<{ source: Source | undefined, discoverTaskId?: string }> {
+  const res = await sourceClient.createSource({ name: params.name, managedConnectorId: params.managedConnectorId, config: params.config as JsonObject, executorGroup: params.executorGroup ?? '' })
   return {
     source: res.source ? mapSource(res.source) : undefined,
     discoverTaskId: res.discoverTaskId || undefined,
   }
 }
 
-export async function updateSource(params: { id: string, name?: string, config?: Record<string, unknown>, runtimeConfig?: string | null }): Promise<{ source: Source | undefined, discoverTaskId?: string }> {
+export async function updateSource(params: { id: string, name?: string, config?: Record<string, unknown>, runtimeConfig?: string | null, executorGroup?: string }): Promise<{ source: Source | undefined, discoverTaskId?: string }> {
   const req: any = { id: params.id }
   if (params.name !== undefined)
     req.name = params.name
@@ -50,11 +51,18 @@ export async function updateSource(params: { id: string, name?: string, config?:
     req.config = params.config as JsonObject
   if (params.runtimeConfig !== undefined)
     req.runtimeConfig = params.runtimeConfig
+  if (params.executorGroup !== undefined)
+    req.executorGroup = params.executorGroup
   const res = await sourceClient.updateSource(req)
   return {
     source: res.source ? mapSource(res.source) : undefined,
     discoverTaskId: res.discoverTaskId || undefined,
   }
+}
+
+export async function duplicateSource(params: { id: string, executorGroup: string, name?: string }): Promise<Source | undefined> {
+  const res = await sourceClient.duplicateSource(params)
+  return res.source ? mapSource(res.source) : undefined
 }
 
 export async function deleteSource(id: string): Promise<void> {

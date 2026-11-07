@@ -12,6 +12,7 @@ export function fakeInstance(kind: InstanceKind) {
     managedConnectorId: 'mc-1',
     config: { host: 'db' },
     runtimeConfig: null,
+    executorGroup: 'default',
     createdAt: new Date('2026-01-01'),
     updatedAt: undefined,
   }
@@ -34,6 +35,7 @@ export function fakeEntity(kind: InstanceKind) {
     [`use${title}`]: () => ({ data: ref(fakeInstance(kind)), isLoading: ref(false) }),
     [`useCreate${title}`]: () => mutation(kind, 'create', () => kind === 'source' ? { source: fakeInstance(kind) } : fakeInstance(kind)),
     [`useUpdate${title}`]: () => mutation(kind, 'update', () => fakeInstance(kind)),
+    [`useDuplicate${title}`]: () => mutation(kind, 'duplicate', () => ({ ...fakeInstance(kind), id: `${kind}-2` })),
     [`useDelete${title}`]: () => mutation(kind, 'delete', () => undefined),
     [`useTest${title}Connection`]: () => mutation(kind, 'test', () => ({ taskId: 't1' })),
   }

@@ -53,6 +53,19 @@ export function useUpdateSource() {
   })
 }
 
+export function useDuplicateSource() {
+  const qc = useQueryClient()
+  const { currentWorkspaceId } = useAuth()
+  return useMutation({
+    mutationFn: sourceApi.duplicateSource,
+    onSuccess: () => {
+      const workspaceId = currentWorkspaceId.value ?? ''
+      qc.invalidateQueries({ queryKey: sourceKeys.all(workspaceId) })
+      qc.invalidateQueries({ queryKey: [...connectorKeys.all(workspaceId), 'managed'] })
+    },
+  })
+}
+
 export function useDeleteSource() {
   const qc = useQueryClient()
   const { currentWorkspaceId } = useAuth()

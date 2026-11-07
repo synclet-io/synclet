@@ -28,7 +28,7 @@ vi.mock('@entities/connection', () => ({
   useConnectionTags: () => ({ data: ref([]) }),
 }))
 vi.mock('@entities/source/api', () => ({ getSource: vi.fn(async () => ({ id: 's1', name: 'Orders DB' })) }))
-vi.mock('@entities/destination/api', () => ({ getDestination: vi.fn(async () => ({ id: 'd1', name: 'Warehouse' })) }))
+vi.mock('@entities/destination/api', () => ({ getDestination: vi.fn(async (id: string) => ({ id, name: 'Warehouse', executorGroup: id === 'd-eu' ? 'eu' : 'default' })) }))
 vi.mock('@entities/connector', () => ({ useManagedConnector: () => ({ data: ref(undefined) }) }))
 
 const Empty = defineComponent({ template: '<div />' })
@@ -174,5 +174,87 @@ describe('connection wizard transforms', () => {
       connectionId: 'new-1',
       streams: [expect.objectContaining({ streamName: 'orders', mappers })],
     })
+  })
+})
+
+describe('connection wizard executor groups', () => {
+  const seen: { sourceGroup?: string, destinationGroup?: string, destinationId?: string } = {}
+  const picked = { group: 'default' }
+  const sourceStep = defineComponent({
+    props: { sourceId: { type: String, default: '' }, group: { type: String, default: undefined } },
+    emits: ['update:sourceId', 'update:source', 'auto-advance'],
+    setup(props, { emit }) {
+      onMounted(() => {
+        seen.sourceGroup = props.group
+      })
+      function pick() {
+        emit('update:sourceId', `s-${picked.group}`)
+        emit('update:source', { id: `s-${picked.group}`, name: 'Orders DB', executorGroup: picked.group })
+        emit('auto-advance')
+      }
+      return { pick }
+    },
+    template: '<button type="button" @click="pick">pick source</button>',
+  })
+  const destinationStep = defineComponent({
+    props: { destinationId: { type: String, default: '' }, group: { type: String, default: undefined } },
+    setup(props) {
+      onMounted(() => {
+        seen.destinationGroup = props.group
+        seen.destinationId = props.destinationId
+      })
+      return {}
+    },
+    template: '<div />',
+  })
+
+  async function mountWithDestination() {
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/connections/new', component: ConnectionWizardPage },
+        { path: '/:rest(.*)*', component: Empty },
+      ],
+    })
+    await router.push('/connections/new?destinationId=d-eu')
+    const wrapper = mount(ConnectionWizardPage, {
+      global: { plugins: [router], stubs: { StepSelectSource: sourceStep, StepSelectDestination: destinationStep, StepSettings: true, StepStreamConfig: true, WizardStepper: true } },
+    })
+    await flushPromises()
+    return wrapper
+  }
+
+  it('keeps offering sources of the preselected destination group after going back', async () => {
+    picked.group = 'eu'
+    const wrapper = await mountWithDestination()
+    await wrapper.findAll('button').find(b => b.text() === 'pick source')!.trigger('click')
+    await flushPromises()
+    expect(seen.destinationId).toBe('d-eu')
+
+    seen.sourceGroup = undefined
+    await wrapper.findAll('button').find(b => b.text() === 'Back')!.trigger('click')
+    await flushPromises()
+    expect(seen.sourceGroup).toBe('eu')
+  })
+
+  it('offers sources of a preselected destination group and drops the destination when a source of another group is picked', async () => {
+    picked.group = 'default'
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/connections/new', component: ConnectionWizardPage },
+        { path: '/:rest(.*)*', component: Empty },
+      ],
+    })
+    await router.push('/connections/new?destinationId=d-eu')
+    const wrapper = mount(ConnectionWizardPage, {
+      global: { plugins: [router], stubs: { StepSelectSource: sourceStep, StepSelectDestination: destinationStep, StepSettings: true, StepStreamConfig: true, WizardStepper: true } },
+    })
+    await flushPromises()
+    expect(seen.sourceGroup).toBe('eu')
+
+    await wrapper.findAll('button').find(b => b.text() === 'pick source')!.trigger('click')
+    await flushPromises()
+    expect(seen).toEqual({ sourceGroup: 'eu', destinationGroup: 'default', destinationId: '' })
   })
 })

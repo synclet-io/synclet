@@ -2,12 +2,14 @@
 import type { Destination } from '@entities/destination'
 import { useManagedConnectors } from '@entities/connector'
 import { useDestinations } from '@entities/destination'
+import { groupOf } from '@features/executor-group'
 import { SButton, SEmptyState, SSkeleton } from '@shared/ui'
 import { computed } from 'vue'
 import { formatConnector } from './connectorLabel'
 
-defineProps<{
+const props = defineProps<{
   destinationId: string
+  group?: string
 }>()
 
 const emit = defineEmits<{
@@ -17,6 +19,7 @@ const emit = defineEmits<{
 }>()
 
 const { data: destinations, isLoading } = useDestinations()
+const offered = computed(() => (destinations.value?.items ?? []).filter(item => !props.group || groupOf(item) === props.group))
 const { data: connectors } = useManagedConnectors()
 const connectorsById = computed(() => new Map((connectors.value ?? []).map(c => [c.id, c])))
 
@@ -39,6 +42,16 @@ function selectDestination(d: Destination) {
 
     <!-- Empty state -->
     <SEmptyState
+      v-else-if="destinations && destinations.items.length > 0 && offered.length === 0"
+      :title="`No destinations in executor group &quot;${group}&quot;`"
+      description="A connection pairs a source and a destination of the same executor group."
+    >
+      <SButton to="/destinations/new">
+        Add Destination
+      </SButton>
+    </SEmptyState>
+
+    <SEmptyState
       v-else-if="destinations && destinations.items.length === 0"
       title="No destinations configured"
       description="Create a destination before setting up a connection."
@@ -51,7 +64,7 @@ function selectDestination(d: Destination) {
     <!-- Destination cards grid -->
     <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-3">
       <button
-        v-for="d in destinations?.items"
+        v-for="d in offered"
         :key="d.id"
         class="text-left rounded-xl p-4 transition-all"
         :class="d.id === destinationId

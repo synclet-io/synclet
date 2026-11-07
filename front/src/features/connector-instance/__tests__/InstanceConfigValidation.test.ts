@@ -45,6 +45,13 @@ vi.mock('@entities/connector-task', () => ({
   useConnectorTaskResult: () => ({ data: ref(null), polling: ref(false), error: ref(null), timedOut: ref(false) }),
 }))
 
+vi.mock('@entities/connection', () => ({
+  useConnections: () => ({ data: ref({ items: [] }), isLoading: ref(false), error: ref(null) }),
+}))
+vi.mock('@entities/system', () => ({
+  useExecutors: () => ({ data: ref([]), isLoading: ref(false) }),
+}))
+
 const global = { stubs: { ConnectorStarToggle: true, RouterLink: { template: '<a><slot /></a>' } } }
 
 beforeEach(() => {
@@ -71,7 +78,7 @@ describe.each<{ kind: InstanceKind, connector: string }>([
     await wrapper.find('#field-port').setValue('5432')
     await wrapper.find('form').trigger('submit')
     await flushPromises()
-    expect(calls).toEqual([{ kind, op: 'create', arg: { name: 'Warehouse', managedConnectorId: kind === 'source' ? 'mc-1' : 'mc-2', config: { host: 'db', port: 5432 } } }])
+    expect(calls).toEqual([{ kind, op: 'create', arg: { name: 'Warehouse', managedConnectorId: kind === 'source' ? 'mc-1' : 'mc-2', config: { host: 'db', port: 5432 }, executorGroup: 'default' } }])
   })
 
   it('blocks saving an edit whose stored config misses a required field', async () => {

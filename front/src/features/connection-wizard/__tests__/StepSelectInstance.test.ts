@@ -9,13 +9,19 @@ const DESTINATION_CONNECTOR_ID = '5e4d3c2b-1a09-4f8e-8d7c-6b5a49382716'
 
 vi.mock('@entities/source', () => ({
   useSources: () => ({
-    data: ref({ items: [{ id: 'src-1', name: 'Storefront', managedConnectorId: SOURCE_CONNECTOR_ID }] }),
+    data: ref({ items: [
+      { id: 'src-1', name: 'Storefront', managedConnectorId: SOURCE_CONNECTOR_ID, executorGroup: 'default' },
+      { id: 'src-2', name: 'EU orders', managedConnectorId: SOURCE_CONNECTOR_ID, executorGroup: 'eu' },
+    ] }),
     isLoading: ref(false),
   }),
 }))
 vi.mock('@entities/destination', () => ({
   useDestinations: () => ({
-    data: ref({ items: [{ id: 'dst-1', name: 'Analytics warehouse', managedConnectorId: DESTINATION_CONNECTOR_ID }] }),
+    data: ref({ items: [
+      { id: 'dst-1', name: 'Analytics warehouse', managedConnectorId: DESTINATION_CONNECTOR_ID, executorGroup: 'default' },
+      { id: 'dst-2', name: 'EU warehouse', managedConnectorId: DESTINATION_CONNECTOR_ID, executorGroup: 'eu' },
+    ] }),
     isLoading: ref(false),
   }),
 }))
@@ -42,5 +48,30 @@ describe('wizard instance cards', () => {
     expect(card.text()).toContain('Analytics warehouse')
     expect(card.text()).toContain('Postgres (3.0.23)')
     expect(card.text()).not.toContain(DESTINATION_CONNECTOR_ID)
+  })
+})
+
+describe('wizard group filtering', () => {
+  it('offers only destinations of the source group', () => {
+    const names = mount(StepSelectDestination, { props: { destinationId: '', group: 'eu' } }).findAll('button').map(b => b.text())
+    expect(names).toHaveLength(1)
+    expect(names[0]).toContain('EU warehouse')
+  })
+
+  it('offers only sources of the destination group', () => {
+    const names = mount(StepSelectSource, { props: { sourceId: '', group: 'eu' } }).findAll('button').map(b => b.text())
+    expect(names).toHaveLength(1)
+    expect(names[0]).toContain('EU orders')
+  })
+
+  it('offers every instance without a group', () => {
+    expect(mount(StepSelectDestination, { props: { destinationId: '' } }).findAll('button')).toHaveLength(2)
+    expect(mount(StepSelectSource, { props: { sourceId: '' } }).findAll('button')).toHaveLength(2)
+  })
+
+  it('says when the group has nothing to offer', () => {
+    const global = { stubs: { RouterLink: true } }
+    expect(mount(StepSelectDestination, { props: { destinationId: '', group: 'us' }, global }).text()).toContain('No destinations in executor group "us"')
+    expect(mount(StepSelectSource, { props: { sourceId: '', group: 'us' }, global }).text()).toContain('No sources in executor group "us"')
   })
 })

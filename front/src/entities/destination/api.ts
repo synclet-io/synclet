@@ -12,6 +12,7 @@ function mapDestination(proto: ProtoDestination): Destination {
     managedConnectorId: proto.managedConnectorId,
     config: proto.config ?? {},
     runtimeConfig: proto.runtimeConfig ?? null,
+    executorGroup: proto.executorGroup,
     createdAt: tsToDate(proto.createdAt),
     updatedAt: tsToDate(proto.updatedAt),
   }
@@ -33,12 +34,12 @@ export async function getDestination(id: string): Promise<Destination | undefine
   return res.destination ? mapDestination(res.destination) : undefined
 }
 
-export async function createDestination(params: { name: string, managedConnectorId: string, config: Record<string, unknown> }): Promise<Destination | undefined> {
-  const res = await destinationClient.createDestination({ name: params.name, managedConnectorId: params.managedConnectorId, config: params.config as JsonObject })
+export async function createDestination(params: { name: string, managedConnectorId: string, config: Record<string, unknown>, executorGroup?: string }): Promise<Destination | undefined> {
+  const res = await destinationClient.createDestination({ name: params.name, managedConnectorId: params.managedConnectorId, config: params.config as JsonObject, executorGroup: params.executorGroup ?? '' })
   return res.destination ? mapDestination(res.destination) : undefined
 }
 
-export async function updateDestination(params: { id: string, name?: string, config?: Record<string, unknown>, runtimeConfig?: string | null }): Promise<Destination | undefined> {
+export async function updateDestination(params: { id: string, name?: string, config?: Record<string, unknown>, runtimeConfig?: string | null, executorGroup?: string }): Promise<Destination | undefined> {
   const req: any = { id: params.id }
   if (params.name !== undefined)
     req.name = params.name
@@ -46,7 +47,14 @@ export async function updateDestination(params: { id: string, name?: string, con
     req.config = params.config as JsonObject
   if (params.runtimeConfig !== undefined)
     req.runtimeConfig = params.runtimeConfig
+  if (params.executorGroup !== undefined)
+    req.executorGroup = params.executorGroup
   const res = await destinationClient.updateDestination(req)
+  return res.destination ? mapDestination(res.destination) : undefined
+}
+
+export async function duplicateDestination(params: { id: string, executorGroup: string, name?: string }): Promise<Destination | undefined> {
+  const res = await destinationClient.duplicateDestination(params)
   return res.destination ? mapDestination(res.destination) : undefined
 }
 

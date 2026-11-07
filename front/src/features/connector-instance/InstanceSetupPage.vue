@@ -4,6 +4,7 @@ import type { InstanceKind } from './instanceKind'
 import { useConnectorSpec, useManagedConnectors } from '@entities/connector'
 import { useConnectorTaskResult } from '@entities/connector-task'
 import { ConnectorStarToggle } from '@features/connector-star'
+import { DEFAULT_EXECUTOR_GROUP, ExecutorGroupField } from '@features/executor-group'
 import { getErrorMessage } from '@shared/lib/errorUtils'
 import { PageHeader, SAlert, SButton, SCard, SConfirmDialog, SEmptyState, SInput, SSkeleton } from '@shared/ui'
 import { ExternalLink, PackageOpen, Star } from 'lucide-vue-next'
@@ -23,6 +24,7 @@ const router = useRouter()
 const step = ref(1)
 const selectedConnector = ref<ManagedConnector | null>(null)
 const name = ref('')
+const executorGroup = ref(DEFAULT_EXECUTOR_GROUP)
 const config = useConfigEditor()
 const configField = ref<InstanceType<typeof InstanceConfigField> | null>(null)
 const error = ref('')
@@ -128,6 +130,7 @@ async function handleCreate() {
       name: name.value,
       managedConnectorId: selectedConnector.value.id,
       config: config.resolve(),
+      executorGroup: executorGroup.value,
     })
     created.value = true
     if (instance)
@@ -273,6 +276,8 @@ const connectorSections = computed(() => {
             :tooltip="meta.nameTooltip"
             required
           />
+
+          <ExecutorGroupField v-model="executorGroup" />
 
           <InstanceConfigField
             ref="configField"

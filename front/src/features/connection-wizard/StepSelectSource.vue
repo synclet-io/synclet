@@ -2,12 +2,14 @@
 import type { Source } from '@entities/source'
 import { useManagedConnectors } from '@entities/connector'
 import { useSources } from '@entities/source'
+import { groupOf } from '@features/executor-group'
 import { SButton, SEmptyState, SSkeleton } from '@shared/ui'
 import { computed } from 'vue'
 import { formatConnector } from './connectorLabel'
 
-defineProps<{
+const props = defineProps<{
   sourceId: string
+  group?: string
 }>()
 
 const emit = defineEmits<{
@@ -17,6 +19,7 @@ const emit = defineEmits<{
 }>()
 
 const { data: sources, isLoading } = useSources()
+const offered = computed(() => (sources.value?.items ?? []).filter(item => !props.group || groupOf(item) === props.group))
 const { data: connectors } = useManagedConnectors()
 const connectorsById = computed(() => new Map((connectors.value ?? []).map(c => [c.id, c])))
 
@@ -39,6 +42,16 @@ function selectSource(s: Source) {
 
     <!-- Empty state -->
     <SEmptyState
+      v-else-if="sources && sources.items.length > 0 && offered.length === 0"
+      :title="`No sources in executor group &quot;${group}&quot;`"
+      description="A connection pairs a source and a destination of the same executor group."
+    >
+      <SButton to="/sources/new">
+        Add Source
+      </SButton>
+    </SEmptyState>
+
+    <SEmptyState
       v-else-if="sources && sources.items.length === 0"
       title="No sources configured"
       description="Create a source before setting up a connection."
@@ -51,7 +64,7 @@ function selectSource(s: Source) {
     <!-- Source cards grid -->
     <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-3">
       <button
-        v-for="s in sources?.items"
+        v-for="s in offered"
         :key="s.id"
         class="text-left rounded-xl p-4 transition-all"
         :class="s.id === sourceId

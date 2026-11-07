@@ -65,6 +65,7 @@ export async function listExecutors(): Promise<ExecutorInstance[]> {
   const res = await sourceClient.listExecutors({})
   return res.executors.map(e => ({
     id: e.id,
+    executorGroup: e.executorGroup,
     type: executorKind(e.type),
     version: e.version,
     capacity: e.capacity,
