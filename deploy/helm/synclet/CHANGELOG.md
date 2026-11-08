@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/synclet-io/synclet/compare/synclet-helm-v1.0.0...synclet-helm-v1.1.0) (2026-11-08)
+
+
+### Features
+
+* **helm:** data-plane-only executor release and ExecutorService ingress ([0745eec](https://github.com/synclet-io/synclet/commit/0745eecb5649beb62d83f8440cfe44663704e53c))
+
 ## [1.0.0](https://github.com/synclet-io/synclet/compare/synclet-helm-v0.11.0...synclet-helm-v1.0.0) (2026-10-29)
 
 
